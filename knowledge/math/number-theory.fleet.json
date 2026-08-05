@@ -1,0 +1,177 @@
+{
+ "subject": "math",
+ "topic": "number-theory",
+ "title": "number-theory — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "أوجد آخر ثلاثة أرقام من العدد $7^{999}$، أي احسب $7^{999} \\bmod 1000$.",
+   "q_en": "Find the last three digits of $7^{999}$, i.e. compute $7^{999} \\bmod 1000$.",
+   "a_ar": "نستخدم نظرية الباقي الصينية على $1000 = 8\\cdot125$. بمقياس $8$: $7\\equiv-1$ فيكون $7^{999}\\equiv(-1)^{999}\\equiv7$. بمقياس $125$: $\\phi(125)=100$ و$999\\equiv99\\pmod{100}$، فيكون $7^{999}\\equiv7^{99}\\equiv7^{-1}\\pmod{125}$؛ وبما أن $7\\cdot18=126\\equiv1$ فإن $7^{-1}\\equiv18$. نحل $x\\equiv7\\pmod8,\\ x\\equiv18\\pmod{125}$ فنحصل على $x=143$. إذن آخر ثلاثة أرقام هي $143$.",
+   "a_en": "Use the Chinese Remainder Theorem on $1000 = 8\\cdot125$. Mod $8$: $7\\equiv-1$, so $7^{999}\\equiv(-1)^{999}\\equiv7$. Mod $125$: $\\phi(125)=100$ and $999\\equiv99\\pmod{100}$, so $7^{999}\\equiv7^{99}\\equiv7^{-1}\\pmod{125}$; since $7\\cdot18=126\\equiv1$, we get $7^{-1}\\equiv18$. Solving $x\\equiv7\\pmod8$ and $x\\equiv18\\pmod{125}$ gives $x=143$. Hence the last three digits are $143$.",
+   "answer": "$143$",
+   "keywords": [
+    "حساب مقياسي",
+    "modular arithmetic",
+    "نظرية الباقي الصينية",
+    "CRT",
+    "Euler totient",
+    "آخر ثلاثة أرقام",
+    "modular exponentiation"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "ليكن لدينا القطع النقدية بالفئات $6$ و$9$ و$20$. أوجد أكبر عدد صحيح موجب لا يمكن تمثيله على الصورة $6a+9b+20c$ حيث $a,b,c$ أعداد صحيحة غير سالبة (عدد فروبينيوس للمجموعة $\\{6,9,20\\}$).",
+   "q_en": "Given coin denominations $6$, $9$, and $20$, find the largest positive integer that cannot be written as $6a+9b+20c$ with $a,b,c$ nonnegative integers (the Frobenius number of $\\{6,9,20\\}$).",
+   "a_ar": "بما أن $\\gcd(6,9,20)=1$ يوجد عدد فروبينيوس منتهٍ. نفحص البواقي بمقياس $6$: القيم $\\{6,9,20\\}$ تولّد جميع الأصناف، وأصغر قيمة قابلة للتمثيل في كل صنف تحدد الحدّ الأعلى. بالفحص المباشر نجد أن الأعداد $\\{1,2,3,4,5,7,8,10,11,13,14,16,17,19,22,23,25,28,31,34,37,43\\}$ غير قابلة للتمثيل، وكل عدد $\\ge44$ قابل للتمثيل (لأن $44,45,46,47,48,49$ كلها ممثَّلة ثم نضيف $6$). إذن أكبر عدد غير قابل للتمثيل هو $43$.",
+   "a_en": "Since $\\gcd(6,9,20)=1$, a finite Frobenius number exists. Checking residues mod $6$, the generators $\\{6,9,20\\}$ reach every class, and the least representable value in each class caps the non-representable set. Direct verification shows the non-representable numbers are $\\{1,2,3,4,5,7,8,10,11,13,14,16,17,19,22,23,25,28,31,34,37,43\\}$, and every integer $\\ge44$ is representable (since $44,\\dots,49$ all are, then add multiples of $6$). Hence the largest non-representable integer is $43$.",
+   "answer": "$43$",
+   "keywords": [
+    "عدد فروبينيوس",
+    "Frobenius number",
+    "معادلات ديوفانتية",
+    "Chicken McNugget",
+    "coin problem",
+    "القاسم المشترك الأكبر"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب $\\gcd\\left(2^{100}-1,\\ 2^{120}-1\\right)$ معطياً الإجابة كعدد صحيح صريح.",
+   "q_en": "Compute $\\gcd\\left(2^{100}-1,\\ 2^{120}-1\\right)$, giving the answer as an explicit integer.",
+   "a_ar": "نستعمل الخاصية المعروفة $\\gcd(a^m-1,\\ a^n-1)=a^{\\gcd(m,n)}-1$ لأي عدد صحيح $a\\ge2$. هنا $\\gcd(100,120)=20$، إذن $\\gcd(2^{100}-1,2^{120}-1)=2^{20}-1$. وبالحساب $2^{20}=1048576$، فتكون القيمة $2^{20}-1=1048575$.",
+   "a_en": "Use the identity $\\gcd(a^m-1,\\ a^n-1)=a^{\\gcd(m,n)}-1$ for any integer $a\\ge2$. Here $\\gcd(100,120)=20$, so $\\gcd(2^{100}-1,2^{120}-1)=2^{20}-1$. Since $2^{20}=1048576$, the value is $2^{20}-1=1048575$.",
+   "answer": "$2^{20}-1 = 1048575$",
+   "keywords": [
+    "القاسم المشترك الأكبر",
+    "GCD",
+    "Mersenne",
+    "خوارزمية إقليدس",
+    "exponent gcd identity",
+    "أسس"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أوجد رتبة العنصر $2$ بالضرب بمقياس $101$ (أي أصغر عدد صحيح موجب $d$ يحقق $2^d\\equiv1\\pmod{101}$)، وحدّد هل $2$ جذر بدائي بمقياس $101$.",
+   "q_en": "Find the multiplicative order of $2$ modulo $101$ (the least positive integer $d$ with $2^d\\equiv1\\pmod{101}$), and determine whether $2$ is a primitive root mod $101$.",
+   "a_ar": "العدد $101$ أولي فرتبة $2$ تقسم $100=2^2\\cdot5^2$. يكفي فحص $2^{50}$ و$2^{20}$. نحسب $2^{10}=1024\\equiv14$، ثم $2^{20}\\equiv14^2=196\\equiv-6$، و$2^{50}=2^{20}\\cdot2^{20}\\cdot2^{10}\\equiv(-6)(-6)(14)=504\\equiv-1\\pmod{101}$. بما أن $2^{50}\\equiv-1\\ne1$ و$2^{20}\\equiv-6\\ne1$، فإن الرتبة لا تقسم $50$ ولا $20$، فتكون الرتبة $100$. إذن $2$ جذر بدائي بمقياس $101$.",
+   "a_en": "Since $101$ is prime, the order of $2$ divides $100=2^2\\cdot5^2$; it suffices to test $2^{50}$ and $2^{20}$. Compute $2^{10}=1024\\equiv14$, then $2^{20}\\equiv14^2=196\\equiv-6$, and $2^{50}=2^{20}\\cdot2^{20}\\cdot2^{10}\\equiv(-6)(-6)(14)=504\\equiv-1\\pmod{101}$. Because $2^{50}\\equiv-1\\ne1$ and $2^{20}\\equiv-6\\ne1$, the order divides neither $50$ nor $20$, so it is $100$. Therefore $2$ is a primitive root modulo $101$.",
+   "answer": "Order $=100$; yes, $2$ is a primitive root mod $101$.",
+   "keywords": [
+    "الرتبة الضربية",
+    "multiplicative order",
+    "جذر بدائي",
+    "primitive root",
+    "مبرهنة فيرما الصغرى",
+    "Fermat",
+    "modular arithmetic"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أوجد جميع الحلول للمعادلة التطابقية $x^2\\equiv-1\\pmod{65}$ في المجال $0\\le x<65$.",
+   "q_en": "Find all solutions of the congruence $x^2\\equiv-1\\pmod{65}$ with $0\\le x<65$.",
+   "a_ar": "بما أن $65=5\\cdot13$ وكلاهما أولي من الصورة $4k+1$، يوجد حل، ونحلّ بمقياس كل أولي ثم نجمع بنظرية الباقي الصينية. بمقياس $5$: $x^2\\equiv4$ فيكون $x\\equiv\\pm2$. بمقياس $13$: $x^2\\equiv12$ ومنه $x\\equiv\\pm5$ (لأن $5^2=25\\equiv12$). التركيب بنظرية الباقي الصينية يعطي أربعة حلول: $\\{8,18,47,57\\}$. (تحقق: $57^2=3249\\equiv-1$، $18^2=324\\equiv-1\\pmod{65}$).",
+   "a_en": "Since $65=5\\cdot13$ with both primes of the form $4k+1$, a solution exists; solve modulo each prime and combine by CRT. Mod $5$: $x^2\\equiv4$, so $x\\equiv\\pm2$. Mod $13$: $x^2\\equiv12$, so $x\\equiv\\pm5$ (since $5^2=25\\equiv12$). Combining via CRT yields four solutions: $\\{8,18,47,57\\}$. (Check: $57^2=3249\\equiv-1$ and $18^2=324\\equiv-1\\pmod{65}$.)",
+   "answer": "$x\\in\\{8,\\ 18,\\ 47,\\ 57\\}$",
+   "keywords": [
+    "تطابق تربيعي",
+    "quadratic congruence",
+    "نظرية الباقي الصينية",
+    "CRT",
+    "بقايا تربيعية",
+    "quadratic residue",
+    "الجذر التربيعي المقياسي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أوجد جميع الأعداد الصحيحة الموجبة $n$ التي تحقق $n \\mid 2^n - 1$.",
+   "q_en": "Find all positive integers $n$ such that $n \\mid 2^n - 1$.",
+   "a_ar": "الحل الوحيد هو $n=1$. لنفترض $n>1$ وليكن $p$ أصغر عامل أولي له. من $2^n\\equiv 1\\pmod p$ فإن رتبة $2$ بمقياس $p$، أي $d=\\operatorname{ord}_p(2)$، تقسم كلاً من $n$ و $p-1$. أي عامل أولي لـ $d$ يقسم $n$ ويكون أصغر من $p$، وهذا يناقض كون $p$ الأصغر إلا إذا كان $d=1$؛ لكن $d=1$ يعني $2\\equiv1\\pmod p$ أي $p\\mid1$، وهو مستحيل. إذن لا يوجد $n>1$، والحل الوحيد هو $n=1$.",
+   "a_en": "Only $n=1$ works. Suppose $n>1$ and let $p$ be its smallest prime factor. From $2^n\\equiv 1\\pmod p$, the order $d=\\operatorname{ord}_p(2)$ divides both $n$ and $p-1$. Any prime factor of $d$ divides $n$ yet is smaller than $p$, contradicting minimality unless $d=1$; but $d=1$ forces $2\\equiv1\\pmod p$, i.e. $p\\mid1$, impossible. Hence no $n>1$ exists and the only solution is $\\boxed{n=1}$.",
+   "answer": "$n=1$",
+   "keywords": [
+    "قابلية القسمة",
+    "order of 2",
+    "أصغر عامل أولي",
+    "divisibility",
+    "2^n-1",
+    "modular order",
+    "olympiad"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "حدّد أكبر قوة للعدد $2$ تقسم $3^{1024} - 1$.",
+   "q_en": "Determine the largest power of $2$ that divides $3^{1024} - 1$.",
+   "a_ar": "نستعمل مبرهنة رفع الأس (LTE) عند $p=2$: لعدد فردي $a$ وعدد زوجي $n$ يكون $v_2(a^n-1)=v_2(a-1)+v_2(a+1)+v_2(n)-1$. بوضع $a=3$ و $n=1024=2^{10}$ نحصل على $v_2(2)+v_2(4)+v_2(1024)-1 = 1+2+10-1 = 12$. إذن أكبر قوة تقسم العدد هي $2^{12}=4096$.",
+   "a_en": "Use the Lifting-the-Exponent lemma for $p=2$: for odd $a$ and even $n$, $v_2(a^n-1)=v_2(a-1)+v_2(a+1)+v_2(n)-1$. With $a=3$ and $n=1024=2^{10}$: $v_2(3-1)+v_2(3+1)+v_2(1024)-1 = 1+2+10-1 = 12$. Therefore the largest such power is $2^{12}=4096$.",
+   "answer": "$2^{12}=4096$",
+   "keywords": [
+    "LTE",
+    "رفع الأس",
+    "v_2",
+    "الحسابيات النمطية",
+    "2-adic valuation",
+    "3^1024-1",
+    "olympiad"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أوجد جميع أزواج الأعداد الصحيحة الموجبة $(x,y)$ التي تحقق $3^x - 2^y = 1$.",
+   "q_en": "Find all pairs of positive integers $(x,y)$ satisfying $3^x - 2^y = 1$.",
+   "a_ar": "إذا كان $y=1$ فإن $3^x=3$ ومنه $(x,y)=(1,1)$. ولأجل $y\\ge 2$ نأخذ باقي القسمة على $4$: يعطي $3^x\\equiv 1\\pmod4$ أن $x$ زوجي، فليكن $x=2k$. عندئذ $2^y=3^{2k}-1=(3^k-1)(3^k+1)$ وهو جداء قوتين للعدد $2$ يفرق بينهما $2$، فيجب أن يكونا $2$ و $4$؛ ومنه $3^k=3$ أي $k=1$ و $x=2$ و $2^y=8$ أي $y=3$. مجموعة الحلول الكاملة هي $(x,y)\\in\\{(1,1),(2,3)\\}$.",
+   "a_en": "If $y=1$ then $3^x=3$, giving $(x,y)=(1,1)$. For $y\\ge 2$, reduce mod $4$: $3^x\\equiv 1\\pmod4$ forces $x$ even, say $x=2k$. Then $2^y=3^{2k}-1=(3^k-1)(3^k+1)$, a product of two powers of $2$ differing by $2$, so they must be $2$ and $4$; hence $3^k=3$, $k=1$, $x=2$, and $2^y=8$, $y=3$. The complete solution set is $(x,y)\\in\\{(1,1),(2,3)\\}$.",
+   "answer": "$(x,y)\\in\\{(1,1),(2,3)\\}$",
+   "keywords": [
+    "معادلة ديوفانتية أسية",
+    "exponential Diophantine",
+    "3^x-2^y=1",
+    "factoring",
+    "باقي القسمة",
+    "powers of two",
+    "olympiad"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أوجد جميع الأعداد الصحيحة الموجبة $n$ التي تحقق $n^2 \\mid 2^n + 1$. (أولمبياد الرياضيات الدولي 1990)",
+   "q_en": "Find all positive integers $n$ such that $n^2 \\mid 2^n + 1$. (IMO 1990)",
+   "a_ar": "الجواب هو $n\\in\\{1,3\\}$. بما أن $2^n+1$ فردي فإن $n$ فردي؛ و $n=1$ يحقق الشرط. لأجل $n>1$ ليكن $p$ أصغر عامل أولي. من $2^n\\equiv-1\\pmod p$ نجد $2^{2n}\\equiv1$، فرتبة $2$ تقسم $2n$ ولا تقسم $n$؛ وبما أنها تقسم $p-1$ و $\\gcd(n,p-1)=1$ فإن الرتبة تساوي $2$، ومنه $p\\mid 3$ أي $p=3$. وبمبرهنة LTE يكون $v_3(2^n+1)=1+v_3(n)$، ويستلزم $n^2\\mid 2^n+1$ أن $2v_3(n)\\le 1+v_3(n)$ أي $v_3(n)=1$؛ وبإعادة حجة أصغر عامل أولي يتبيّن أن لا عامل أولي آخر لـ $n$. إذن $n=3$، ومجموعة الحلول الكاملة هي $\\{1,3\\}$.",
+   "a_en": "The answer is $n\\in\\{1,3\\}$. Since $2^n+1$ is odd, $n$ is odd; $n=1$ works. For $n>1$ let $p$ be the smallest prime factor. From $2^n\\equiv-1\\pmod p$ we get $2^{2n}\\equiv1$, so $\\operatorname{ord}_p(2)$ divides $2n$ but not $n$; as it also divides $p-1$ and $\\gcd(n,p-1)=1$, the order must be $2$, forcing $p\\mid 3$, i.e. $p=3$. By LTE, $v_3(2^n+1)=1+v_3(n)$, and $n^2\\mid 2^n+1$ requires $2v_3(n)\\le 1+v_3(n)$, so $v_3(n)=1$; a repeat of the smallest-prime argument shows $n$ has no other prime factor. Thus $n=3$, and the full solution set is $\\{1,3\\}$.",
+   "answer": "$n\\in\\{1,3\\}$",
+   "keywords": [
+    "IMO 1990",
+    "n^2 | 2^n+1",
+    "LTE",
+    "رفع الأس",
+    "أصغر عامل أولي",
+    "order",
+    "الرتبة",
+    "olympiad"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "تتوفّر عملات من فئات $6$ و $9$ و $20$. أوجد أكبر مبلغ لا يمكن تكوينه على صورة تركيبة بأعداد صحيحة غير سالبة $6a+9b+20c$ (عدد فروبينيوس).",
+   "q_en": "Coins come in denominations $6$, $9$, and $20$. Find the largest amount that cannot be formed as a non-negative integer combination $6a+9b+20c$ (the Frobenius number).",
+   "a_ar": "بما أن $\\gcd(6,9,20)=1$ فإن عدد فروبينيوس موجود. نعمل بمقياس $6$: في كل صف تكافؤ نوجد أصغر قيمة يمكن بلوغها باستعمال $9$ و $20$ فقط، لأن إضافة $6$ تغطّي كل ما هو أكبر. القيم الصغرى هي: $r\\equiv0:0$، $r\\equiv3:9$، $r\\equiv2:20$، $r\\equiv5:29\\,(9{+}20)$، $r\\equiv4:40\\,(20{+}20)$، $r\\equiv1:49\\,(9{+}40)$. كل عدد أكبر من أو يساوي القيمة الصغرى لصفّه قابل للتمثيل، فيكون أكبر عدد غير قابل للتمثيل هو $\\max(\\text{الصغرى})-6 = 49-6 = 43$.",
+   "a_en": "Since $\\gcd(6,9,20)=1$ a Frobenius number exists. Work modulo $6$: in each residue class find the smallest value attainable using only $9$'s and $20$'s, since adding $6$'s covers everything larger. The minima are: $r\\equiv0:0$, $r\\equiv3:9$, $r\\equiv2:20$, $r\\equiv5:29\\,(9{+}20)$, $r\\equiv4:40\\,(20{+}20)$, $r\\equiv1:49\\,(9{+}40)$. Every integer $\\ge$ the class minimum is representable, so the largest non-representable number is $\\max(\\text{minima})-6 = 49-6 = 43$.",
+   "answer": "$43$",
+   "keywords": [
+    "عدد فروبينيوس",
+    "Frobenius number",
+    "Chicken McNugget",
+    "صفوف التكافؤ",
+    "residues mod 6",
+    "coin problem",
+    "6 9 20",
+    "olympiad"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

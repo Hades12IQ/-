@@ -1,0 +1,181 @@
+{
+ "subject": "science",
+ "topic": "chem-equilibrium",
+ "title": "chem-equilibrium — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "عند درجة الحرارة 298 كلفن، للتفاعل $N_2O_4(g) \\rightleftharpoons 2NO_2(g)$ ثابت اتزان $K_p = 0.140$. مُلئت دورقة بغاز $N_2O_4$ النقي بضغط ابتدائي 1.00 atm وتُرك ليصل إلى الاتزان عند ثبوت درجة الحرارة والحجم. أوجد الضغوط الجزئية لكلا الغازين عند الاتزان، والضغط الكلي، ودرجة التفكك $\\alpha$.",
+   "q_en": "At 298 K the reaction $N_2O_4(g) \\rightleftharpoons 2NO_2(g)$ has $K_p = 0.140$. A flask is filled with pure $N_2O_4$ at an initial pressure of 1.00 atm and allowed to reach equilibrium at constant temperature and volume. Find the equilibrium partial pressures of both gases, the total pressure, and the degree of dissociation $\\alpha$.",
+   "a_ar": "ليكن $x$ هو الضغط بوحدة atm من $N_2O_4$ الذي يتفاعل. إذن $P_{N_2O_4}=1-x$ و $P_{NO_2}=2x$، فيكون $K_p=\\frac{(2x)^2}{1-x}=0.140$، ومنه $4x^2+0.140x-0.140=0$. الجذر الموجب هو $x=0.1704$ atm. لذلك $P_{N_2O_4}=0.830$ atm و $P_{NO_2}=0.341$ atm، والضغط الكلي $P=1.170$ atm. وبما أن الضغط الابتدائي 1.00 atm يقابل مولات البداية من $N_2O_4$، فإن درجة التفكك $\\alpha = x = 0.170$ أي 17.0%.",
+   "a_en": "Let $x$ be the atm of $N_2O_4$ that reacts. Then $P_{N_2O_4}=1-x$ and $P_{NO_2}=2x$, so $K_p=\\frac{(2x)^2}{1-x}=0.140$, giving $4x^2+0.140x-0.140=0$. The positive root is $x=0.1704$ atm. Therefore $P_{N_2O_4}=0.830$ atm and $P_{NO_2}=0.341$ atm, with total pressure $P=1.170$ atm. Since the initial 1.00 atm corresponds to the starting moles of $N_2O_4$, the degree of dissociation is $\\alpha = x = 0.170$ (17.0%).",
+   "answer": "$P_{N_2O_4}=0.830$ atm, $P_{NO_2}=0.341$ atm, $P_{total}=1.170$ atm, $\\alpha=0.170$ (17.0%)",
+   "keywords": [
+    "Kp",
+    "درجة التفكك",
+    "degree of dissociation",
+    "N2O4",
+    "ثابت الاتزان",
+    "ICE table",
+    "ضغط جزئي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في وعاء صلب سعته 2.00 لتر عند 700 كلفن، خُلط 1.00 مول $N_2$ مع 3.00 مول $H_2$ ووصل النظام إلى الاتزان للتفاعل $N_2(g)+3H_2(g)\\rightleftharpoons 2NH_3(g)$. عند الاتزان، تفاعل 40.0% من $N_2$. احسب $K_c$ و $K_p$ (استخدم $R=0.08206\\ \\text{L·atm·mol}^{-1}\\text{K}^{-1}$).",
+   "q_en": "In a 2.00 L rigid vessel at 700 K, 1.00 mol $N_2$ and 3.00 mol $H_2$ are mixed and reach equilibrium for $N_2(g)+3H_2(g)\\rightleftharpoons 2NH_3(g)$. At equilibrium, 40.0% of the $N_2$ has reacted. Calculate $K_c$ and $K_p$ (use $R=0.08206\\ \\text{L·atm·mol}^{-1}\\text{K}^{-1}$).",
+   "a_ar": "المتفاعل من $N_2 = 0.40\\times1.00 = 0.40$ مول، فعند الاتزان: $N_2=0.60$ مول، $H_2=3.00-3(0.40)=1.80$ مول، $NH_3=2(0.40)=0.80$ مول. بالقسمة على 2.00 لتر: $[N_2]=0.300$، $[H_2]=0.900$، $[NH_3]=0.400$ مولاري. إذن $K_c=\\frac{(0.400)^2}{(0.300)(0.900)^3}=0.732\\ \\text{mol}^{-2}\\text{L}^2$. وبما أن $\\Delta n_{gas}=2-4=-2$، فإن $K_p=K_c(RT)^{-2}=0.732\\times(0.08206\\times700)^{-2}=2.22\\times10^{-4}\\ \\text{atm}^{-2}$.",
+   "a_en": "Reacted $N_2 = 0.40\\times1.00 = 0.40$ mol, so at equilibrium: $N_2=0.60$ mol, $H_2=3.00-3(0.40)=1.80$ mol, $NH_3=2(0.40)=0.80$ mol. Dividing by 2.00 L: $[N_2]=0.300$, $[H_2]=0.900$, $[NH_3]=0.400$ M. Then $K_c=\\frac{(0.400)^2}{(0.300)(0.900)^3}=0.732\\ \\text{mol}^{-2}\\text{L}^2$. With $\\Delta n_{gas}=2-4=-2$, $K_p=K_c(RT)^{-2}=0.732\\times(0.08206\\times700)^{-2}=2.22\\times10^{-4}\\ \\text{atm}^{-2}$.",
+   "answer": "$K_c=0.732\\ \\text{mol}^{-2}\\text{L}^2$, $K_p=2.22\\times10^{-4}\\ \\text{atm}^{-2}$",
+   "keywords": [
+    "Kc",
+    "Kp",
+    "هابر",
+    "Haber",
+    "تحويل Kp Kc",
+    "ICE",
+    "أمونيا",
+    "Δn"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "للتفاعل $PCl_5(g)\\rightleftharpoons PCl_3(g)+Cl_2(g)$، $K_p=1.80$ عند 523 كلفن. أُدخل $PCl_5$ نقي وتُرك ليصل إلى الاتزان عند ضغط كلي ثابت 1.00 atm. (أ) أوجد درجة التفكك $\\alpha$. (ب) ثم أُعيد تحقيق الاتزان عند ضغط كلي ثابت 5.00 atm. أوجد قيمة $\\alpha$ الجديدة، وبيّن باستخدام مبدأ لوشاتلييه هل زاد التفكك أم نقص.",
+   "q_en": "For $PCl_5(g)\\rightleftharpoons PCl_3(g)+Cl_2(g)$, $K_p=1.80$ at 523 K. Pure $PCl_5$ is introduced and allowed to reach equilibrium at a constant total pressure of 1.00 atm. (a) Find the degree of dissociation $\\alpha$. (b) The equilibrium is then re-established at a constant total pressure of 5.00 atm. Find the new $\\alpha$ and state, using Le Chatelier's principle, whether dissociation increased or decreased.",
+   "a_ar": "لتفكك $PCl_5$ النقي عند ضغط كلي $P$، تعطي الضغوط الجزئية $K_p=\\frac{\\alpha^2}{1-\\alpha^2}P$، ومنه $\\alpha=\\sqrt{\\frac{K_p}{K_p+P}}$. (أ) عند $P=1.00$ atm: $\\alpha=\\sqrt{1.80/2.80}=0.802$ أي 80.2%. (ب) عند $P=5.00$ atm: $\\alpha=\\sqrt{1.80/6.80}=0.514$ أي 51.4%. أي أن التفكك نقص. وهذا يتفق مع مبدأ لوشاتلييه: زيادة الضغط تُزيح الاتزان نحو الجهة الأقل في عدد مولات الغاز (مول واحد متفاعل مقابل مولين ناتج)، فتُثبّط التفكك.",
+   "a_en": "For dissociation of pure $PCl_5$ at total pressure $P$, the partial pressures give $K_p=\\frac{\\alpha^2}{1-\\alpha^2}P$, so $\\alpha=\\sqrt{\\frac{K_p}{K_p+P}}$. (a) At $P=1.00$ atm: $\\alpha=\\sqrt{1.80/2.80}=0.802$ (80.2%). (b) At $P=5.00$ atm: $\\alpha=\\sqrt{1.80/6.80}=0.514$ (51.4%). Dissociation decreased. This agrees with Le Chatelier: increasing pressure shifts equilibrium toward the side with fewer moles of gas (1 mol reactant vs 2 mol product), suppressing dissociation.",
+   "answer": "(a) $\\alpha=0.802$ (80.2%); (b) $\\alpha=0.514$ (51.4%), dissociation decreased (Le Chatelier: shift toward fewer gas moles)",
+   "keywords": [
+    "لوشاتلييه",
+    "Le Chatelier",
+    "درجة التفكك",
+    "PCl5",
+    "الضغط",
+    "pressure effect",
+    "Kp",
+    "اتزان"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "للتفكك $N_2O_4(g)\\rightleftharpoons 2NO_2(g)$ ثابت $K_p=0.140$ عند 298 كلفن، وإنثالبي قياسي $\\Delta H^\\circ = +57.2\\ \\text{kJ·mol}^{-1}$ (يُفترض ثابتاً). باستخدام معادلة فانت هوف، قدّر قيمة $K_p$ عند 350 كلفن، وبيّن هل رفع درجة الحرارة يُفضّل النواتج، بما يتوافق مع مبدأ لوشاتلييه.",
+   "q_en": "The dissociation $N_2O_4(g)\\rightleftharpoons 2NO_2(g)$ has $K_p=0.140$ at 298 K and a standard enthalpy $\\Delta H^\\circ = +57.2\\ \\text{kJ·mol}^{-1}$ (assumed constant). Using the van't Hoff equation, estimate $K_p$ at 350 K, and state whether raising the temperature favors products, consistent with Le Chatelier's principle.",
+   "a_ar": "معادلة فانت هوف هي $\\ln\\frac{K_2}{K_1}=-\\frac{\\Delta H^\\circ}{R}\\left(\\frac{1}{T_2}-\\frac{1}{T_1}\\right)$. بالتعويض $\\Delta H^\\circ=57200$ J/mol، $R=8.314$، $T_1=298$، $T_2=350$: $\\ln\\frac{K_2}{K_1}=-\\frac{57200}{8.314}\\left(\\frac{1}{350}-\\frac{1}{298}\\right)=+3.43$، ومنه $K_2/K_1=30.9$ و $K_2=0.140\\times30.9=4.32$. أي أن ثابت الاتزان يزداد نحو 31 ضعفاً. ولأن التفاعل ماص للحرارة، فإن رفع درجة الحرارة يُزيح الاتزان نحو النواتج (مزيد من $NO_2$)، تماماً كما يتنبأ مبدأ لوشاتلييه.",
+   "a_en": "The van't Hoff equation is $\\ln\\frac{K_2}{K_1}=-\\frac{\\Delta H^\\circ}{R}\\left(\\frac{1}{T_2}-\\frac{1}{T_1}\\right)$. With $\\Delta H^\\circ=57200$ J/mol, $R=8.314$, $T_1=298$, $T_2=350$: $\\ln\\frac{K_2}{K_1}=-\\frac{57200}{8.314}\\left(\\frac{1}{350}-\\frac{1}{298}\\right)=+3.43$, so $K_2/K_1=30.9$ and $K_2=0.140\\times30.9=4.32$. The equilibrium constant rises about 31-fold. Because the reaction is endothermic, raising the temperature shifts equilibrium toward products (more $NO_2$), exactly as Le Chatelier predicts.",
+   "answer": "$K_p(350\\ \\text{K})\\approx 4.32$; raising T favors products (endothermic, consistent with Le Chatelier)",
+   "keywords": [
+    "فانت هوف",
+    "van't Hoff",
+    "درجة الحرارة",
+    "temperature",
+    "إنثالبي",
+    "endothermic",
+    "Kp",
+    "لوشاتلييه"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "عند 448 °م، للتفاعل $H_2(g)+I_2(g)\\rightleftharpoons 2HI(g)$ ثابت $K_c=50.5$. يحتوي وعاء سعته 1.00 لتر ابتدائياً على 1.00 مول $H_2$ و 1.00 مول $I_2$ و 1.00 مول $HI$. حدّد اتجاه التفاعل الصافي والتراكيز عند الاتزان لجميع الأنواع الثلاثة.",
+   "q_en": "At 448 °C, $H_2(g)+I_2(g)\\rightleftharpoons 2HI(g)$ has $K_c=50.5$. A 1.00 L vessel initially contains 1.00 mol $H_2$, 1.00 mol $I_2$, and 1.00 mol $HI$. Determine the direction of net reaction and the equilibrium concentrations of all three species.",
+   "a_ar": "خارج التفاعل هو $Q=\\frac{[HI]^2}{[H_2][I_2]}=\\frac{(1.00)^2}{(1.00)(1.00)}=1.00 < K_c$، لذا يسير التفاعل الصافي في الاتجاه الأمامي. ليكن $x$ مقدار التغير: $[H_2]=[I_2]=1-x$، $[HI]=1+2x$. وبما أن $K_c$ مربع كامل، نأخذ الجذر التربيعي: $\\frac{1+2x}{1-x}=\\sqrt{50.5}=7.106$. بالحل $x=\\frac{7.106-1}{7.106+2}=0.671$. لذلك $[H_2]=[I_2]=0.329$ مولاري و $[HI]=2.341$ مولاري (تحقّق: $2.341^2/0.329^2=50.5$).",
+   "a_en": "The reaction quotient is $Q=\\frac{[HI]^2}{[H_2][I_2]}=\\frac{(1.00)^2}{(1.00)(1.00)}=1.00 < K_c$, so net reaction proceeds forward. Let $x$ be the change: $[H_2]=[I_2]=1-x$, $[HI]=1+2x$. Since $K_c$ is a perfect square, take the square root: $\\frac{1+2x}{1-x}=\\sqrt{50.5}=7.106$. Solving, $x=\\frac{7.106-1}{7.106+2}=0.671$. Therefore $[H_2]=[I_2]=0.329$ M and $[HI]=2.341$ M (check: $2.341^2/0.329^2=50.5$).",
+   "answer": "Net forward ($Q=1.00<K_c$); $[H_2]=[I_2]=0.329$ M, $[HI]=2.341$ M",
+   "keywords": [
+    "ICE table",
+    "خارج التفاعل",
+    "reaction quotient",
+    "Q",
+    "Kc",
+    "اتجاه التفاعل",
+    "HI",
+    "اتزان"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يتفكك خامس كلوريد الفوسفور وفق $\\mathrm{PCl_5(g) \\rightleftharpoons PCl_3(g) + Cl_2(g)}$. عند درجة الحرارة $T$ يكون ثابت الاتزان $K_p = 1.80\\ \\text{atm}$. تُترك عيّنة من $\\mathrm{PCl_5}$ النقي لتبلغ الاتزان عند ضغط كلّي مقداره $2.00\\ \\text{atm}$. أوجد درجة التفكّك $\\alpha$.",
+   "q_en": "Phosphorus pentachloride dissociates as $\\mathrm{PCl_5(g) \\rightleftharpoons PCl_3(g) + Cl_2(g)}$. At temperature $T$ the equilibrium constant is $K_p = 1.80\\ \\text{atm}$. A sample of pure $\\mathrm{PCl_5}$ is allowed to reach equilibrium at a total pressure of $2.00\\ \\text{atm}$. Determine the degree of dissociation $\\alpha$.",
+   "a_ar": "لِمول واحد ابتدائي من $\\mathrm{PCl_5}$، تكون المولات عند الاتزان $1-\\alpha,\\ \\alpha,\\ \\alpha$ ومجموعها $1+\\alpha$. من الكسور المولية: $K_p = \\dfrac{\\alpha^2}{1-\\alpha^2}\\,P$. بحلّ $\\dfrac{\\alpha^2}{1-\\alpha^2}(2.00)=1.80$ نحصل على $\\alpha^2(P+K_p)=K_p$، أي $\\alpha=\\sqrt{\\dfrac{1.80}{2.00+1.80}}=\\sqrt{0.4737}=0.688$. إذًا نسبة التفكّك $\\mathbf{68.8\\%}$.",
+   "a_en": "For 1 mol initial $\\mathrm{PCl_5}$, equilibrium moles are $1-\\alpha,\\ \\alpha,\\ \\alpha$ with total $1+\\alpha$. Mole fractions give $K_p = \\dfrac{\\alpha^2}{1-\\alpha^2}\\,P$. Solving $\\dfrac{\\alpha^2}{1-\\alpha^2}(2.00) = 1.80$ gives $\\alpha^2(P+K_p)=K_p$, so $\\alpha = \\sqrt{\\dfrac{1.80}{2.00+1.80}} = \\sqrt{0.4737} = 0.688$. Thus the gas is $\\mathbf{68.8\\%}$ dissociated.",
+   "answer": "$\\alpha = 0.688$ (68.8% dissociation)",
+   "keywords": [
+    "Kp",
+    "درجة التفكك",
+    "degree of dissociation",
+    "PCl5",
+    "ضغط جزئي",
+    "equilibrium",
+    "تفكك"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "عند درجة حرارة معيّنة وضغط كلّي $1.00\\ \\text{atm}$، وُجد أن مزيج الاتزان $\\mathrm{N_2O_4(g) \\rightleftharpoons 2NO_2(g)}$ له كتلة مولية متوسطة (ظاهرية) قدرها $66.8\\ \\text{g/mol}$. علمًا أن $M(\\mathrm{N_2O_4})=92.0\\ \\text{g/mol}$، أوجد درجة التفكّك $\\alpha$ وثابت الاتزان $K_p$.",
+   "q_en": "At a certain temperature and a total pressure of $1.00\\ \\text{atm}$, an equilibrium mixture of $\\mathrm{N_2O_4(g) \\rightleftharpoons 2NO_2(g)}$ is found to have an average (apparent) molar mass of $66.8\\ \\text{g/mol}$. Given $M(\\mathrm{N_2O_4}) = 92.0\\ \\text{g/mol}$, find the degree of dissociation $\\alpha$ and the equilibrium constant $K_p$.",
+   "a_ar": "بما أن عدد المولات يزداد من 1 إلى $1+\\alpha$ مع حفظ الكتلة، فإن $M_{\\text{avg}} = \\dfrac{M_0}{1+\\alpha}$، ومنه $\\alpha = \\dfrac{M_0 - M_{\\text{avg}}}{M_{\\text{avg}}} = \\dfrac{92.0-66.8}{66.8}=0.377$. وبالكسور المولية $\\dfrac{1-\\alpha}{1+\\alpha}$ و$\\dfrac{2\\alpha}{1+\\alpha}$ نجد $K_p = \\dfrac{4\\alpha^2}{1-\\alpha^2}\\,P = \\dfrac{4(0.377)^2}{1-(0.377)^2}(1.00)=0.664\\ \\text{atm}$.",
+   "a_en": "Since total moles grow from 1 to $1+\\alpha$ while mass is conserved, $M_{\\text{avg}} = \\dfrac{M_0}{1+\\alpha}$, so $\\alpha = \\dfrac{M_0 - M_{\\text{avg}}}{M_{\\text{avg}}} = \\dfrac{92.0-66.8}{66.8} = 0.377$. With mole fractions $\\dfrac{1-\\alpha}{1+\\alpha}$ and $\\dfrac{2\\alpha}{1+\\alpha}$, $K_p = \\dfrac{4\\alpha^2}{1-\\alpha^2}\\,P = \\dfrac{4(0.377)^2}{1-(0.377)^2}(1.00) = 0.664\\ \\text{atm}$.",
+   "answer": "$\\alpha = 0.377$, $K_p = 0.664\\ \\text{atm}$",
+   "keywords": [
+    "كتلة مولية متوسطة",
+    "vapor density",
+    "N2O4",
+    "NO2",
+    "Kp",
+    "درجة التفكك",
+    "average molar mass"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "من أجل $\\mathrm{N_2O_4(g) \\rightleftharpoons 2NO_2(g)}$، $K_p = 0.140\\ \\text{atm}$ عند $T$. (أ) بدءًا من مول واحد من $\\mathrm{N_2O_4}$ النقي يبلغ الاتزان عند ضغط كلّي $1.00\\ \\text{atm}$، أوجد $\\alpha$. (ب) يُضاف الآن $2.00\\ \\text{mol}$ من غاز خامل مع إبقاء $T$ والضغط الكلّي ($1.00\\ \\text{atm}$) ثابتين. أوجد $\\alpha$ الجديدة، وبيّن ماذا يحدث بدلًا من ذلك لو أُضيف الغاز الخامل عند حجم ثابت.",
+   "q_en": "For $\\mathrm{N_2O_4(g) \\rightleftharpoons 2NO_2(g)}$, $K_p = 0.140\\ \\text{atm}$ at $T$. (a) Starting from 1 mol pure $\\mathrm{N_2O_4}$ that reaches equilibrium at total pressure $1.00\\ \\text{atm}$, find $\\alpha$. (b) Now $2.00\\ \\text{mol}$ of an inert gas is introduced while $T$ and the total pressure ($1.00\\ \\text{atm}$) are held constant. Find the new $\\alpha$, and state what would happen instead if the inert gas were added at constant volume.",
+   "a_ar": "(أ) $K_p = \\dfrac{4\\alpha^2}{1-\\alpha^2}P \\Rightarrow \\alpha = \\sqrt{\\dfrac{K_p}{K_p+4P}} = \\sqrt{\\dfrac{0.140}{4.140}} = 0.184$. (ب) بإضافة $n=2$ مول خامل يصبح مجموع المولات $=1+\\alpha+n$؛ وبثبات $P$: $K_p = \\dfrac{4\\alpha^2 P}{(1-\\alpha)(1+\\alpha+n)}$. وبحلّ $\\dfrac{4\\alpha^2}{(1-\\alpha)(3+\\alpha)}=0.140$ نجد $\\alpha=0.286$؛ فالتخفيف يزيح الاتزان نحو زيادة عدد المولات ($\\mathrm{NO_2}$). أما عند حجم ثابت فتبقى الضغوط الجزئية دون تغيّر، فيكون $Q=K_p$ و**لا يحدث إزاحة** (تبقى $\\alpha=0.184$).",
+   "a_en": "(a) $K_p = \\dfrac{4\\alpha^2}{1-\\alpha^2}P \\Rightarrow \\alpha = \\sqrt{\\dfrac{K_p}{K_p+4P}} = \\sqrt{\\dfrac{0.140}{4.140}} = 0.184$. (b) With $n=2$ inert mol, total moles $=1+\\alpha+n$; holding $P$ fixed, $K_p = \\dfrac{4\\alpha^2 P}{(1-\\alpha)(1+\\alpha+n)}$. Solving $\\dfrac{4\\alpha^2}{(1-\\alpha)(3+\\alpha)} = 0.140$ gives $\\alpha = 0.286$ — dilution shifts toward more moles ($\\mathrm{NO_2}$). At constant volume the partial pressures are unchanged, so $Q=K_p$ and there is **no shift** ($\\alpha$ stays $0.184$).",
+   "answer": "(a) $\\alpha=0.184$; (b) $\\alpha=0.286$ at constant P; no shift at constant V",
+   "keywords": [
+    "Le Chatelier",
+    "لوشاتيليه",
+    "غاز خامل",
+    "inert gas",
+    "constant pressure",
+    "حجم ثابت",
+    "N2O4"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "من أجل $\\mathrm{H_2(g) + I_2(g) \\rightleftharpoons 2HI(g)}$، $K_c = 50.5$ عند $T$. يُملأ وعاء صلب بحيث يكون التركيز الابتدائي $[\\mathrm{H_2}]_0 = 1.00\\ \\text{M}$ و$[\\mathrm{I_2}]_0 = 2.00\\ \\text{M}$، بدون HI. باستخدام جدول ICE، أوجد تركيز HI عند الاتزان.",
+   "q_en": "For $\\mathrm{H_2(g) + I_2(g) \\rightleftharpoons 2HI(g)}$, $K_c = 50.5$ at $T$. A rigid vessel is charged so that initial concentrations are $[\\mathrm{H_2}]_0 = 1.00\\ \\text{M}$ and $[\\mathrm{I_2}]_0 = 2.00\\ \\text{M}$, with no HI. Using an ICE table, find the equilibrium concentration of HI.",
+   "a_ar": "ليكن $x$ التركيز المستهلك من كل متفاعل: $[\\mathrm{H_2}]=1-x$، $[\\mathrm{I_2}]=2-x$، $[\\mathrm{HI}]=2x$. عندئذٍ $\\dfrac{(2x)^2}{(1-x)(2-x)}=50.5$، ومنه $(4-50.5)x^2 + 3(50.5)x - 2(50.5)=0$ أي $-46.5x^2 + 151.5x - 101 = 0$. الجذر ضمن $(0,1)$ هو $x=0.935$. إذًا $[\\mathrm{HI}]=2x=\\mathbf{1.87\\ \\text{M}}$ (مع $[\\mathrm{H_2}]=0.065$ و$[\\mathrm{I_2}]=1.065\\ \\text{M}$).",
+   "a_en": "Let $x$ be the concentration of each reactant consumed: $[\\mathrm{H_2}] = 1-x$, $[\\mathrm{I_2}] = 2-x$, $[\\mathrm{HI}] = 2x$. Then $\\dfrac{(2x)^2}{(1-x)(2-x)} = 50.5$, giving $(4-50.5)x^2 + 3(50.5)x - 2(50.5) = 0$, i.e. $-46.5x^2 + 151.5x - 101 = 0$. The root in $(0,1)$ is $x = 0.935$. Hence $[\\mathrm{HI}] = 2x = \\mathbf{1.87\\ \\text{M}}$ (with $[\\mathrm{H_2}]=0.065$, $[\\mathrm{I_2}]=1.065\\ \\text{M}$).",
+   "answer": "$[\\mathrm{HI}] = 1.87\\ \\text{M}$ ($x=0.935$)",
+   "keywords": [
+    "ICE table",
+    "جدول ICE",
+    "Kc",
+    "HI",
+    "معادلة تربيعية",
+    "equilibrium concentration",
+    "H2 I2"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "من أجل $\\mathrm{2SO_2(g) + O_2(g) \\rightleftharpoons 2SO_3(g)}$، ثابت الاتزان $K_p = 1.00\\times10^{3}$ عند $800\\ \\text{K}$ و$K_p = 49.4$ عند $1000\\ \\text{K}$ (الضغوط بوحدة atm). (أ) بافتراض ثبات $\\Delta H^\\circ$، أوجد إنثالبي التفاعل القياسي. (ب) أوجد $K_c$ عند $800\\ \\text{K}$. استخدم $R = 8.314\\ \\text{J mol}^{-1}\\text{K}^{-1}$ و$R = 0.08206\\ \\text{L atm mol}^{-1}\\text{K}^{-1}$.",
+   "q_en": "For $\\mathrm{2SO_2(g) + O_2(g) \\rightleftharpoons 2SO_3(g)}$, the equilibrium constant is $K_p = 1.00\\times10^{3}$ at $800\\ \\text{K}$ and $K_p = 49.4$ at $1000\\ \\text{K}$ (pressures in atm). (a) Assuming $\\Delta H^\\circ$ is constant, find the standard reaction enthalpy. (b) Find $K_c$ at $800\\ \\text{K}$. Use $R = 8.314\\ \\text{J mol}^{-1}\\text{K}^{-1}$ and $R = 0.08206\\ \\text{L atm mol}^{-1}\\text{K}^{-1}$.",
+   "a_ar": "(أ) معادلة فانت هوف: $\\ln\\dfrac{K_2}{K_1} = -\\dfrac{\\Delta H^\\circ}{R}\\left(\\dfrac{1}{T_2}-\\dfrac{1}{T_1}\\right)$. هنا $\\ln\\dfrac{49.4}{1000}=-3.007$ و$\\dfrac{1}{1000}-\\dfrac{1}{800}=-2.5\\times10^{-4}$، إذًا $\\Delta H^\\circ = -\\dfrac{R(-3.007)}{-2.5\\times10^{-4}} = -1.00\\times10^{5}\\ \\text{J/mol} = \\mathbf{-100\\ \\text{kJ/mol}}$ (طارد للحرارة). (ب) بما أن $\\Delta n_{gas}=2-3=-1$، فإن $K_p = K_c(RT)^{\\Delta n}$ يعطي $K_c = K_p\\,(RT) = (1.00\\times10^{3})(0.08206)(800) = \\mathbf{6.56\\times10^{4}\\ \\text{M}^{-1}}$.",
+   "a_en": "(a) Van't Hoff: $\\ln\\dfrac{K_2}{K_1} = -\\dfrac{\\Delta H^\\circ}{R}\\left(\\dfrac{1}{T_2}-\\dfrac{1}{T_1}\\right)$. Here $\\ln\\dfrac{49.4}{1000} = -3.007$ and $\\dfrac{1}{1000}-\\dfrac{1}{800} = -2.5\\times10^{-4}$, so $\\Delta H^\\circ = -\\dfrac{R(-3.007)}{-2.5\\times10^{-4}} = -1.00\\times10^{5}\\ \\text{J/mol} = \\mathbf{-100\\ \\text{kJ/mol}}$ (exothermic). (b) With $\\Delta n_{gas} = 2-3 = -1$, $K_p = K_c(RT)^{\\Delta n}$ gives $K_c = K_p\\,(RT) = (1.00\\times10^{3})(0.08206)(800) = \\mathbf{6.56\\times10^{4}\\ \\text{M}^{-1}}$.",
+   "answer": "$\\Delta H^\\circ = -100\\ \\text{kJ/mol}$; $K_c(800\\,\\text{K}) = 6.56\\times10^{4}\\ \\text{M}^{-1}$",
+   "keywords": [
+    "van't Hoff",
+    "فانت هوف",
+    "انثالبي",
+    "Kp Kc conversion",
+    "SO3",
+    "Δn",
+    "ثابت الاتزان"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

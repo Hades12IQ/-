@@ -1,0 +1,184 @@
+{
+ "subject": "science",
+ "topic": "bio-ecology-evolution",
+ "title": "bio-ecology-evolution — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "ينمو تجمّع سمكي نموًّا لوجستيًّا بمعدّل نموّ ذاتي $r=0.5\\,\\text{yr}^{-1}$ وسعة حمل $K=8000$. بافتراض أنّ التجمّع يُدار عند الكتلة الحيوية التي تعظّم الحصاد المستدام، أوجد: (أ) حجم التجمّع الذي يحقّق أقصى حصاد مستدام (MSY)، و(ب) قيمة هذا الحصاد الأقصى (سمكة في السنة).",
+   "q_en": "A fish population grows logistically with intrinsic growth rate $r=0.5\\,\\text{yr}^{-1}$ and carrying capacity $K=8000$. Assuming the population is managed at the biomass that maximizes sustainable yield, find (a) the population size that gives the maximum sustainable yield (MSY) and (b) the value of the MSY (fish per year).",
+   "a_ar": "في النموّ اللوجستي $\\frac{dN}{dt}=rN\\left(1-\\frac{N}{K}\\right)$، يكون منحنى الإنتاج الفائض قطعًا مكافئًا مفتوحًا للأسفل بدلالة $N$، ويبلغ ذروته حيث يكون المشتقّ صفرًا: $r(1-2N/K)=0\\Rightarrow N=K/2$. إذًا (أ) $N_{MSY}=K/2=4000$. بالتعويض نحصل على أقصى معدّل نموّ $\\frac{dN}{dt}\\big|_{K/2}=\\frac{rK}{4}$، فيكون (ب) $\\text{MSY}=\\frac{0.5\\times8000}{4}=1000$ سمكة/سنة.",
+   "a_en": "For logistic growth $\\frac{dN}{dt}=rN\\left(1-\\frac{N}{K}\\right)$, the recruitment (surplus production) curve is a downward parabola in $N$, maximized where its derivative is zero: $r(1-2N/K)=0\\Rightarrow N=K/2$. So (a) $N_{MSY}=K/2=4000$. Substituting gives the peak growth rate $\\frac{dN}{dt}\\big|_{K/2}=r\\cdot\\frac{K}{2}\\left(1-\\tfrac12\\right)=\\frac{rK}{4}$. So (b) $\\text{MSY}=\\frac{0.5\\times8000}{4}=1000$ fish/yr.",
+   "answer": "$N_{MSY}=K/2=4000$; MSY $=rK/4=1000$ fish/yr",
+   "keywords": [
+    "logistic growth",
+    "النمو اللوجستي",
+    "MSY",
+    "الحصاد المستدام الأقصى",
+    "carrying capacity",
+    "سعة الحمل",
+    "surplus production"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في تجمّع كبير يتزاوج عشوائيًّا، موضع جيني له الأليلان $A$ (سائد) و$a$ (متنحٍّ) بتردّد ابتدائي للأليل المتنحّي $q_0=0.5$. اللياقات النسبية للطُّرز الجينية: $w_{AA}=w_{Aa}=1$ و$w_{aa}=0.8$ (معامل انتقاء $s=0.2$ ضدّ المتماثل المتنحّي). بافتراض نسب هاردي-واينبرغ قبل الانتقاء، احسب تردّد الأليل المتنحّي $q_1$ بعد جيل واحد من الانتقاء (بأربع منازل عشرية).",
+   "q_en": "In a large randomly mating population, a locus has alleles $A$ (dominant) and $a$ (recessive) with initial recessive-allele frequency $q_0=0.5$. Relative genotype fitnesses are $w_{AA}=w_{Aa}=1$ and $w_{aa}=0.8$ (selection coefficient $s=0.2$ against the recessive homozygote). Assuming Hardy–Weinberg proportions before selection, compute the recessive-allele frequency $q_1$ after one generation of selection (to 4 decimals).",
+   "a_ar": "مع انتقاء ضدّ المتماثل المتنحّي فقط، تكون العلاقة التكرارية المعيارية $q_1=\\dfrac{q_0-s q_0^{2}}{1-s q_0^{2}}$. هنا متوسّط اللياقة $\\bar w=1-sq_0^2=1-0.2(0.25)=0.95$، والبسط $=0.5-0.2(0.25)=0.45$. إذًا $q_1=\\dfrac{0.45}{0.95}=0.4737$. ينخفض تردّد الأليل المتنحّي من $0.5$ إلى نحو $0.4737$.",
+   "a_en": "With selection only against the recessive homozygote, the standard recursion is $q_1=\\dfrac{q_0-s q_0^{2}}{1-s q_0^{2}}$. Here $\\bar w=1-sq_0^2=1-0.2(0.25)=0.95$. Numerator $=q_0-sq_0^2=0.5-0.2(0.25)=0.45$. Thus $q_1=\\dfrac{0.45}{0.95}=0.4737$. The recessive allele declines from $0.5$ to about $0.4737$.",
+   "answer": "$q_1=0.45/0.95\\approx0.4737$",
+   "keywords": [
+    "Hardy-Weinberg",
+    "هاردي واينبرغ",
+    "selection coefficient",
+    "معامل الانتقاء",
+    "allele frequency",
+    "تردد الأليل",
+    "recessive fitness"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في سلسلة غذائية، تثبّت المنتِجات الأوّليّة الإجماليّة $20{,}000\\,\\text{kJ}\\,m^{-2}\\,yr^{-1}$. كفاءة النقل البيئي (الغذائي) هي $15\\%$ من المنتِجات إلى المستهلكات الأوّليّة، و$10\\%$ من الأوّليّة إلى الثانويّة، و$10\\%$ من الثانويّة إلى الثالثيّة. احسب الطاقة (kJ m$^{-2}$ yr$^{-1}$) المتاحة عند مستوى المستهلك الثالثي (المستوى الغذائي الرابع)، وبيّن الكفاءة الكلّيّة من المنتِج إلى الثالثي.",
+   "q_en": "In a food chain, gross primary producers fix $20{,}000\\,\\text{kJ}\\,m^{-2}\\,yr^{-1}$. Ecological (trophic) transfer efficiency is $15\\%$ from producers to primary consumers, $10\\%$ from primary to secondary consumers, and $10\\%$ from secondary to tertiary consumers. Calculate the energy (kJ m$^{-2}$ yr$^{-1}$) available at the tertiary-consumer (4th trophic) level, and state the overall producer-to-tertiary efficiency.",
+   "a_ar": "نضرب تتابعيًّا: المستهلكات الأوّليّة $=20000\\times0.15=3000$؛ الثانويّة $=3000\\times0.10=300$؛ الثالثيّة $=300\\times0.10=30\\,\\text{kJ}\\,m^{-2}\\,yr^{-1}$. والكفاءة الكلّيّة من المنتِج إلى الثالثي هي حاصل ضرب كفاءات النقل: $0.15\\times0.10\\times0.10=0.0015=0.15\\%$ (أي $30/20000$).",
+   "a_en": "Multiply sequentially: primary consumers $=20000\\times0.15=3000$; secondary $=3000\\times0.10=300$; tertiary $=300\\times0.10=30\\,\\text{kJ}\\,m^{-2}\\,yr^{-1}$. The overall efficiency from producers to tertiary consumers is the product of the transfers: $0.15\\times0.10\\times0.10=0.0015=0.15\\%$ (equivalently $30/20000$).",
+   "answer": "$30\\,\\text{kJ}\\,m^{-2}\\,yr^{-1}$; overall efficiency $=0.15\\%$",
+   "keywords": [
+    "energy flow",
+    "انسياب الطاقة",
+    "trophic efficiency",
+    "الكفاءة الغذائية",
+    "Lindeman",
+    "food chain",
+    "السلسلة الغذائية",
+    "10% rule"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لتقدير حجم تجمّع حيواني مغلق، يعلّم الباحثون ويطلقون $M=50$ فردًا. وفي عيّنة ثانية مستقلّة من $C=40$ فردًا، يُوجَد $R=10$ منها معلَّمًا. باستخدام مقدّر تشابمان المصحَّح للانحياز $\\hat N=\\dfrac{(M+1)(C+1)}{R+1}-1$، قدِّر حجم التجمّع (بالتقريب إلى أقرب حيوان صحيح)، وبيّن لماذا يُفضَّل تشابمان على دليل لينكولن-بيترسن البسيط هنا.",
+   "q_en": "To estimate the size of a closed animal population, ecologists mark and release $M=50$ individuals. In a second independent sample of $C=40$ individuals, $R=10$ are found marked. Using the bias-corrected Chapman estimator $\\hat N=\\dfrac{(M+1)(C+1)}{R+1}-1$, estimate the population size (round to the nearest whole animal), and explain why Chapman is preferred over the simple Lincoln–Petersen index here.",
+   "a_ar": "مقدّر تشابمان: $\\hat N=\\dfrac{(51)(41)}{11}-1=\\dfrac{2091}{11}-1=190.09-1=189.09\\approx 189$ حيوانًا. أمّا دليل لينكولن-بيترسن البسيط $N=MC/R=50\\times40/10=200$ فمنحاز إلى الأعلى (وغير معرَّف إذا كان $R=0$) في العيّنات الصغيرة؛ ومقدّر تشابمان يكاد يكون عديم الانحياز للعيّنات المنتهية، ولذلك يُفضَّل، فيعطي $\\approx 189$.",
+   "a_en": "Chapman: $\\hat N=\\dfrac{(51)(41)}{11}-1=\\dfrac{2091}{11}-1=190.09-1=189.09\\approx 189$ animals. The simple Lincoln–Petersen index $N=MC/R=50\\times40/10=200$ is biased upward (and undefined if $R=0$) for small samples; the Chapman estimator is nearly unbiased for finite samples, which is why it is preferred, giving $\\approx 189$.",
+   "answer": "$\\hat N\\approx189$ (Chapman); Lincoln–Petersen gives 200 but is upward-biased",
+   "keywords": [
+    "mark-recapture",
+    "الاسترجاع بعد التعليم",
+    "Chapman estimator",
+    "مقدر تشابمان",
+    "Lincoln-Petersen",
+    "population size",
+    "حجم التجمع"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "صفة نباتيّة (كتلة البذرة) لها توريث بالمعنى الضيّق $h^2=0.4$. متوسّط كتلة البذرة في التجمّع $50\\,\\text{g}$. يختار المربّي كآباء فقط النباتات التي متوسّط كتلة بذرتها $58\\,\\text{g}$. باستخدام معادلة المربّي، تنبّأ بـ: (أ) الاستجابة للانتقاء $R$، و(ب) متوسّط كتلة بذرة جيل الأبناء.",
+   "q_en": "A plant trait (seed mass) has narrow-sense heritability $h^2=0.4$. The population mean seed mass is $50\\,\\text{g}$. A breeder selects as parents only plants whose mean seed mass is $58\\,\\text{g}$. Using the breeder's equation, predict (a) the response to selection $R$ and (b) the mean seed mass of the offspring generation.",
+   "a_ar": "فرق الانتقاء هو $S=58-50=8\\,\\text{g}$. تعطي معادلة المربّي (أ) $R=h^2 S=0.4\\times8=3.2\\,\\text{g}$. ومتوسّط الأبناء يساوي المتوسّط الأصلي زائد الاستجابة: (ب) $50+3.2=53.2\\,\\text{g}$. لم يُورَّث سوى $40\\%$ من التفوّق البالغ $8\\,\\text{g}$ لأنّ التباين غير الجمعي والبيئي يشكّلان بقيّة التباين المظهري.",
+   "a_en": "The selection differential is $S=58-50=8\\,\\text{g}$. The breeder's equation gives (a) $R=h^2 S=0.4\\times8=3.2\\,\\text{g}$. The offspring mean equals the original mean plus the response: (b) $50+3.2=53.2\\,\\text{g}$. Only $40\\%$ of the $8\\,\\text{g}$ superiority is transmitted because non-additive and environmental variance make up the remaining phenotypic variance.",
+   "answer": "$R=h^2S=3.2\\,\\text{g}$; offspring mean $=53.2\\,\\text{g}$",
+   "keywords": [
+    "breeder's equation",
+    "معادلة المربي",
+    "heritability",
+    "التوريث",
+    "selection differential",
+    "فرق الانتقاء",
+    "response to selection",
+    "artificial selection"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "ينمو مجتمع سمكي نموًّا لوجستيًّا بمعدل نمو ذاتي $r = 0.8\\,\\text{سنة}^{-1}$ وسعة حَمل $K = 10000$، بحيث $\\frac{dN}{dt} = rN\\left(1-\\frac{N}{K}\\right)$. يجري الصيد بجهد ثابت يزيل $hN$ فردًا سنويًّا. أوجد معدل الصيد $h$ الذي يُعظّم الغَلّة المستدامة، وحجم المجتمع التوازني عند تلك النقطة، والغَلّة المستدامة القصوى (MSY).",
+   "q_en": "A fish population grows logistically with intrinsic growth rate $r = 0.8\\,\\text{yr}^{-1}$ and carrying capacity $K = 10000$, so that $\\frac{dN}{dt} = rN\\left(1-\\frac{N}{K}\\right)$. Harvesting is done at constant effort, removing $hN$ individuals per year. Find the harvest rate $h$ that maximizes the sustainable yield, the equilibrium population at that point, and the maximum sustainable yield (MSY).",
+   "a_ar": "عند توازن الصيد $rN(1-N/K)=hN$، ومنه $N^*=K(1-h/r)$. الغَلّة المستدامة $Y(h)=hN^*=hK(1-h/r)$. بالتعظيم: $\\frac{dY}{dh}=K(1-2h/r)=0\\Rightarrow h=r/2=0.4\\,\\text{سنة}^{-1}$. عندئذٍ $N^*=K/2=5000$ و$Y_{MSY}=\\frac{rK}{4}=\\frac{0.8\\times10000}{4}=2000$ سمكة سنويًّا.",
+   "a_en": "At harvest equilibrium $rN(1-N/K)=hN$, giving $N^*=K(1-h/r)$. Sustainable yield is $Y(h)=hN^*=hK(1-h/r)$. Maximizing: $\\frac{dY}{dh}=K(1-2h/r)=0\\Rightarrow h=r/2=0.4\\,\\text{yr}^{-1}$. Then $N^*=K/2=5000$ and $Y_{MSY}=\\frac{rK}{4}=\\frac{0.8\\times10000}{4}=2000$ fish per year.",
+   "answer": "$h=r/2=0.4\\,\\text{yr}^{-1}$, $N^*=K/2=5000$, $Y_{MSY}=rK/4=2000$ per year",
+   "keywords": [
+    "MSY",
+    "الغلة المستدامة القصوى",
+    "logistic harvesting",
+    "سعة الحمل",
+    "carrying capacity",
+    "معدل الصيد",
+    "population dynamics",
+    "ديناميكا المجتمعات"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في مجتمع كبير يتزاوج عشوائيًّا وعلى نسب هاردي–فاينبرغ، يعمل الانتقاء الطبيعي ضد المتماثل المتنحّي بلياقات نسبية $w_{AA}=w_{Aa}=1$ و$w_{aa}=1-s$ حيث $s=0.2$. إذا كان تردد الأليل $a$ الحالي $q_0=0.5$، احسب تردد $a$ بعد جيل واحد من الانتقاء، وأعطِ مقدار التغيّر $\\Delta q$.",
+   "q_en": "In a large randomly mating population at Hardy–Weinberg proportions, natural selection acts against the recessive homozygote with relative fitnesses $w_{AA}=w_{Aa}=1$ and $w_{aa}=1-s$, where $s=0.2$. If the current frequency of allele $a$ is $q_0=0.5$, compute the frequency of $a$ after one generation of selection, and give the change $\\Delta q$.",
+   "a_ar": "بعد الانتقاء يصبح تردد الأليل المتنحّي $q' = \\frac{q^2(1-s)+pq}{1-sq^2} = \\frac{q(1-sq)}{1-sq^2}$. بوضع $q=0.5,\\ s=0.2$: البسط $=0.5(1-0.1)=0.45$، والمقام $=1-0.2(0.25)=0.95$، فيكون $q'=0.45/0.95=\\frac{9}{19}\\approx0.4737$. إذًا $\\Delta q = q'-q_0 = -\\frac{1}{38}\\approx-0.0263$.",
+   "a_en": "After selection the recessive allele frequency is $q' = \\frac{q^2(1-s)+pq}{1-sq^2} = \\frac{q(1-sq)}{1-sq^2}$. With $q=0.5,\\ s=0.2$: numerator $=0.5(1-0.1)=0.45$, denominator $=1-0.2(0.25)=0.95$, so $q'=0.45/0.95=\\frac{9}{19}\\approx0.4737$. Thus $\\Delta q = q'-q_0 = -\\frac{1}{38}\\approx-0.0263$.",
+   "answer": "$q'=9/19\\approx0.4737$, $\\Delta q=-1/38\\approx-0.0263$",
+   "keywords": [
+    "Hardy-Weinberg",
+    "هاردي فاينبرغ",
+    "selection against recessive",
+    "الانتقاء ضد المتنحي",
+    "allele frequency",
+    "تردد الأليل",
+    "fitness",
+    "اللياقة"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "مرجٌ عشبيّ إنتاجه الأولي الصافي $20000\\,\\text{kJ}\\,\\text{m}^{-2}\\,\\text{yr}^{-1}$. كفاءات نقل الطاقة بين المستويات الغذائية المتتالية هي $15\\%$ (منتِجات$\\to$عاشبات)، و$10\\%$ (عاشبات$\\to$لواحم أولية)، و$20\\%$ (لواحم أولية$\\to$لواحم ثانوية). احسب الطاقة المتاحة للّواحم الثانوية (المستوى الغذائي الرابع)، والكفاءة الكلية من المنتِجات إلى المفترس القمّي.",
+   "q_en": "A grassland has net primary production of $20000\\,\\text{kJ}\\,\\text{m}^{-2}\\,\\text{yr}^{-1}$. Energy transfer efficiencies between successive trophic levels are $15\\%$ (producers$\\to$herbivores), $10\\%$ (herbivores$\\to$primary carnivores), and $20\\%$ (primary$\\to$secondary carnivores). Compute the energy available to secondary carnivores (the 4th trophic level), and the overall producer-to-top-predator efficiency.",
+   "a_ar": "نُتابِع ضرب الكفاءات: $E_4 = 20000 \\times 0.15 \\times 0.10 \\times 0.20$. خطوةً بخطوة: $20000\\times0.15=3000$، ثم $\\times0.10=300$، ثم $\\times0.20=60$. إذًا تتلقّى اللواحم الثانوية $60\\,\\text{kJ}\\,\\text{m}^{-2}\\,\\text{yr}^{-1}$. والكفاءة الكلية $0.15\\times0.10\\times0.20=0.003=0.3\\%$ (أي $60/20000$).",
+   "a_en": "Cascade the efficiencies: $E_4 = 20000 \\times 0.15 \\times 0.10 \\times 0.20$. Step by step: $20000\\times0.15=3000$, $\\times0.10=300$, $\\times0.20=60$. So secondary carnivores receive $60\\,\\text{kJ}\\,\\text{m}^{-2}\\,\\text{yr}^{-1}$. The overall efficiency is $0.15\\times0.10\\times0.20=0.003=0.3\\%$ (equivalently $60/20000$).",
+   "answer": "$E_4=60\\,\\text{kJ m}^{-2}\\text{yr}^{-1}$; overall efficiency $=0.3\\%$",
+   "keywords": [
+    "energy flow",
+    "سريان الطاقة",
+    "trophic levels",
+    "المستويات الغذائية",
+    "ecological efficiency",
+    "الكفاءة البيئية",
+    "food web",
+    "الشبكة الغذائية"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "نوعان متنافسان يخضعان لمعادلتَي لوتكا–فولتيرا للتنافس $\\frac{dN_1}{dt}=r_1N_1\\frac{K_1-N_1-\\alpha_{12}N_2}{K_1}$ و$\\frac{dN_2}{dt}=r_2N_2\\frac{K_2-N_2-\\alpha_{21}N_1}{K_2}$، حيث $K_1=1000$، $K_2=800$، $\\alpha_{12}=0.5$، $\\alpha_{21}=0.6$. أوجد نقطة التوازن الداخلية (التعايش)، وبيِّن باستخدام معيار الخطوط المتساوية (isoclines) هل هي مستقرة.",
+   "q_en": "Two competing species obey the Lotka–Volterra competition equations $\\frac{dN_1}{dt}=r_1N_1\\frac{K_1-N_1-\\alpha_{12}N_2}{K_1}$ and $\\frac{dN_2}{dt}=r_2N_2\\frac{K_2-N_2-\\alpha_{21}N_1}{K_2}$, with $K_1=1000$, $K_2=800$, $\\alpha_{12}=0.5$, $\\alpha_{21}=0.6$. Find the interior (coexistence) equilibrium and state, with the isocline criterion, whether it is stable.",
+   "a_ar": "بمساواة القوسين بالصفر والحل: $N_1^*=\\frac{K_1-\\alpha_{12}K_2}{1-\\alpha_{12}\\alpha_{21}}=\\frac{1000-400}{1-0.3}=\\frac{600}{0.7}=\\frac{6000}{7}\\approx857.1$، و$N_2^*=\\frac{K_2-\\alpha_{21}K_1}{1-\\alpha_{12}\\alpha_{21}}=\\frac{800-600}{0.7}=\\frac{2000}{7}\\approx285.7$. استقرار التعايش يتطلّب $K_1>\\alpha_{12}K_2$ (1000>400 ✓) و$K_2>\\alpha_{21}K_1$ (800>600 ✓)، أي أن كل نوع يحدّ من نفسه أكثر ممّا يحدّ من منافسه؛ وكلاهما محقَّق، فالتوازن مستقر (جاذب كليًّا).",
+   "a_en": "Setting both bracketed terms to zero and solving: $N_1^*=\\frac{K_1-\\alpha_{12}K_2}{1-\\alpha_{12}\\alpha_{21}}=\\frac{1000-400}{1-0.3}=\\frac{600}{0.7}=\\frac{6000}{7}\\approx857.1$, and $N_2^*=\\frac{K_2-\\alpha_{21}K_1}{1-\\alpha_{12}\\alpha_{21}}=\\frac{800-600}{0.7}=\\frac{2000}{7}\\approx285.7$. Stability of coexistence requires $K_1>\\alpha_{12}K_2$ (1000>400 ✓) and $K_2>\\alpha_{21}K_1$ (800>600 ✓), i.e. each species limits itself more than its competitor; both hold, so the equilibrium is stable (globally attracting).",
+   "answer": "$N_1^*=6000/7\\approx857.1$, $N_2^*=2000/7\\approx285.7$; stable coexistence",
+   "keywords": [
+    "Lotka-Volterra",
+    "لوتكا فولتيرا",
+    "competition",
+    "التنافس",
+    "coexistence equilibrium",
+    "توازن التعايش",
+    "isoclines",
+    "الخطوط المتساوية"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "موقعٌ جينيّ يُظهر تفوّق الهجين (السيادة الفائقة) بلياقات طُرُز $w_{AA}=1-s$، $w_{Aa}=1$، $w_{aa}=1-t$، حيث $s=0.3$ و$t=0.6$. أوجد ترددات الأليلات عند التوازن المتعدّد الأشكال المستقر، ومتوسّط لياقة المجتمع عند التوازن، والحِمل الوراثي الناتج.",
+   "q_en": "A single locus shows heterozygote advantage (overdominance) with genotype fitnesses $w_{AA}=1-s$, $w_{Aa}=1$, $w_{aa}=1-t$, where $s=0.3$ and $t=0.6$. Find the stable polymorphic equilibrium allele frequencies, the mean population fitness at equilibrium, and the resulting genetic load.",
+   "a_ar": "عند توازن السيادة الفائقة يكون تردد $a$ هو $\\hat{q}=\\frac{s}{s+t}=\\frac{0.3}{0.9}=\\frac{1}{3}$، ومنه $\\hat{p}=\\frac{t}{s+t}=\\frac{2}{3}$. متوسّط اللياقة $\\bar{w}=\\hat{p}^2(1-s)+2\\hat{p}\\hat{q}+\\hat{q}^2(1-t)=\\frac{4}{9}(0.7)+\\frac{4}{9}+\\frac{1}{9}(0.4)=0.8$؛ ويكافئه $\\bar{w}=1-\\frac{st}{s+t}=1-0.2=0.8$. والحِمل الوراثي $L=1-\\bar{w}=0.2$. وهذا التوازن مستقر لأن الهجين هو الأعلى لياقةً.",
+   "a_en": "At overdominant equilibrium the frequency of $a$ is $\\hat{q}=\\frac{s}{s+t}=\\frac{0.3}{0.9}=\\frac{1}{3}$, so $\\hat{p}=\\frac{t}{s+t}=\\frac{2}{3}$. Mean fitness $\\bar{w}=\\hat{p}^2(1-s)+2\\hat{p}\\hat{q}+\\hat{q}^2(1-t)=\\frac{4}{9}(0.7)+\\frac{4}{9}+\\frac{1}{9}(0.4)=0.8$; equivalently $\\bar{w}=1-\\frac{st}{s+t}=1-0.2=0.8$. The genetic load is $L=1-\\bar{w}=0.2$. This equilibrium is stable because the heterozygote is fittest.",
+   "answer": "$\\hat{q}=1/3$, $\\hat{p}=2/3$, $\\bar{w}=0.8$, genetic load $L=0.2$",
+   "keywords": [
+    "overdominance",
+    "السيادة الفائقة",
+    "heterozygote advantage",
+    "تفوق الهجين",
+    "balanced polymorphism",
+    "توازن متعدد الأشكال",
+    "genetic load",
+    "الحمل الوراثي"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

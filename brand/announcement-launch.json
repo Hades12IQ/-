@@ -1,0 +1,33 @@
+{
+  "_readme": [
+    "The launch announcement: the trailer plus a description of what the site actually does.",
+    "Every claim here is checked against the code — the four products, the four tiers, voice, files,",
+    "page-cited answers, and that it is free. No invented numbers, no ratings, no testimonials, no emojis.",
+    "",
+    "ALREADY LIVE — DO NOT POST THIS.",
+    "This text is shipped inside app.js as BUILTIN_ANNOUNCEMENTS, so it appears on every",
+    "deployment with nothing to publish and nothing to go missing if the database is reset.",
+    "Posting it through /api/announcements would create a SECOND copy with a server id, and both",
+    "would then show in the panel.",
+    "",
+    "This file is the reference copy: the test suite compares app.js against it field by field,",
+    "so the two must be edited together. To change the wording, edit BUILTIN_ANNOUNCEMENTS in",
+    "app.js and mirror the change here.",
+    "",
+    "The video is deployed with the site at media/firas-trailer.mp4 (1920x1080, 83.6s, 50MB).",
+    "Replaced 2026-08-05 with 'Firas last pro FINAL'; the path is unchanged, so nothing else moves."
+  ],
+
+  "payload": {
+    "pinned": true,
+    "video": "/media/firas-trailer.mp4",
+
+    "title": "فِراس AI — منصة عربية واحدة، أربعة منتجات",
+
+    "body": "فِراس AI منصة ذكاء اصطناعي عربية أولاً: تكتب لها بالعربية فتفهمك بالعربية، وتردّ بلغة سؤالك.\n\nأربعة منتجات في مكان واحد:\n\nفِراس AI — المحادثة. أسئلة الدراسة والعمل والحياة، مع دعم كامل للرياضيات والمعادلات، وقراءة الصور، والإملاء الصوتي، ومكالمة صوتية مباشرة.\n\nفِراس Agent — الوكيل. تعطيه مهمة كبيرة فيخطّط لها، وينفّذها خطوة بخطوة، ويراجع عمله بنفسه، ثم يسلّمك النتيجة كاملة: ملفات، مستندات، أو مشاريع جاهزة.\n\nفِراس Code — البناء. تصف ما تريده فيبنيه لك مشروعاً كاملاً يعمل، مع معاينة حيّة داخل الموقع وتحميل الملفات دفعة واحدة.\n\nفِراس Brain — ملفاتك. ارفع كتبك ومستنداتك واسأل عنها، وكل معلومة في الجواب موثّقة بالصفحة التي جاءت منها.\n\nوأربعة مستويات للنموذج تختار بينها حسب صعوبة السؤال: ميني، برو، أولترا، وماكس.\n\nيصدّر أعماله بصيغ PDF وWord وExcel وPowerPoint، ويعمل بالفاتح والداكن، وبالعربية والإنجليزية.\n\nالموقع مجاني بالكامل. لا اشتراك ولا كود شراء — كل المزايا متاحة للجميع.",
+
+    "titleEn": "Firas AI — one Arabic-first platform, four products",
+
+    "bodyEn": "Firas AI is an Arabic-first AI platform: write to it in Arabic and it understands you in Arabic, and answers in the language you asked in.\n\nFour products in one place:\n\nFiras AI — chat. Questions for study, work and everyday life, with full mathematics and equation support, image reading, voice dictation, and a live voice call.\n\nFiras Agent — the agent. Give it a large task and it plans, executes step by step, reviews its own work, then hands you the finished result: files, documents, or ready projects.\n\nFiras Code — building. Describe what you want and it builds a complete working project, with a live preview inside the site and a one-click download of every file.\n\nFiras Brain — your files. Upload your books and documents and ask about them, and every fact in the answer is cited to the page it came from.\n\nAnd four model tiers to choose from depending on how hard the question is: Mini, Pro, Ultra and Max.\n\nIt exports its work as PDF, Word, Excel and PowerPoint, works in light and dark, and in Arabic and English.\n\nThe site is completely free. No subscription and no purchase code — every feature is available to everyone."
+  }
+}

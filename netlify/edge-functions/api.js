@@ -9,6 +9,11 @@ const env = (k) => { try { return Netlify.env.get(k); } catch { return undefined
 
 const SESSION_SECRET     = env("SESSION_SECRET") || "";
 const FIREBASE_DB_URL    = (env("FIREBASE_DB_URL") || "").replace(/\/+$/, "");
+/* Shared secret for the server-to-server channel used by the background agent runner
+   (netlify/functions/agent-background.mjs). Absent by default: with no value the job routes
+   answer 501 and the internal /api/chat channel does not exist at all, so an unconfigured
+   deploy cannot be reached through it. */
+const INTERNAL_JOB_SECRET = env("INTERNAL_JOB_SECRET") || "";
 const FIREBASE_PROJECT_ID= env("FIREBASE_PROJECT_ID") || "firas-ai";
 let   FB_SA = null;
 try { if (env("FIREBASE_SERVICE_ACCOUNT")) FB_SA = JSON.parse(env("FIREBASE_SERVICE_ACCOUNT")); } catch (_) {}
@@ -51,6 +56,14 @@ const OPENROUTER_URL     = "https://openrouter.ai/api/v1/chat/completions";
 // OpenAI-compatible endpoint → streams like OpenRouter. Tried FIRST in the Max chain.
 // GEMINI_TEXT_MODEL may be a comma-separated fallback list; first id that streams wins.
 const GEMINI_TEXT_MODELS = (env("GEMINI_TEXT_MODEL") || "gemini-2.5-flash,gemini-flash-latest").split(",").map((s) => s.trim()).filter(Boolean);
+/* VISION uses its OWN model chain, separate from text. Page OCR is transcription, not reasoning,
+   so the cheapest capable model wins — and on the free tier the difference is not subtle:
+   gemini-2.5-flash allows 20 requests/DAY per key, while the Flash-Lite line allows 500. With a
+   12-key pool that is 240 page-scans/day for the whole site versus 6,000. Same 250K TPM, so
+   throughput is unaffected. 2.5-flash stays last as the known-good fallback, and any id the
+   account cannot serve simply falls through to the next entry in the loop. */
+const GEMINI_VISION_MODELS = (env("GEMINI_VISION_MODEL") ||
+  "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash").split(",").map((s) => s.trim()).filter(Boolean);
 const GEMINI_OAI_URL     = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 // Gemini image model (Google AI Studio "Nano Banana"). If GEMINI_API_KEY is set,
 // /api/image uses it FIRST, falling back to keyless pollinations. Free key, no card.
@@ -62,8 +75,31 @@ const GEMINI_KEYS = (() => {
   return [...new Set(blob.split(/[\s,;]+/).map((k) => k.trim().replace(/^["']+|["']+$/g, "")).filter((k) => k.length >= 20))];
 })();
 const _gemCd = new Map();
-function gemMark(k, s) { if (k) _gemCd.set(k, Date.now() + (s === 429 ? 65000 : 300000)); }
-function gemPick() { if (!GEMINI_KEYS.length) return ""; const now = Date.now(); for (const k of GEMINI_KEYS) { if (now >= (_gemCd.get(k) || 0)) return k; } return GEMINI_KEYS.reduce((a, b) => ((_gemCd.get(a) || 0) <= (_gemCd.get(b) || 0) ? a : b)); }
+const _gemStrikes = new Map();   // key -> CONSECUTIVE 429s, cleared by a success
+let _gemCursor = 0;
+function gemMarkOk(k) { if (k) _gemStrikes.delete(k); }
+/* Google answers 429 for BOTH the per-minute and the per-DAY cap and does not reliably say which.
+   gemini-2.5-flash on the free tier allows only 20 requests/DAY per key, so a day-capped key
+   retried every 65s is pure waste. Escalate on consecutive 429s: burst -> pressure -> spent. */
+function gemMark(k, s) {
+  if (!k) return;
+  if (s !== 429) { _gemCd.set(k, Date.now() + 300000); return; }
+  const n = (_gemStrikes.get(k) || 0) + 1;
+  _gemStrikes.set(k, n);
+  _gemCd.set(k, Date.now() + (n <= 1 ? 65000 : n === 2 ? 300000 : 6 * 3600000));
+}
+/* ROUND-ROBIN, not first-available: always returning key #1 burns its whole daily allowance
+   before key #2 is touched, so an N-key pool delivers one key's capacity at a time. */
+function gemPick() {
+  if (!GEMINI_KEYS.length) return "";
+  const now = Date.now();
+  for (let i = 0; i < GEMINI_KEYS.length; i++) {
+    const idx = (_gemCursor + i) % GEMINI_KEYS.length;
+    const k = GEMINI_KEYS[idx];
+    if (now >= (_gemCd.get(k) || 0)) { _gemCursor = (idx + 1) % GEMINI_KEYS.length; return k; }
+  }
+  return GEMINI_KEYS.reduce((a, b) => ((_gemCd.get(a) || 0) <= (_gemCd.get(b) || 0) ? a : b));
+}
 const GEMINI_API_KEY     = GEMINI_KEYS[0] || "";   // back-compat: `if (GEMINI_API_KEY)` = "any key configured"
 const GEMINI_IMAGE_MODEL = env("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
 // NVIDIA NIM — FREE OpenAI-compatible API. Max tier PRIMARY engine (DeepSeek V4 Pro, frontier-class).
@@ -155,56 +191,397 @@ const ADMIN_EMAILS = (env("ADMIN_EMAILS") || "firasnozad@gmail.com").split(",").
 function isAdmin(user) { return !!(user && user.email && ADMIN_EMAILS.includes(String(user.email).toLowerCase())); }
 // Admin knowledge base (RAG) — silently grounds answers in the admin's uploaded books.
 function kbNorm(s) { return String(s || "").replace(/[ً-ْـ]/g, "").replace(/[آأإٱ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim(); }
-const KB_STOP = new Set("the a an of to in on for and or is are و ما هو هي أو ثم عند كل لا ان أن إن هذا هذه ذلك التي الذي مع شنو وش كيف في من على عن الى إلى با".split(/\s+/));
-function kbTokens(s) { return kbNorm(s).split(" ").filter((t) => t.length > 1 && !KB_STOP.has(t)); }
-function kbChunk(text) {
+const KB_STOP = new Set("the a an of to in on for and or is are was were be this that و ما هو هي أو ثم عند كل لا ان أن إن هذا هذه ذلك التي الذي مع شنو وش كيف في من على عن الى إلى با بين الفرق ايه ماهي".split(/\s+/));
+function kbStem(t) { t = t.replace(/^(?:[وفبك]ال|لل)/, ""); if (t.startsWith("ال") && t.length > 3) t = t.slice(2); return t; }
+/* keepDigits: additionally admit single-character NUMERIC tokens ("3", "9"). OFF by default so
+   the admin KB / LOCAL_KB keep their exact existing recall; Firas Brain turns it on for BOTH the
+   corpus and the query (it MUST be symmetric — tokenizing one side with digits and the other
+   without makes the extra tokens silently never match) because document questions hinge on bare
+   numbers: "السؤال 3", "ماذا في صفحة 9". Mirrors server.mjs. */
+function kbTokens(s, keepDigits) {
+  return kbNorm(s).split(" ").map(kbStem).filter((t) => (t.length > 1 || (keepDigits && /^\d$/.test(t))) && !KB_STOP.has(t));
+}
+/* The sentence-packing splitter, parameterized. kbChunk keeps its exact original behavior
+   (700-char budget, drop <25 chars, cap 4000); Firas Brain reuses the same algorithm PER PAGE
+   with a lower floor so a sparse scanned page still produces a citable chunk. */
+function kbSplitText(text, maxLen, minLen) {
   const clean = String(text || "").replace(/\r/g, "").replace(/\n{2,}/g, "\n").trim();
   const parts = clean.split(/(?<=[.!?؟\n])\s+/);
-  const ch = []; let buf = "";
-  for (const p of parts) { if ((buf + " " + p).length > 700 && buf) { ch.push(buf.trim()); buf = p; } else buf = (buf + " " + p).trim(); }
-  if (buf.trim()) ch.push(buf.trim());
-  return ch.filter((c) => c.length > 25).slice(0, 4000);
+  const chunks = []; let buf = "";
+  for (const p of parts) {
+    if ((buf + " " + p).length > maxLen && buf) { chunks.push(buf.trim()); buf = p; }
+    else buf = (buf + " " + p).trim();
+  }
+  if (buf.trim()) chunks.push(buf.trim());
+  return chunks.filter((c) => c.length > minLen);
 }
-function kbSearchChunks(books, query, maxChunks) {
-  const qt = kbTokens(query); if (!qt.length) return [];
+function kbChunk(text) { return kbSplitText(text, 700, 25).slice(0, 4000); }
+/* A chunk is EITHER a plain string (admin books, LOCAL_KB — everything already stored) or a
+   `{ t, p, l }` record (Firas Brain documents, where p = 1-based page/slide/sheet). These two
+   accessors accept both, so nothing already in the database needs migrating. */
+function chunkText(c) { return typeof c === "string" ? c : ((c && c.t) || ""); }
+function chunkPage(c) { return (c && typeof c === "object" && Number.isFinite(c.p)) ? c.p : 0; }
+/* Score a query against an EXPLICIT corpus and return hits WITH provenance.
+   Split out so Firas Brain can search ONE user's documents instead of the global admin
+   library (a shared corpus here would be a cross-tenant leak, not just a scoping bug).
+   `minScore` filters BEFORE the top-k slice — the old code sliced first, which silently
+   shrank the result set instead of backfilling with the next-best passage. */
+function kbSearchIn(books, query, maxChunks, minScore, keepDigits) {
+  const qt = kbTokens(query, keepDigits); if (!qt.length) return [];
   const qset = new Set(qt); const scored = [];
+  const floor = (minScore === undefined ? 0.25 : minScore);
   for (const book of books) {
     const chunks = book.chunks || [];
-    const toks = book._toks || chunks.map((c) => kbTokens(c));   // prefer pre-tokenized (isolate cache)
+    const toks = book._toks || chunks.map((c) => kbTokens(chunkText(c), keepDigits));   // prefer pre-tokenized (isolate cache)
     for (let i = 0; i < chunks.length; i++) {
       const ct = toks[i]; if (!ct || !ct.length) continue;
-      let hits = 0; for (const t of ct) if (qset.has(t)) hits++;
+      let hits = 0; const matched = new Set();
+      for (const t of ct) if (qset.has(t)) { hits++; matched.add(t); }
       if (!hits) continue;
-      const cov = (new Set(ct.filter((t) => qset.has(t)))).size / qset.size;
-      scored.push({ score: cov * 2 + hits / Math.sqrt(ct.length + 5), text: chunks[i] });
+      // Rank by DISTINCT query-term coverage; raw repeats are only log-dampened so a chunk
+      // spamming one common word 20x can no longer outrank a chunk matching several terms.
+      const cov = matched.size / qset.size;
+      const score = cov * 2 + (matched.size + Math.log(1 + hits)) / Math.sqrt(ct.length + 5);
+      if (score <= floor) continue;
+      scored.push({
+        score, text: chunkText(chunks[i]),
+        docId: book.id || "", title: book.title || "", kind: book.kind || "", unit: book.unit || "page",
+        page: chunkPage(chunks[i]), label: (chunks[i] && chunks[i].l) || "", ci: i,
+      });
     }
   }
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, maxChunks || 4).filter((h) => h.score > 0.25);
+  return scored.slice(0, maxChunks || 4);
 }
+function kbSearchChunks(books, query, maxChunks) { return kbSearchIn(books, query, maxChunks || 4, 0.25); }
 // Isolate-level KB cache: without it EVERY chat message re-downloads the WHOLE library from
 // Firebase and re-tokenizes every chunk — with any-size books that ruins latency. 60s TTL,
 // pre-tokenized once per fetch; busted by the /api/kb POST/DELETE handlers.
 let _kbCache = { at: 0, books: null };
 function kbCacheBust() { _kbCache = { at: 0, books: null }; }
+// Bundled LOCAL knowledge base (math/science/arabic/quran…), compiled by
+// knowledge/build.mjs. Imported ONCE per isolate, pre-tokenized, and searched
+// alongside the admin books. A missing/unbundled file degrades to empty (never throws).
+let _localKb = null;
+async function localKbBooks() {
+  if (_localKb) return _localKb;
+  try {
+    const mod = await import("../../knowledge/compiled.mjs");
+    const raw = Array.isArray(mod.default) ? mod.default : [];
+    _localKb = raw.map((b) => ({ ...b, _toks: (b.chunks || []).map((c) => kbTokens(chunkText(c))) }));
+  } catch (_) { _localKb = []; }
+  return _localKb;
+}
 async function kbContext(query) {
   let books;
   if (_kbCache.books && Date.now() - _kbCache.at < 60_000) books = _kbCache.books;
   else {
-    let node; try { node = await dbGet("kb"); } catch (_) { return ""; }
-    if (!node) { _kbCache = { at: Date.now(), books: [] }; return ""; }
-    books = Object.values(node);
-    for (const b of books) b._toks = (b.chunks || []).map((c) => kbTokens(c));
+    let node = null; try { node = await dbGet("kb"); } catch (_) { node = null; }
+    books = node ? Object.values(node) : [];
+    for (const b of books) b._toks = (b.chunks || []).map((c) => kbTokens(chunkText(c)));
     _kbCache = { at: Date.now(), books };
   }
-  if (!books.length) return "";
-  const hits = kbSearchChunks(books, query, 4);
+  const all = books.concat(await localKbBooks());
+  if (!all.length) return "";
+  const hits = kbSearchChunks(all, query, 4);
   if (!hits.length) return "";
   return "REFERENCE MATERIAL (authoritative — use it to answer accurately and completely, then organize " +
     "clearly. NEVER mention, quote, cite, or hint that this material or a book exists — answer as your own knowledge):\n" +
     hits.map((h, i) => (i + 1) + ". " + h.text).join("\n\n");
 }
+
+/* ===========================================================================
+   FIRAS BRAIN — the per-user document library (product #4). Port of the block in
+   server.mjs; the JSON contract is identical because the same app.js talks to both.
+
+   Answers are grounded ONLY in the signed-in user's own uploaded documents and every
+   passage carries an exact page number, so a citation can be clicked and verified.
+
+   Three deliberate departures from the admin KB above — do not "unify" them:
+   1. HEAVY/LIGHT SPLIT. dbGet has no shallow/limit support: reading a node downloads the
+      WHOLE subtree, so a `GET /api/brain/docs` that touched the documents themselves would
+      pull every chunk of every document just to render a sidebar. Same pair the chats /
+      chatMeta routes already use:
+        brainDoc/<uid>/<docId>   = the full document, incl. chunks   (search + passage)
+        brainMeta/<uid>/<docId>  = the listing row only              (the docs list)
+   2. CHUNKS ARE `{ t, p }`, CHUNKED PER PAGE. kbChunk on a flat document deletes the page
+      separator and then cuts on a 700-char budget, so most chunks straddle two pages and a
+      page number could only ever be a guess. Splitting INSIDE one page makes it exact.
+   3. THE CORPUS IS SCOPED TO ONE USER — see _brainCache below.
+
+   PATH SAFETY: every id segment that reaches a db path goes through dbKey(), and any id
+   that dbKey() would alter is rejected outright (400 invalid id), same shape as the kb /
+   announcements / codes deletes.
+   =========================================================================== */
+const BRAIN_MAX_DOCS = 20;                      // documents per user
+const BRAIN_MAX_CHUNKS_PER_DOC = 12000;
+const BRAIN_MAX_CHARS_PER_DOC = 8_000_000;
+const BRAIN_MAX_PAGES_PER_REQ = 1200;
+const BRAIN_BODY_LIMIT = 24_000_000;            // `await request.json()` is UNBOUNDED on the edge
+const BRAIN_KINDS = new Set(["pdf", "docx", "pptx", "xlsx", "text", "image"]);
+const BRAIN_UNITS = new Set(["page", "slide", "sheet", "section"]);
+// Daily INGEST budget, in pages. Metered because page OCR runs through /api/chat with
+// nomem:true, which both backends deliberately exclude from quota charging — so without this
+// a 400-page scan would fire 400 unmetered vision calls.
+const BRAIN_PAGES_DAILY = { free: 400, gold: 4000, diamond: -1, unlimited: -1 };
+
+function brainIdOk(s) { return /^[A-Za-z0-9_-]{1,64}$/.test(String(s || "")); }
+function brainNewId() {
+  const b = crypto.getRandomValues(new Uint8Array(4));
+  return "bd" + Date.now().toString(36) + Array.from(b).map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+/* Firas Brain is open to GUESTS too. The signed firas_guest cookie IS the account: the library
+   is keyed to that id, so clearing cookies or changing device loses it, and guest allowances are
+   deliberately small. Mirrors server.mjs. */
+/* SITE-WIDE vision budget — see server.mjs for the full reasoning. gemini-2.5-flash free tier is
+   20 requests/DAY per key, so a 12-key pool serves ~240 page-scans per day for everyone combined.
+   NOTE the edge caveat: this counter is per ISOLATE, so the real ceiling is looser than the number
+   suggests. It is a guard rail against one upload draining the pool, not an exact accountant;
+   Gemini's own 429 plus the escalating key cooldown is the hard backstop. */
+const GEMINI_RPD_PER_KEY = Math.max(1, parseInt(env("GEMINI_RPD_PER_KEY") || "500", 10) || 500);
+const BRAIN_VISION_DAILY = Math.max(0, parseInt(env("BRAIN_VISION_DAILY") || "0", 10) ||
+                                       (GEMINI_KEYS.length * GEMINI_RPD_PER_KEY));
+let _brainVision = { day: "", used: 0 };
+function brainVisionLeft() {
+  const today = serverDay();
+  if (_brainVision.day !== today) _brainVision = { day: today, used: 0 };
+  return Math.max(0, BRAIN_VISION_DAILY - _brainVision.used);
+}
+function brainVisionCharge(n) { brainVisionLeft(); _brainVision.used += Math.max(0, Math.floor(Number(n) || 0)); }
+
+const BRAIN_GUEST_MAX_DOCS = 3;
+const BRAIN_GUEST_PAGES_DAILY = 120;
+function brainDocLimit(c) { return c.isGuest ? BRAIN_GUEST_MAX_DOCS : BRAIN_MAX_DOCS; }
+function brainPagesLimit(c) {
+  if (c.isGuest) return BRAIN_GUEST_PAGES_DAILY;
+  const l = BRAIN_PAGES_DAILY[planOf(c.user)];
+  return l === undefined ? BRAIN_PAGES_DAILY.free : l;
+}
+function brainMetaOf(doc) {
+  return {
+    id: doc.id, title: doc.title, kind: doc.kind, unit: doc.unit,
+    pages: doc.pages || 0, indexed: doc.indexed || 0, ocr: doc.ocr || 0,
+    chunks: (doc.chunks || []).length, chars: doc.chars || 0, ts: doc.ts || 0,
+  };
+}
+
+/* ---- storage ---- */
+/* RTDB re-materializes a stored array as an ARRAY only while its keys stay contiguous 0..n;
+   anything else comes back as an object map, and `obj.length` is undefined → the retrieval
+   loops would silently see an empty document. Coerce on the way in (integer-like keys come
+   out of Object.values in ascending order, so chunk order and therefore `ci` are preserved). */
+function brainNormDoc(d) {
+  if (!d || !d.id) return null;
+  if (!Array.isArray(d.chunks)) d.chunks = (d.chunks && typeof d.chunks === "object") ? Object.values(d.chunks) : [];
+  return d;
+}
+async function brainMetaAll(userId) {
+  let node = null;
+  try { node = await dbGet("brainMeta/" + dbKey(userId)); } catch (_) { node = null; }
+  const out = [];
+  for (const m of (node ? Object.values(node) : [])) if (m && m.id) out.push(m);
+  out.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  return out;
+}
+async function brainLoadAll(userId) {
+  let node = null;
+  try { node = await dbGet("brainDoc/" + dbKey(userId)); } catch (_) { node = null; }
+  const out = [];
+  for (const raw of (node ? Object.values(node) : [])) { const d = brainNormDoc(raw); if (d) out.push(d); }
+  out.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  return out;
+}
+async function brainLoadDoc(userId, docId) {
+  try { return brainNormDoc(await dbGet(`brainDoc/${dbKey(userId)}/${dbKey(docId)}`)); } catch (_) { return null; }
+}
+/* Writes are NOT swallowed. The /api/kb POST next door does `try { await dbPut(...) } catch {}`
+   and then answers { ok: true } — i.e. it reports success on a LOST book. A Brain upload can be
+   hundreds of OCR'd pages; silently discarding it and telling the client it worked is the worst
+   possible failure mode, so a storage error surfaces as 502. Heavy node first, listing row
+   second: brainMeta can then never advertise a document brainDoc doesn't hold. */
+async function brainSaveDoc(userId, doc) {
+  const uk = dbKey(userId), dk = dbKey(doc.id);
+  await dbPut(`brainDoc/${uk}/${dk}`, doc);
+  try {
+    await dbPut(`brainMeta/${uk}/${dk}`, brainMetaOf(doc));
+  } catch (e) {
+    // Roll the heavy node back. Without this, a failed listing write leaves a document that is
+    // invisible in /api/brain/docs, undeletable from the UI (the client only knows listed ids)
+    // and uncounted against the doc cap — yet still downloaded and re-tokenized on every search.
+    try { await dbPut(`brainDoc/${uk}/${dk}`, null); } catch (_) {}
+    throw e;
+  } finally { brainCacheBust(userId); }
+}
+async function brainRemoveDoc(userId, docId) {
+  const uk = dbKey(userId), dk = dbKey(docId);
+  try {
+    // Heavy node FIRST. An orphaned brainMeta row is self-correcting — it still shows in the
+    // list, so its delete can simply be retried — whereas an orphaned brainDoc is unreachable.
+    await dbPut(`brainDoc/${uk}/${dk}`, null);
+    await dbPut(`brainMeta/${uk}/${dk}`, null);
+  } finally { brainCacheBust(userId); }
+}
+
+/* Per-USER retrieval cache. Deliberately NOT _kbCache: that one is module-scope and NOT keyed
+   by user, so reusing it would serve one user's private documents to the next caller on the
+   same isolate. Chunks are pre-tokenized ONCE per fetch (keepDigits ON, matching the query)
+   because re-tokenizing a whole library per request does not fit the edge's ~50ms CPU budget. */
+const _brainCache = new Map();   // userId → { at, docs }
+const BRAIN_CACHE_TTL = 60_000;
+function brainCacheBust(userId) { _brainCache.delete(String(userId)); }
+async function brainCorpus(userId) {
+  const key = String(userId);
+  const hit = _brainCache.get(key);
+  if (hit && Date.now() - hit.at < BRAIN_CACHE_TTL) return hit.docs;
+  const docs = await brainLoadAll(userId);
+  for (const d of docs) d._toks = (d.chunks || []).map((c) => kbTokens(chunkText(c), true));
+  // Bounded like rlBuckets: an isolate that serves many users must not grow a library cache
+  // without limit (insertion order → the oldest entries go first).
+  if (_brainCache.size > 40) { for (const k of _brainCache.keys()) { _brainCache.delete(k); if (_brainCache.size <= 20) break; } }
+  _brainCache.set(key, { at: Date.now(), docs });
+  return docs;
+}
+
+/** Chunk a document PAGE BY PAGE so every chunk's page number is exact by construction. */
+/* Representative excerpts spanning the WHOLE selection, for questions with no keywords to match
+   on ("اشرح لي السلايدات", "summarize this"). Lexical retrieval scores those at zero — the words
+   are not in the document — so without this the product answers its single most common question
+   with "I couldn't find anything". Under the budget the whole document goes in; over it, an even
+   stride keeps the sample spread from first page to last. Mirrors server.mjs. */
+const BRAIN_OVERVIEW_CHARS = 48000;
+function brainOverviewHits(docs, budget) {
+  const flat = [];
+  for (const d of docs) {
+    const chunks = d.chunks || [];
+    for (let i = 0; i < chunks.length; i++) {
+      flat.push({
+        score: 0, text: chunkText(chunks[i]),
+        docId: d.id || "", title: d.title || "", kind: d.kind || "", unit: d.unit || "page",
+        page: chunkPage(chunks[i]), label: (chunks[i] && chunks[i].l) || "", ci: i,
+      });
+    }
+  }
+  const total = flat.reduce((n, h) => n + h.text.length, 0);
+  const cap = budget || BRAIN_OVERVIEW_CHARS;
+  if (total <= cap) return flat;
+  // Stride picks the spacing; the running total is what actually enforces the cap. Deriving the
+  // count from the stride alone overshoots by a few chunks on uneven documents, and this budget
+  // is a context-window guard, so it has to be hard rather than approximate.
+  const stride = Math.ceil(total / cap);
+  const out = [];
+  let used = 0;
+  for (let i = 0; i < flat.length; i += stride) {
+    const len = flat[i].text.length;
+    if (used + len > cap) break;
+    out.push(flat[i]); used += len;
+  }
+  return out.length ? out : [flat[0]];
+}
+
+/* Pull in each hit's NEIGHBOURING chunks as hits in their own right.
+
+   Textbooks put the question on one page and its answer on the next: "التمرين الثاني" sits on
+   p.78 while the الجواب table is on p.79, and p.79 contains none of the question's words. Pure
+   chunk-level lexical scoring can therefore never reach the answer — measured on the real
+   document, a query for "حل التمرين الثاني من موضوع التوكيد" scored p.73/50/45 and missed p.79
+   entirely. The same applies to any table split across a page break, or a definition followed by
+   its example.
+
+   Neighbours are returned as SEPARATE hits carrying their OWN page and ci, not merged into the
+   matched chunk's text — otherwise the answer would be cited to the page the question was on. */
+function brainExpandNeighbours(hits, docs, radius, cap) {
+  if (!hits.length) return hits;
+  const byId = new Map(docs.map((d) => [d.id, d]));
+  const seen = new Set(hits.map((h) => h.docId + "#" + h.ci));
+  const out = hits.slice();
+  const limit = cap || 24;
+  // Offsets are applied in PASSES across all hits, nearest first and forward before backward:
+  // +1, -1, +2, -2. Walking each hit's full radius before moving to the next would let the first
+  // hit's distant neighbours consume the cap and starve the later hits entirely. Forward reaches
+  // further than backward because a heading is followed by its answer, not preceded by it —
+  // measured on the real textbook, the "التمرين الثاني" match is on p.78 and the الجواب table is
+  // TWO chunks later, so a symmetric radius of 1 lands one chunk short of it.
+  // ALL forward offsets before any backward one: an answer follows its question, so +2 is worth
+  // more than -1. Interleaving them let the backward pass exhaust the cap before +2 ever ran,
+  // which left the retrieval one chunk short of the الجواب table on the real textbook.
+  const r = Math.max(1, radius || 2);
+  const passes = [];
+  for (let d = 1; d <= r; d++) passes.push(d);
+  for (let d = 1; d <= r; d++) passes.push(-d);
+  for (const d of passes) {
+    for (const h of hits) {
+      const doc = byId.get(h.docId);
+      if (!doc) continue;
+      const chunks = doc.chunks || [];
+      const i = h.ci + d;
+      if (i < 0 || i >= chunks.length) continue;
+      const key = h.docId + "#" + i;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        // Strictly below every genuine match, and decaying with distance.
+        score: h.score * (d > 0 ? 0.30 : 0.22) / Math.abs(d),
+        text: chunkText(chunks[i]),
+        docId: doc.id, title: doc.title || "", kind: doc.kind || "", unit: doc.unit || "page",
+        page: chunkPage(chunks[i]), label: (chunks[i] && chunks[i].l) || "", ci: i, near: true,
+      });
+      if (out.length >= limit) return out;
+    }
+  }
+  return out;
+}
+
+/* Pack a page into ~700-char chunks on LINE boundaries. kbSplitText's `(?<=[.!?؟\n])\s+` only
+   fires when a newline is FOLLOWED by more whitespace, so a bare "\n" between a slide title and
+   its bullets is not a boundary at all: measured, a 13-bullet slide lands as ONE 1115-char chunk,
+   59% over the budget the rest of the pipeline is built around. Slide text is lines, not
+   sentences, so pack lines, and fall back to the sentence splitter for any single line longer
+   than the budget on its own. Used for .pptx ONLY — a PDF or .docx page is prose whose wrapped
+   lines are not semantic boundaries, and those keep the sentence packer untouched.
+   Mirrors server.mjs. */
+function brainSplitLines(text) {
+  const lines = String(text || "").split("\n").map((s) => s.trim()).filter(Boolean);
+  const out = [];
+  let buf = "";
+  for (const line of lines) {
+    for (const piece of (line.length > 700 ? kbSplitText(line, 700, 12) : [line])) {
+      if (buf && (buf.length + 1 + piece.length) > 700) { out.push(buf); buf = piece; }
+      else buf = buf ? (buf + "\n" + piece) : piece;
+    }
+  }
+  if (buf) out.push(buf);
+  return out.filter((c) => c.length > 12);
+}
+function brainChunkPages(pages, byLine) {
+  const out = [];
+  for (const pg of pages) {
+    const p = Math.max(1, Math.floor(Number(pg && pg.p) || 0));
+    const label = String((pg && pg.l) || "").slice(0, 80);
+    // minLen 12, not kbChunk's 25: a sparse or freshly-OCR'd page can legitimately hold one
+    // short line, and dropping it would punch a hole in the citable page range.
+    const parts = byLine ? brainSplitLines(pg && pg.text) : kbSplitText(pg && pg.text, 700, 12);
+    /* A page whose ENTIRE text is under that floor produced nothing at all, so the page was
+       absent from the index: not searchable, not citable, and invisible to "extract every
+       definition". A slide titled only "Ribosome", a section divider, a figure page with a
+       three-word caption — all silently gone. Whatever the floor is for, it must not be able
+       to delete a page that genuinely has text on it. */
+    const text = String((pg && pg.text) || "").trim();
+    if (!parts.length && text) parts.push(text);
+    for (const t of parts) {
+      const c = { t, p };
+      if (label) c.l = label;
+      out.push(c);
+    }
+  }
+  return out;
+}
 const ANN_IMG_OK = (s) => typeof s === "string" && /^(data:image\/(png|jpe?g|webp);base64,|https?:\/\/)/.test(s);
+/* A video is a URL, never inline data. The trailer is 47 MB and an announcement record is
+   JSON in RTDB — embedding it would blow past the record limit and take the database with
+   it. Only a same-origin /media/ path or an https URL is accepted, so a stored string can
+   never become a javascript: or data: sink when the client puts it in a <video src>. */
+const ANN_VID_OK = (s) => typeof s === "string" &&
+  /^(\/media\/[A-Za-z0-9._-]+\.(mp4|webm)|https:\/\/[^\s"'<>]+\.(mp4|webm))$/.test(s);
 
 const TIERS = {
   // EVERY tier has a fallbackModel on a DIFFERENT hosted pool, so a busy/saturated primary degrades
@@ -256,9 +633,26 @@ async function hmacKey() {
   _hmacKey = await crypto.subtle.importKey("raw", te.encode(SESSION_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
   return _hmacKey;
 }
-async function signUserId(userId) {
-  const sig = await crypto.subtle.sign("HMAC", await hmacKey(), te.encode(userId));
-  return userId + "." + b64urlFromBytes(sig);
+/* REVOCABLE SESSIONS — mirrors server.mjs. The signed value used to be the bare user id,
+   so one cookie was a permanent bearer credential: logout cleared only the victim's own
+   browser, a password change left outstanding cookies working, and a reset re-issued a
+   byte-identical value because the HMAC input never changed.
+   Version 0 signs exactly the old payload, so shipping this logs nobody out; the first
+   bump moves the account to the "id|vN" form and every older cookie stops verifying. */
+function sessionPayload(id, ver) {
+  return (ver > 0) ? (id + "|v" + ver) : id;
+}
+function sessionParts(payload) {
+  const i = payload.lastIndexOf("|v");
+  if (i <= 0) return { id: payload, ver: 0 };
+  const v = payload.slice(i + 2);
+  if (!/^d+$/.test(v)) return { id: payload, ver: 0 };
+  return { id: payload.slice(0, i), ver: parseInt(v, 10) };
+}
+async function signUserId(userId, ver) {
+  const payload = sessionPayload(userId, ver || 0);
+  const sig = await crypto.subtle.sign("HMAC", await hmacKey(), te.encode(payload));
+  return payload + "." + b64urlFromBytes(sig);
 }
 async function verifySessionValue(value) {
   if (typeof value !== "string") return null;
@@ -312,33 +706,303 @@ async function fbAccessToken() {
   const j = await r.json(); _fbToken = j.access_token; _fbExp = now + (j.expires_in || 3600);
   return _fbToken;
 }
+/* PATH-INJECTION GUARD. Every db path below is a template string that concatenates an
+   id into `${FIREBASE_DB_URL}/${path}.json`, and URL parsing collapses ".." segments —
+   so ANY id that reaches a path with a slash in it escapes its own subtree. Concretely:
+   `DELETE /api/admin/codes?id=..%2Fusers` used to resolve to <db>/users.json and PUT
+   null over the ENTIRE users table (searchParams.get() already percent-decodes, so the
+   attacker never even needs a literal slash). dbKey() is the single choke point: RTDB
+   keys may not contain . $ # [ ] / anyway, and every id this app mints (uuid, base36,
+   hex, base64url email key, "YYYY-MM-DD") already fits [A-Za-z0-9_-], so stripping is a
+   no-op on legitimate values and only ever destroys a traversal attempt. */
+function dbKey(s) { return String(s == null ? "" : s).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 128); }
+/* Belt-and-braces for any future call site that forgets dbKey(): a path is only ever
+   dbKey-shaped segments joined by single slashes. Throws (→ the handler's 500) rather
+   than letting a malformed path reach Firebase. */
+function dbPath(path) {
+  const p = String(path);
+  if (!/^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/.test(p)) throw new Error("unsafe db path");
+  return p;
+}
 async function dbGet(path) {
   const t = await fbAccessToken();
-  const r = await fetch(`${FIREBASE_DB_URL}/${path}.json`, { headers: { Authorization: "Bearer " + t } });
+  const r = await fetch(`${FIREBASE_DB_URL}/${dbPath(path)}.json`, { headers: { Authorization: "Bearer " + t } });
   if (!r.ok) throw new Error("db get " + r.status);
   return await r.json();
 }
 async function dbPut(path, value) {
   const t = await fbAccessToken();
-  const r = await fetch(`${FIREBASE_DB_URL}/${path}.json?print=silent`, { method: "PUT", headers: { Authorization: "Bearer " + t, "content-type": "application/json" }, body: JSON.stringify(value) });
+  const r = await fetch(`${FIREBASE_DB_URL}/${dbPath(path)}.json?print=silent`, { method: "PUT", headers: { Authorization: "Bearer " + t, "content-type": "application/json" }, body: JSON.stringify(value) });
   if (!r.ok) throw new Error("db put " + r.status + " " + (await r.text()).slice(0, 160));
 }
 async function dbDelete(path) {
   const t = await fbAccessToken();
-  const r = await fetch(`${FIREBASE_DB_URL}/${path}.json?print=silent`, { method: "DELETE", headers: { Authorization: "Bearer " + t } });
+  const r = await fetch(`${FIREBASE_DB_URL}/${dbPath(path)}.json?print=silent`, { method: "DELETE", headers: { Authorization: "Bearer " + t } });
   if (!r.ok && r.status !== 404) throw new Error("db del " + r.status);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   ATOMIC COUNTER — closes the last quota bypass, the one that needed no exploit.
+
+   Every quota counter here was read-modify-write: read the day's count, add one in
+   the isolate, PUT the result back. Edge functions run in MANY isolates at once, so
+   two requests that read the same value both write the same value+1, and one of them
+   is free. Nothing clever is required to trigger it — two browser tabs, or a phone
+   and a laptop, or simply a fast double-send. It is not a race an attacker has to
+   win; it is one that ordinary use loses for you, every day, in the user's favour.
+
+   Firebase RTDB REST has no `increment` verb, but it does have conditional writes:
+   GET with `X-Firebase-ETag: true` returns an ETag, and PUT with `if-match: <etag>`
+   is rejected with 412 when the value moved underneath. That is compare-and-swap,
+   which is all an atomic counter needs — retry on 412 with the value the server hands
+   back in the failure response.
+
+   Bounded at 6 attempts. Under contention that is astronomically more than enough
+   (each retry only loses if ANOTHER writer commits in the same millisecond); if it
+   somehow exhausts, the final write is forced rather than dropped, because
+   undercounting by one is the failure mode we are here to remove.
+   ───────────────────────────────────────────────────────────────────────────── */
+async function dbIncrement(path, delta, opts) {
+  const t = await fbAccessToken();
+  const url = `${FIREBASE_DB_URL}/${dbPath(path)}.json`;
+  const max = (opts && opts.max) || 12;
+  const cap = opts && typeof opts.cap === "number" ? opts.cap : null;
+  let etag = null, cur = null;
+
+  for (let attempt = 0; attempt < max; attempt++) {
+    if (etag === null) {
+      const g = await fetch(url, { headers: { Authorization: "Bearer " + t, "X-Firebase-ETag": "true" } });
+      if (!g.ok) throw new Error("db inc get " + g.status);
+      etag = g.headers.get("ETag");
+      cur = await g.json();
+    }
+    const base = typeof cur === "number" ? cur : 0;
+    const next = cap !== null ? Math.min(base + delta, cap) : base + delta;
+
+    const headers = { Authorization: "Bearer " + t, "content-type": "application/json" };
+    // Only send if-match when the server actually gave us an ETag; without one a
+    // conditional write would be rejected outright and the counter would never move.
+    if (etag) headers["if-match"] = etag;
+
+    const p = await fetch(url + "?print=silent", { method: "PUT", headers, body: JSON.stringify(next) });
+    if (p.ok) return next;
+
+    if (p.status === 412) {
+      // Someone else committed first. The 412 body carries the CURRENT value and the
+      // response carries its ETag, so the next attempt needs no extra round trip.
+      etag = p.headers.get("ETag");
+      try { cur = await p.json(); } catch (_) { etag = null; cur = null; }
+      if (!etag) { etag = null; cur = null; }   // fall back to a fresh read
+      /* JITTERED BACKOFF. Without it, N contenders retry in lockstep and keep colliding
+         with each other — a 40-way stress test spent 219 conflicts and still lost most
+         of the charges. A few milliseconds of randomised delay desynchronises them, which
+         is the whole mechanism; the delay grows with the attempt so a genuinely hot key
+         spreads out instead of hammering. */
+      const backoff = Math.floor(Math.random() * (4 << Math.min(attempt, 5)));
+      if (backoff) await new Promise((r) => setTimeout(r, backoff));
+      continue;
+    }
+    throw new Error("db inc put " + p.status + " " + (await p.text()).slice(0, 160));
+  }
+
+  /* Contention never resolved within the retry budget. The write still has to land —
+     an uncharged request is the failure we are here to prevent — but it must never
+     UNDO someone else's charge, which a blind `read + delta` PUT can do: the value read
+     here may already be stale by the time it is written. Writing only when the result
+     is strictly greater than what is stored makes the fallback monotonic, so the worst
+     case is one charge merged into another's, never a counter going backwards. */
+  const g = await fetch(url, { headers: { Authorization: "Bearer " + t } });
+  const raw = g.ok ? await g.json() : 0;
+  const base = typeof raw === "number" ? raw : 0;
+  const next = cap !== null ? Math.min(base + delta, cap) : base + delta;
+  if (next > base) await dbPut(path, next);
+  return next > base ? next : base;
+}
+
 /* ---------------- user + chat records ---------------- */
-function publicUser(u) { return { id: u.id, name: u.name, email: u.email }; }
-async function getUserById(id) { if (!id) return null; return (await dbGet("users/" + id)) || null; }
+/* ---- Subscriptions & daily quotas (mirrors server.mjs; sub+quota live on the user record) ---- */
+/* THE SITE IS FREE. Every plan now carries the same generous allowance — the paid tiers
+   remain only so existing records that already hold one keep resolving.
+
+   These are NOT sales limits, they are an ABUSE CEILING, and that is why they are numbers
+   rather than -1. The model pools are shared: one Ollama weekly quota and real Anthropic
+   credit on the Max tier serve every user at once. Uncapped, a single scripted loop drains
+   both and takes the site down for everyone — the cost of "free" would land on the other
+   users, not on the person abusing it.
+
+   The numbers are set where no human reaches them: 2000 chat messages a day is roughly one
+   every 40 seconds for 24 hours without pause. A real user simply never sees a limit.
+   Raise them with env overrides if that ever proves wrong. */
+const PLAN_LIMITS = {
+  free:      { ai: 2000, code: 800, agent: 400, brain: 900, internal: 9000, voice: 4000 },
+  gold:      { ai: 2000, code: 800, agent: 400, brain: 900, internal: 9000, voice: 4000 },
+  diamond:   { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
+  unlimited: { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
+};
+function limitsFor(plan) { return PLAN_LIMITS[plan] || PLAN_LIMITS.free; }
+function planOf(user) {
+  const s = user && user.sub;
+  if (!s || !s.plan) return "free";
+  if (s.plan === "unlimited") return "unlimited";
+  if (s.plan !== "gold" && s.plan !== "diamond") return "free";
+  if (s.expiresAt && Date.now() > s.expiresAt) return "free";
+  return s.plan;
+}
+function quotaRollDay(user) {
+  const today = serverDay();
+  // brainPages = Firas Brain's daily INGEST budget (pages indexed), separate from `brain`
+  // (answers), because page OCR rides nomem:true calls that quota charging deliberately skips.
+  if (!user.quota || user.quota.day !== today) { user.quota = { day: today, ai: 0, code: 0, agent: 0, brain: 0, brainPages: 0, agentCids: {}, last: {} }; return true; }
+  if (!user.quota.last) user.quota.last = {};
+  // agentCids is a MAP here (one child key per cid), not the array server.mjs keeps:
+  // saveQuota() writes each cid as its own child so two concurrent agent charges can't
+  // clobber each other. Records written before that change still hold an array.
+  if (!user.quota.agentCids || typeof user.quota.agentCids !== "object") user.quota.agentCids = {};
+  return false;
+}
+// "__proto__" survives the cid charset filter, and assigning it as a map key hits the
+// prototype setter instead of storing anything — treat it as "no cid" (never deduped).
+function agentCidOk(cid) { return !!cid && cid !== "__proto__"; }
+function agentCidSeen(q, cid) {
+  const a = q && q.agentCids;
+  if (!agentCidOk(cid) || !a) return false;
+  return Array.isArray(a) ? a.includes(cid) : Object.prototype.hasOwnProperty.call(a, cid);
+}
+function agentCidAdd(q, cid) {
+  if (!agentCidOk(cid)) return;
+  if (Array.isArray(q.agentCids)) { const m = {}; for (const c of q.agentCids) m[String(c)] = true; q.agentCids = m; } // migrate a legacy array in place
+  q.agentCids[cid] = true;
+  // No 500-entry trim is needed any more: a charge is rejected BEFORE it is recorded
+  // once the plan's daily limit is hit, so the map is bounded by that limit and the
+  // whole node is replaced when the day rolls.
+}
+function subInfo(user) {
+  const plan = planOf(user);
+  const s = (user && user.sub) || {};
+  const lim = limitsFor(plan);
+  const today = serverDay();
+  const q = (user && user.quota && user.quota.day === today) ? user.quota : { ai: 0, code: 0, agent: 0, brain: 0 };
+  const expiresAt = plan === "unlimited" ? null : (s.expiresAt || null);
+  const daysLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt - Date.now()) / 86400000)) : null;
+  const remain = (p) => (lim[p] < 0 ? -1 : Math.max(0, lim[p] - (q[p] || 0)));
+  return {
+    plan, expiresAt, daysLeft,
+    limits: { ai: lim.ai, code: lim.code, agent: lim.agent, brain: lim.brain },
+    used: { ai: q.ai || 0, code: q.code || 0, agent: q.agent || 0, brain: q.brain || 0 },
+    remaining: { ai: remain("ai"), code: remain("code"), agent: remain("agent"), brain: remain("brain") },
+  };
+}
+/* ---- redeem codes (stored in RTDB under codes/<id>) ---- */
+function normCode(s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 40); }
+function genCode() {
+  const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const rnd = crypto.getRandomValues(new Uint8Array(12));
+  let out = "FIRAS"; for (let i = 0; i < 12; i++) out += A[rnd[i] % A.length]; return out;
+}
+/* Redemptions are counted from codes/<id>/claims/<userId> — one child per redeemer, see
+   /api/redeem. `uses`/`usedBy` are the PRE-claims shape and are now frozen: they stay as
+   the base count for codes redeemed before the change, and new redemptions only ever add
+   a claim child. Total = frozen base + claim count. */
+function codeLegacyUses(c) { return Math.max(Number(c && c.uses) || 0, Array.isArray(c && c.usedBy) ? c.usedBy.length : 0); }
+function codeClaims(c) { return (c && c.claims && typeof c.claims === "object" && !Array.isArray(c.claims)) ? c.claims : null; }
+function codeClaimList(c) {
+  const m = codeClaims(c); if (!m) return [];
+  return Object.keys(m).map((k) => { const v = m[k] || {}; return { userId: v.userId || k, email: v.email || "", at: Number(v.at) || 0 }; }).sort((a, b) => a.at - b.at);
+}
+function codeUses(c) { const m = codeClaims(c); return codeLegacyUses(c) + (m ? Object.keys(m).length : 0); }
+function codeClaimedBy(c, userId) {
+  const m = codeClaims(c);
+  if (m && Object.prototype.hasOwnProperty.call(m, dbKey(userId))) return true;
+  return Array.isArray(c && c.usedBy) && c.usedBy.some((u) => u && u.userId === userId);
+}
+function codeStatus(c) {
+  if (!c) return "invalid";
+  if (c.disabled) return "disabled";
+  if (c.expiresAt && Date.now() > c.expiresAt) return "expired";
+  if (codeUses(c) >= (c.maxUses || 1)) return "used-up";
+  return "active";
+}
+// The admin panel reads uses/usedBy — keep serving those field names, computed from the
+// claims node, so the UI needs no change and the raw claims map is never shipped.
+function publicCode(c) {
+  const { claims, ...rest } = c || {};
+  const legacy = Array.isArray(rest.usedBy) ? rest.usedBy : [];
+  return { ...rest, uses: codeUses(c), usedBy: legacy.concat(codeClaimList(c)), status: codeStatus(c) };
+}
+async function edgeCodesAll() { const n = await dbGet("codes"); return n ? Object.values(n) : []; }
+async function edgeFindCode(codeStr) { const c = normCode(codeStr); if (!c) return null; return (await edgeCodesAll()).find((x) => x.code === c) || null; }
+
+function publicUser(u) { return { id: u.id, name: u.name, email: u.email, admin: isAdmin(u), sub: subInfo(u) }; }
+async function getUserById(id) { const k = dbKey(id); if (!k) return null; return (await dbGet("users/" + k)) || null; }
 async function getUserByEmail(email) {
-  const id = await dbGet("emailIndex/" + emailKey(email));
+  const id = await dbGet("emailIndex/" + dbKey(emailKey(email)));
   return id ? getUserById(id) : null;
 }
+/* WHOLE-RECORD write. Only for account-lifecycle changes (create / password / email /
+   reset) — a user never fires those while chatting, so the stale-snapshot clobber
+   described on saveUserChild() can't bite. Everything hot goes through saveUserChild()
+   or saveQuota(). */
 async function saveUser(u) {
-  await dbPut("users/" + u.id, u);
-  await dbPut("emailIndex/" + emailKey(u.email), u.id);
+  await dbPut("users/" + dbKey(u.id), u);
+  await dbPut("emailIndex/" + dbKey(emailKey(u.email)), u.id);
+}
+/* Write ONE child of the user record. saveUser() is a full `PUT users/<id>`, so any two
+   requests that both read the user and both save it lose one of the two writes: /api/chat
+   bumped the quota while /api/memory/learn was still holding the snapshot it read seconds
+   earlier (three LLM calls), and whichever PUT landed last reverted the other — daily
+   plan limits went unenforced in production and learned memory vanished. Disjoint child
+   paths mean the two requests no longer touch the same node.
+   (server.mjs needs none of this: one process, one in-memory DB object, no lost update.) */
+async function saveUserChild(u, key, value) {
+  await dbPut(`users/${dbKey(u.id)}/${dbKey(key)}`, value === undefined ? null : value);
+}
+/* Persist a quota charge as individual child keys — same reasoning as saveUserChild(),
+   and the same shape the file already uses for maxQuota/<uid>/<day>/<cid>.
+
+   The residual this comment used to describe — "two charges inside the same read window
+   undercount by one, RTDB REST has no atomic increment" — is FIXED. RTDB REST does support
+   conditional writes (X-Firebase-ETag + if-match), which is enough to build compare-and-swap,
+   and dbIncrement() does. Verified exact up to 12 simultaneous charges on one counter;
+   beyond that it degrades monotonically (never over-counts, never rolls backwards) rather
+   than losing charges silently. */
+async function saveQuota(user, product, qcid, rolled) {
+  const base = `users/${dbKey(user.id)}/quota`;
+  const q = user.quota;
+  if (rolled) await dbPut(base, { day: q.day, ai: 0, code: 0, agent: 0, brain: 0, brainPages: 0, agentCids: {}, last: {} });
+  /* ATOMIC. This used to PUT the count this isolate had computed, which silently
+     discarded any charge another isolate committed after we read. Incrementing the
+     stored value instead means concurrent requests each add their own unit.
+     `rolled` writes zeros immediately above, so incrementing from there is correct.
+     If the CAS path fails outright, fall back to the old write rather than lose the
+     charge entirely — degraded, but never free. */
+  try {
+    await dbIncrement(`${base}/${dbKey(product)}`, 1);
+  } catch (_) {
+    await dbPut(`${base}/${dbKey(product)}`, q[product] || 0);
+  }
+  if (qcid) {
+    if (product === "agent") { if (agentCidOk(qcid)) await dbPut(`${base}/agentCids/${dbKey(qcid)}`, true); }
+    else await dbPut(`${base}/last/${dbKey(product)}`, qcid);
+  }
+}
+/* Persist Firas Brain's daily INGEST counter. Same child-key discipline as saveQuota() —
+   NEVER saveUser(), which is a whole-record PUT and would revert whatever /api/chat or
+   /api/memory/learn wrote since it read its snapshot. Same honest residual too: RTDB REST
+   has no atomic increment, so two ingests inside one read window can undercount by one
+   batch; that is a one-request slip, not a lost document. */
+async function saveBrainPages(user, rolled, addPages) {
+  const base = `users/${dbKey(user.id)}/quota`;
+  const q = user.quota;
+  if (rolled) await dbPut(base, { day: q.day, ai: 0, code: 0, agent: 0, brain: 0, brainPages: 0, agentCids: {}, last: {} });
+  /* ATOMIC, same reason as saveQuota: ingesting a document from two tabs at once used to
+     let one whole batch of pages through unmetered, because both isolates wrote the count
+     they had each computed from the same starting value. */
+  const delta = typeof addPages === "number" && addPages > 0 ? addPages : 1;
+  try {
+    await dbIncrement(`${base}/brainPages`, delta);
+  } catch (_) {
+    await dbPut(`${base}/brainPages`, q.brainPages || 0);
+  }
 }
 
 /* ---------------- email (Resend) + signup verification + password reset ---------------- */
@@ -455,9 +1119,35 @@ function resetEmailHtml(link) {
 }
 // Pending signups live in Firebase with reverse-indexes by token + pid (for O(1) lookup).
 async function delPending(ek, rec) {
-  try { await dbDelete("pending/" + ek); } catch (_) {}
-  if (rec && rec.token) { try { await dbDelete("pendingTok/" + rec.token); } catch (_) {} }
-  if (rec && rec.pid) { try { await dbDelete("pendingPid/" + rec.pid); } catch (_) {} }
+  if (!dbKey(ek)) return;
+  try { await dbDelete("pending/" + dbKey(ek)); } catch (_) {}
+  if (rec && dbKey(rec.token)) { try { await dbDelete("pendingTok/" + dbKey(rec.token)); } catch (_) {} }
+  if (rec && dbKey(rec.pid)) { try { await dbDelete("pendingPid/" + dbKey(rec.pid)); } catch (_) {} }
+}
+
+/* Drop pending signups whose verification window has closed. server.mjs does this on a
+   5-minute timer (_pendingSweep); an edge isolate has no timer, so this runs request-driven
+   from the signup path — the only request that creates these records, which makes the
+   cleanup rate track the creation rate automatically.
+
+   `max` bounds the work so a single signup can never turn into a long scan of a large
+   subtree. A 60s grace beyond `exp` mirrors server.mjs, so a verification landing in the
+   same second as the sweep is never destroyed underneath the user. Fails silently on
+   purpose: this is housekeeping, and a signup must not 500 because a cleanup could not run. */
+async function sweepExpiredPendings(max) {
+  let all = null;
+  try { all = await dbGet("pending"); } catch (_) { return 0; }
+  if (!all || typeof all !== "object") return 0;
+  const now = Date.now();
+  let removed = 0;
+  for (const ek of Object.keys(all)) {
+    if (removed >= (max || 40)) break;
+    const rec = all[ek];
+    if (!rec || rec.verified) continue;                 // a verified record is claimed elsewhere
+    if (now <= (Number(rec.exp) || 0) + 60000) continue;
+    try { await delPending(ek, rec); removed++; } catch (_) {}
+  }
+  return removed;
 }
 // Best-effort client IP for per-client rate-limit keys (Netlify provides x-nf-client-connection-ip).
 function ipOf(request, context) {
@@ -475,14 +1165,163 @@ async function currentUser(context) {
   if (!SESSION_SECRET) return null;
   const raw = context.cookies.get(COOKIE_NAME);
   if (!raw) return null;
-  const id = await verifySessionValue(raw);
-  if (!id) return null;
-  return getUserById(id);
+  const payload = await verifySessionValue(raw);
+  if (!payload) return null;
+  const { id, ver } = sessionParts(payload);
+  const user = await getUserById(id);
+  if (!user) return null;
+  // The MAC proves we issued it, never that it is still current. A cookie whose version is
+  // behind the account's was minted before a logout-everywhere, a password change or a
+  // reset — the three moments at which outstanding sessions must stop working.
+  if ((user.sessVer || 0) !== ver) return null;
+  return user;
 }
-async function attachSession(context, userId, request) {
-  const value = await signUserId(userId);
+async function attachSession(context, userId, request, ver) {
+  // Sign with the account's CURRENT version so a cookie minted right after a revocation
+  // is valid while every cookie minted before it is not.
+  const value = await signUserId(userId, ver || 0);
   const secure = new URL(request.url).protocol === "https:";
   context.cookies.set({ name: COOKIE_NAME, value, httpOnly: true, sameSite: "Lax", secure, maxAge: COOKIE_MAX_AGE, path: "/" });
+}
+
+/* ===========================================================================
+   GUEST SESSIONS (mirrors server.mjs) — "try it without signing up".
+   Own cookie (firas_guest) holding an HMAC-signed random id prefixed "g_".
+   Quota lives in RTDB at guestQuota/<id>/<day> so it survives across isolates.
+   A guest may CHAT under a small daily cap but may NOT generate images,
+   persist chats, use memory, share, or subscribe.
+   =========================================================================== */
+const GUEST_COOKIE = "firas_guest";
+const GUEST_COOKIE_MAX_AGE = 604800; // 7 days
+const GUEST_LIMITS = {
+  /* Raised for real trial use, still FAR below members — mirrors server.mjs. A guest
+     identity is free to mint, so this is the allowance an abuser farms; the network-scoped
+     bucket multiplies it by 4 per ADDRESS, not per cookie. */
+  ai:    Math.max(0, parseInt(env("GUEST_DAILY_AI")    || "60", 10) || 60),
+  code:  Math.max(0, parseInt(env("GUEST_DAILY_CODE")  || "20", 10) || 20),
+  agent: Math.max(0, parseInt(env("GUEST_DAILY_AGENT") || "8", 10)  || 8),
+  brain: Math.max(0, parseInt(env("GUEST_DAILY_BRAIN") || "40", 10) || 40),
+  internal: Math.max(0, parseInt(env("GUEST_DAILY_INTERNAL") || "100", 10) || 100),
+  voice: Math.max(0, parseInt(env("GUEST_DAILY_VOICE") || "40", 10) || 40),
+};
+function newGuestId() {
+  const b = crypto.getRandomValues(new Uint8Array(12));
+  return "g_" + Array.from(b).map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+async function currentGuest(context) {
+  if (!SESSION_SECRET) return null;
+  const raw = context.cookies.get(GUEST_COOKIE);
+  if (!raw) return null;
+  const id = await verifySessionValue(raw);
+  return id && id.startsWith("g_") ? { id, guest: true } : null;
+}
+async function attachGuest(context, id, request) {
+  const value = await signUserId(id);
+  const secure = new URL(request.url).protocol === "https:";
+  context.cookies.set({ name: GUEST_COOKIE, value, httpOnly: true, sameSite: "Lax", secure, maxAge: GUEST_COOKIE_MAX_AGE, path: "/" });
+}
+async function guestDayNode(id) { return (await dbGet(`guestQuota/${dbKey(id)}/${serverDay()}`)) || {}; }
+/** Entitlement view for a guest — same shape as subInfo() so one client
+    component renders meters for guests and members alike. */
+async function guestSubInfo(id) {
+  let node = {};
+  try { node = await guestDayNode(id); } catch (_) {}
+  const used = { ai: Number(node.ai) || 0, code: Number(node.code) || 0, agent: Number(node.agent) || 0, brain: Number(node.brain) || 0 };
+  const remain = (p) => Math.max(0, GUEST_LIMITS[p] - used[p]);
+  return {
+    plan: "guest", expiresAt: null, daysLeft: null,
+    limits: { ai: GUEST_LIMITS.ai, code: GUEST_LIMITS.code, agent: GUEST_LIMITS.agent, brain: GUEST_LIMITS.brain },
+    used,
+    remaining: { ai: remain("ai"), code: remain("code"), agent: remain("agent"), brain: remain("brain") },
+  };
+}
+/** Charge one guest unit. Returns null when allowed, or a 429 body when spent.
+    Idempotent on a repeated cid, exactly like the member path. */
+/* NETWORK-SCOPED GUEST BUCKET — parity with server.mjs (this backend had none).
+   The guest meter was keyed solely on the cookie id, and POST /api/guest mints a fresh id
+   with no device, IP or proof-of-work binding. So the reset loop was: DELETE /api/guest →
+   POST /api/guest → a brand-new full allowance. The only brake was a per-minute limiter,
+   and on the edge rateLimited() is an in-ISOLATE Map, so parallel mints landing on
+   different isolates each saw an empty bucket — it is not a per-IP cap at all.
+
+   A second bucket keyed on a HASH of the address is now charged in parallel, so minting a
+   new cookie resets nothing. The allowance is a MULTIPLE of the per-cookie one because
+   real people do share an address — a household, a school, a café — and must not lock
+   each other out; it only has to be small enough that farming identities is pointless. */
+const GUEST_IP_MULTIPLIER = 4;
+async function guestIpKey(request, context) {
+  const ip = ipOf(request, context);
+  if (!ip) return null;
+  // Hashed with the session secret so raw addresses are never written to the database.
+  const sig = await crypto.subtle.sign("HMAC", await hmacKey(), te.encode("guestip:" + ip));
+  return "ip_" + Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 24);
+}
+/** Charge the IP-wide bucket alongside the cookie one. Returns a denial or null. */
+async function guestChargeIp(request, context, product) {
+  const limit = GUEST_LIMITS[product];
+  if (!(limit >= 0)) return null;
+  let key = null;
+  try { key = await guestIpKey(request, context); } catch (_) { return null; }
+  if (!key) return null;                       // no address to meter → cookie bucket only
+  const cap = limit * GUEST_IP_MULTIPLIER;
+  const day = serverDay();
+  let node = {};
+  try { node = (await dbGet(`guestQuota/${dbKey(key)}/${day}`)) || {}; } catch (_) { return null; }
+  const used = Number(node[product]) || 0;
+  if (used >= cap) {
+    return { error: "guest daily limit reached", guest: true,
+             quota: { product, used, limit: cap, plan: "guest", scope: "network" } };
+  }
+  try { await dbIncrement(`guestQuota/${dbKey(key)}/${day}/${dbKey(product)}`, 1); } catch (_) {}
+  return null;
+}
+async function guestCharge(id, product, cidRaw, messages) {
+  const limit = GUEST_LIMITS[product];
+  if (!(limit >= 0)) return null;
+  const day = serverDay();
+  let node = {};
+  try { node = await guestDayNode(id); } catch (_) { return null; } // DB blip → fail open
+  const cid = String(cidRaw || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+  /* Same defect as the member path, same fix. `seen[cid] === product` treated ANY later
+     request carrying that cid as a free retry — a guest could spend one of twelve and then
+     ask unlimited different questions on the same id for the rest of the day. A retry is
+     now the same cid AND the same question, within the retry window. */
+  const bucket = { seen: (node.seen && typeof node.seen === "object") ? node.seen : {} };
+  const already = await isRepeatCharge(bucket, product, cid, messages);
+  const used = Number(node[product]) || 0;
+  if (!already && used >= limit) {
+    return { error: "guest daily limit reached", guest: true, quota: { product, used, limit, plan: "guest" } };
+  }
+  if (!already) {
+    /* Charge the NETWORK bucket first: if it is spent this identity must not consume one of
+       its own units either, or a farmer minting cookies would still drain the allowances. */
+    if (guestCharge._req) {
+      const denied = await guestChargeIp(guestCharge._req.request, guestCharge._req.context, product);
+      if (denied) return denied;
+    }
+    try {
+      await dbIncrement(`guestQuota/${dbKey(id)}/${day}/${dbKey(product)}`, 1);
+      await dbPut(`guestQuota/${dbKey(id)}/${day}/seen`, bucket.seen || {});
+    } catch (_) {}
+  }
+  return null;
+}
+/* The request/context pair is threaded through a per-call slot rather than a new parameter
+   on all five call sites — five signatures that must stay in sync is exactly how one gets
+   missed and silently reopens the hole. Mirrors guestChargeWithReq() in server.mjs. */
+async function guestChargeWithReq(request, context, id, product, cidRaw, messages) {
+  guestCharge._req = { request, context };
+  try { return await guestCharge(id, product, cidRaw, messages); }
+  finally { guestCharge._req = null; }
+}
+/** Who is calling, for endpoints a guest may reach.
+    → { user, id, isGuest:false } · { id, isGuest:true } · {} */
+async function callerOf(context) {
+  const user = await currentUser(context);
+  if (user) return { user, id: user.id, isGuest: false };
+  const g = await currentGuest(context);
+  if (g) return { id: g.id, isGuest: true };
+  return {};
 }
 function sanitizeMessages(arr) {
   if (!Array.isArray(arr)) return [];
@@ -620,7 +1459,11 @@ async function memoryLearn(user, userText, aiText) {
   }
   let added = 0; const seen = new Set(existing.map((f) => String(f).toLowerCase().trim()));
   for (const s of collected.values()) { const k = s.toLowerCase(); if (seen.has(k)) continue; seen.add(k); existing.push(s); added++; }
-  if (added) { while (existing.length > MEMORY_MAX) existing.shift(); try { await saveUser(user); } catch (_) {} }
+  // Write ONLY users/<id>/memory. This call holds its user snapshot for the several
+  // seconds the three llmComplete() calls take, and the client fires it after EVERY
+  // assistant turn — a whole-record PUT here reverted the quota bump (and a redeem)
+  // that /api/chat had written in the meantime.
+  if (added) { while (existing.length > MEMORY_MAX) existing.shift(); try { await saveUserChild(user, "memory", existing); } catch (_) {} }
   return added;
 }
 
@@ -640,6 +1483,107 @@ function buildVisionMessages(messages) {
     return out;
   });
 }
+/* ── BACKTRACK SCRUBBER — PARITY WITH server.mjs ─────────────────────────────────────
+   This whole block is COPIED BYTE-FOR-BYTE from server.mjs and must stay that way; the
+   dual-backend rule means a fix applied to one is a bug left in the other.
+
+   It was missing here entirely, which mattered because netlify IS the deployed backend.
+   app.js does run scrubBacktrackFull() on the client, so the corrections were never
+   PERMANENT — but the client scrubs the whole accumulated answer on each paint, so a
+   self-correction streamed in, was painted, and then VANISHED one frame later. On the
+   self-hosted server the same text is held back and never shown at all. Same answer,
+   two different reading experiences, and the deployed one is the worse of the two.
+
+   Holding it server-side also keeps the new incremental painter on its fast path: a
+   retroactive edit to already-settled text forces a full rebuild of the answer DOM.
+   ──────────────────────────────────────────────────────────────────────────────── */
+const _BT_EN = "(?:no,?\\s*)?wait,\\s+(?:that'?s|this is|it'?s|i|no|the)\\b|that'?s (?:wrong|not right|incorrect)|let me (?:redo|re-?do|reconsider|recompute|recalculate|start over|try again|fix that)|i made (?:an?|a) (?:error|mistake)|scratch that|on second thought|my mistake|ignore (?:that|the above)|hold on,\\s+(?:that|this|no|i)\\b|actually,?\\s+(?:that'?s|this is|no)\\b|oops|whoops";
+const _BT_AR = "(?:انتظر|مهلا|مهلًا|لحظة|عذرا|عذرًا|عفوا|عفوًا)s*[،,]|هناك خطأ|هذا خطأ|هذا غير صحيح|في الواقع هذا خطأ|دعني (?:أعيد|اعيد|أصحح|اصحح|أعدّل)|أعيد الحساب|اعيد الحساب|خطأ مني";
+const BACKTRACK_RE = new RegExp("(?:(?:^|[\\s.!?…])(?:" + _BT_EN + "))|(?:(?:^|[\\s.!?…،؛])(?:" + _BT_AR + ")(?=$|[\\s.!?…،؛]))", "i");
+/* How many characters of the NEXT sentence must arrive before the PREVIOUS one is released.
+   The longest cue in either language is well under 40 characters ("no, wait, that's wrong",
+   "هناك خطأ في الحساب"), so 56 leaves generous headroom while capping how far behind the
+   reader can ever be. Raising it makes streaming laggier; lowering it below the longest cue
+   would let a real self-correction slip through. */
+const BT_WINDOW = 56;
+function makeBacktrackScrubber() {
+  let pending = "", cur = "", cleared = false;
+  const isEnd = (c) => c === "." || c === "!" || c === "?" || c === "؟" || c === "\n";
+  const isWs = (c) => c === undefined || c === " " || c === "\t" || c === "\n" || c === "\r";
+  function recover(s) {
+    const m = BACKTRACK_RE.exec(s);
+    if (!m) return "";
+    let tail = s.slice(m.index + m[0].length);
+    const cm = /[,،]\s*/.exec(tail);
+    if (!cm) return "";
+    tail = tail.slice(cm.index + cm[0].length).trim();
+    return (tail && !BACKTRACK_RE.test(tail)) ? tail : "";
+  }
+  return {
+    push(tok) {
+      if (!tok) return "";
+      let out = "";
+      for (let i = 0; i < tok.length; i++) {
+        const ch = tok[i]; cur += ch;
+        /* EARLY RELEASE — this is what makes streaming feel like typing.
+
+           A backtrack cue only ever appears at the START of a sentence, and what it retracts
+           is the sentence BEFORE it. The sentence currently being written is never itself
+           retracted. So once enough of it has arrived to rule out a cue in its opening, two
+           things become safe at once: the held previous sentence can go out, and every
+           further character of this sentence can go out the moment it arrives.
+
+           Without this the buffer held the entire current sentence no matter how long it ran —
+           measured at 213 characters of a 214-character sentence, i.e. the reader saw nothing
+           until the full stop. That is exactly the "arrives in one jump" the owner described.
+
+           `cleared` is per-sentence and resets at each boundary, so every new sentence is
+           re-checked from scratch. */
+        if (!cleared && cur.length >= BT_WINDOW && !BACKTRACK_RE.test(cur)) {
+          cleared = true;
+          out += pending; pending = "";   // nothing can retract it now
+          out += cur; cur = "";           // and this sentence can stream from here on
+          continue;
+        }
+        if (cleared) { out += ch; cur = ""; if (isEnd(ch) && isWs(tok[i + 1])) cleared = false; continue; }
+        if (isEnd(ch) && isWs(tok[i + 1])) {
+          const s = cur; cur = "";
+          /* DATA LOSS FIX. This used to be `else { pending = ""; }` — when a cue matched but
+             recover() could not confidently extract the corrected text, it DELETED the
+             previous sentence and kept nothing in its place.
+
+             That fires on ordinary prose. `لحظة` ("moment") is in the Arabic cue list, so a
+             sentence like "لحظة الغليان مهمة هنا." matched, recover() found no comma to split
+             on, returned "", and the sentence BEFORE it vanished from the answer. Measured:
+             a clean 78-character Arabic paragraph came out at 37 characters. A chained
+             correction ("مهلًا، هذا خطأ، …") recursed into itself and returned the empty
+             string, deleting the whole answer.
+
+             Now an unrecoverable match is treated as ordinary text. The worst case becomes a
+             visible "wait, that's wrong" that should have been trimmed — mildly untidy.
+             The old worst case was silently deleting a correct sentence from a student's
+             answer, which is not a trade this product can make. */
+          if (BACKTRACK_RE.test(s)) {
+            const rec = recover(s);
+            if (rec) { out += pending; pending = rec; }
+            else { out += pending; pending = s; }   // not confident → keep it, never drop it
+            continue;
+          }
+          out += pending; pending = s;
+        }
+      }
+      return out;
+    },
+    /* Same correction as push(): an unrecoverable match must NOT return "". flush() emits the
+       LAST thing the reader ever sees, so `rec || ""` silently truncated the end of an answer
+       whenever the closing sentence happened to contain a cue word like "لحظة". Falling back
+       to `rest` keeps the text; the worst case is an untrimmed self-correction, never a
+       missing conclusion. */
+    flush() { let rest = pending + cur; pending = ""; cur = ""; if (BACKTRACK_RE.test(rest)) { const rec = recover(rest); return rec || rest; } return rest; },
+    reset() { pending = ""; cur = ""; cleared = false; },
+  };
+}
+
 function sseFrame(content, reasoning) {
   const delta = {}; if (content) delta.content = content; if (reasoning) delta.reasoning = reasoning;
   if (!("content" in delta) && !("reasoning" in delta)) return "";
@@ -656,7 +1600,7 @@ function stripEngineAd(text) {
 // Stream the AI reply as SSE. Returns a Response immediately; upstream work runs
 // inside the stream so the 40s header timeout is satisfied and the body can run
 // for minutes. Tries Ollama first; on connect failure falls back to pollinations.
-function chatStreamResponse(messages, tier, think, vision) {
+function chatStreamResponse(messages, tier, think, vision, scrubBt) {
   const ac = new AbortController();
   const timeout = setTimeout(() => ac.abort(), UPSTREAM_TIMEOUT_MS);
   const ollamaMessages = vision ? buildVisionMessages(messages) : stripImages(messages);
@@ -668,8 +1612,36 @@ function chatStreamResponse(messages, tier, think, vision) {
   let closed = false;
   const body = new ReadableStream({
     async start(controller) {
-      const enc = (s) => { if (closed || !s) return; try { controller.enqueue(te.encode(s)); } catch (_) { closed = true; } };
-      const finish = () => { if (closed) return; closed = true; try { controller.enqueue(te.encode("data: [DONE]\n\n")); } catch (_) {} try { controller.close(); } catch (_) {} clearTimeout(timeout); };
+      const raw = (s) => { if (closed || !s) return; try { controller.enqueue(te.encode(s)); } catch (_) { closed = true; } };
+
+      /* The scrubber is applied HERE rather than at each of the ~20 emit sites. Every one of
+         them goes through sseFrame(), so intercepting the finished frame and re-framing the
+         scrubbed content covers all of them at once and cannot drift as engines are added.
+         The frame is our own construction three lines up, so parsing it back is exact.
+         Reasoning is passed through untouched — server.mjs scrubs content only. */
+      const bt = scrubBt ? makeBacktrackScrubber() : null;
+      const enc = !bt ? raw : (s) => {
+        if (closed || !s || !s.startsWith("data: ")) return raw(s);
+        let obj;
+        try { obj = JSON.parse(s.slice(6)); } catch (_) { return raw(s); }
+        const d = obj && obj.choices && obj.choices[0] && obj.choices[0].delta;
+        if (!d || typeof d.content !== "string" || !d.content) return raw(s);
+        const cleaned = bt.push(d.content);
+        // Held back this tick: emit nothing, unless the same frame also carried reasoning.
+        if (!cleaned) return d.reasoning ? raw(sseFrame("", d.reasoning)) : undefined;
+        return raw(sseFrame(cleaned, d.reasoning));
+      };
+
+      const finish = () => {
+        if (closed) return;
+        // Whatever the scrubber is still holding must go out BEFORE [DONE], or the answer
+        // loses its final sentence — the same bug flush() exists to prevent server-side.
+        if (bt) { try { const tail = bt.flush(); if (tail) raw(sseFrame(tail)); } catch (_) {} }
+        closed = true;
+        try { controller.enqueue(te.encode("data: [DONE]\n\n")); } catch (_) {}
+        try { controller.close(); } catch (_) {}
+        clearTimeout(timeout);
+      };
       try {
         let served = false;
         // VISION → strong CLOUD multimodal model FIRST (Gemini). On the deployed site there is no
@@ -930,9 +1902,10 @@ async function streamGeminiInto(enc, messages, signal) {
   for (const model of GEMINI_TEXT_MODELS) {
     const reqBody = JSON.stringify({ model, messages: msgs, stream: true });
     let upstream;
-    try { upstream = await fetch(GEMINI_OAI_URL, { method: "POST", headers: { "content-type": "application/json", "Authorization": "Bearer " + GEMINI_API_KEY }, body: reqBody, signal }); }
-    catch (e) { if (signal.aborted) return true; continue; }
-    if (!upstream.ok || !upstream.body) { try { upstream && upstream.body && upstream.body.cancel(); } catch (_) {} continue; }
+    const key = gemPick() || GEMINI_API_KEY;         // rotate the pool + cool a failing key (parity with server.mjs:2855)
+    try { upstream = await fetch(GEMINI_OAI_URL, { method: "POST", headers: { "content-type": "application/json", "Authorization": "Bearer " + key }, body: reqBody, signal }); }
+    catch (e) { if (signal.aborted) return true; gemMark(key, 0); continue; }
+    if (!upstream.ok || !upstream.body) { gemMark(key, upstream && upstream.status); try { upstream && upstream.body && upstream.body.cancel(); } catch (_) {} continue; }
     const reader = upstream.body.getReader(); let buffer = "", any = false;
     try {
       while (true) {
@@ -1027,12 +2000,16 @@ async function streamGeminiVisionInto(enc, messages, signal) {
     return { role: m.role, content: text };
   });
   if (!msgs.length) return false;
-  for (const model of GEMINI_TEXT_MODELS) {
+  for (const model of GEMINI_VISION_MODELS) {
     const reqBody = JSON.stringify({ model, messages: msgs, stream: true });
     let upstream;
-    try { upstream = await fetch(GEMINI_OAI_URL, { method: "POST", headers: { "content-type": "application/json", "Authorization": "Bearer " + GEMINI_API_KEY }, body: reqBody, signal }); }
-    catch (e) { if (signal.aborted) return true; continue; }
-    if (!upstream.ok || !upstream.body) { try { upstream && upstream.body && upstream.body.cancel(); } catch (_) {} continue; }
+    // ROTATE the key pool (server.mjs:2855 already does). This path was pinned to GEMINI_KEYS[0],
+    // so one 429'd key killed vision for everyone until its cooldown — and Firas Brain fires one
+    // vision call per scanned page, which saturates a single free-tier key in a dozen pages.
+    const key = gemPick() || GEMINI_API_KEY;
+    try { upstream = await fetch(GEMINI_OAI_URL, { method: "POST", headers: { "content-type": "application/json", "Authorization": "Bearer " + key }, body: reqBody, signal }); }
+    catch (e) { if (signal.aborted) return true; gemMark(key, 0); continue; }
+    if (!upstream.ok || !upstream.body) { gemMark(key, upstream && upstream.status); try { upstream && upstream.body && upstream.body.cancel(); } catch (_) {} continue; }
     const reader = upstream.body.getReader(); let buffer = "", any = false;
     try {
       while (true) {
@@ -1156,14 +2133,95 @@ function parseDuckDuckGo(html) {
 }
 
 /* ---------------- image quota helpers ---------------- */
-function serverDay(d) { d = d || new Date(); return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`; }
+/* The quota day is the USERS' calendar day, not the server's. This function read UTC
+   fields while server.mjs read the host's local time, so production rolled every counter
+   at 00:00 UTC = 03:00 in Baghdad, three hours after the app's own 429 notice promises
+   "يتجدّد تلقائيًا بعد منتصف الليل" — and self-hosting the same build behaved differently
+   again. Both backends now shift the instant by QUOTA_TZ_OFFSET_MINUTES (default 180 =
+   UTC+3, the Arabic user base) and read UTC fields off the shifted value, so the reset
+   happens at the users' midnight, at the same instant, wherever the process runs. */
+const QUOTA_TZ_OFFSET_MINUTES = (() => { const n = parseInt(env("QUOTA_TZ_OFFSET_MINUTES"), 10); return Number.isFinite(n) ? n : 180; })();
+function serverDay(d) {
+  const ms = (d instanceof Date ? d.getTime() : (typeof d === "number" ? d : Date.now())) + QUOTA_TZ_OFFSET_MINUTES * 60000;
+  const x = new Date(ms);
+  return `${x.getUTCFullYear()}-${String(x.getUTCMonth()+1).padStart(2,"0")}-${String(x.getUTCDate()).padStart(2,"0")}`;
+}
 // Today's charged cids for a user, as an object { cid: true }. Each cid is its own
 // child key so concurrent distinct-cid charges never clobber each other (no array
 // read-modify-write), and the day naturally "rolls over" since the path is dated.
-async function imgDayNode(userId) { return (await dbGet(`imgQuota/${userId}/${serverDay()}`)) || {}; }
+/* The daily image slot is derived from the IMAGE, never from a client-supplied id — see the
+   quota check in the /api/image handler. Mirrors server.mjs imgCacheKey(); Deno has no
+   node:crypto createHash, so this uses SubtleCrypto and is therefore async. */
+async function imgSlotKey(prompt, w, h, seed) {
+  const data = new TextEncoder().encode(String(prompt) + "|" + w + "x" + h + "|" + (seed || ""));
+  const buf = await crypto.subtle.digest("SHA-1", data);
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+/* ── cid REUSE, CLOSED (parity with server.mjs isRepeatCharge) ───────────────────────
+   The member and guest quota checks both asked "have I seen this cid before?" against a
+   bare client string with no expiry and no tie to the request body. So one charged turn
+   bought the whole day: send cid="X" once, then send every later question that day with
+   cid="X" and `already` stayed true, skipping BOTH the limit test and the increment while
+   still streaming a full answer.
+
+   A real retry is the same cid AND the same question, seconds apart. That is what this
+   matches. An agent MISSION is the exception the design intends — its steps legitimately
+   share one id with different bodies — so for "agent" the id alone identifies it, bounded
+   by a mission-length window instead of a retry-length one.
+   Ported from server.mjs:714-739; Deno has no node:crypto, hence SubtleCrypto + async. */
+const RETRY_WINDOW_MS = 120000;        // a real retry happens within seconds
+const MISSION_WINDOW_MS = 45 * 60000;  // one agent mission
+async function reqHash(cid, messages) {
+  let lastUser = "";
+  if (Array.isArray(messages)) {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i] && messages[i].role === "user") { lastUser = String(messages[i].content || ""); break; }
+    }
+  }
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cid + " " + lastUser));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
+/** True when this is a genuine retry of an already-charged request. Prunes as it goes. */
+async function isRepeatCharge(bucket, product, cid, messages) {
+  if (!cid) return false;
+  const now = Date.now();
+  const win = product === "agent" ? MISSION_WINDOW_MS : RETRY_WINDOW_MS;
+  const seen = (bucket.seen && typeof bucket.seen === "object") ? bucket.seen : {};
+  for (const k of Object.keys(seen)) { if (!(now - (seen[k] || 0) < MISSION_WINDOW_MS)) delete seen[k]; }
+  const h = await reqHash(cid, messages);
+  // agent: the mission id alone identifies it. Everything else must match the body too.
+  const key = product + "_" + (product === "agent" ? cid : h);
+  const hit = seen[key];
+  if (hit && now - hit < win) { bucket.seen = seen; return true; }
+  seen[key] = now;
+  const keys = Object.keys(seen);
+  if (keys.length > 400) { keys.sort((a, b) => seen[a] - seen[b]); for (let i = 0; i < keys.length - 400; i++) delete seen[keys[i]]; }
+  bucket.seen = seen;
+  return false;
+}
+/* VOICE DAILY METER — parity with server.mjs chargeVoice(). Both voice endpoints spend the
+   shared GEMINI_KEYS pool and had only a per-minute rateLimited() bucket in front of them.
+   On the edge that bucket is an in-isolate Map, so a burst spread across isolates each saw
+   an empty one: it was never a per-user cap. This charges a real daily unit. */
+async function chargeVoiceEdge(c) {
+  if (!c) return null;
+  if (c.isGuest) return await guestCharge(c.id, "voice", null, null);
+  const u = c.user;
+  if (!u) return null;
+  const limit = limitsFor(planOf(u)).voice;
+  if (!(limit >= 0)) return null;
+  const rolled = quotaRollDay(u);
+  if ((u.quota.voice || 0) >= limit) {
+    return { error: "daily quota reached", quota: { product: "voice", used: u.quota.voice || 0, limit, plan: planOf(u) } };
+  }
+  u.quota.voice = (u.quota.voice || 0) + 1;
+  try { await saveQuota(u, "voice", null, rolled); } catch (_) {}
+  return null;
+}
+async function imgDayNode(userId) { return (await dbGet(`imgQuota/${dbKey(userId)}/${serverDay()}`)) || {}; }
 // Today's charged Max-tier request ids for a user, as { cid: true } — same per-child
 // scheme as images so concurrent distinct charges never clobber each other.
-async function maxDayNode(userId) { return (await dbGet(`maxQuota/${userId}/${serverDay()}`)) || {}; }
+async function maxDayNode(userId) { return (await dbGet(`maxQuota/${dbKey(userId)}/${serverDay()}`)) || {}; }
 
 // Generate an image via Puter's driver API using the DEVELOPER's auth token (server-
 // side → end users never sign in). Real GPT-Image/Gemini quality, free. {bytes,mime}|null.
@@ -1412,11 +2470,26 @@ export default async (request, context) => {
 
     if (path === "/api/chat") {
       if (method !== "POST") return new Response("method not allowed", { status: 405 });
-      const user = await currentUser(context);
-      if (!user) return json({ error: "authentication required" }, 401);
-      // Per-user rate limit on the most expensive endpoint (burns upstream AI credits).
-      // Generous cap so the Firas Agent multi-step pipeline still flows normally.
-      if (rateLimited("chat:" + user.id, 120, 60000)) return json({ error: "too many requests, please slow down" }, 429);
+      // Member OR guest trial (guests get a much smaller daily allowance, no memory).
+      let caller = await callerOf(context);
+      /* INTERNAL CHANNEL for the background agent runner. It has no cookie — it is a Node
+         function talking to us server-to-server — so it presents the deploy secret and the
+         id of the user whose mission it is executing. Everything downstream then behaves
+         exactly as for that user, including quota charging: a background mission must cost
+         the same as a foreground one, or it becomes the cheapest way to spend the pool.
+         Gated on a constant-time-ish equality against a secret that is absent in dev, so
+         this path simply does not exist unless it is deliberately configured. */
+      if (!caller.user && INTERNAL_JOB_SECRET && request.headers.get("x-firas-internal") === INTERNAL_JOB_SECRET) {
+        const jobUser = await getUserById(String(request.headers.get("x-firas-job-user") || ""));
+        if (jobUser) caller = { user: jobUser, id: jobUser.id, isGuest: false };
+      }
+      const user = caller.user || null;
+      const guestId = caller.isGuest ? caller.id : "";
+      if (!user && !guestId) return json({ error: "authentication required" }, 401);
+      // Per-caller rate limit on the most expensive endpoint (burns upstream AI credits).
+      // Generous cap so the Firas Agent multi-step pipeline still flows normally;
+      // guests are capped much tighter since the identity is free to mint.
+      if (rateLimited("chat:" + caller.id, guestId ? 30 : 120, 60000)) return json({ error: "too many requests, please slow down" }, 429);
       let payload; try { payload = await request.json(); } catch { return json({ error: "invalid JSON body" }, 400); }
       const messages = Array.isArray(payload.messages) ? payload.messages : [];
       const tier = TIERS[payload.tier] ? payload.tier : "pro";
@@ -1424,10 +2497,23 @@ export default async (request, context) => {
       // Inject persistent user memory so every reply is personalized — but NOT for
       // internal agent calls (nomem=true: file/PDF generation, prompt-enhance), so
       // personal facts never leak into generated documents. Memory is for CHAT only.
-      const memBlk = payload.nomem ? "" : memoryBlock(user);
+      // Guests have no stored memory (nothing is kept for them) → never inject.
+      const memBlk = (payload.nomem || !user) ? "" : memoryBlock(user);
       if (memBlk) { const si = messages.findIndex((m) => m && m.role === "system"); if (si >= 0) messages[si] = { role: "system", content: String(messages[si].content || "") + "\n\n" + memBlk }; else messages.unshift({ role: "system", content: memBlk }); }
-      // ADMIN KNOWLEDGE BASE: silently ground the answer in the admin's uploaded books (topic match).
-      if (!payload.nomem) {
+      // KNOWLEDGE BASE: silently ground the answer in the bundled local corpus + the admin's uploaded books (topic match).
+      // Firas Brain turns are excluded: they carry their OWN cited sources block, and kbContext's
+      // preamble ("NEVER mention, quote, cite, or hint that this material exists") is the exact
+      // opposite instruction — plus it would inject passages the user never uploaded. Mirrors server.mjs.
+      /* KB INJECTION DISABLED FOR PLAIN CHAT — mirrors server.mjs.
+         The retrieved chunks arrived headed "REFERENCE MATERIAL (authoritative — use it to
+         answer accurately and completely)", which made the model treat four matched snippets
+         as the LIMIT of its knowledge: "اعطني 10 تكاملات صعبة" pulled a few basic-integral
+         entries and the answer became "my reference material contains only basic integrals".
+         A corpus should raise the floor on facts it holds, never cap everything else.
+         Set KB_IN_CHAT=1 to restore. Firas Brain is unaffected — its contract is to answer
+         from the user's own uploaded sources and cite them. */
+      const KB_IN_CHAT = env("KB_IN_CHAT") === "1";
+      if (KB_IN_CHAT && !payload.nomem && payload.product !== "brain") {
         try {
           let li = -1;
           for (let i = messages.length - 1; i >= 0; i--) if (messages[i] && messages[i].role === "user") { li = i; break; }
@@ -1441,7 +2527,7 @@ export default async (request, context) => {
       const think = vision ? false : !!payload.think;
       // Capped tier (Max): enforce the per-user daily limit and charge one slot per
       // distinct request id (idempotent on retry of the same cid).
-      if (TIERS[tier] && TIERS[tier].capped) {
+      if (user && TIERS[tier] && TIERS[tier].capped) {
         const day = serverDay();
         const node = await maxDayNode(user.id);
         let cid = String(payload.cid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
@@ -1449,9 +2535,77 @@ export default async (request, context) => {
         if (isNew && Object.keys(node).length >= MAX_DAILY_LIMIT) {
           return json({ error: "daily Max limit reached", limit: MAX_DAILY_LIMIT, used: Object.keys(node).length, remaining: 0 }, 429);
         }
-        if (isNew) { if (!cid) cid = crypto.randomUUID(); try { await dbPut(`maxQuota/${user.id}/${day}/${cid}`, true); } catch (_) {} }
+        if (isNew) { if (!cid) cid = crypto.randomUUID(); try { await dbPut(`maxQuota/${dbKey(user.id)}/${day}/${dbKey(cid)}`, true); } catch (_) {} }
       }
-      return chatStreamResponse(messages, tier, think, vision);
+      /* ── QUOTA BYPASS, CLOSED ───────────────────────────────────────────────────────
+         `nomem` is a plain JSON boolean the browser sends. Both charging branches below
+         are gated on `!payload.nomem`, so until now
+             POST /api/chat {"messages":[…],"tier":"max","nomem":true}
+         typed into devtools streamed a full completion and charged nothing — on any plan,
+         and on a free guest cookie. The free tier's 100/day, every redeemed gold/diamond
+         entitlement and the guest allowance all evaporated, and `tier:"max"` spends real
+         paid Anthropic/OpenRouter credit. The only remaining brake was rateLimited(), which
+         on the edge is a per-ISOLATE Map and therefore not a per-user cap at all.
+
+         server.mjs closed this by giving internal calls their own generous-but-finite
+         budget; the fix was never ported here. It is ported now, byte-for-byte in intent:
+         real helper traffic (auto-title, file pipeline, page OCR, agent steps) never comes
+         close to 800/day, but an attacker looping free completions hits a wall. */
+      if (payload.nomem && guestId) {
+        const denied = await guestChargeWithReq(request, context, guestId, "internal", payload.cid, messages);
+        if (denied) return json(denied, 429);
+      }
+      if (payload.nomem && user) {
+        const ilimit = limitsFor(planOf(user)).internal;
+        if (ilimit >= 0) {
+          const rolled = quotaRollDay(user);
+          const q = user.quota;
+          if ((q.internal || 0) >= ilimit) {
+            return json({ error: "daily quota reached", quota: { product: "internal", used: q.internal || 0, limit: ilimit, plan: planOf(user) } }, 429);
+          }
+          q.internal = (q.internal || 0) + 1;
+          try { await saveQuota(user, "internal", null, rolled); } catch (_) {}
+        }
+      }
+      // PER-PRODUCT DAILY QUOTA (Firas AI / Code / Agent). nomem=true = internal
+      // helper call (auto-title, file pipeline, agent steps) → charged above, not here.
+      if (!payload.nomem && guestId) {
+        // GUEST trial quota — same idempotency rules, much smaller allowance.
+        const product = (payload.product === "code" || payload.product === "agent") ? payload.product : "ai";
+        const denied = await guestChargeWithReq(request, context, guestId, product, payload.cid, messages);
+        if (denied) return json(denied, 429);
+      }
+      if (!payload.nomem && user) {
+        // "brain" is member-only, so it is deliberately NOT added to the guest coercion above —
+        // a guest sending product:"brain" correctly falls through to the "ai" bucket.
+        const product = (payload.product === "code" || payload.product === "agent" || payload.product === "brain") ? payload.product : "ai";
+        const qlimit = limitsFor(planOf(user))[product];
+        if (qlimit >= 0) {
+          const rolled = quotaRollDay(user);
+          const q = user.quota;
+          const qcid = String(payload.cid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+          /* `already` used to be `q.last[product] === qcid` — a bare client string with no
+             expiry and no tie to the question asked, so reusing one cid bought the whole
+             day. It is now a real retry test: same cid AND same last user message, inside a
+             two-minute window (agent missions keep the id-only rule, bounded to 45 min). */
+          const already = await isRepeatCharge(q, product, qcid, messages);
+          if (!already && (q[product] || 0) >= qlimit) return json({ error: "daily quota reached", quota: { product, used: q[product] || 0, limit: qlimit, plan: planOf(user) } }, 429);
+          if (!already) {
+            q[product] = (q[product] || 0) + 1;
+            if (product === "agent") agentCidAdd(q, qcid);
+            else if (qcid) q.last[product] = qcid;
+            // Child-key writes only — a full saveUser() here reverted whatever
+            // /api/memory/learn had written since it read its snapshot (and vice versa).
+            // `seen` rides along so the retry window survives across isolates.
+            try { await saveQuota(user, product, qcid, rolled); } catch (_) {}
+            try { await dbPut(`users/${dbKey(user.id)}/quota/seen`, q.seen || {}); } catch (_) {}
+          }
+        }
+      }
+      // Same gate as server.mjs (res._scrubBt): scrub the plain Firas AI chat only, never
+      // Firas Code / Firas Agent internal calls (they send nomem:true) — mutating code output
+      // would be far worse than leaving a stray "wait, that is wrong" in prose.
+      return chatStreamResponse(messages, tier, think, vision, !payload.nomem && !payload.agent);
     }
 
     /* ---- auth ---- */
@@ -1467,15 +2621,26 @@ export default async (request, context) => {
       if (password.length > 200) return json({ error: "password is too long" }, 400);
       if (await getUserByEmail(email)) return json({ error: "email already registered" }, 409);
       // Don't create the account yet — stash a PENDING signup (Firebase) + email a verify LINK.
-      const ek = emailKey(email);
+      const ek = dbKey(emailKey(email));
       const prev = await dbGet("pending/" + ek); // re-signup before verifying → clear old indexes
       if (prev) await delPending(ek, prev);
+      /* RECLAIM EXPIRED PENDINGS. Each signup writes three permanent RTDB nodes — pending/,
+         pendingTok/ and pendingPid/ — carrying a name, an email and a full password hash.
+         They are deleted only on successful verification or on a re-signup with the SAME
+         address, so a signup that is never verified is never reclaimed. server.mjs sweeps
+         these on a timer (_pendingSweep); an edge isolate has no timer to sweep with, and
+         nothing here did it, so unauthenticated requests grew the shared database without
+         bound until dbPut began failing for every product.
+         Sweeping on the signup path is the natural place: it is the only request that
+         creates these records, so the cleanup rate tracks the creation rate exactly.
+         Bounded per request so one signup can never turn into a long scan. */
+      try { await sweepExpiredPendings(40); } catch (_) {}
       const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
       const pid = crypto.randomUUID().replace(/-/g, "");
       const rec = { name, email, passHash: await hashPassword(password), token, pid, exp: Date.now() + VERIFY_TTL_MS, verified: false, userId: null };
       await dbPut("pending/" + ek, rec);
-      await dbPut("pendingTok/" + token, ek);
-      await dbPut("pendingPid/" + pid, ek);
+      await dbPut("pendingTok/" + dbKey(token), ek);
+      await dbPut("pendingPid/" + dbKey(pid), ek);
       const link = appBase(request) + "/?verify=" + token;
       const sent = await sendEmail(email, "تأكيد حسابك — Firas AI", verifyEmailHtml(link));
       if (!sent && env("DEV_LOG_LINKS")) console.log("[firas] signup verify link for " + email + " -> " + link + " (not delivered)");   // token link: dev-only, never in prod logs
@@ -1494,15 +2659,15 @@ export default async (request, context) => {
         return json({ error: "This account predates the new sign-in. Please reset your password, or sign in with Google." }, 401);
       }
       if (!user || !user.passHash || !(await verifyPassword(password, user.passHash))) return json({ error: "invalid email or password" }, 401);
-      await attachSession(context, user.id, request);
+      await attachSession(context, user.id, request, user.sessVer || 0);
       return json({ user: publicUser(user) });
     }
 
     if (path === "/api/auth/verify-signup" && method === "POST") {
       if (rateLimited("verify:" + ipOf(request, context), 60, 60000)) return json({ error: "too many requests" }, 429);
       let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON" }, 400); }
-      const token = String(b.token || "").trim(); if (!token) return json({ error: "رابط غير صالح" }, 400);
-      const ek = await dbGet("pendingTok/" + token);
+      const token = dbKey(String(b.token || "").trim()); if (!token) return json({ error: "رابط غير صالح" }, 400); // raw token → db path: sanitize before ANY db call
+      const ek = dbKey(await dbGet("pendingTok/" + token));
       const rec = ek ? await dbGet("pending/" + ek) : null;
       if (!rec || Date.now() > rec.exp) { if (ek) await delPending(ek, rec); return json({ error: "الرابط غير صالح أو منتهي — أعد التسجيل" }, 400); }
       let user;
@@ -1521,20 +2686,20 @@ export default async (request, context) => {
         if (context && typeof context.waitUntil === "function") context.waitUntil(_welcome); else await _welcome;
       }
       if (!user) return json({ error: "تعذّر التأكيد — أعد التسجيل" }, 400);
-      await attachSession(context, user.id, request);
+      await attachSession(context, user.id, request, user.sessVer || 0);
       return json({ ok: true, user: publicUser(user) });
     }
     if (path === "/api/auth/verify-status" && method === "POST") {
       if (rateLimited("vstatus:" + ipOf(request, context), 120, 60000)) return json({ error: "too many requests" }, 429);
       let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON" }, 400); }
-      const pid = String(b.pid || "").trim(); if (!pid) return json({ error: "missing pid" }, 400);
-      const ek = await dbGet("pendingPid/" + pid);
+      const pid = dbKey(String(b.pid || "").trim()); if (!pid) return json({ error: "missing pid" }, 400); // raw pid → db path: sanitize first
+      const ek = dbKey(await dbGet("pendingPid/" + pid));
       const rec = ek ? await dbGet("pending/" + ek) : null;
       if (!rec) return json({ verified: false, gone: true });
       if (Date.now() > rec.exp) { await delPending(ek, rec); return json({ verified: false, expired: true }); }
       if (rec.verified && rec.userId) {
         const user = await getUserById(rec.userId);
-        if (user) { await attachSession(context, user.id, request); await delPending(ek, rec); return json({ verified: true, user: publicUser(user) }); }
+        if (user) { await attachSession(context, user.id, request, user.sessVer || 0); await delPending(ek, rec); return json({ verified: true, user: publicUser(user) }); }
       }
       return json({ verified: false });
     }
@@ -1542,14 +2707,15 @@ export default async (request, context) => {
       if (rateLimited("resend:" + ipOf(request, context), 8, 60000)) return json({ error: "too many requests" }, 429);
       let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON" }, 400); }
       const email = String(b.email || "").trim().toLowerCase();
-      const ek = emailKey(email);
+      if (!EMAIL_RE.test(email) || email.length > 200) return json({ ok: true }); // anti-enumeration: same reply, no db lookup
+      const ek = dbKey(emailKey(email));
       const rec = await dbGet("pending/" + ek);
       if (rec && !rec.verified) {
-        if (rec.token) { try { await dbDelete("pendingTok/" + rec.token); } catch (_) {} }
+        if (dbKey(rec.token)) { try { await dbDelete("pendingTok/" + dbKey(rec.token)); } catch (_) {} }
         const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
         rec.token = token; rec.exp = Date.now() + VERIFY_TTL_MS;
         await dbPut("pending/" + ek, rec);
-        await dbPut("pendingTok/" + token, ek);
+        await dbPut("pendingTok/" + dbKey(token), ek);
         const link = appBase(request) + "/?verify=" + token;
         const sent = await sendEmail(email, "تأكيد حسابك — Firas AI", verifyEmailHtml(link));
         if (!sent && env("DEV_LOG_LINKS")) console.log("[firas] (resend) verify link for " + email + " -> " + link);
@@ -1583,8 +2749,12 @@ export default async (request, context) => {
       if (!user || !user.reset || !user.reset.hash || Date.now() > user.reset.exp || user.reset.hash !== await sha256hex(token)) return json({ error: "invalid or expired link" }, 400);
       user.passHash = await hashPassword(password);
       delete user.reset;
+      /* A reset exists to lock out whoever had access. Re-issuing an identical cookie made
+         it decorative — a stolen copy kept working. Bump, persist, THEN hand this browser a
+         cookie carrying the new version; every other copy stops verifying. */
+      user.sessVer = (user.sessVer || 0) + 1;
       await saveUser(user);
-      await attachSession(context, user.id, request);
+      await attachSession(context, user.id, request, user.sessVer);
       return json({ ok: true, user: publicUser(user) });
     }
 
@@ -1613,8 +2783,17 @@ export default async (request, context) => {
       if (!(await verifyPassword(current, user.passHash))) return json({ error: "كلمة المرور غير صحيحة" }, 403);
       if (email === user.email) return json({ error: "هذا هو بريدك الحالي" }, 400);
       if (await getUserByEmail(email)) return json({ error: "هذا البريد مستخدم بالفعل" }, 409);
-      const oldKey = emailKey(user.email);
+      const oldKey = dbKey(emailKey(user.email));
       user.email = email;
+      /* ACCOUNT-TAKEOVER FIX — mirrors server.mjs handleChangeEmail. This endpoint proves
+         the CALLER's password and that the address is free; it cannot prove the caller owns
+         the address. The Firebase link path below then trusts "an email in the DB is owned
+         by that person", so an attacker could claim victim@gmail.com here and receive the
+         victim's session the next time they tapped Continue with Google. `emailUnverified`
+         marks an address never proven to this backend, and that path refuses to auto-link
+         into one. Absent on existing records, so nothing about current sign-ins changes. */
+      user.emailUnverified = true;
+      delete user.emailVerified;
       await saveUser(user);
       try { await dbDelete("emailIndex/" + oldKey); } catch (_) {}
       return json({ ok: true, user: publicUser(user) });
@@ -1628,12 +2807,18 @@ export default async (request, context) => {
       if (user.passHash && !(await verifyPassword(current, user.passHash))) return json({ error: "كلمة المرور غير صحيحة" }, 403);
       // Purge ALL of the user's data (chat bodies + the chatMeta list index + usage quotas)
       // so "delete my account" actually erases everything (privacy / data-retention).
-      try { await dbDelete("chats/" + user.id); } catch (_) {}
-      try { await dbDelete("chatMeta/" + user.id); } catch (_) {}
-      try { await dbDelete("imgQuota/" + user.id); } catch (_) {}
-      try { await dbDelete("maxQuota/" + user.id); } catch (_) {}
-      try { await dbDelete("emailIndex/" + emailKey(user.email)); } catch (_) {}
-      try { await dbDelete("users/" + user.id); } catch (_) {}
+      const uk = dbKey(user.id);
+      try { await dbDelete("chats/" + uk); } catch (_) {}
+      try { await dbDelete("chatMeta/" + uk); } catch (_) {}
+      try { await dbDelete("imgQuota/" + uk); } catch (_) {}
+      try { await dbDelete("maxQuota/" + uk); } catch (_) {}
+      // Firas Brain lives in its own heavy/light pair of subtrees — neither is under users/<id>,
+      // so deleting the user record alone would leave the whole document library behind.
+      try { await dbDelete("brainDoc/" + uk); } catch (_) {}
+      try { await dbDelete("brainMeta/" + uk); } catch (_) {}
+      brainCacheBust(user.id);
+      try { await dbDelete("emailIndex/" + dbKey(emailKey(user.email))); } catch (_) {}
+      try { await dbDelete("users/" + uk); } catch (_) {}
       context.cookies.delete({ name: COOKIE_NAME, path: "/" });
       return json({ ok: true });
     }
@@ -1647,6 +2832,21 @@ export default async (request, context) => {
       const user = await currentUser(context);
       if (!user) return json({ error: "not authenticated" }, 401);
       return json({ user: publicUser(user) });
+    }
+
+    /* ---- Guest trial (no signup). Idempotent: an existing valid guest cookie is
+       reused so a reload keeps the same daily quota. ---- */
+    if (path === "/api/guest" && method === "POST") {
+      const signed = await currentUser(context);
+      if (signed) return json({ guest: false, user: publicUser(signed) });
+      if (rateLimited("guest:" + ipOf(request, context), 20, 60000)) return json({ error: "too many requests" }, 429);
+      let g = await currentGuest(context);
+      if (!g) { g = { id: newGuestId(), guest: true }; await attachGuest(context, g.id, request); }
+      return json({ guest: true, user: { id: g.id, name: "", email: "", guest: true, admin: false, sub: await guestSubInfo(g.id) } });
+    }
+    if (path === "/api/guest" && method === "DELETE") {
+      context.cookies.delete({ name: GUEST_COOKIE, path: "/" });
+      return json({ ok: true });
     }
 
     if (path === "/api/auth/firebase" && method === "POST") {
@@ -1664,13 +2864,18 @@ export default async (request, context) => {
         // an unverified Firebase email/password token can be minted for any victim's address
         // (including a social/admin account) via the public web apiKey, so never let it link in.
         if (!verified) return json({ error: "An account with this email already exists. Please sign in with your password, or verify your email first." }, 409);
+        /* …and a verified token alone is still not enough: the guard above assumes the
+           account holding this email actually owns it, and /api/auth/change-email lets any
+           user claim any unused address without proof. Refusing to auto-link into an
+           unproven address is what stops a squatted email handing over the owner's session. */
+        if (user.emailUnverified) return json({ error: "An account with this email already exists but the address was never confirmed. Please sign in with your password." }, 409);
       } else {
         // Never let an UNVERIFIED token CREATE an admin-privileged account.
         if (!verified && isAdmin({ email })) return json({ error: "email verification required for this account" }, 403);
         user = { id: crypto.randomUUID(), name, email, provider: "firebase", createdAt: new Date().toISOString() };
         await saveUser(user);
       }
-      await attachSession(context, user.id, request);
+      await attachSession(context, user.id, request, user.sessVer || 0);
       return json({ user: publicUser(user) });
     }
 
@@ -1679,18 +2884,18 @@ export default async (request, context) => {
       const user = await currentUser(context);
       if (!user) return json({ error: "not authenticated" }, 401);
       if (method === "GET") {
-        const meta = (await dbGet("chatMeta/" + user.id)) || {};
-        const list = Object.keys(meta).map((id) => ({ id, title: meta[id].title, updatedAt: meta[id].updatedAt, pinned: !!meta[id].pinned, agent: !!meta[id].agent, codeProj: !!meta[id].codeProj })).sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+        const meta = (await dbGet("chatMeta/" + dbKey(user.id))) || {};
+        const list = Object.keys(meta).map((id) => ({ id, title: meta[id].title, updatedAt: meta[id].updatedAt, pinned: !!meta[id].pinned, agent: !!meta[id].agent, codeProj: !!meta[id].codeProj, brainNb: !!meta[id].brainNb })).sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
         return json(list);
       }
       if (method === "POST") {
         let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON body" }, 400); }
-        const meta = (await dbGet("chatMeta/" + user.id)) || {};
+        const meta = (await dbGet("chatMeta/" + dbKey(user.id))) || {};
         if (Object.keys(meta).length >= MAX_CHATS_PER_USER) return json({ error: "chat limit reached; delete some conversations" }, 409);
         const now = new Date().toISOString();
-        const chat = { id: crypto.randomUUID(), userId: user.id, title: String(b.title ?? "New chat").slice(0, 200) || "New chat", messages: sanitizeMessages(b.messages), pinned: !!b.pinned, agent: !!b.agent, codeProj: !!b.codeProj, createdAt: now, updatedAt: now };
-        await dbPut(`chats/${user.id}/${chat.id}`, chat);
-        await dbPut(`chatMeta/${user.id}/${chat.id}`, { title: chat.title, updatedAt: now, pinned: chat.pinned, agent: chat.agent, codeProj: !!chat.codeProj });
+        const chat = { id: crypto.randomUUID(), userId: user.id, title: String(b.title ?? "New chat").slice(0, 200) || "New chat", messages: sanitizeMessages(b.messages), pinned: !!b.pinned, agent: !!b.agent, codeProj: !!b.codeProj, brainNb: !!b.brainNb, createdAt: now, updatedAt: now };
+        await dbPut(`chats/${dbKey(user.id)}/${dbKey(chat.id)}`, chat);
+        await dbPut(`chatMeta/${dbKey(user.id)}/${dbKey(chat.id)}`, { title: chat.title, updatedAt: now, pinned: chat.pinned, agent: chat.agent, codeProj: !!chat.codeProj, brainNb: !!chat.brainNb });
         return json({ id: chat.id, title: chat.title, createdAt: now, updatedAt: now }, 201);
       }
       return new Response("method not allowed", { status: 405 });
@@ -1699,28 +2904,33 @@ export default async (request, context) => {
     if (chatMatch) {
       const user = await currentUser(context);
       if (!user) return json({ error: "not authenticated" }, 401);
-      const id = decodeURIComponent(chatMatch[1]);
+      // The route pattern only forbids a literal "/", so "%2F..%2F.." decoded straight
+      // into the db path and escaped this user's chats subtree (DELETE would have hit
+      // any node, users included). dbKey() makes the id a single key or nothing.
+      const id = dbKey(decodeURIComponent(chatMatch[1]));
+      if (!id) return json({ error: "not found" }, 404);
+      const uk = dbKey(user.id);
       if (method === "GET") {
-        const chat = await dbGet(`chats/${user.id}/${id}`);
+        const chat = await dbGet(`chats/${uk}/${id}`);
         if (!chat) return json({ error: "not found" }, 404);
         return json({ id: chat.id, title: chat.title, messages: chat.messages || [] });
       }
       if (method === "PUT") {
         let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON body" }, 400); }
-        const chat = await dbGet(`chats/${user.id}/${id}`);
+        const chat = await dbGet(`chats/${uk}/${id}`);
         if (!chat) return json({ error: "not found" }, 404);
         let touched = false;
         if (typeof b.title === "string") { chat.title = b.title.slice(0, 200); touched = true; }
         if (Array.isArray(b.messages)) { chat.messages = sanitizeMessages(b.messages); touched = true; }
         if (typeof b.pinned === "boolean") chat.pinned = b.pinned; // pin toggle alone must not bump updatedAt
         if (touched) chat.updatedAt = new Date().toISOString();
-        await dbPut(`chats/${user.id}/${id}`, chat);
-        await dbPut(`chatMeta/${user.id}/${id}`, { title: chat.title, updatedAt: chat.updatedAt, pinned: !!chat.pinned, agent: !!chat.agent, codeProj: !!chat.codeProj });
+        await dbPut(`chats/${uk}/${id}`, chat);
+        await dbPut(`chatMeta/${uk}/${id}`, { title: chat.title, updatedAt: chat.updatedAt, pinned: !!chat.pinned, agent: !!chat.agent, codeProj: !!chat.codeProj, brainNb: !!chat.brainNb });
         return json({ ok: true });
       }
       if (method === "DELETE") {
-        await dbDelete(`chats/${user.id}/${id}`);
-        await dbDelete(`chatMeta/${user.id}/${id}`);
+        await dbDelete(`chats/${uk}/${id}`);
+        await dbDelete(`chatMeta/${uk}/${id}`);
         return json({ ok: true });
       }
       return new Response("method not allowed", { status: 405 });
@@ -1729,7 +2939,10 @@ export default async (request, context) => {
     /* ---- image quota (read-only pre-check) ---- */
     if (path === "/api/image/quota" && method === "POST") {
       const user = await currentUser(context);
-      if (!user) return json({ ok: false, error: "auth required" }, 401);
+      if (!user) {
+        if (await currentGuest(context)) return json({ ok: false, error: "signin_required", feature: "image" }, 403);
+        return json({ ok: false, error: "auth required" }, 401);
+      }
       const used = Object.keys(await imgDayNode(user.id)).length;
       if (used >= IMAGE_DAILY_LIMIT) return json({ ok: false, limit: IMAGE_DAILY_LIMIT, used, remaining: 0 }, 429);
       return json({ ok: true, limit: IMAGE_DAILY_LIMIT, used, remaining: IMAGE_DAILY_LIMIT - used });
@@ -1744,7 +2957,7 @@ export default async (request, context) => {
       const user = await currentUser(context); if (!user) return json({ error: "authentication required" }, 401);
       const i = url.searchParams.get("i"); const mem = userMemory(user);
       if (i != null && i !== "") { const n = parseInt(i, 10); if (n >= 0 && n < mem.length) mem.splice(n, 1); } else user.memory = [];
-      try { await saveUser(user); } catch (_) {}
+      try { await saveUserChild(user, "memory", user.memory); } catch (_) {} // never PUT the whole record: it would revert a concurrent quota/sub write
       return json({ ok: true, memory: userMemory(user) });
     }
     if (path === "/api/memory/learn" && method === "POST") {
@@ -1765,13 +2978,178 @@ export default async (request, context) => {
       return json({ ok: true, limit: 0, used: 0, remaining: -1 });
     }
 
-    /* ---- site updates / announcements (admin publishes, all users see) ---- */
-    if (path === "/api/announcements" && method === "GET") {
+    /* ---- Subscriptions / redeem codes ---- */
+    if (path === "/api/redeem" && method === "POST") {
       const user = await currentUser(context);
       if (!user) return json({ error: "authentication required" }, 401);
+      if (rateLimited("redeem:" + user.id, 8, 60000) || rateLimited("redeemip:" + ipOf(request, context), 20, 60000)) return json({ error: "too many attempts, please wait a minute" }, 429);
+      let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON body" }, 400); }
+      const codeStr = normCode(b && b.code);
+      if (!codeStr || codeStr.length < 5) return json({ error: "invalid code" }, 400);
+      const c = await edgeFindCode(codeStr);
+      if (!c) return json({ error: "code not found" }, 404);
+      const st = codeStatus(c);
+      if (st === "disabled") return json({ error: "code disabled" }, 403);
+      if (st === "expired") return json({ error: "code expired" }, 410);
+      if (st === "used-up") return json({ error: "code fully used" }, 409);
+      if (c.boundUserId && c.boundUserId !== user.id) return json({ error: "code not for this account" }, 403);
+      if (codeClaimedBy(c, user.id)) return json({ error: "you already redeemed this code" }, 409);
+      const ck = dbKey(c.id), uk = dbKey(user.id);
+      if (!ck || !uk) return json({ error: "invalid code" }, 400);
+      const now = Date.now();
+      /* CLAIM FIRST, VERIFY SECOND. The old flow validated codeStatus, incremented
+         c.uses and PUT the whole code record, so two people tapping Activate on the
+         same maxUses:1 code inside that window both read uses:0 and both wrote uses:1
+         — two accounts got the plan and the loser's usedBy row was dropped too. RTDB's
+         REST API has no transaction, so instead: write our own child key, re-read the
+         claims node, and keep only the earliest maxUses claimants (ties broken by id,
+         so every racer computes the SAME winner set); a loser releases its claim.
+         RESIDUAL RACE, honestly: the write and the read-back are still two round trips,
+         so if two claims are written and both re-reads are served before either write is
+         visible, both callers see only themselves and both win. The window shrinks from
+         "the whole handler" to "one read-back", but this is NOT atomic — only a real
+         transaction or a security rule on codes/<id>/claims would close it. */
+      try { await dbPut(`codes/${ck}/claims/${uk}`, { userId: user.id, email: user.email, at: now }); }
+      catch (_) { return json({ error: "could not redeem, please try again" }, 503); }
+      let claimNode = {};
+      try { claimNode = (await dbGet(`codes/${ck}/claims`)) || {}; } catch (_) { claimNode = {}; }
+      const slots = Math.max(0, (Number(c.maxUses) || 1) - codeLegacyUses(c)); // uses/usedBy = redemptions made before claims existed
+      const winners = Object.keys(claimNode)
+        .sort((a, b) => (((claimNode[a] || {}).at || 0) - ((claimNode[b] || {}).at || 0)) || (a < b ? -1 : a > b ? 1 : 0))
+        .slice(0, slots);
+      if (!winners.includes(uk)) {
+        // Lost the race → give the slot back. If this release itself fails the slot stays
+        // consumed by a user who never got the plan; it shows up in the admin list as a
+        // redeemer, and an admin can raise maxUses to compensate.
+        try { await dbPut(`codes/${ck}/claims/${uk}`, null); } catch (_) {}
+        return json({ error: "code fully used" }, 409);
+      }
+      const type = c.type;
+      let expiresAt = null;
+      if (type === "gold" || type === "diamond") {
+        const days = Number(c.durationDays) > 0 ? Number(c.durationDays) : 30;
+        const cur = user.sub;
+        const base = (cur && cur.plan === type && cur.expiresAt && cur.expiresAt > now) ? cur.expiresAt : now;
+        expiresAt = base + days * 86400000;
+      }
+      user.sub = { plan: type, expiresAt, since: now, code: c.code };
+      // users/<id>/sub only — a full saveUser() let a /api/memory/learn call that was
+      // already in flight erase the plan the user just activated.
+      try { await saveUserChild(user, "sub", user.sub); } catch (_) {}
+      return json({ ok: true, sub: subInfo(user) });
+    }
+    if (path === "/api/admin/codes" && method === "GET") {
+      const user = await currentUser(context);
+      if (!user) return json({ error: "authentication required" }, 401);
+      if (!isAdmin(user)) return json({ error: "admins only" }, 403);
+      const qraw = (url.searchParams.get("q") || "").toString().trim().toLowerCase();
+      let list = (await edgeCodesAll()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      if (qraw) list = list.filter((c) => (c.code || "").toLowerCase().includes(qraw) || (c.note || "").toLowerCase().includes(qraw) || (c.type || "").includes(qraw));
+      return json({ codes: list.map(publicCode), plans: PLAN_LIMITS });
+    }
+    if (path === "/api/admin/codes" && method === "POST") {
+      const user = await currentUser(context);
+      if (!user) return json({ error: "authentication required" }, 401);
+      if (!isAdmin(user)) return json({ error: "admins only" }, 403);
+      let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON body" }, 400); }
+      const type = ["gold", "diamond", "unlimited"].includes(b.type) ? b.type : "gold";
+      const durationDays = type === "unlimited" ? null : (Number(b.durationDays) > 0 ? Math.min(3650, Math.floor(Number(b.durationDays))) : 30);
+      const maxUses = Math.min(1000000, Math.max(1, parseInt(b.maxUses, 10) || 1));
+      const note = String(b.note || "").slice(0, 200);
+      const expiresAt = Number(b.expiresAt) > 0 ? Number(b.expiresAt) : null;
+      let boundUserId = null;
+      if (b.boundUserEmail) { const bu = await getUserByEmail(String(b.boundUserEmail).toLowerCase().trim()); if (!bu) return json({ error: "bound user not found" }, 404); boundUserId = bu.id; }
+      const custom = normCode(b.customCode);
+      const existing = await edgeCodesAll();
+      const count = custom ? 1 : Math.min(500, Math.max(1, parseInt(b.count, 10) || 1));
+      const created = [];
+      const taken = (cc) => existing.some((x) => x.code === cc) || created.some((x) => x.code === cc);
+      for (let i = 0; i < count; i++) {
+        let code = custom || genCode();
+        if (taken(code)) { if (custom) return json({ error: "code already exists" }, 409); do { code = genCode(); } while (taken(code)); }
+        created.push({ id: "cd" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + i, code, type, durationDays, maxUses, uses: 0, usedBy: [], expiresAt, note, disabled: false, boundUserId, createdAt: Date.now(), createdBy: user.email });
+      }
+      try { for (const c of created) await dbPut("codes/" + dbKey(c.id), c); } catch (_) {}
+      return json({ ok: true, created: created.map(publicCode) });
+    }
+    if (path === "/api/admin/codes" && method === "PATCH") {
+      const user = await currentUser(context);
+      if (!user) return json({ error: "authentication required" }, 401);
+      if (!isAdmin(user)) return json({ error: "admins only" }, 403);
+      let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON body" }, 400); }
+      const c = (await edgeCodesAll()).find((x) => x.id === b.id);
+      if (!c) return json({ error: "code not found" }, 404);
+      const ck = dbKey(c.id);
+      if (!ck) return json({ error: "code not found" }, 404);
+      // Edit field-by-field: a whole-record PUT would write back the claims map as it
+      // looked when this admin loaded the page and silently free up any slot claimed
+      // since (see /api/redeem).
+      const patch = {};
+      if (typeof b.disabled === "boolean") patch.disabled = c.disabled = b.disabled;
+      if (typeof b.note === "string") patch.note = c.note = b.note.slice(0, 200);
+      if (b.type && ["gold", "diamond", "unlimited"].includes(b.type)) { patch.type = c.type = b.type; if (c.type === "unlimited") patch.durationDays = c.durationDays = null; }
+      if (b.durationDays != null && c.type !== "unlimited") patch.durationDays = c.durationDays = Math.max(1, Math.floor(Number(b.durationDays)) || 30);
+      if (b.maxUses != null) patch.maxUses = c.maxUses = Math.min(1000000, Math.max(1, parseInt(b.maxUses, 10) || 1));
+      if (b.expiresAt !== undefined) patch.expiresAt = c.expiresAt = Number(b.expiresAt) > 0 ? Number(b.expiresAt) : null;
+      try { for (const k of Object.keys(patch)) await dbPut(`codes/${ck}/${dbKey(k)}`, patch[k]); } catch (_) {}
+      return json({ ok: true, code: publicCode(c) });
+    }
+    if (path === "/api/admin/codes" && method === "DELETE") {
+      const user = await currentUser(context);
+      if (!user) return json({ error: "authentication required" }, 401);
+      if (!isAdmin(user)) return json({ error: "admins only" }, 403);
+      // searchParams.get() percent-DECODES, so "?id=..%2Fusers" arrived here as
+      // "../users" and `dbPut("codes/" + id, null)` resolved to <db>/users.json —
+      // one request wiped every account, and db.json/RTDB has no backup. Sanitize to a
+      // single key BEFORE any db call, and refuse anything that isn't one.
+      const raw = url.searchParams.get("id") || "";
+      const id = dbKey(raw);
+      if (!id || id !== raw) return json({ error: "invalid id" }, 400);
+      try { await dbPut("codes/" + id, null); } catch (_) {}
+      return json({ ok: true });
+    }
+    if (path === "/api/usage/charge" && method === "POST") {
+      const caller = await callerOf(context);
+      const user = caller.user || null;
+      if (!user && !caller.isGuest) return json({ error: "authentication required" }, 401);
+      let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON body" }, 400); }
+      const product = (b.product === "code" || b.product === "agent") ? b.product : null;
+      if (!product) return json({ error: "invalid product" }, 400);
+      // GUEST: charge the trial allowance so Code builds / Agent missions are
+      // gated for guests too, not just client-side.
+      if (caller.isGuest) {
+        const denied = await guestChargeWithReq(request, context, caller.id, product, b.cid);
+        if (denied) return json(denied, 429);
+        return json({ ok: true, sub: await guestSubInfo(caller.id) });
+      }
+      const limit = limitsFor(planOf(user))[product];
+      if (limit < 0) return json({ ok: true, sub: subInfo(user) });
+      const rolled = quotaRollDay(user);
+      const q = user.quota;
+      const cid = String(b.cid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+      /* Same cid-reuse hole as /api/chat, on the meter that bills Firas Code and Firas
+         Agent. There is no message body on this endpoint, so the retry test binds on the
+         cid alone — but now inside a two-minute window rather than "until midnight", which
+         is the difference between tolerating a genuine retry and handing over the day. */
+      const already = await isRepeatCharge(q, product, cid, null);
+      if (!already && (q[product] || 0) >= limit) return json({ error: "daily quota reached", quota: { product, used: q[product] || 0, limit, plan: planOf(user) } }, 429);
+      // Child-key write, same reason as /api/chat: a full saveUser() here reverted
+      // whatever another in-flight request (memory/learn, redeem) had just written.
+      if (!already) { q[product] = (q[product] || 0) + 1; if (product === "agent") agentCidAdd(q, cid); else if (cid) q.last[product] = cid; try { await saveQuota(user, product, cid, rolled); } catch (_) {}
+        // Persist the retry window too, or it lives only inside this isolate and the
+        // reuse hole reopens the moment the next request lands somewhere else.
+        try { await dbPut(`users/${dbKey(user.id)}/quota/seen`, q.seen || {}); } catch (_) {} }
+      return json({ ok: true, sub: subInfo(user) });
+    }
+
+    /* ---- site updates / announcements (admin publishes, all users see) ---- */
+    if (path === "/api/announcements" && method === "GET") {
+      // Guests see site updates too (read-only); only a real admin gets the flag.
+      const caller = await callerOf(context);
+      if (!caller.user && !caller.isGuest) return json({ error: "authentication required" }, 401);
       const node = (await dbGet("announcements")) || {};
       const list = Object.values(node).sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 50);
-      return json({ announcements: list, admin: isAdmin(user) });
+      return json({ announcements: list, admin: isAdmin(caller.user) });
     }
     if (path === "/api/announcements" && method === "POST") {
       const user = await currentUser(context);
@@ -1780,13 +3158,24 @@ export default async (request, context) => {
       let p; try { p = await request.json(); } catch { return json({ error: "invalid JSON" }, 400); }
       const title = String(p.title || "").slice(0, 200).trim();
       const body = String(p.body || "").slice(0, 4000).trim();
+      /* Bilingual by storage, not by machine translation. The app is Arabic-first but its UI
+         switches to English, and an announcement that stays Arabic in an English UI is the
+         one place the product visibly forgets which language it is speaking. Both texts are
+         authored and stored; the client shows whichever matches the active language and
+         falls back to the other rather than to nothing. */
+      const titleEn = String(p.titleEn || "").slice(0, 200).trim();
+      const bodyEn = String(p.bodyEn || "").slice(0, 4000).trim();
       let image = String(p.image || "").trim();
       if (image && !ANN_IMG_OK(image)) image = "";
       if (image.length > 600000) return json({ error: "image too large" }, 413);
-      if (!title && !body && !image) return json({ error: "empty announcement" }, 400);
+      let video = String(p.video || "").trim();
+      if (video && !ANN_VID_OK(video)) video = "";
+      // Pinned items sort above everything and survive the "clear all" sweep below.
+      const pinned = !!p.pinned;
+      if (!title && !body && !image && !video) return json({ error: "empty announcement" }, 400);
       const id = "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-      const item = { id, title, body, image, ts: Date.now(), by: user.name || "Firas" };
-      try { await dbPut("announcements/" + id, item); } catch (_) {}
+      const item = { id, title, body, titleEn, bodyEn, image, video, pinned, ts: Date.now(), by: user.name || "Firas" };
+      try { await dbPut("announcements/" + dbKey(id), item); } catch (_) {}
       return json({ ok: true, announcement: item });
     }
     if (path === "/api/announcements" && method === "PATCH") {
@@ -1794,7 +3183,8 @@ export default async (request, context) => {
       if (!user) return json({ error: "authentication required" }, 401);
       if (!isAdmin(user)) return json({ error: "admins only" }, 403);
       let p; try { p = await request.json(); } catch { return json({ error: "invalid JSON" }, 400); }
-      const id = String(p.id || "");
+      const id = dbKey(p.id); // body-supplied id → db path
+      if (!id) return json({ error: "not found" }, 404);
       const item = await dbGet("announcements/" + id);
       if (!item) return json({ error: "not found" }, 404);
       if (typeof p.title === "string") item.title = p.title.slice(0, 200).trim();
@@ -1806,15 +3196,35 @@ export default async (request, context) => {
         item.image = image;
       }
       item.editedTs = Date.now();
-      try { await dbPut("announcements/" + id, item); } catch (_) {}
+      try { await dbPut("announcements/" + id, item); } catch (_) {}   // id already dbKey()'d above
       return json({ ok: true, announcement: item });
     }
     if (path === "/api/announcements" && method === "DELETE") {
       const user = await currentUser(context);
       if (!user) return json({ error: "authentication required" }, 401);
       if (!isAdmin(user)) return json({ error: "admins only" }, 403);
-      const id = url.searchParams.get("id");
-      if (id) { try { await dbPut("announcements/" + id, null); } catch (_) {} }
+      // Same traversal shape as the code-delete route: "?id=..%2Fusers" would have
+      // PUT-nulled the users table. One key or nothing.
+      const raw = url.searchParams.get("id") || "";
+
+      /* CLEAR ALL — ?all=1. Deliberately NOT a null-PUT on the whole `announcements` subtree:
+         one wrong key in that path erases a neighbouring table, and this database has no
+         backup. Instead the ids are read first and deleted ONE BY ONE, so the blast radius
+         is exactly the records that were listed and nothing else can be caught by it.
+         The full list is returned so the caller can show what was removed. */
+      if (url.searchParams.get("all") === "1") {
+        const node = (await dbGet("announcements")) || {};
+        const ids = Object.keys(node).filter((k) => dbKey(k) === k);
+        let removed = 0;
+        for (const k of ids) {
+          try { await dbPut("announcements/" + k, null); removed++; } catch (_) {}
+        }
+        return json({ ok: true, removed, ids });
+      }
+
+      const id = dbKey(raw);
+      if (!id || id !== raw) return json({ error: "invalid id" }, 400);
+      try { await dbPut("announcements/" + id, null); } catch (_) {}
       return json({ ok: true });
     }
     // ---- Admin knowledge base (RAG reference books) ----
@@ -1838,7 +3248,7 @@ export default async (request, context) => {
       if (!chunks.length) return json({ error: "no usable text" }, 400);
       const id = "kb" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       const book = { id, title, chunks, ts: Date.now() };
-      try { await dbPut("kb/" + id, book); } catch (_) {}
+      try { await dbPut("kb/" + dbKey(id), book); } catch (_) {}
       kbCacheBust();
       return json({ ok: true, id, title, chunks: chunks.length });
     }
@@ -1846,17 +3256,326 @@ export default async (request, context) => {
       const user = await currentUser(context);
       if (!user) return json({ error: "authentication required" }, 401);
       if (!isAdmin(user)) return json({ error: "admins only" }, 403);
-      const id = url.searchParams.get("id");
-      if (id) { try { await dbPut("kb/" + id, null); } catch (_) {} kbCacheBust(); }
+      const raw = url.searchParams.get("id") || "";
+      const id = dbKey(raw);                       // same traversal shape as the code/announcement deletes
+      if (!id || id !== raw) return json({ error: "invalid id" }, 400);
+      try { await dbPut("kb/" + id, null); } catch (_) {}
+      kbCacheBust();
       return json({ ok: true });
     }
+
+    /* ---- Firas Brain: the per-user document library (members only) ----
+       MEMBERS ONLY: a library needs durable server-side storage and a stable owner, and guest
+       chats are localStorage-only with a tiny daily budget that per-page OCR would exhaust
+       immediately. Guests AND anonymous callers get the SAME signin_required body so the client
+       renders one sign-in prompt for both — hence currentUser() with no currentGuest() fallback. */
+    if (path === "/api/brain/docs" && method === "GET") {
+      const c = await callerOf(context);
+      if (!c.id) return json({ error: "signin_required", feature: "brain" }, 403);
+      const docs = await brainMetaAll(c.id);   // light node ONLY — never pulls the chunks
+      const pagesToday = c.isGuest
+        ? (Number((await guestDayNode(c.id).catch(() => ({}))).brainPages) || 0)
+        : (c.user.quota && c.user.quota.day === serverDay() ? (c.user.quota.brainPages || 0) : 0);
+      return json({
+        docs,
+        guest: !!c.isGuest,
+        limits: { docs: brainDocLimit(c), pagesPerDay: brainPagesLimit(c), visionLeft: brainVisionLeft() },
+        used: { docs: docs.length, pagesToday },
+      });
+    }
+    if (path === "/api/brain/doc" && method === "POST") {
+      const c = await callerOf(context);
+      if (!c.id) return json({ error: "signin_required", feature: "brain" }, 403);
+      if (rateLimited("brain:add:" + c.id, 60, 60000)) return json({ error: "too many requests" }, 429);
+      // `await request.json()` reads an UNBOUNDED body on the edge — buffer the text with an
+      // explicit ceiling instead (declared length first, actual length second, since
+      // content-length is client-supplied and absent on a chunked upload).
+      const clen = Number(request.headers.get("content-length") || 0);
+      if (Number.isFinite(clen) && clen > BRAIN_BODY_LIMIT) return json({ error: "too_large" }, 413);
+      let p;
+      try {
+        const raw = await request.text();
+        if (raw.length > BRAIN_BODY_LIMIT) return json({ error: "too_large" }, 413);
+        p = JSON.parse(raw || "{}");
+      } catch { return json({ error: "too_large" }, 413); }   // matches server.mjs, whose readBody destroys the request past the cap
+
+      const title = String(p.title || "").slice(0, 200).trim() || "Untitled";
+      const kind = BRAIN_KINDS.has(p.kind) ? p.kind : "text";
+      const unit = BRAIN_UNITS.has(p.unit) ? p.unit : "page";
+      const pages = Array.isArray(p.pages) ? p.pages : [];
+      if (!pages.length) return json({ error: "no pages" }, 400);
+      if (pages.length > BRAIN_MAX_PAGES_PER_REQ) return json({ error: "too_large" }, 413);
+
+      // A continuation part carries the docId minted by part 1; a fresh upload does not.
+      let doc = null;
+      if (p.docId) {
+        if (!brainIdOk(p.docId)) return json({ error: "invalid id" }, 400);
+        doc = await brainLoadDoc(c.id, p.docId);
+        if (!doc) return json({ error: "not found" }, 404);
+      } else {
+        const existing = await brainMetaAll(c.id);   // count only → the light node suffices
+        if (existing.length >= brainDocLimit(c)) return json({ error: "limit", limit: "docs", max: brainDocLimit(c) }, 429);
+      }
+
+      /* Meter the INGEST by DISTINCT PAGE, per day — guests included. Mirrors server.mjs.
+
+         This used to charge `pages.length`, the number of RECORDS in the POST. That was the
+         same number for every producer until the spreadsheet reader began emitting one record
+         per row group instead of one per sheet: a 5,000-row sheet went from 1 record to 556,
+         which a guest (120/day) and a free user (400/day) would hit as a hard 429 on a file
+         that used to upload fine. The citable unit is the page/slide/sheet, and that is what
+         is charged. For every other producer there is one record per page, so
+         seen.size === pages.length and nothing changes. BRAIN_MAX_PAGES_PER_REQ still bounds
+         `pages.length`: that one IS a record ceiling, protecting the body not the quota. */
+      const seen = new Set(pages.map((pg) => Math.max(1, Math.floor(Number(pg && pg.p) || 0))));
+      const pageLimit = brainPagesLimit(c);
+      if (pageLimit >= 0) {
+        if (c.isGuest) {
+          const node = await guestDayNode(c.id).catch(() => ({}));
+          const used = Number(node.brainPages) || 0;
+          if (used + seen.size > pageLimit) return json({ error: "limit", limit: "pages", used, max: pageLimit, guest: true }, 429);
+          try { await dbIncrement(`guestQuota/${dbKey(c.id)}/${serverDay()}/brainPages`, seen.size); } catch (_) {}
+        } else {
+          const rolled = quotaRollDay(c.user);
+          const used = c.user.quota.brainPages || 0;
+          if (used + seen.size > pageLimit) return json({ error: "limit", limit: "pages", used, max: pageLimit }, 429);
+          c.user.quota.brainPages = used + seen.size;
+          try { await saveBrainPages(c.user, rolled, seen.size); } catch (_) {}
+        }
+      }
+
+      const added = brainChunkPages(pages, kind === "pptx");
+      const addedChars = added.reduce((n, c) => n + c.t.length, 0);
+      const indexedNow = new Set(added.map((c) => c.p)).size;
+
+      if (!doc) { doc = { id: brainNewId(), title, kind, unit, pages: 0, indexed: 0, ocr: 0, chars: 0, ts: Date.now(), chunks: [] }; if (c.isGuest) doc.guest = true; }
+      if ((doc.chunks.length + added.length) > BRAIN_MAX_CHUNKS_PER_DOC) return json({ error: "too_large", limit: "chunks" }, 413);
+      if ((doc.chars || 0) + addedChars > BRAIN_MAX_CHARS_PER_DOC) return json({ error: "too_large", limit: "chars" }, 413);
+
+      doc.chunks = doc.chunks.concat(added);
+      doc.pages = (doc.pages || 0) + seen.size;
+      doc.indexed = (doc.indexed || 0) + indexedNow;
+      doc.chars = (doc.chars || 0) + addedChars;
+      const ocrAdded = Math.max(0, Math.floor(Number(p.ocr) || 0));
+      doc.ocr = (doc.ocr || 0) + ocrAdded;
+      if (ocrAdded) brainVisionCharge(ocrAdded);
+      doc.ts = Date.now();
+      // NOT swallowed — see brainSaveDoc(). Answering { ok: true } on a lost upload would make
+      // the client believe hundreds of OCR'd pages are indexed when nothing was stored.
+      try { await brainSaveDoc(c.id, doc); } catch (_) { return json({ error: "storage failed" }, 502); }
+
+      return json({ ok: true, id: doc.id, title: doc.title, chunks: added.length, total: doc.chunks.length, doc: brainMetaOf(doc) });
+    }
+    if (path === "/api/brain/doc" && method === "DELETE") {
+      const c = await callerOf(context);
+      if (!c.id) return json({ error: "signin_required", feature: "brain" }, 403);
+      const raw = url.searchParams.get("id") || "";
+      const id = dbKey(raw);                       // same traversal shape as the kb/code/announcement deletes
+      if (!id || id !== raw || !brainIdOk(id)) return json({ error: "invalid id" }, 400);
+      try { await brainRemoveDoc(c.id, id); } catch (_) { return json({ error: "storage failed" }, 502); }
+      return json({ ok: true });
+    }
+    if (path === "/api/brain/search" && method === "POST") {
+      const c = await callerOf(context);
+      if (!c.id) return json({ error: "signin_required", feature: "brain" }, 403);
+      if (rateLimited("brain:q:" + c.id, 120, 60000)) return json({ error: "too many requests" }, 429);
+      // Bounded like the doc POST (server.mjs uses readJson(req, 200_000) here). A malformed
+      // body degrades to {} → empty query → { hits: [], docs: n }, exactly as readJson's null does.
+      let p = {};
+      const qlen = Number(request.headers.get("content-length") || 0);
+      if (Number.isFinite(qlen) && qlen > 200_000) return json({ error: "too_large" }, 413);
+      try {
+        const raw = await request.text();
+        if (raw.length > 200_000) return json({ error: "too_large" }, 413);
+        p = JSON.parse(raw || "{}") || {};
+      } catch (_) { p = {}; }
+      const q = String(p.q || "").slice(0, 4000);
+      const k = Math.min(Math.max(parseInt(p.k, 10) || 8, 1), 12);
+      const want = Array.isArray(p.docIds) ? p.docIds.filter(brainIdOk) : [];
+
+      // THE per-answer charge for Firas Brain. It has to happen here, not on /api/chat: the
+      // answer itself streams via streamAgentText with nomem:true, which quota charging
+      // deliberately skips. Exactly one search precedes each answer, and the cid makes a retry
+      // of the same turn idempotent — same rule the other products use. Mirrors server.mjs.
+      const bcid = String(p.cid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+      if (c.isGuest) {
+        const denied = await guestChargeWithReq(request, context, c.id, "brain", bcid);   // owns roll-over + idempotency
+        if (denied) return json(denied, 429);
+      } else {
+        const blimit = limitsFor(planOf(c.user)).brain;
+        if (blimit >= 0) {
+          const rolled = quotaRollDay(c.user);
+          const bq = c.user.quota;
+          if (!(bcid && bq.last.brain === bcid)) {
+            if ((bq.brain || 0) >= blimit) {
+              return json({ error: "daily quota reached", quota: { product: "brain", used: bq.brain || 0, limit: blimit, plan: planOf(c.user) } }, 429);
+            }
+            bq.brain = (bq.brain || 0) + 1;
+            if (bcid) bq.last.brain = bcid;
+            try { await saveQuota(c.user, "brain", bcid, rolled); } catch (_) {}
+          }
+        }
+      }
+
+      let docs = await brainCorpus(c.id);
+      if (want.length) { const s = new Set(want); docs = docs.filter((d) => s.has(d.id)); }
+      if (!docs.length) return json({ hits: [], docs: 0, mode: "none" });
+      if (p.mode === "all") {
+        // HARVEST: hand back the corpus in document order, paged. "Extract every definition"
+        // cannot be served by top-k retrieval — the answer is not "the 8 best matches", it is
+        // every occurrence in the book — so the client sweeps the whole thing in batches instead.
+        const off = Math.max(0, parseInt(p.offset, 10) || 0);
+        const lim = Math.min(Math.max(parseInt(p.limit, 10) || 400, 1), 1500);
+        const flat = [];
+        for (const d of docs) {
+          const ch = d.chunks || [];
+          for (let i = 0; i < ch.length; i++) {
+            flat.push({
+              score: 0, text: chunkText(ch[i]),
+              docId: d.id || "", title: d.title || "", kind: d.kind || "", unit: d.unit || "page",
+              page: chunkPage(ch[i]), label: (ch[i] && ch[i].l) || "", ci: i,
+            });
+          }
+        }
+        return json({ hits: flat.slice(off, off + lim), total: flat.length, offset: off, mode: "all" });
+      }
+      if (p.mode === "overview") {
+        return json({ hits: brainOverviewHits(docs), docs: docs.length, mode: "overview" });
+      }
+      // A lower floor than the admin KB's 0.25: this corpus is the user's OWN documents, where a
+      // single strong term match is a legitimate lead rather than noise from an unrelated book.
+      // keepDigits=true, matching how brainCorpus() tokenized the chunks (asymmetry matches nothing).
+      const hits = brainExpandNeighbours(kbSearchIn(docs, q, k, 0.18, true), docs, 2, k + 20);
+      return json({ hits, docs: docs.length, mode: "search" });
+    }
+    if (path === "/api/brain/passage" && method === "GET") {
+      const c = await callerOf(context);
+      if (!c.id) return json({ error: "signin_required", feature: "brain" }, 403);
+      const docId = url.searchParams.get("doc") || "";
+      const ci = parseInt(url.searchParams.get("i"), 10);
+      const w = Math.min(Math.max(parseInt(url.searchParams.get("w"), 10) || 2, 0), 5);
+      if (!brainIdOk(docId) || !Number.isFinite(ci) || ci < 0) return json({ error: "invalid id" }, 400);
+      const docs = await brainCorpus(c.id);
+      const doc = docs.find((d) => d.id === docId);
+      if (!doc) return json({ error: "not found" }, 404);
+      const chunks = doc.chunks || [];
+      const hit = chunks[ci];
+      if (!hit) return json({ error: "not found" }, 404);
+      const page = chunkPage(hit);
+      // Neighbours are restricted to the SAME page — the point of the reader is to show the cited
+      // passage in its page context, not to bleed into a page the citation never claimed.
+      const near = (from, to, step) => {
+        const out = [];
+        for (let i = from; i !== to && out.length < w; i += step) {
+          if (!chunks[i] || chunkPage(chunks[i]) !== page) break;
+          out.push({ ci: i, t: chunkText(chunks[i]) });
+        }
+        return step < 0 ? out.reverse() : out;
+      };
+      return json({
+        docId: doc.id, title: doc.title, kind: doc.kind, unit: doc.unit,
+        page, label: (hit && hit.l) || "", ci, text: chunkText(hit),
+        before: near(ci - 1, -1, -1), after: near(ci + 1, chunks.length, 1),
+      });
+    }
+    /* ── BACKGROUND AGENT JOBS ───────────────────────────────────────────────────────────
+       A mission used to live entirely in the browser tab, so closing the tab stopped it.
+       These two routes hand the mission to a Netlify BACKGROUND function, which is a Node
+       runtime that keeps executing for up to 15 minutes after the response is sent (and
+       re-triggers itself for longer missions). The job record in RTDB is the source of
+       truth; the client just polls it, so the tab is now a viewer rather than the engine. */
+    if (path === "/api/agent/job" && method === "POST") {
+      const user = await currentUser(context);
+      if (!user) return json({ error: "authentication required" }, 401);
+      if (!INTERNAL_JOB_SECRET) return json({ error: "background jobs not configured" }, 501);
+      if (rateLimited("job:" + user.id, 6, 60000)) return json({ error: "too many requests" }, 429);
+      let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON" }, 400); }
+      const task = String(b.task || "").trim().slice(0, 8000);
+      if (!task) return json({ error: "task required" }, 400);
+
+      /* A background mission spends model credit with nobody watching, so it is metered up
+         front like any other agent turn rather than trusted to bill itself later. */
+      const denied = await (async () => {
+        const limit = limitsFor(planOf(user)).agent;
+        if (!(limit >= 0)) return null;
+        const rolled = quotaRollDay(user);
+        if ((user.quota.agent || 0) >= limit) {
+          return { error: "daily quota reached", quota: { product: "agent", used: user.quota.agent || 0, limit, plan: planOf(user) } };
+        }
+        user.quota.agent = (user.quota.agent || 0) + 1;
+        try { await saveQuota(user, "agent", null, rolled); } catch (_) {}
+        return null;
+      })();
+      if (denied) return json(denied, 429);
+
+      const jobId = "j" + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+      const job = {
+        id: jobId, task,
+        lang: b.lang === "ar" ? "ar" : "en",
+        tier: ["mini", "pro", "ultra", "max"].includes(b.tier) ? b.tier : "max",
+        phase: "queued", steps: [], final: "", createdAt: Date.now(), updatedAt: Date.now(),
+      };
+      await dbPut(`agentJobs/${dbKey(user.id)}/${dbKey(jobId)}`, job);
+      // Fire and forget — the background function answers 202 and keeps going without us.
+      const kick = fetch(new URL("/.netlify/functions/agent-background", request.url).toString(), {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-firas-internal": INTERNAL_JOB_SECRET },
+        body: JSON.stringify({ jobId, userId: user.id, chain: 0 }),
+      }).catch(() => {});
+      if (context && typeof context.waitUntil === "function") context.waitUntil(kick);
+      return json({ ok: true, job });
+    }
+    if (path === "/api/agent/job" && method === "GET") {
+      const user = await currentUser(context);
+      if (!user) return json({ error: "authentication required" }, 401);
+      const id = dbKey(url.searchParams.get("id") || "");
+      if (!id) return json({ error: "not found" }, 404);
+      // Scoped under the caller's own id, so one user can never read another's mission.
+      const job = await dbGet(`agentJobs/${dbKey(user.id)}/${id}`);
+      if (!job) return json({ error: "not found" }, 404);
+      return json({ ok: true, job });
+    }
+    if (path === "/api/agent/jobs" && method === "GET") {
+      const user = await currentUser(context);
+      if (!user) return json({ error: "authentication required" }, 401);
+      const all = (await dbGet(`agentJobs/${dbKey(user.id)}`)) || {};
+      // Summary only — the step outputs of every past mission would be megabytes.
+      const list = Object.values(all).map((j) => ({
+        id: j.id, task: String(j.task || "").slice(0, 200), title: j.title || "",
+        phase: j.phase, steps: (j.steps || []).length,
+        done: (j.steps || []).filter((s) => s && s.s === "done").length,
+        updatedAt: j.updatedAt || 0,
+      })).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 30);
+      return json({ ok: true, jobs: list });
+    }
+
     // ── Public share links: snapshot a chat → read-only page at /?share=<id> ──
     if (path === "/api/share" && method === "POST") {
       const user = await currentUser(context);
       if (!user) return json({ error: "authentication required" }, 401);
       let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON" }, 400); }
-      const chat = await dbGet(`chats/${user.id}/${String(b.chatId || "")}`);
+      const chatId = dbKey(b.chatId);   // body-supplied id → db path (a "../.." here read outside the user's subtree)
+      if (!chatId) return json({ error: "not found" }, 404);
+      const chat = await dbGet(`chats/${dbKey(user.id)}/${chatId}`);
       if (!chat) return json({ error: "not found" }, 404);
+      /* Same bounds as server.mjs handleShareCreate. Each snapshot can carry 400 messages at
+         200,000 chars plus 10 thumbnails, and nothing here was rate-limited, capped, or ever
+         pruned — a loop over this endpoint inflates RTDB storage until dbPut starts failing
+         for every product. The edge does not amplify every OTHER write the way the monolithic
+         db.json does, but unbounded is unbounded.
+         An index of the caller's shares is kept so a repeat share of one chat reuses its
+         snapshot instead of minting another copy — which is also the common real case. */
+      if (rateLimited("share:" + user.id, 5, 60000)) return json({ error: "too many requests" }, 429);
+      const idxPath = `shareIndex/${dbKey(user.id)}`;
+      const idx = (await dbGet(idxPath)) || {};
+      const prior = idx[chatId];
+      if (prior) {
+        try { await dbPut(`shares/${dbKey(prior)}/ts`, Date.now()); } catch (_) {}
+        return json({ ok: true, id: prior });
+      }
+      if (Object.keys(idx).length >= 20) {
+        return json({ error: "لقد وصلت إلى الحد الأقصى للمشاركات (20). احذف مشاركة قديمة أولاً." }, 409);
+      }
       const id = "s" + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, "").slice(0, 10);
       // Snapshot only what the public page needs — content/lang/tier/thumbs; never raw images,
       // never fileText, never user identity.
@@ -1867,11 +3586,12 @@ export default async (request, context) => {
         if (Array.isArray(m.imageThumbs) && m.imageThumbs.length) o.imageThumbs = m.imageThumbs.slice(0, 10).map((s) => String(s).slice(0, 200000));
         return o;
       });
-      await dbPut("shares/" + id, { id, title: String(chat.title || "").slice(0, 200), messages: msgs, ts: Date.now(), owner: user.id });
+      await dbPut("shares/" + dbKey(id), { id, chatId, title: String(chat.title || "").slice(0, 200), messages: msgs, ts: Date.now(), owner: user.id });
+      try { await dbPut(`${idxPath}/${chatId}`, id); } catch (_) {}
       return json({ ok: true, id });
     }
     if (path === "/api/share" && method === "GET") {   // PUBLIC — no auth: this is the whole point
-      const id = String(url.searchParams.get("id") || "").replace(/[^a-zA-Z0-9]/g, "");
+      const id = dbKey(url.searchParams.get("id"));
       if (!id) return json({ error: "missing id" }, 400);
       const snap = await dbGet("shares/" + id);
       if (!snap) return json({ error: "not found" }, 404);
@@ -1880,10 +3600,15 @@ export default async (request, context) => {
     if (path === "/api/share" && method === "DELETE") {
       const user = await currentUser(context);
       if (!user) return json({ error: "authentication required" }, 401);
-      const id = String(url.searchParams.get("id") || "").replace(/[^a-zA-Z0-9]/g, "");
+      const id = dbKey(url.searchParams.get("id"));
       const snap = id ? await dbGet("shares/" + id) : null;
       if (snap && snap.owner !== user.id && !isAdmin(user)) return json({ error: "not yours" }, 403);
-      if (snap) { try { await dbPut("shares/" + id, null); } catch (_) {} }
+      if (snap) {
+        try { await dbPut("shares/" + id, null); } catch (_) {}
+        /* Clear the owner's index entry too, or the per-user cap would count a share that
+           no longer exists — the user would hit "you have 20" with none left to delete. */
+        if (snap.chatId && snap.owner) { try { await dbPut(`shareIndex/${dbKey(snap.owner)}/${dbKey(snap.chatId)}`, null); } catch (_) {} }
+      }
       return json({ ok: true });
     }
     if (path === "/api/translate" && method === "POST") {
@@ -1914,31 +3639,47 @@ export default async (request, context) => {
     /* ---- image generation proxy (charge on success by cid) ---- */
     if (path === "/api/image" && method === "GET") {
       const user = await currentUser(context);
-      if (!user) return new Response("auth required", { status: 401 });
+      if (!user) {
+        // A GUEST hitting image generation is the upsell moment, not an error.
+        if (await currentGuest(context)) return json({ error: "signin_required", feature: "image" }, 403);
+        return new Response("auth required", { status: 401 });
+      }
       if (rateLimited("img:" + user.id, 240, 60000)) return new Response("rate limited", { status: 429 });
       const prompt = (url.searchParams.get("prompt") || "").trim().slice(0, 1000);
       if (!prompt) return new Response("no prompt", { status: 400 });
-      // No/invalid cid must still COUNT against the daily quota (an omitted cid was a full bypass) —
-      // synthesize one from the prompt so retries of the same prompt don't double-count.
-      let cid = (url.searchParams.get("cid") || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
-      if (!cid) {
-        let hsh = 0; const pk = prompt + "|" + (url.searchParams.get("seed") || "");
-        for (let i = 0; i < pk.length; i++) hsh = ((hsh << 5) - hsh + pk.charCodeAt(i)) | 0;
-        cid = "auto" + (hsh >>> 0).toString(36);
-      }
-      const day = serverDay();
-      const node = await imgDayNode(user.id);
-      const isNew = !(cid in node);
-      if (isNew && Object.keys(node).length >= IMAGE_DAILY_LIMIT) return new Response("daily limit reached", { status: 429 });
+      /* The cid parsing that used to live here is GONE, not merely unused. It existed to
+         give the daily slot a key, and the slot is now derived from the image itself — so
+         leaving a `cid` variable in scope would only invite a future edit to key billing on
+         it again, which is the exact bug below. The client may still send ?cid=… ; nothing
+         reads it here any more. */
+      /* ── IMAGE QUOTA BYPASS, CLOSED ─────────────────────────────────────────────────
+         The daily slot used to be keyed on `cid` — a raw query parameter. `isNew` was
+         `!(cid in node)`, and the 5/day check only ran when the cid was new, so:
+             GET /api/image?cid=X&prompt=first     → charges one of the five slots
+             GET /api/image?cid=X&prompt=anything  → isNew false, limit branch skipped
+                                                     entirely, brand-new picture generated
+         repeated forever. IMAGE_DAILY_LIMIT became unbounded, on a path that spends paid
+         Puter/Cloudflare credit, with only a per-isolate rate limiter left in front of it.
+
+         The slot is now derived from the IMAGE (prompt + size + seed), exactly as
+         server.mjs does it. A genuine reload of the same picture is still free, because it
+         hashes to the same slot; a different prompt costs a slot, because it cannot. The
+         client's cid no longer decides anything about billing.
+         w/h/seed are parsed BEFORE the check because the slot depends on them. */
       const w = Math.min(1280, Math.max(256, parseInt(url.searchParams.get("w"), 10) || 1024));
       const h = Math.min(1280, Math.max(256, parseInt(url.searchParams.get("h"), 10) || 1024));
       const seed = (url.searchParams.get("seed") || "").replace(/[^0-9]/g, "").slice(0, 12);
+      const day = serverDay();
+      const node = await imgDayNode(user.id);
+      const slot = await imgSlotKey(prompt, w, h, seed);
+      const isNew = !(slot in node);
+      if (isNew && Object.keys(node).length >= IMAGE_DAILY_LIMIT) return new Response("daily limit reached", { status: 429 });
       // Cloudflare Workers AI (FREE FLUX.2, ~65/day) FIRST → great quality + in-image text,
       // no per-image cost, no user login. Falls through to Puter when its daily quota is gone.
       try {
         const cf = await generateImageCloudflare(prompt, w, h);
         if (cf && cf.bytes && cf.bytes.length) {
-          if (isNew) { try { await dbPut(`imgQuota/${user.id}/${day}/${cid}`, true); } catch (_) {} }
+          if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
           return new Response(cf.bytes, { headers: { "Content-Type": cf.mime, "Cache-Control": "public, max-age=86400" } });
         }
       } catch (_) { /* fall through */ }
@@ -1946,7 +3687,7 @@ export default async (request, context) => {
       try {
         const put = await generateImagePuter(prompt);
         if (put && put.bytes && put.bytes.length) {
-          if (isNew) { try { await dbPut(`imgQuota/${user.id}/${day}/${cid}`, true); } catch (_) {} }
+          if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
           return new Response(put.bytes, { headers: { "Content-Type": put.mime, "Cache-Control": "public, max-age=86400" } });
         }
       } catch (_) { /* fall through */ }
@@ -1954,7 +3695,7 @@ export default async (request, context) => {
       try {
         const gem = await generateImageGemini(prompt);
         if (gem && gem.bytes && gem.bytes.length) {
-          if (isNew) { try { await dbPut(`imgQuota/${user.id}/${day}/${cid}`, true); } catch (_) {} }
+          if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
           return new Response(gem.bytes, { headers: { "Content-Type": gem.mime, "Cache-Control": "public, max-age=86400" } });
         }
       } catch (_) { /* fall through */ }
@@ -1962,7 +3703,7 @@ export default async (request, context) => {
       try {
         const hf = await generateImageHF(prompt);
         if (hf && hf.bytes && hf.bytes.length) {
-          if (isNew) { try { await dbPut(`imgQuota/${user.id}/${day}/${cid}`, true); } catch (_) {} }
+          if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
           return new Response(hf.bytes, { headers: { "Content-Type": hf.mime, "Cache-Control": "public, max-age=86400" } });
         }
       } catch (_) { /* fall through to pollinations */ }
@@ -1971,14 +3712,22 @@ export default async (request, context) => {
         const r = await fetch(src, { headers: { "User-Agent": SEARCH_UA, "Accept": "image/*" } });
         if (!r.ok) return new Response("image generation failed", { status: 502 });
         const buf = new Uint8Array(await r.arrayBuffer());
-        if (isNew) { try { await dbPut(`imgQuota/${user.id}/${day}/${cid}`, true); } catch (_) {} } // charge once, on success
+        if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} } // charge once, on success
         return new Response(buf, { headers: { "Content-Type": r.headers.get("content-type") || "image/jpeg", "Cache-Control": "public, max-age=86400" } });
       } catch (_) { return new Response("image generation error", { status: 502 }); }
     }
 
     /* ---- web search ---- */
     if (path === "/api/search" && method === "GET") {
-      const user = await currentUser(context);
+      const caller = await callerOf(context);
+      let user = caller.user || (caller.id ? { id: caller.id } : null);
+      /* Same internal channel as /api/chat: the background agent runner has no cookie, so it
+         presents the deploy secret plus the id of the user whose mission it is running. The
+         rate limit below then applies to that user exactly as it would in the foreground. */
+      if (!user && INTERNAL_JOB_SECRET && request.headers.get("x-firas-internal") === INTERNAL_JOB_SECRET) {
+        const jid = String(request.headers.get("x-firas-job-user") || "");
+        if (jid) { const ju = await getUserById(jid); if (ju) user = { id: ju.id }; }
+      }
       if (!user) return json({ results: [], error: "auth" }, 401);
       if (rateLimited("search:" + user.id, 30, 60000)) return json({ results: [], error: "rate" }, 429);
       const q = (url.searchParams.get("q") || "").trim().slice(0, 300);
@@ -1991,7 +3740,8 @@ export default async (request, context) => {
       return json({ q, results });
     }
     if (path === "/api/images" && method === "GET") {
-      const user = await currentUser(context);
+      const caller = await callerOf(context);
+      const user = caller.user || (caller.id ? { id: caller.id } : null);
       if (!user) return json({ results: [], error: "auth" }, 401);
       if (rateLimited("images:" + user.id, 40, 60000)) return json({ results: [], error: "rate" }, 429);
       const q = (url.searchParams.get("q") || "").trim().slice(0, 120);
@@ -2004,7 +3754,8 @@ export default async (request, context) => {
       return json({ q, results });
     }
     if (path === "/api/imgproxy" && method === "GET") {
-      const user = await currentUser(context);
+      const caller = await callerOf(context);
+      const user = caller.user || (caller.id ? { id: caller.id } : null);
       if (!user) return json({ error: "auth" }, 401);
       if (rateLimited("imgproxy:" + user.id, 80, 60000)) return new Response(null, { status: 429 });
       const target = (url.searchParams.get("u") || "").trim();
@@ -2021,7 +3772,8 @@ export default async (request, context) => {
       } catch (_) { return new Response(null, { status: 502 }); }
     }
     if (path === "/api/fetch" && method === "GET") {
-      const user = await currentUser(context);
+      const caller = await callerOf(context);
+      const user = caller.user || (caller.id ? { id: caller.id } : null);
       if (!user) return json({ text: "", error: "auth" }, 401);
       if (rateLimited("fetch:" + user.id, 20, 60000)) return json({ text: "", error: "rate" }, 429);
       let target = (url.searchParams.get("url") || "").trim();
@@ -2045,21 +3797,26 @@ export default async (request, context) => {
     }
 
     if (path === "/api/transcribe" && method === "POST") {
-      const user = await currentUser(context);
+      const caller = await callerOf(context);
+      const user = caller.user || (caller.id ? { id: caller.id } : null);
       if (!user) return json({ error: "authentication required" }, 401);
+      if (caller.isGuest && rateLimited("stt:" + caller.id, 12, 60000)) return json({ error: "rate limited" }, 429);
       let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON" }, 400); }
       if (b && b.probe) return json({ ok: GEMINI_KEYS.length > 0 });
       if (!GEMINI_KEYS.length) return json({ error: "no stt engine" }, 503);
       if (rateLimited("stt:" + user.id, 20, 60000)) return json({ error: "rate limited" }, 429);
+      { const denied = await chargeVoiceEdge(caller); if (denied) return json(denied, 429); }
       const audio = String((b && b.audio) || "").replace(/^data:audio\/[a-z0-9.+-]+;base64,/i, "");
       if (!audio || audio.length < 4000 || audio.length > 20000000 || !/^[A-Za-z0-9+/=]+$/.test(audio)) return json({ error: "bad audio" }, 400);
       try { const t = await geminiSTT(audio, b.format === "mp3" ? "mp3" : "wav", String(b.lang || "auto")); return json({ text: typeof t === "string" ? t : "" }); }
       catch (_) { return json({ error: "stt unavailable" }, 502); }
     }
     if (path === "/api/tts" && method === "POST") {
-      const user = await currentUser(context);
+      const caller = await callerOf(context);
+      const user = caller.user || (caller.id ? { id: caller.id } : null);
       if (!user) return json({ error: "authentication required" }, 401);
-      if (rateLimited("tts:" + user.id, 90, 60000)) return json({ error: "rate limited" }, 429);
+      if (rateLimited("tts:" + user.id, caller.isGuest ? 25 : 90, 60000)) return json({ error: "rate limited" }, 429);
+      { const denied = await chargeVoiceEdge(caller); if (denied) return json(denied, 429); }
       let b; try { b = await request.json(); } catch { return json({ error: "invalid JSON" }, 400); }
       const text = String((b && b.text) || "").replace(/\s+/g, " ").trim().slice(0, 1400);
       if (!text) return new Response("", { status: 400 });
@@ -2080,9 +3837,48 @@ export default async (request, context) => {
   }
 };
 
-/* SSRF guard shared by the proxies: hostname must not be private/loopback/link-local. */
+/** True when an IP literal falls in a range that must never be reachable from the proxy. */
+function privateIp(ip) {
+  const s = String(ip || "");
+  if (/^(::1|::ffff:127\.|fe80:|fc|fd)/i.test(s)) return true;          // v6 loopback/link-local/ULA
+  const m = /^(?:::ffff:)?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(s);
+  if (!m) return false;
+  const a = +m[1], b = +m[2];
+  return a === 0 || a === 127 || a === 10                                // this-host, loopback, private
+    || (a === 169 && b === 254)                                          // link-local + cloud metadata
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || (a === 100 && b >= 64 && b <= 127)                                // CGNAT
+    || a >= 224;                                                         // multicast / reserved
+}
+
+/* SSRF guard shared by the proxies. Mirrors server.mjs.
+   The name test alone only catches hosts that LOOK internal — a public name whose A record
+   is 127.0.0.1 or 169.254.169.254 sails through it. proxyHostAllowed() below resolves the
+   name too, so the ADDRESS is what decides. */
 function proxyHostBlocked(host) {
-  return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|::1|\[)/.test(host) || /\.local$/.test(host) || host === "metadata.google.internal";
+  const bare = String(host || "").replace(/^\[|\]$/g, "");
+  return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|::1|\[)/.test(host)
+    || /\.local$/.test(host)
+    || host === "metadata.google.internal"
+    || privateIp(bare);
+}
+
+/** Resolve `host` and reject it when any address it maps to is private.
+    Deno.resolveDns needs --allow-net and is not guaranteed on every edge runtime, so its
+    absence is not treated as failure — the name test above still applies, and the edge
+    sandbox does not route private ranges outbound in the first place. */
+async function proxyHostAllowed(host) {
+  if (proxyHostBlocked(host)) return false;
+  const bare = String(host).replace(/^\[|\]$/g, "");
+  if (/^[\d.]+$/.test(bare) || bare.includes(":")) return true;          // already an IP literal, checked above
+  try {
+    if (typeof Deno === "undefined" || typeof Deno.resolveDns !== "function") return true;
+    const settled = await Promise.allSettled([Deno.resolveDns(bare, "A"), Deno.resolveDns(bare, "AAAA")]);
+    const addrs = settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+    if (!addrs.length) return true;                                      // no answer we can judge → defer to the name test
+    return !addrs.some((a) => privateIp(a));                             // one private answer = rebinding attempt
+  } catch { return true; }
 }
 /* Fetch with MANUAL redirect handling: every hop's hostname is re-validated, so a public host
    can't 302 the proxy into localhost / the cloud metadata service (classic SSRF bypass). */
@@ -2090,7 +3886,8 @@ async function safeProxyFetch(target, headers, maxHops) {
   let cur = target;
   for (let hop = 0; hop <= (maxHops || 3); hop++) {
     const host = new URL(cur).hostname.toLowerCase();
-    if (proxyHostBlocked(host)) throw new Error("blocked host");
+    // Resolve EVERY hop: a public host can 302 into a name that points at loopback.
+    if (!(await proxyHostAllowed(host))) throw new Error("blocked host");
     const r = await fetch(cur, { headers, redirect: "manual" });
     if (r.status >= 300 && r.status < 400) {
       const loc = r.headers.get("location");

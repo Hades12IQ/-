@@ -7,6 +7,10 @@
 [build]
   publish = "."
   command = ""            # no build step (vanilla, zero-dependency frontend)
+  # Background functions live here. Edge functions cannot outlive their response, so a
+  # Firas Agent mission died the moment the tab closed; a *-background function is a
+  # 15-minute Node invocation that keeps running after the client is gone.
+  functions = "netlify/functions"
 
 [[edge_functions]]
   path = "/api/*"
@@ -58,13 +62,36 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    # microphone=(self): the app's OWN origin must be allowed or voice dictation
+    # and the voice call can never get a mic stream in production — `microphone=()`
+    # blocks every origin including this one, so getUserMedia was failing on the
+    # deployed site while working fine on localhost (which has no such header).
+    # camera/geolocation stay fully denied — nothing in the app uses them.
+    Permissions-Policy = "camera=(), microphone=(self), geolocation=()"
+    # CSP kept narrow ON PURPOSE — mirrors server.mjs. script-src/img-src/connect-src are
+    # omitted because Firas Code renders every user project in a srcdoc iframe, and srcdoc
+    # INHERITS this policy: any subresource directive would break real projects (blob: module
+    # imports, CDN scripts, inline handlers, remote images). The zero-click image-exfil vector
+    # is closed at the sanitizer instead — see installPurifyHooks() in app.js. These two
+    # directives nothing legitimate needs: <base> hijacking and plugin embeds.
+    Content-Security-Policy = "base-uri 'self'; object-src 'none'"
 
 # ── Hide non-frontend repo files from the public deploy (publish = ".") ──────
 # Backend source, docs and config are not secrets by themselves, but exposing
 # them maps the attack surface for free. Serve 404 for all of them.
 [[redirects]]
   from = "/server.mjs"
+  to = "/index.html"
+  status = 404
+  force = true
+
+# The whole backend directory. `publish = "."` uploads the repo root, and the denylist
+# below names files by extension — neither of which covered netlify/edge-functions/api.js,
+# which was verifiably fetchable at 200. The background runner added here would be served
+# the same way. A trailing splat is required: Netlify only honours a glob at the END of the
+# path, which is why the /*.md-style rules below match nothing in a subdirectory.
+[[redirects]]
+  from = "/netlify/*"
   to = "/index.html"
   status = 404
   force = true

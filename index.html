@@ -4,14 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#262624" />
-  <meta name="description" content="فِراس AI — مساعد ذكاء اصطناعي يتحدث العربية بطلاقة: محادثة ذكية، وكيل ينفّذ المهام الكبيرة، بيئة برمجة كاملة بالمتصفح، وملفات وامتحانات جاهزة. Firas AI — an Arabic-first AI assistant: smart chat, autonomous agent, in-browser IDE." />
+  <!-- Dropped the "مجانًا / free" claim: paid Gold and Diamond tiers exist, so advertising
+       the product as free is not true. Brain was also missing from every public description
+       even though it is the differentiator — the citation with a real page number. -->
+  <meta name="description" content="فِراس AI — أربعة منتجات بحساب واحد، بالعربية أولًا: محادثة ذكية، ووكيل ينفّذ المهام الطويلة، وبيئة برمجة كاملة بالمتصفح، ومكتبة تقرأ ملفاتك وتجيب منها مع رقم الصفحة. Firas AI — Arabic-first: chat, an autonomous agent, an in-browser IDE, and answers from your own documents with the exact page cited." />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Firas AI" />
   <meta property="og:title" content="فِراس AI — مساعدك الذكي بالعربية | Firas AI" />
-  <meta property="og:description" content="محادثة ذكية، وكيل ينفّذ المهام الكبيرة، وبيئة برمجة كاملة بالمتصفح — بالعربية والإنجليزية، مجانًا." />
+  <meta property="og:description" content="محادثة ذكية، ووكيل ينفّذ المهام الطويلة، وبيئة برمجة بالمتصفح، ومكتبة تجيب من ملفاتك مع رقم الصفحة — بالعربية والإنجليزية." />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="فِراس AI — مساعدك الذكي بالعربية | Firas AI" />
-  <meta name="twitter:description" content="محادثة ذكية، وكيل ينفّذ المهام الكبيرة، وبيئة برمجة كاملة بالمتصفح — بالعربية والإنجليزية، مجانًا." />
+  <meta name="twitter:description" content="محادثة ذكية، ووكيل ينفّذ المهام الطويلة، وبيئة برمجة بالمتصفح، ومكتبة تجيب من ملفاتك مع رقم الصفحة — بالعربية والإنجليزية." />
   <meta name="apple-mobile-web-app-title" content="Firas AI" />
   <meta name="application-name" content="Firas AI" />
   <title>Firas AI — فِراس AI</title>
@@ -26,8 +29,10 @@
     } catch (e) {}
   </script>
 
-  <!-- Favicon: the distinct Firas rounded-square mark (inline SVG data-URI) -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%231F6F5F'/%3E%3Cstop offset='1' stop-color='%232C8A78'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='17' fill='url(%23g)'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M24 46V20a4 4 0 0 1 4-4h13'/%3E%3Cpath d='M24 32h13'/%3E%3C/g%3E%3Ccircle cx='44' cy='44' r='5' fill='%23fff'/%3E%3C/svg%3E" />
+  <!-- Favicon: the same astrolabe mark the app injects (app.js FIRAS_MARK), cut dark
+       into a brass disc. Kept byte-identical in geometry so the tab icon and the in-app
+       mark are the same object, not two drawings of it. -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M18 10h6.5v44H18Z' fill='%2357AE9C'/%3E%3Cpath d='M24.5 10H50l-5 8.5H24.5Z' fill='%2357AE9C'/%3E%3Cpath d='M24.5 27H42l-4.5 8.5H24.5Z' fill='%232F6F62'/%3E%3C/svg%3E" />
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -37,15 +42,23 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+  <!-- Type for the instrument world.
+       · Reem Kufi   — display. Kufic is the script actually cut into astrolabe plates,
+                       so the display voice is the object's own lettering, not a mood.
+       · Noto Sans Arabic — body workhorse. Arabic is the primary reading direction here,
+                       so the body face is chosen for hours of legibility, not character.
+       · Archivo     — Latin UI + display. A signage/print grotesque that sits beside
+                       Kufi's geometry without competing with it.
+       · JetBrains Mono — code and real measurement ONLY (scales, counters, page numbers). -->
   <link
-    href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Inter:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
 
   <!-- Highlight.js + KaTeX stylesheets load LAZILY with their JS (see the loader below) so
        the site opens without waiting on ~350 KB of code/math libs it doesn't need yet. -->
 
-  <link rel="stylesheet" href="styles.css?v=native20" />
+  <link rel="stylesheet" href="styles.css?v=sec1" />
 
   <!-- CDN libs: marked + DOMPurify are needed for the FIRST message render, so they load
        eagerly (defer). The HEAVY math + code-highlight libs (~350 KB) are NOT needed to open
@@ -70,6 +83,15 @@
         inject("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js", function () {
           try { document.querySelectorAll("pre code").forEach(function (c) { try { window.hljs.highlightElement(c); } catch (e) {} }); } catch (e) {}
         });
+        // MOTION (external libs, ~7.5 KB gzip total). Both are lazy and OPTIONAL:
+        // app.js awaits these promises and silently falls back to the existing CSS
+        // transitions if a CDN is blocked, so motion never gates functionality.
+        //  · Motion "mini" (MIT) — the WAAPI `animate()` primitive. We import the
+        //    framer-motion path DIRECTLY because motion@/mini/+esm is only a 340-byte
+        //    re-export shim, which would cost an extra round-trip.
+        //  · auto-animate (MIT) — automatic add/remove/reorder transitions for lists.
+        window.firasMotion = import("https://cdn.jsdelivr.net/npm/framer-motion@12.42.2/dom/mini/+esm").catch(function () { return null; });
+        window.firasAutoAnimate = import("https://cdn.jsdelivr.net/npm/@formkit/auto-animate@0.10.0/+esm").catch(function () { return null; });
       }
       // After the page is interactive — idle if possible, else shortly after load.
       if (document.readyState === "complete") (window.requestIdleCallback || function (f) { setTimeout(f, 200); })(loadHeavy);
@@ -83,18 +105,38 @@
        degrades gracefully (email/password still works) when it's absent. -->
   <script defer src="firebase-config.js"></script>
 
-  <script defer src="app.js?v=native20"></script>
+  <script defer src="app.js?v=sec1"></script>
 </head>
 <body>
+<!--
+THESIS: An instrument you read, not a surface you scroll. Firas proves its answers — Brain cites
+the exact page — so the interface is built from the engraved measuring tool, and refuses the
+near-black-plus-neon glass panel every AI product ships.
+OWN-WORLD: Oxidized-bronze ground, engraved brass rule and type, one verdigris signal for live
+state, oxide red for failure. Hairlines carry tick marks; borders are graduations. Kufic display
+(the script actually cut into astrolabes), workhorse Arabic sans for body, mono only for real
+measurement and code. Icons drawn at one stroke weight — never a glyph.
+STORY: An Arabic reader arrives, sees a tool built for their script rather than translated into
+it, and gets an answer they can check against a page number.
+FIRST VIEWPORT: Fixed plate left (navigation, graduated), rotating field right (the work). The
+composer sits on the limb — the graduated outer ring — with the primary action at its vertex.
+FORM: Brass astrolabe; candidate 6 of the grounded list; seed key 98b25e4a.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
+
   <!-- ===== Mobile drawer scrim ===== -->
   <div class="scrim" id="scrim" aria-hidden="true"></div>
 
   <!-- ===== Landing / hero (shown FIRST to logged-out visitors) ===== -->
   <div class="landing" id="landingScreen" hidden>
+    <!-- The instrument itself, at the scale it has in life. Three real parts, not three
+         blurred colour blobs: the graduated LIMB you read degrees off, the fixed PLATE
+         engraved with coordinate arcs, and the RETE — the pierced star-map that turns.
+         The rete's rotation is the page's single authored motion. -->
     <div class="landing__bg" aria-hidden="true">
-      <span class="landing__orb landing__orb--1"></span>
-      <span class="landing__orb landing__orb--2"></span>
-      <span class="landing__orb landing__orb--3"></span>
+      <span class="astro astro--limb"></span>
+      <span class="astro astro--plate"></span>
+      <span class="astro astro--rete"></span>
     </div>
     <div class="landing__inner">
       <span class="nib is-aurora landing__mark" data-size="xl" aria-hidden="true"><span class="glyph">F</span></span>
@@ -102,7 +144,11 @@
         <span class="wordmark"><span class="firas">Firas</span>&nbsp;<span class="ai">AI</span></span>
       </h1>
       <p class="landing__about" id="landingAbout"></p>
-      <button type="button" class="landing__cta" id="landingStart"></button>
+      <div class="landing__actions">
+        <button type="button" class="landing__cta" id="landingStart"></button>
+        <button type="button" class="landing__signin" id="landingSignIn"></button>
+      </div>
+      <p class="landing__hint" id="landingHint"></p>
       <div class="landing__stats" id="landingStats"></div>
     </div>
     <section class="landing__details" id="landingDetails"></section>
@@ -250,7 +296,12 @@
 
         <div class="topbar__spacer"></div>
 
-        <!-- Tier switcher -->
+        <!-- Tier switcher. TWO presentations of the SAME state (state.tier):
+             · desktop  → the segmented strip (#tierSwitch)
+             · phones   → a compact dropdown (#tierSelect), because four segments
+               plus the icon buttons burst out of a 360px topbar. CSS shows
+               exactly one of them; both are driven by setTier(). -->
+        <div class="tier-select" id="tierSelect"></div>
         <div class="tier-switch" id="tierSwitch" role="tablist" aria-label="Firas AI model tier"></div>
 
         <button class="topbar__newchat topbar__mobile-only-hide" id="topbarNewChat" aria-label="New chat">

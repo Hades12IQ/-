@@ -1,0 +1,189 @@
+{
+ "subject": "science",
+ "topic": "phys-circuits",
+ "title": "phys-circuits — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "بطاريتان موصولتان على التوازي عبر مقاومة حمل واحدة $R=2\\,\\Omega$. البطارية الأولى قوتها الدافعة $\\varepsilon_1=10\\,\\text{V}$ ومقاومتها الداخلية $r_1=1\\,\\Omega$؛ والبطارية الثانية $\\varepsilon_2=4\\,\\text{V}$ ومقاومتها الداخلية $r_2=2\\,\\Omega$ (القطبان الموجبان موصولان إلى العقدة نفسها). أوجد جهد الطرفين المشترك عبر الحمل، والتيار الذي تزوّده كل بطارية، وبيّن أي بطارية (إن وُجدت) تُشحن.",
+   "q_en": "Two batteries are connected in parallel across a single load resistor $R=2\\,\\Omega$. Battery 1 has EMF $\\varepsilon_1=10\\,\\text{V}$ and internal resistance $r_1=1\\,\\Omega$; battery 2 has EMF $\\varepsilon_2=4\\,\\text{V}$ and internal resistance $r_2=2\\,\\Omega$ (both positive terminals joined to the same node). Find the common terminal voltage across the load, the current delivered by each battery, and state which battery (if any) is being charged.",
+   "a_ar": "ليكن $V$ جهد الطرفين. بتطبيق قانون كيرشوف للتيار عند العقدة العليا: $\\frac{\\varepsilon_1-V}{r_1}+\\frac{\\varepsilon_2-V}{r_2}=\\frac{V}{R}$، ومنه $V=\\dfrac{10+2}{1+0.5+0.5}=6\\,\\text{V}$. إذن $I_1=\\frac{10-6}{1}=4\\,\\text{A}$ و $I_2=\\frac{4-6}{2}=-1\\,\\text{A}$؛ وتيار الحمل $I_R=V/R=3\\,\\text{A}$ (تحقق: $I_1+I_2=I_R$). كون $I_2$ سالبًا يعني أن البطارية الثانية (قوتها الدافعة $4\\,\\text{V}<V$) تُشحن. القدرة في الحمل $=V^2/R=18\\,\\text{W}$.",
+   "a_en": "Let $V$ be the terminal voltage. KCL at the top node: $\\frac{\\varepsilon_1-V}{r_1}+\\frac{\\varepsilon_2-V}{r_2}=\\frac{V}{R}$, so $V=\\dfrac{\\varepsilon_1/r_1+\\varepsilon_2/r_2}{1/r_1+1/r_2+1/R}=\\dfrac{10+2}{1+0.5+0.5}=6\\,\\text{V}$. Then $I_1=\\frac{10-6}{1}=4\\,\\text{A}$ and $I_2=\\frac{4-6}{2}=-1\\,\\text{A}$; load current $I_R=V/R=3\\,\\text{A}$ (check $I_1+I_2=I_R$). The negative $I_2$ means battery 2 (EMF $4\\,\\text{V}<V$) is being charged. Power in the load $=V^2/R=18\\,\\text{W}$.",
+   "answer": "$V=6\\,\\text{V}$, $I_1=4\\,\\text{A}$, $I_2=-1\\,\\text{A}$ (battery 2 is being charged), $I_R=3\\,\\text{A}$, $P_R=18\\,\\text{W}$",
+   "keywords": [
+    "parallel batteries",
+    "بطاريات على التوازي",
+    "internal resistance",
+    "المقاومة الداخلية",
+    "terminal voltage",
+    "جهد الطرفين",
+    "Kirchhoff",
+    "شحن البطارية"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "مكثّف سعته $C=100\\,\\mu\\text{F}$ شُحن إلى $V_0=50\\,\\text{V}$ ثم فُرّغ عبر مقاومة $R=20\\,\\text{k}\\Omega$. (أ) أوجد ثابت الزمن. (ب) أوجد الزمن الذي تصبح عنده الطاقة المخزّنة في المكثّف ربع قيمتها الابتدائية. (ج) أوجد الشحنة المتبقّية على المكثّف في تلك اللحظة.",
+   "q_en": "A capacitor $C=100\\,\\mu\\text{F}$ is charged to $V_0=50\\,\\text{V}$ and then discharged through a resistor $R=20\\,\\text{k}\\Omega$. (a) Find the time constant. (b) Find the time at which the energy stored in the capacitor has fallen to one quarter of its initial value. (c) Find the charge remaining on the capacitor at that instant.",
+   "a_ar": "(أ) $\\tau=RC=(20{,}000)(100\\times10^{-6})=2\\,\\text{s}$. (ب) أثناء التفريغ $V=V_0e^{-t/\\tau}$ والطاقة $U=\\tfrac12 CV^2\\propto V^2$، إذن $U/U_0=e^{-2t/\\tau}=\\tfrac14\\Rightarrow \\tfrac{2t}{\\tau}=\\ln4\\Rightarrow t=\\tfrac{\\tau}{2}\\ln4=\\tau\\ln2=2\\ln2\\approx1.386\\,\\text{s}$. (ج) عند $t=\\tau\\ln2$ يكون $V=V_0/2$، فتكون $Q=CV=\\tfrac12 Q_0$ حيث $Q_0=CV_0=5\\,\\text{mC}$؛ أي $Q=2.5\\,\\text{mC}$.",
+   "a_en": "(a) $\\tau=RC=(20{,}000)(100\\times10^{-6})=2\\,\\text{s}$. (b) During discharge $V=V_0e^{-t/\\tau}$ and $U=\\tfrac12 CV^2\\propto V^2$, so $U/U_0=e^{-2t/\\tau}=\\tfrac14\\Rightarrow \\tfrac{2t}{\\tau}=\\ln4\\Rightarrow t=\\tfrac{\\tau}{2}\\ln4=\\tau\\ln2=2\\ln2\\approx1.386\\,\\text{s}$. (c) At $t=\\tau\\ln2$, $V=V_0/2$, so $Q=CV=C\\cdot V_0/2=\\tfrac12 Q_0$ where $Q_0=CV_0=5\\,\\text{mC}$; thus $Q=2.5\\,\\text{mC}$.",
+   "answer": "$\\tau=2\\,\\text{s}$; $t=2\\ln2\\approx1.386\\,\\text{s}$; $Q=2.5\\,\\text{mC}$",
+   "keywords": [
+    "RC discharge",
+    "تفريغ المكثّف",
+    "time constant",
+    "ثابت الزمن",
+    "stored energy",
+    "الطاقة المخزّنة",
+    "exponential decay",
+    "الشحنة المتبقية"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "بطارية حقيقية قوتها الدافعة $\\varepsilon=12\\,\\text{V}$ ومقاومتها الداخلية المجهولة $r$، تزوّد المقاومة الخارجية القدرة نفسها تمامًا سواء كانت تلك المقاومة $R_1=2\\,\\Omega$ أو $R_2=8\\,\\Omega$. (أ) أوجد $r$. (ب) أوجد تلك القدرة المشتركة. (ج) أوجد المقاومة الخارجية التي تحقّق أعظم نقل للقدرة والقدرة العظمى المقابلة.",
+   "q_en": "A real battery of EMF $\\varepsilon=12\\,\\text{V}$ and unknown internal resistance $r$ delivers exactly the same power to an external resistor whether that resistor is $R_1=2\\,\\Omega$ or $R_2=8\\,\\Omega$. (a) Find $r$. (b) Find that common delivered power. (c) Find the external resistance for maximum power transfer and the corresponding maximum power.",
+   "a_ar": "القدرة في $R$ هي $P=\\dfrac{\\varepsilon^2 R}{(R+r)^2}$. تساوي القدرة يعطي $\\dfrac{R_1}{(R_1+r)^2}=\\dfrac{R_2}{(R_2+r)^2}$؛ وبفكّ $R_1(R_2+r)^2=R_2(R_1+r)^2$ نصل إلى $r^2=R_1R_2$، أي $r=\\sqrt{R_1R_2}=\\sqrt{16}=4\\,\\Omega$. (ب) $P=\\dfrac{12^2\\cdot2}{(2+4)^2}=\\dfrac{288}{36}=8\\,\\text{W}$ (وهي نفسها لأجل $R_2$). (ج) أعظم نقل عند $R=r=4\\,\\Omega$، فتكون $P_{\\max}=\\dfrac{\\varepsilon^2}{4r}=\\dfrac{144}{16}=9\\,\\text{W}$.",
+   "a_en": "Power in $R$ is $P=\\dfrac{\\varepsilon^2 R}{(R+r)^2}$. Equal power gives $\\dfrac{R_1}{(R_1+r)^2}=\\dfrac{R_2}{(R_2+r)^2}$; expanding $R_1(R_2+r)^2=R_2(R_1+r)^2$ leads to $r^2=R_1R_2$, so $r=\\sqrt{R_1R_2}=\\sqrt{16}=4\\,\\Omega$. (b) $P=\\dfrac{12^2\\cdot2}{(2+4)^2}=\\dfrac{288}{36}=8\\,\\text{W}$ (same for $R_2$). (c) Maximum transfer at $R=r=4\\,\\Omega$, giving $P_{\\max}=\\dfrac{\\varepsilon^2}{4r}=\\dfrac{144}{16}=9\\,\\text{W}$.",
+   "answer": "$r=4\\,\\Omega$; common power $=8\\,\\text{W}$; max power at $R=4\\,\\Omega$ with $P_{\\max}=9\\,\\text{W}$",
+   "keywords": [
+    "maximum power transfer",
+    "أعظم نقل للقدرة",
+    "internal resistance",
+    "المقاومة الداخلية",
+    "equal power",
+    "القدرة المتساوية",
+    "EMF",
+    "القوة الدافعة"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في جسر ويتستون، وُصلت بطارية مثالية جهدها $10\\,\\text{V}$ بين الطرفين A و C. أذرع الجسر هي $AB=10\\,\\Omega$ و $BC=20\\,\\Omega$ و $AD=30\\,\\Omega$ و $DC=15\\,\\Omega$، ويُوصل جلفانومتر مقاومته $25\\,\\Omega$ بين B و D. أوجد التيار المارّ في الجلفانومتر واتجاهه.",
+   "q_en": "In a Wheatstone bridge, an ideal $10\\,\\text{V}$ battery is connected across terminals A and C. The arms are $AB=10\\,\\Omega$, $BC=20\\,\\Omega$, $AD=30\\,\\Omega$, $DC=15\\,\\Omega$, and a galvanometer of resistance $25\\,\\Omega$ is connected between B and D. Determine the current through the galvanometer and its direction.",
+   "a_ar": "نضع $V_A=10\\,\\text{V}$ و $V_C=0$. عند العقدة B: $\\frac{V_A-V_B}{10}=\\frac{V_B}{20}+\\frac{V_B-V_D}{25}$، وعند D: $\\frac{V_A-V_D}{30}=\\frac{V_D}{15}+\\frac{V_D-V_B}{25}$. الحل يعطي $V_B=\\tfrac{92}{15}\\approx6.13\\,\\text{V}$ و $V_D=\\tfrac{62}{15}\\approx4.13\\,\\text{V}$. تيار الجلفانومتر $I_g=\\frac{V_B-V_D}{25}=\\frac{2}{25}=0.08\\,\\text{A}$، ويسري من B إلى D. (الجسر غير متوازن لأن $10\\times15\\ne20\\times30$.)",
+   "a_en": "Set $V_A=10\\,\\text{V}$, $V_C=0$. Node B: $\\frac{V_A-V_B}{10}=\\frac{V_B}{20}+\\frac{V_B-V_D}{25}$. Node D: $\\frac{V_A-V_D}{30}=\\frac{V_D}{15}+\\frac{V_D-V_B}{25}$. Solving gives $V_B=\\tfrac{92}{15}\\approx6.13\\,\\text{V}$ and $V_D=\\tfrac{62}{15}\\approx4.13\\,\\text{V}$. The galvanometer current is $I_g=\\frac{V_B-V_D}{25}=\\frac{(92-62)/15}{25}=\\frac{2}{25}=0.08\\,\\text{A}$, flowing from B to D. (The bridge is unbalanced since $10\\times15\\ne20\\times30$.)",
+   "answer": "$I_g=\\dfrac{2}{25}\\,\\text{A}=0.08\\,\\text{A}=80\\,\\text{mA}$, directed from B to D",
+   "keywords": [
+    "Wheatstone bridge",
+    "جسر ويتستون",
+    "galvanometer",
+    "جلفانومتر",
+    "unbalanced bridge",
+    "جسر غير متوازن",
+    "node voltage",
+    "تحليل العقد"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "بطارية مثالية جهدها $24\\,\\text{V}$ موصولة عبر مقاومة $3\\,\\text{k}\\Omega$ (وهي $R_1$) إلى العقدة A. ومن A تمتد مقاومة $6\\,\\text{k}\\Omega$ (وهي $R_2$) إلى الأرضي، وكذلك من A مقاومة $2\\,\\text{k}\\Omega$ (وهي $R_3$) على التوالي مع مكثّف $C=50\\,\\mu\\text{F}$ لوحه الآخر موصول بالأرضي. بعد زمن طويل من غلق المفتاح: (أ) أوجد جهد المكثّف في الحالة المستقرة وشحنته؛ (ب) أوجد ثابت الزمن الحاكم لشحن المكثّف.",
+   "q_en": "A $24\\,\\text{V}$ ideal battery connects through a $3\\,\\text{k}\\Omega$ resistor ($R_1$) to node A. From A a $6\\,\\text{k}\\Omega$ resistor ($R_2$) goes to ground, and also from A a $2\\,\\text{k}\\Omega$ resistor ($R_3$) is in series with a capacitor $C=50\\,\\mu\\text{F}$ whose other plate is grounded. Long after the switch closes: (a) find the steady-state voltage across the capacitor and its charge; (b) find the time constant governing the capacitor's charging.",
+   "a_ar": "(أ) في الحالة المستقرة لا يمرّ تيار في فرع المكثّف، فلا هبوط جهد على $R_3$؛ ويُحدَّد $V_A$ بمقسّم الجهد $R_1$–$R_2$: $V_A=\\varepsilon\\frac{R_2}{R_1+R_2}=24\\cdot\\frac{6}{9}=16\\,\\text{V}$، ومنه $V_C=V_A=16\\,\\text{V}$. الشحنة $Q=CV_C=50\\times10^{-6}\\times16=8\\times10^{-4}\\,\\text{C}=800\\,\\mu\\text{C}$. (ب) المقاومة التي يراها المكثّف (مع تقصير المصدر) هي $R_{\\text{th}}=R_3+(R_1\\parallel R_2)=2\\text{k}+\\frac{3\\cdot6}{9}\\text{k}=4\\,\\text{k}\\Omega$، إذن $\\tau=R_{\\text{th}}C=4000\\times50\\times10^{-6}=0.2\\,\\text{s}$.",
+   "a_en": "(a) At steady state no current flows in the capacitor branch, so no drop across $R_3$; $V_A$ is set by the $R_1$–$R_2$ divider: $V_A=\\varepsilon\\frac{R_2}{R_1+R_2}=24\\cdot\\frac{6}{9}=16\\,\\text{V}$, and $V_C=V_A=16\\,\\text{V}$. Charge $Q=CV_C=50\\times10^{-6}\\times16=8\\times10^{-4}\\,\\text{C}=800\\,\\mu\\text{C}$. (b) The resistance seen by the capacitor (source shorted) is $R_{\\text{th}}=R_3+(R_1\\parallel R_2)=2\\text{k}+\\frac{3\\cdot6}{9}\\text{k}=2\\text{k}+2\\text{k}=4\\,\\text{k}\\Omega$, so $\\tau=R_{\\text{th}}C=4000\\times50\\times10^{-6}=0.2\\,\\text{s}$.",
+   "answer": "$V_C=16\\,\\text{V}$, $Q=800\\,\\mu\\text{C}$; $\\tau=R_{\\text{th}}C=(4\\,\\text{k}\\Omega)(50\\,\\mu\\text{F})=0.2\\,\\text{s}$",
+   "keywords": [
+    "RC charging",
+    "شحن المكثّف",
+    "Thevenin resistance",
+    "مقاومة تيفنين",
+    "steady state",
+    "الحالة المستقرة",
+    "voltage divider",
+    "مقسّم الجهد",
+    "time constant",
+    "ثابت الزمن"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "شبكة سُلّمية لا نهائية مبنية من مقاومات متطابقة $R$: في كل مرحلة توجد مقاومة على التوالي (على القضيب العلوي) ومقاومة على التوازي (بين القضيبين). أوجد مقاومة الدخل $R_{in}$ مقيسة من اليسار، كمضاعف لـ $R$.",
+   "q_en": "An infinite ladder network is built from identical resistors $R$: at each stage one resistor is in series (along the top rail) and one resistor is in shunt (across the rails). Find the input resistance $R_{in}$ looking into the network from the left, as a multiple of $R$.",
+   "a_ar": "بما أن الشبكة لا نهائية، فإن إضافة مرحلة واحدة لا يغيّر مقاومة الدخل، إذًا $R_{in}=R+\\dfrac{R\\,R_{in}}{R+R_{in}}$. بضرب الطرفين نحصل على $R_{in}^2-R\\,R_{in}-R^2=0$، وجذرها الموجب هو $R_{in}=\\dfrac{1+\\sqrt5}{2}\\,R=\\varphi R\\approx1.618\\,R$. الجواب هو النسبة الذهبية مضروبة في $R$.",
+   "a_en": "Because the network is infinite, adding one stage leaves the input resistance unchanged, so $R_{in}=R+\\dfrac{R\\,R_{in}}{R+R_{in}}$. Clearing denominators gives $R_{in}^2-R\\,R_{in}-R^2=0$, whose positive root is $R_{in}=\\dfrac{1+\\sqrt5}{2}\\,R=\\varphi R\\approx1.618\\,R$. The answer is the golden ratio times $R$.",
+   "answer": "$R_{in}=\\dfrac{1+\\sqrt5}{2}\\,R=\\varphi R\\approx1.618R$",
+   "keywords": [
+    "infinite ladder",
+    "شبكة سلمية",
+    "golden ratio",
+    "النسبة الذهبية",
+    "مقاومة الدخل",
+    "equivalent resistance",
+    "recursion",
+    "مقاومة مكافئة"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "شبكة مربعة ثنائية الأبعاد لا نهائية مصنوعة من مقاومات متطابقة $R$، واحدة على كل حافة بين العقد المتجاورة. أوجد المقاومة المكافئة بين عقدتين متجاورتين (أقرب جارتين) $A$ و$B$.",
+   "q_en": "An infinite two-dimensional square lattice is made of identical resistors $R$, one on every edge between neighboring nodes. Find the equivalent resistance between two adjacent (nearest-neighbor) nodes $A$ and $B$.",
+   "a_ar": "نستخدم التراكب. نحقن تياراً $I$ عند $A$ ونتركه يتسرّب إلى اللانهاية: بحكم التماثل الرباعي يخرج تيار $I/4$ من $A$ عبر كل حافة من حوافه الأربع، فتحمل حافة $A\\!\\to\\!B$ مقدار $I/4$. وبشكل منفصل نسحب تياراً $I$ عند $B$ (من اللانهاية): مرة أخرى يمرّ $I/4$ عبر الحافة نفسها وبالاتجاه ذاته. بجمع الحالتين نحصل على الوضع المطلوب (تيار $I$ يدخل عند $A$ ويخرج عند $B$) وتيار الحافة $I/2$، إذًا $V_{AB}=(I/2)R$ و$R_{AB}=R/2$.",
+   "a_en": "Use superposition. Inject current $I$ at $A$ and let it drain to infinity: by four-fold symmetry a current $I/4$ leaves $A$ along each of its four edges, so the $A\\!\\to\\!B$ edge carries $I/4$. Separately, extract current $I$ at $B$ (drawn from infinity): again $I/4$ flows through the $A\\!\\to\\!B$ edge in the same direction. Superposing the two situations gives the desired configuration (current $I$ in at $A$, out at $B$) with edge current $I/2$, so $V_{AB}=(I/2)R$ and $R_{AB}=R/2$.",
+   "answer": "$R_{AB}=\\dfrac{R}{2}$",
+   "keywords": [
+    "infinite grid",
+    "شبكة لانهائية",
+    "superposition",
+    "التراكب",
+    "square lattice",
+    "مقاومة مكافئة",
+    "nearest neighbor",
+    "حافة"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "مكثّف $C_1$ مشحون إلى جهد $V_0$، ثم عند $t=0$ يُوصَل عبر مقاومة $R$ بمكثّف $C_2$ غير مشحون ابتداءً. أوجد الحرارة الكلية المتبدّدة في المقاومة عندما $t\\to\\infty$، وعلّق على اعتمادها على $R$.",
+   "q_en": "A capacitor $C_1$ is charged to voltage $V_0$ and then, at $t=0$, connected through a resistor $R$ to an initially uncharged capacitor $C_2$. Find the total heat dissipated in the resistor as $t\\to\\infty$, and comment on its dependence on $R$.",
+   "a_ar": "تُحفَظ الشحنة: الجهد النهائي المشترك هو $V_f=\\dfrac{C_1V_0}{C_1+C_2}$. الطاقة الابتدائية $\\tfrac12C_1V_0^2$ والطاقة النهائية المخزّنة $\\tfrac12(C_1+C_2)V_f^2=\\dfrac{C_1^2V_0^2}{2(C_1+C_2)}$. الحرارة المتبدّدة تساوي الفرق: $Q=\\dfrac{1}{2}\\dfrac{C_1C_2}{C_1+C_2}V_0^2$. والمدهش أنها مستقلة عن $R$ — فالمقاومة تحدّد سرعة التبدّد (ثابت الزمن $\\tau=\\frac{RC_1C_2}{C_1+C_2}$) لا مقداره.",
+   "a_en": "Charge is conserved: the final common voltage is $V_f=\\dfrac{C_1V_0}{C_1+C_2}$. Initial energy is $\\tfrac12C_1V_0^2$ and final stored energy is $\\tfrac12(C_1+C_2)V_f^2=\\dfrac{C_1^2V_0^2}{2(C_1+C_2)}$. The heat dissipated equals the difference: $Q=\\dfrac{1}{2}\\dfrac{C_1C_2}{C_1+C_2}V_0^2$. Remarkably it is independent of $R$ — the resistance sets how fast the loss occurs (time constant $\\tau=\\frac{RC_1C_2}{C_1+C_2}$) but not how much.",
+   "answer": "$Q=\\dfrac{1}{2}\\,\\dfrac{C_1C_2}{C_1+C_2}\\,V_0^{2}$, independent of $R$",
+   "keywords": [
+    "two-capacitor paradox",
+    "مكثفان",
+    "energy dissipation",
+    "الطاقة المتبددة",
+    "charge conservation",
+    "حفظ الشحنة",
+    "RC",
+    "ثابت الزمن"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يربط فرعان عقدةً علوية $T$ بأرضي مشترك. الفرع الأيسر قوة محركة $E_1=12\\,\\text{V}$ على التوالي مع $R_1=2\\,\\Omega$؛ والفرع الأيمن قوة محركة $E_2=6\\,\\text{V}$ على التوالي مع $R_2=3\\,\\Omega$؛ وكلتا القوّتين تدفعان التيار نحو $T$. فرع أوسط $R_3=6\\,\\Omega$ يصل $T$ بالأرضي. باستخدام قوانين كيرشوف، أوجد التيار في كل فرع.",
+   "q_en": "Two branches connect a top node $T$ to a common ground. The left branch is an EMF $E_1=12\\,\\text{V}$ in series with $R_1=2\\,\\Omega$; the right branch is an EMF $E_2=6\\,\\text{V}$ in series with $R_2=3\\,\\Omega$; both EMFs push current toward $T$. A middle branch $R_3=6\\,\\Omega$ connects $T$ to ground. Using Kirchhoff's laws, find the current in each branch.",
+   "a_ar": "ليكن $V_T$ جهد العقدة. قانون التيارات عند $T$: $\\frac{E_1-V_T}{R_1}+\\frac{E_2-V_T}{R_2}=\\frac{V_T}{R_3}$، أي $V_T\\left(\\tfrac12+\\tfrac13+\\tfrac16\\right)=\\tfrac{12}{2}+\\tfrac{6}{3}=8$، إذًا $V_T=8\\,\\text{V}$. ومنه $I_1=\\frac{12-8}{2}=2\\,\\text{A}$ (خارجاً من $E_1$)، و$I_2=\\frac{6-8}{3}=-\\tfrac23\\,\\text{A}$ (أي $\\tfrac23\\,\\text{A}$ يعود داخلاً إلى $E_2$ فيشحنه)، و$I_3=\\frac{8}{6}=\\tfrac43\\,\\text{A}$ نازلاً عبر $R_3$. التحقق: $2-\\tfrac23=\\tfrac43$. ✓",
+   "a_en": "Let $V_T$ be the node voltage. KCL at $T$: $\\frac{E_1-V_T}{R_1}+\\frac{E_2-V_T}{R_2}=\\frac{V_T}{R_3}$, i.e. $V_T\\left(\\tfrac12+\\tfrac13+\\tfrac16\\right)=\\tfrac{12}{2}+\\tfrac{6}{3}=8$, so $V_T=8\\,\\text{V}$. Then $I_1=\\frac{12-8}{2}=2\\,\\text{A}$ (out of $E_1$), $I_2=\\frac{6-8}{3}=-\\tfrac23\\,\\text{A}$ (i.e. $\\tfrac23\\,\\text{A}$ flowing back into $E_2$, charging it), and $I_3=\\frac{8}{6}=\\tfrac43\\,\\text{A}$ down through $R_3$. Check: $2-\\tfrac23=\\tfrac43$. ✓",
+   "answer": "$V_T=8\\,\\text{V},\\ I_1=2\\,\\text{A},\\ I_2=-\\tfrac23\\,\\text{A},\\ I_3=\\tfrac43\\,\\text{A}$",
+   "keywords": [
+    "Kirchhoff",
+    "كيرشوف",
+    "node voltage",
+    "جهد العقدة",
+    "two EMF",
+    "قوة محركة",
+    "branch current",
+    "تيار الفرع"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "بطارية $E=12\\,\\text{V}$ تُغذّي مقسّمَي جهد متوازيين. المقسّم الأيسر $R_1=3\\,\\text{k}\\Omega$ (أعلى) و$R_2=6\\,\\text{k}\\Omega$ (أسفل)؛ والمقسّم الأيمن $R_3=6\\,\\text{k}\\Omega$ (أعلى) و$R_4=3\\,\\text{k}\\Omega$ (أسفل). مكثّف $C=1\\,\\mu\\text{F}$ يصل بين منتصفَي المقسّمين. بدءاً من مكثّف غير مشحون، أوجد الشحنة النهائية على $C$ وثابت الزمن للشحن.",
+   "q_en": "A battery $E=12\\,\\text{V}$ drives two parallel voltage dividers. The left divider is $R_1=3\\,\\text{k}\\Omega$ (top) and $R_2=6\\,\\text{k}\\Omega$ (bottom); the right divider is $R_3=6\\,\\text{k}\\Omega$ (top) and $R_4=3\\,\\text{k}\\Omega$ (bottom). A capacitor $C=1\\,\\mu\\text{F}$ connects the two divider midpoints. Starting from an uncharged capacitor, find the final charge on $C$ and the time constant of the charging.",
+   "a_ar": "في الحالة المستقرة لا يمرّ تيار عبر $C$، فيعمل كل مقسّم بمفرده: $V_L=E\\frac{R_2}{R_1+R_2}=12\\cdot\\frac{6}{9}=8\\,\\text{V}$، و$V_R=E\\frac{R_4}{R_3+R_4}=12\\cdot\\frac{3}{9}=4\\,\\text{V}$. جهد المكثّف النهائي $V_C=V_L-V_R=4\\,\\text{V}$، ومنه $Q=CV_C=4\\,\\mu\\text{C}$. مقاومة ثيفنن التي يراها $C$ هي $R_{th}=(R_1\\Vert R_2)+(R_3\\Vert R_4)=2\\,\\text{k}\\Omega+2\\,\\text{k}\\Omega=4\\,\\text{k}\\Omega$، إذًا $\\tau=R_{th}C=4\\,\\text{ms}$.",
+   "a_en": "At steady state no current flows through $C$, so each divider acts alone: $V_L=E\\frac{R_2}{R_1+R_2}=12\\cdot\\frac{6}{9}=8\\,\\text{V}$, $V_R=E\\frac{R_4}{R_3+R_4}=12\\cdot\\frac{3}{9}=4\\,\\text{V}$. The final capacitor voltage is $V_C=V_L-V_R=4\\,\\text{V}$, giving $Q=CV_C=4\\,\\mu\\text{C}$. The Thevenin resistance seen by $C$ is $R_{th}=(R_1\\Vert R_2)+(R_3\\Vert R_4)=2\\,\\text{k}\\Omega+2\\,\\text{k}\\Omega=4\\,\\text{k}\\Omega$, so $\\tau=R_{th}C=4\\,\\text{ms}$.",
+   "answer": "$Q=4\\,\\mu\\text{C}$ (at $V_C=4\\,\\text{V}$), $\\tau=4\\,\\text{ms}$",
+   "keywords": [
+    "Thevenin",
+    "ثيفنن",
+    "RC time constant",
+    "ثابت الزمن",
+    "voltage divider",
+    "مقسم جهد",
+    "steady state",
+    "الشحنة النهائية"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

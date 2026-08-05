@@ -1,0 +1,184 @@
+{
+ "subject": "science",
+ "topic": "phys-waves-optics",
+ "title": "phys-waves-optics — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "في تجربة حلقات نيوتن (عدسة محدّبة مستوية موضوعة على لوح زجاجي مستوٍ، مرصودة بالضوء المنعكس أحادي اللون)، قُطر الحلقة المظلمة العاشرة في الهواء يساوي $6.0\\,\\text{mm}$. وعند ملء الفجوة الهوائية بسائل شفاف أصبح قطر الحلقة المظلمة العاشرة نفسها $5.0\\,\\text{mm}$. أوجد معامل انكسار السائل.",
+   "q_en": "In a Newton's rings experiment (plano-convex lens on a flat glass plate, viewed by reflected monochromatic light), the diameter of the 10th dark ring in air is $6.0\\,\\text{mm}$. When the air gap is filled with a transparent liquid, the diameter of the same 10th dark ring becomes $5.0\\,\\text{mm}$. Find the refractive index of the liquid.",
+   "a_ar": "عندما يكون بين السطحين وسط معامل انكساره $\\mu$، يحقق قطر الحلقة المظلمة رقم $n$ العلاقة $D_n^2 = \\dfrac{4 n \\lambda R}{\\mu}$. وبما أنّ $n$ و $\\lambda$ و $R$ لم تتغيّر فإنّ $D^2 \\propto 1/\\mu$، ومنه $\\mu = \\left(\\dfrac{D_{\\text{هواء}}}{D_{\\text{سائل}}}\\right)^2 = \\left(\\dfrac{6.0}{5.0}\\right)^2 = 1.44$. إذًا معامل انكسار السائل هو $\\mu = 1.44$.",
+   "a_en": "For a medium of index $\\mu$ between the surfaces, the diameter of the $n$-th dark ring satisfies $D_n^2 = \\dfrac{4 n \\lambda R}{\\mu}$. Since $n$, $\\lambda$, and $R$ are unchanged, $D^2 \\propto 1/\\mu$, so $\\mu = \\left(\\dfrac{D_{\\text{air}}}{D_{\\text{liquid}}}\\right)^2 = \\left(\\dfrac{6.0}{5.0}\\right)^2 = 1.44$. Thus the liquid's refractive index is $\\mu = 1.44$.",
+   "answer": "$\\mu = 1.44$",
+   "keywords": [
+    "Newton's rings",
+    "حلقات نيوتن",
+    "refractive index",
+    "معامل الانكسار",
+    "dark ring",
+    "تداخل",
+    "interference"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يُطلى الزجاج ($n_g = 1.50$) بطبقة أحادية مضادة للانعكاس من فلوريد المغنيسيوم ($n_c = 1.38$) لتقليل انعكاس ضوء طول موجته $\\lambda = 550\\,\\text{nm}$ (في الفراغ) عند السقوط العمودي. أوجد أصغر سُمك (غير صفري) للطبقة، مع الانتباه إلى تغيّرات الطور عند الانعكاس.",
+   "q_en": "A single-layer anti-reflection coating of magnesium fluoride ($n_c = 1.38$) is deposited on glass ($n_g = 1.50$) to minimize reflection of light of wavelength $\\lambda = 550\\,\\text{nm}$ (in vacuum) at normal incidence. Determine the minimum (non-zero) coating thickness, being careful about the phase changes on reflection.",
+   "a_ar": "الضوء المنعكس عن السطح العلوي (هواء$\\to$طبقة، ازدياد المعامل) يكتسب انزياح طور $\\pi$، والمنعكس عن السطح السفلي (طبقة$\\to$زجاج، $1.50 > 1.38$) يكتسب أيضًا انزياح $\\pi$. يلغي الانزياحان أحدهما الآخر، لذا يتطلّب التداخل الهدّام أن يكون فرق المسير الضوئي $2 n_c t = (m+\\tfrac12)\\lambda$. وأصغر سُمك ($m=0$) يعطي $t = \\dfrac{\\lambda}{4 n_c} = \\dfrac{550\\,\\text{nm}}{4(1.38)} \\approx 99.6\\,\\text{nm}$.",
+   "a_en": "Light reflecting off the top surface (air$\\to$coating, $n$ increases) undergoes a $\\pi$ phase shift, and light reflecting off the bottom surface (coating$\\to$glass, $1.50 > 1.38$) also undergoes a $\\pi$ shift. The two $\\pi$ shifts cancel, so destructive interference requires the optical path difference $2 n_c t = (m+\\tfrac12)\\lambda$. The minimum thickness ($m=0$) gives $t = \\dfrac{\\lambda}{4 n_c} = \\dfrac{550\\,\\text{nm}}{4(1.38)} \\approx 99.6\\,\\text{nm}$.",
+   "answer": "$t = \\dfrac{\\lambda}{4 n_c} \\approx 99.6\\,\\text{nm}$",
+   "keywords": [
+    "anti-reflection coating",
+    "طبقة مضادة للانعكاس",
+    "thin film",
+    "الغشاء الرقيق",
+    "phase shift",
+    "انزياح الطور",
+    "MgF2"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في تجربة يونغ للشقّين، المسافة بين الشقّين $d = 0.5\\,\\text{mm}$ والشاشة على بُعد $D = 1.0\\,\\text{m}$، وطول الموجة $\\lambda = 600\\,\\text{nm}$. وُضعت صفيحة زجاجية رقيقة معامل انكسارها $n = 1.5$ وسُمكها $t = 6.0\\,\\mu\\text{m}$ أمام أحد الشقّين. أوجد (أ) عدد الأهداب التي ينزاح بها النمط، و(ب) الإزاحة الجانبية للهدب المركزي على الشاشة.",
+   "q_en": "In a Young's double-slit setup, the slit separation is $d = 0.5\\,\\text{mm}$ and the screen is $D = 1.0\\,\\text{m}$ away; the wavelength is $\\lambda = 600\\,\\text{nm}$. A thin glass sheet of refractive index $n = 1.5$ and thickness $t = 6.0\\,\\mu\\text{m}$ is placed over one slit. Find (a) the number of fringes by which the pattern shifts, and (b) the lateral displacement of the central maximum on the screen.",
+   "a_ar": "تضيف الصفيحة مسيرًا ضوئيًا إضافيًا $(n-1)t$ في أحد الذراعين. (أ) عدد الأهداب المنزاحة $N = \\dfrac{(n-1)t}{\\lambda} = \\dfrac{(0.5)(6.0\\times10^{-6})}{600\\times10^{-9}} = 5$. (ب) الإزاحة الجانبية تساوي $N$ من عروض الأهداب: $\\Delta y = \\dfrac{(n-1)t\\,D}{d} = \\dfrac{(0.5)(6.0\\times10^{-6})(1.0)}{0.5\\times10^{-3}} = 6.0\\times10^{-3}\\,\\text{m} = 6.0\\,\\text{mm}$، نحو جهة الشقّ المغطّى بالزجاج.",
+   "a_en": "The sheet adds an extra optical path $(n-1)t$ in one arm. (a) The number of fringes shifted is $N = \\dfrac{(n-1)t}{\\lambda} = \\dfrac{(0.5)(6.0\\times10^{-6})}{600\\times10^{-9}} = 5$. (b) The lateral shift equals $N$ fringe widths: $\\Delta y = \\dfrac{(n-1)t\\,D}{d} = \\dfrac{(0.5)(6.0\\times10^{-6})(1.0)}{0.5\\times10^{-3}} = 6.0\\times10^{-3}\\,\\text{m} = 6.0\\,\\text{mm}$, toward the side with the glass sheet.",
+   "answer": "(a) $N = 5$ fringes; (b) $\\Delta y = 6.0\\,\\text{mm}$ toward the glass-covered slit",
+   "keywords": [
+    "Young's double slit",
+    "تجربة يونغ",
+    "fringe shift",
+    "انزياح الأهداب",
+    "glass sheet",
+    "optical path",
+    "فرق المسير"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "عدسة مجمّعة بُعدها البؤري $f_1 = +20\\,\\text{cm}$ وعدسة مفرّقة بُعدها البؤري $f_2 = -50\\,\\text{cm}$ موضوعتان على محور واحد والمسافة بينهما $40\\,\\text{cm}$. جسم حقيقي يبعد $30\\,\\text{cm}$ أمام العدسة المجمّعة. حدّد موضع الصورة النهائية (بالنسبة إلى العدسة المفرّقة) وأعطِ التكبير العرضي الكلّي.",
+   "q_en": "A converging lens of focal length $f_1 = +20\\,\\text{cm}$ and a diverging lens of focal length $f_2 = -50\\,\\text{cm}$ are placed coaxially $40\\,\\text{cm}$ apart. A real object is $30\\,\\text{cm}$ in front of the converging lens. Locate the final image (relative to the diverging lens) and give the total transverse magnification.",
+   "a_ar": "باستخدام $\\tfrac1v-\\tfrac1u=\\tfrac1f$: للعدسة الأولى $u_1=-30$، $f_1=+20 \\Rightarrow v_1 = +60\\,\\text{cm}$ (صورة حقيقية على بُعد $60\\,\\text{cm}$ يمين العدسة الأولى). تقع هذه على بُعد $20\\,\\text{cm}$ خلف العدسة الثانية فتكون جسمًا وهميًا $u_2 = +20\\,\\text{cm}$. للعدسة الثانية $f_2=-50$: $\\tfrac1{v_2}= -\\tfrac1{50}+\\tfrac1{20}=\\tfrac{3}{100}\\Rightarrow v_2 = +33.3\\,\\text{cm}$ (حقيقية يمين العدسة الثانية). التكبيرات: $m_1=v_1/u_1=-2$ و $m_2=v_2/u_2=+\\tfrac53$، ومنه $m=m_1 m_2 = -\\tfrac{10}{3}\\approx -3.33$ (مقلوبة ومكبّرة).",
+   "a_en": "Using $\\tfrac1v-\\tfrac1u=\\tfrac1f$: for lens 1, $u_1=-30$, $f_1=+20 \\Rightarrow v_1 = +60\\,\\text{cm}$ (real image $60\\,\\text{cm}$ right of lens 1). This lies $20\\,\\text{cm}$ beyond lens 2, acting as a virtual object $u_2 = +20\\,\\text{cm}$. For lens 2, $f_2=-50$: $\\tfrac1{v_2}= -\\tfrac1{50}+\\tfrac1{20}=\\tfrac{3}{100}\\Rightarrow v_2 = +33.3\\,\\text{cm}$ (real, right of lens 2). Magnifications: $m_1=v_1/u_1=-2$, $m_2=v_2/u_2=+\\tfrac53$, so $m=m_1 m_2 = -\\tfrac{10}{3}\\approx -3.33$ (inverted, magnified).",
+   "answer": "Final image $33.3\\,\\text{cm}$ (real) to the right of the diverging lens; total magnification $m = -10/3 \\approx -3.33$",
+   "keywords": [
+    "two-lens system",
+    "نظام عدستين",
+    "thin lens equation",
+    "معادلة العدسة",
+    "virtual object",
+    "جسم وهمي",
+    "magnification",
+    "تكبير"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "ليف بصري ذو دليل مدرّج له قلب معامل انكساره $n_1 = 1.50$ وكسوة معاملها $n_2 = 1.46$، والهواء ($n_0=1$) خارج الوجه الداخل. أوجد (أ) الفتحة العددية و(ب) أكبر نصف زاوية قبول لشعاع يدخل الليف كي يُوجَّه بالانعكاس الكلّي الداخلي.",
+   "q_en": "A step-index optical fiber has a core of refractive index $n_1 = 1.50$ and a cladding of index $n_2 = 1.46$, with air ($n_0=1$) outside the input face. Determine (a) the numerical aperture and (b) the maximum acceptance half-angle for a ray entering the fiber to be guided by total internal reflection.",
+   "a_ar": "لكي يُوجَّه الشعاع يجب أن يصطدم بحدّ القلب–الكسوة عند الزاوية الحرجة أو أبعد منها. الفتحة العددية $\\text{NA} = \\sqrt{n_1^2 - n_2^2} = \\sqrt{1.50^2 - 1.46^2} = \\sqrt{0.1184} \\approx 0.344$. وأكبر نصف زاوية قبول (في الهواء) يحقّق $n_0 \\sin\\theta_{\\max} = \\text{NA}$، ومنه $\\theta_{\\max} = \\arcsin(0.344) \\approx 20.1^\\circ$.",
+   "a_en": "For guiding, the ray must strike the core–cladding boundary at or beyond the critical angle. The numerical aperture is $\\text{NA} = \\sqrt{n_1^2 - n_2^2} = \\sqrt{1.50^2 - 1.46^2} = \\sqrt{0.1184} \\approx 0.344$. The maximum acceptance half-angle (in air) satisfies $n_0 \\sin\\theta_{\\max} = \\text{NA}$, giving $\\theta_{\\max} = \\arcsin(0.344) \\approx 20.1^\\circ$.",
+   "answer": "$\\text{NA} \\approx 0.344$; $\\theta_{\\max} \\approx 20.1^\\circ$",
+   "keywords": [
+    "optical fiber",
+    "الليف البصري",
+    "numerical aperture",
+    "الفتحة العددية",
+    "total internal reflection",
+    "الانعكاس الكلي",
+    "acceptance angle",
+    "زاوية القبول"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يدخل ضوء الشمس (معامل انكسار الماء n = 4/3) قطرة مطر كروية، وينعكس داخلياً مرة واحدة ثم يخرج مكوّناً قوس قزح الابتدائي. باعتبار القطرة كرةً، وباستخدام شرط أن القوس الابتدائي يظهر عند زاوية الانحراف الأصغري لانعكاس داخلي واحد، أوجد: (أ) زاوية سقوط الشعاع المكوِّن للقوس، و(ب) نصف القطر الزاوي لقوس قزح الابتدائي (زاويته عن نقطة مقابلة الشمس). أعطِ الإجابتين لأقرب 0.1 درجة.",
+   "q_en": "Sunlight (refractive index of water n = 4/3) enters a spherical raindrop, reflects once internally, and exits, forming the primary rainbow. Treating the drop as a sphere and using the condition that the primary bow appears at the angle of minimum deviation for one internal reflection, find (a) the angle of incidence of the ray that forms the bow, and (b) the angular radius of the primary rainbow (its angle from the antisolar point). Give both to 0.1 degree.",
+   "a_ar": "لشعاعٍ ذي انعكاس داخلي واحد يكون الانحراف الكلي $D(\\theta_i)=180^\\circ+2\\theta_i-4\\theta_r$ مع $\\sin\\theta_i=n\\sin\\theta_r$. بجعل $dD/d\\theta_i=0$ نحصل على شرط الانحراف الأصغري $\\cos\\theta_i=\\sqrt{(n^2-1)/3}$. وبِـ $n=4/3$ يكون $\\cos\\theta_i=\\sqrt{7/27}$ فتكون $\\theta_i\\approx 59.4^\\circ$ و $\\theta_r\\approx 40.2^\\circ$. ومنه $D_{\\min}\\approx 138.0^\\circ$، ونصف القطر الزاوي للقوس هو $180^\\circ-D_{\\min}\\approx 42.0^\\circ$.",
+   "a_en": "For a ray with one internal reflection the total deviation is $D(\\theta_i)=180^\\circ+2\\theta_i-4\\theta_r$ with $\\sin\\theta_i=n\\sin\\theta_r$. Setting $dD/d\\theta_i=0$ gives the minimum-deviation condition $\\cos\\theta_i=\\sqrt{(n^2-1)/3}$. With $n=4/3$: $\\cos\\theta_i=\\sqrt{(16/9-1)/3}=\\sqrt{7/27}$, so $\\theta_i\\approx 59.4^\\circ$ and $\\theta_r\\approx 40.2^\\circ$. Then $D_{\\min}\\approx 138.0^\\circ$, and the rainbow's angular radius is $180^\\circ-D_{\\min}\\approx 42.0^\\circ$.",
+   "answer": "θ_i ≈ 59.4°; rainbow angular radius ≈ 42.0°",
+   "keywords": [
+    "rainbow",
+    "قوس قزح",
+    "minimum deviation",
+    "الانحراف الأصغري",
+    "refraction",
+    "انكسار",
+    "raindrop",
+    "n=4/3"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "غشاء صابوني معامل انكساره n = 1.40 موضوع رأسياً في الهواء ويُضاء عمودياً بضوء أبيض. يُظهر في الانعكاس قمم انعكاس بنّاءة قوية عند طولَي موجة مرئيّين بالضبط يمثّلان رتبتَي تداخل متتاليتين: 630 نانومتر و450 نانومتر، دون وجود قمة بينهما. أوجد سُمك الغشاء.",
+   "q_en": "A soap film of refractive index n = 1.40 stands vertically in air and is illuminated normally by white light. In reflection it shows strong (constructive) reflection maxima at exactly two visible wavelengths that are consecutive interference orders: 630 nm and 450 nm, with no maximum in between. Determine the thickness of the film.",
+   "a_ar": "في نظام هواء–غشاء–هواء يحدث انزياح طور مقداره $\\pi$ عند السطح العلوي فقط، لذا يتطلب الانعكاس البنّاء $2nt=(k-\\tfrac12)\\lambda$. الرتبتان المتتاليتان تعطيان $(k-\\tfrac12)630=(k+\\tfrac12)450$ ومنه $180k=540$ أي $k=3$ (الرتبتان 3 و4). إذن $2nt=(3-\\tfrac12)(630)=1575\\text{ nm}$ فيكون $t=\\dfrac{1575}{2(1.40)}=562.5\\text{ nm}$.",
+   "a_en": "For an air–film–air stack there is a $\\pi$ phase shift only at the top surface, so constructive reflection requires $2nt=(k-\\tfrac12)\\lambda$. Consecutive orders give $(k-\\tfrac12)630=(k+\\tfrac12)450$, hence $180k=540$, so $k=3$ (orders 3 and 4). Then $2nt=(3-\\tfrac12)(630)=1575\\text{ nm}$, giving $t=\\dfrac{1575}{2(1.40)}=562.5\\text{ nm}$.",
+   "answer": "t = 562.5 nm",
+   "keywords": [
+    "thin film",
+    "الغشاء الرقيق",
+    "interference",
+    "تداخل",
+    "soap film",
+    "غشاء صابوني",
+    "constructive reflection",
+    "2nt"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "عدسة زجاجية رقيقة محدّبة-مستوية (معامل انكسارها n = 1.5) وجهها المحدّب نصف قطره R = 20 سم، وقد طُلي هذا الوجه المحدّب بالفضة فيتصرّف النظام كمرآة. يسقط الضوء على الوجه المستوي. أوجد البُعد البؤري المكافئ للعدسة المفضّضة وبيّن هل تتصرّف كمرآة مجمّعة أم مفرّقة.",
+   "q_en": "A thin plano-convex glass lens (refractive index n = 1.5) has its curved face of radius R = 20 cm, and this curved face is silvered so the system acts as a mirror. Light is incident on the flat face. Find the equivalent focal length of the silvered lens and state whether it behaves as a converging or diverging mirror.",
+   "a_ar": "للعدسة المفضّضة تكون القدرة المكافئة $P=2P_L+P_m$. قدرة العدسة $P_L=(n-1)/R=0.5/20=1/40\\text{ cm}^{-1}$، والسطح المحدّب المفضّض يعمل كمرآة قدرتها $P_m=2/R=1/10\\text{ cm}^{-1}$. إذن $P=2(1/40)+1/10=3/20\\text{ cm}^{-1}$، فيكون البُعد البؤري المكافئ $F=20/3\\approx 6.67\\text{ cm}$. وبما أن القدرة موجبة فإنها تتصرف كمرآة مجمّعة (مقعرة).",
+   "a_en": "A silvered lens has equivalent power $P=2P_L+P_m$. The lens power is $P_L=(n-1)/R=0.5/20=1/40\\text{ cm}^{-1}$, and the silvered curved surface acts as a mirror of power $P_m=2/R=1/10\\text{ cm}^{-1}$. Thus $P=2(1/40)+1/10=3/20\\text{ cm}^{-1}$, giving equivalent focal length $F=20/3\\approx 6.67\\text{ cm}$. Since the power is positive it behaves as a converging (concave) mirror.",
+   "answer": "F = 20/3 cm ≈ 6.67 cm, converging (concave-mirror equivalent)",
+   "keywords": [
+    "silvered lens",
+    "العدسة المفضضة",
+    "equivalent focal length",
+    "البعد البؤري المكافئ",
+    "plano-convex",
+    "P=2P_L+P_m",
+    "mirror",
+    "عدسة"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يحتوي أحد ذراعَي مقياس تداخل مايكلسون على خلية غاز مُفرّغة طولها L = 5.00 سم. يُستخدم ضوء أخضر طول موجته λ = 500 نانومتر (في الفراغ). يُدخَل الغاز ببطء إلى الخلية حتى تمتلئ، فتُعدّ 100 هدبة مضيئة بالضبط تعبر مجال الرؤية. أوجد معامل انكسار الغاز عند الضغط النهائي.",
+   "q_en": "One arm of a Michelson interferometer contains an evacuated gas cell of length L = 5.00 cm. Green light of wavelength λ = 500 nm (in vacuum) is used. Gas is slowly admitted into the cell until it is filled, and exactly 100 bright fringes are counted crossing the field of view. Find the refractive index of the gas at the final pressure.",
+   "a_ar": "يعبر الضوء الخلية مرتين، لذا يؤدي ملؤها إلى تغيّر المسار الضوئي بمقدار $2(n-1)L$، وكل هدبة تقابل طول موجة واحداً: $2(n-1)L=N\\lambda$. بالحل $n=1+\\dfrac{N\\lambda}{2L}=1+\\dfrac{100\\,(500\\times10^{-9})}{2(0.0500)}$، فيكون $n=1+5.0\\times10^{-4}=1.00050$.",
+   "a_en": "Light traverses the cell twice, so filling it changes the optical path by $2(n-1)L$, and each fringe corresponds to one wavelength: $2(n-1)L=N\\lambda$. Solving, $n=1+\\dfrac{N\\lambda}{2L}=1+\\dfrac{100\\,(500\\times10^{-9})}{2(0.0500)}$. This gives $n=1+5.0\\times10^{-4}=1.00050$.",
+   "answer": "n = 1.00050",
+   "keywords": [
+    "Michelson",
+    "مايكلسون",
+    "interferometer",
+    "مقياس تداخل",
+    "refractive index",
+    "معامل انكسار",
+    "gas cell",
+    "fringe count"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "تحقّق أمواج السطح على الماء العميق علاقة التشتت $\\omega^2 = gk + \\dfrac{T}{\\rho}k^3$، التي تجمع الجاذبية والتوتر السطحي (g = 9.81 م/ث²، التوتر السطحي T = 0.072 نيوتن/م، الكثافة ρ = 1000 كغ/م³). بيّن أن السرعة الطورية لها قيمة صغرى، وأوجد هذه السرعة الطورية الصغرى والطول الموجي الذي تحدث عنده.",
+   "q_en": "Surface waves on deep water obey the dispersion relation $\\omega^2 = gk + \\dfrac{T}{\\rho}k^3$, combining gravity and surface tension (g = 9.81 m/s², surface tension T = 0.072 N/m, density ρ = 1000 kg/m³). Show that the phase speed has a minimum value and find that minimum phase speed and the wavelength at which it occurs.",
+   "a_ar": "مربع السرعة الطورية $c^2=\\omega^2/k^2=\\dfrac{g}{k}+\\sigma k$ حيث $\\sigma=T/\\rho$. بالتصغير: $\\dfrac{d(c^2)}{dk}=-\\dfrac{g}{k^2}+\\sigma=0\\Rightarrow k=\\sqrt{g/\\sigma}$، ومنه $c^2_{\\min}=2\\sqrt{g\\sigma}$ أي $c_{\\min}=\\sqrt{2}\\,(g\\sigma)^{1/4}$. وبِـ $\\sigma=7.2\\times10^{-5}\\text{ m}^3/\\text{s}^2$ يكون $k\\approx369\\text{ m}^{-1}$، فتكون $c_{\\min}\\approx0.231\\text{ m/s}$ عند طول موجة $\\lambda=2\\pi/k\\approx1.70\\text{ cm}$.",
+   "a_en": "The phase speed squared is $c^2=\\omega^2/k^2=\\dfrac{g}{k}+\\sigma k$ with $\\sigma=T/\\rho$. Minimizing: $\\dfrac{d(c^2)}{dk}=-\\dfrac{g}{k^2}+\\sigma=0\\Rightarrow k=\\sqrt{g/\\sigma}$, and $c^2_{\\min}=2\\sqrt{g\\sigma}$, so $c_{\\min}=\\sqrt{2}\\,(g\\sigma)^{1/4}$. With $\\sigma=7.2\\times10^{-5}\\text{ m}^3/\\text{s}^2$: $k\\approx369\\text{ m}^{-1}$, giving $c_{\\min}\\approx0.231\\text{ m/s}$ at wavelength $\\lambda=2\\pi/k\\approx1.70\\text{ cm}$.",
+   "answer": "c_min = √2 (gσ)^{1/4} ≈ 0.231 m/s at λ ≈ 1.70 cm",
+   "keywords": [
+    "dispersion relation",
+    "علاقة التشتت",
+    "phase speed",
+    "السرعة الطورية",
+    "gravity-capillary waves",
+    "التوتر السطحي",
+    "water waves",
+    "minimum speed"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

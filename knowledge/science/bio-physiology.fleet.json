@@ -1,0 +1,185 @@
+{
+ "subject": "science",
+ "topic": "bio-physiology",
+ "title": "bio-physiology — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "شخص بالغ في حالة راحة ضغطه الشرياني 120/80 ملم زئبق، وحجم الدفعة 70 مل، ومعدل ضربات القلب 72 نبضة/دقيقة. (أ) احسب النتاج القلبي. (ب) احسب متوسط الضغط الشرياني (MAP) بالتقدير القياسي. (ج) إذا بقيت المقاومة المحيطية الكلية ثابتة وارتفع معدل الضربات إلى 90 نبضة/دقيقة بينما هبط حجم الدفعة إلى 60 مل، هل يرتفع MAP أم ينخفض، وبأي معامل تقريبي يتغيّر النتاج القلبي؟",
+   "q_en": "A resting adult has an arterial pressure of 120/80 mmHg, a stroke volume of 70 mL, and a heart rate of 72 beats/min. (a) Compute the cardiac output. (b) Compute the mean arterial pressure (MAP) using the standard estimate. (c) If total peripheral resistance is unchanged but heart rate rises to 90 beats/min while stroke volume falls to 60 mL, does MAP rise or fall, and by roughly what factor does cardiac output change?",
+   "a_ar": "(أ) النتاج القلبي $CO = SV\\times HR = 0.070\\times72 = 5.04$ لتر/دقيقة. (ب) $MAP = DBP + \\tfrac{1}{3}(SBP-DBP) = 80 + \\tfrac{1}{3}(40) = 93.3$ ملم زئبق. (ج) النتاج الجديد $CO = 0.060\\times90 = 5.40$ لتر/دقيقة، أي بمعامل $5.40/5.04 \\approx 1.07$ (أعلى بنحو 7%). وبما أن $MAP \\approx CO\\times TPR$ والمقاومة ثابتة، يرتفع MAP بالنسبة نفسها تقريباً (نحو 7%، إلى قرابة 100 ملم زئبق).",
+   "a_en": "(a) $CO = SV\\times HR = 0.070\\times72 = 5.04$ L/min. (b) $MAP = DBP + \\tfrac{1}{3}(SBP-DBP) = 80 + \\tfrac{1}{3}(40) = 93.3$ mmHg. (c) New $CO = 0.060\\times90 = 5.40$ L/min, a factor of $5.40/5.04 \\approx 1.07$ (about 7% higher). Since $MAP \\approx CO\\times TPR$ and TPR is unchanged, MAP rises by roughly the same 7% (to about 100 mmHg).",
+   "answer": "CO = 5.04 L/min; MAP = 93.3 mmHg; new CO = 5.40 L/min (×1.07), so MAP rises ~7% to ≈100 mmHg",
+   "keywords": [
+    "cardiac output",
+    "النتاج القلبي",
+    "MAP",
+    "متوسط الضغط الشرياني",
+    "stroke volume",
+    "حجم الدفعة",
+    "pulse pressure",
+    "TPR"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "باستخدام مبدأ فِك، قدّر استهلاك الأكسجين الكلي للجسم. المعطيات: الهيموغلوبين 15 غ/دل، تشبّع شرياني $S_aO_2 = 98\\%$ مع $P_aO_2 = 100$ ملم زئبق، تشبّع وريدي مختلط $S_vO_2 = 75\\%$ مع $P_vO_2 = 40$ ملم زئبق، النتاج القلبي 5.0 لتر/دقيقة. استخدم سعة حمل الأكسجين $1.34$ مل أكسجين/غ هيموغلوبين والأكسجين الذائب $0.003$ مل/دل لكل ملم زئبق. احسب $C_aO_2$ و$C_vO_2$ و$\\dot VO_2$.",
+   "q_en": "Using the Fick principle, estimate whole-body oxygen consumption. Given: hemoglobin 15 g/dL, arterial $S_aO_2 = 98\\%$ with $P_aO_2 = 100$ mmHg, mixed-venous $S_vO_2 = 75\\%$ with $P_vO_2 = 40$ mmHg, cardiac output 5.0 L/min. Use $O_2$-carrying capacity $1.34$ mL $O_2$/g Hb and dissolved $O_2 = 0.003$ mL/dL per mmHg. Report $C_aO_2$, $C_vO_2$, and $\\dot VO_2$.",
+   "a_ar": "$C_aO_2 = 1.34\\times15\\times0.98 + 0.003\\times100 = 19.70+0.30 = 20.0$ مل/دل. $C_vO_2 = 1.34\\times15\\times0.75 + 0.003\\times40 = 15.08+0.12 = 15.2$ مل/دل. الفرق الشرياني-الوريدي $= 4.8$ مل/دل. بتحويل النتاج القلبي إلى دل/دقيقة ($5.0$ لتر/دقيقة $=50$ دل/دقيقة): $\\dot VO_2 = 50\\times4.8 = 240$ مل/دقيقة، وهي القيمة الكلاسيكية في الراحة.",
+   "a_en": "$C_aO_2 = 1.34\\times15\\times0.98 + 0.003\\times100 = 19.70+0.30 = 20.0$ mL/dL. $C_vO_2 = 1.34\\times15\\times0.75 + 0.003\\times40 = 15.08+0.12 = 15.2$ mL/dL. Arteriovenous difference $= 4.8$ mL/dL. Converting CO to dL/min ($5.0$ L/min $=50$ dL/min): $\\dot VO_2 = 50\\times4.8 = 240$ mL/min, the classic resting value.",
+   "answer": "CaO2 ≈ 20.0 mL/dL, CvO2 ≈ 15.2 mL/dL, a-v diff = 4.8 mL/dL, VO2 = 240 mL/min",
+   "keywords": [
+    "Fick principle",
+    "مبدأ فِك",
+    "oxygen content",
+    "محتوى الأكسجين",
+    "VO2",
+    "استهلاك الأكسجين",
+    "hemoglobin",
+    "الفرق الشرياني الوريدي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لخلية عصبية عند 37°م مع $[K^+]_i=140$، $[K^+]_o=4$، $[Na^+]_i=15$، $[Na^+]_o=145$ مليمول: (أ) احسب جهدَي التوازن حسب نِرنست $E_K$ و$E_{Na}$. (ب) باستخدام معادلة غولدمان-هودجكن-كاتز مع النفاذيات النسبية $P_K:P_{Na}:P_{Cl}=1:0.04:0.45$ و$[Cl^-]_i=10$، $[Cl^-]_o=110$ مليمول، احسب جهد الراحة الغشائي $V_m$. استخدم $RT/F = 26.7$ ملي فولت عند 310 كلفن.",
+   "q_en": "For a neuron at 37°C with $[K^+]_i=140$, $[K^+]_o=4$, $[Na^+]_i=15$, $[Na^+]_o=145$ mM: (a) Compute the Nernst equilibrium potentials $E_K$ and $E_{Na}$. (b) Using the Goldman–Hodgkin–Katz equation with relative permeabilities $P_K:P_{Na}:P_{Cl}=1:0.04:0.45$ and $[Cl^-]_i=10$, $[Cl^-]_o=110$ mM, compute the resting membrane potential $V_m$. Use $RT/F = 26.7$ mV at 310 K.",
+   "a_ar": "(أ) $E_K = 26.7\\,\\ln(4/140) = 26.7\\times(-3.555) \\approx -95$ ملي فولت؛ $E_{Na} = 26.7\\,\\ln(145/15) = 26.7\\times(2.269) \\approx +61$ ملي فولت. (ب) معادلة GHK (لاحظ انقلاب نسبة الكلور): $V_m = 26.7\\,\\ln\\dfrac{P_K[K]_o+P_{Na}[Na]_o+P_{Cl}[Cl]_i}{P_K[K]_i+P_{Na}[Na]_i+P_{Cl}[Cl]_o} = 26.7\\,\\ln\\dfrac{4+5.8+4.5}{140+0.6+49.5} \\approx 26.7\\,\\ln(0.0750) \\approx -69$ ملي فولت.",
+   "a_en": "(a) $E_K = 26.7\\,\\ln(4/140) = 26.7\\times(-3.555) \\approx -95$ mV; $E_{Na} = 26.7\\,\\ln(145/15) = 26.7\\times(2.269) \\approx +61$ mV. (b) GHK (note Cl ratio is inverted): $V_m = 26.7\\,\\ln\\dfrac{P_K[K]_o+P_{Na}[Na]_o+P_{Cl}[Cl]_i}{P_K[K]_i+P_{Na}[Na]_i+P_{Cl}[Cl]_o} = 26.7\\,\\ln\\dfrac{4+5.8+4.5}{140+0.6+49.5} \\approx 26.7\\,\\ln(0.0750) \\approx -69$ mV.",
+   "answer": "E_K ≈ −95 mV, E_Na ≈ +61 mV, V_m (GHK) ≈ −69 mV",
+   "keywords": [
+    "Nernst equation",
+    "معادلة نِرنست",
+    "Goldman GHK",
+    "جهد الراحة",
+    "membrane potential",
+    "الجهد الغشائي",
+    "potassium",
+    "النفاذية"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "مريض يتنفس هواء الغرفة ($F_iO_2=0.21$) عند مستوى سطح البحر (الضغط الجوي 760 ملم زئبق، ضغط بخار الماء 47 ملم زئبق). غازات الدم الشرياني تُظهر $P_aO_2=90$ ملم زئبق و$P_aCO_2=40$ ملم زئبق؛ استخدم نسبة التبادل التنفسي $R=0.8$. (أ) احسب الضغط الجزئي للأكسجين السنخي $P_AO_2$ من معادلة الغاز السنخي. (ب) احسب فرق الأكسجين السنخي-الشرياني (A–a) وبيّن هل هو طبيعي لشاب بالغ.",
+   "q_en": "A patient breathes room air ($F_iO_2=0.21$) at sea level (barometric pressure 760 mmHg, water vapor pressure 47 mmHg). Arterial blood gas shows $P_aO_2=90$ mmHg and $P_aCO_2=40$ mmHg; use respiratory exchange ratio $R=0.8$. (a) Compute the alveolar $P_AO_2$ from the alveolar gas equation. (b) Compute the alveolar–arterial (A–a) oxygen gradient and state whether it is normal for a young adult.",
+   "a_ar": "(أ) $P_AO_2 = F_iO_2(P_{atm}-P_{H_2O}) - \\dfrac{P_aCO_2}{R} = 0.21(760-47) - \\dfrac{40}{0.8} = 0.21(713) - 50 = 149.7 - 50 = 99.7$ ملم زئبق. (ب) فرق A–a $= P_AO_2 - P_aO_2 = 99.7 - 90 \\approx 10$ ملم زئبق. وهذا طبيعي (المتوقع $\\lesssim 10$–15 ملم زئبق في شاب سليم؛ تقدير شائع بالعمر هو $(\\text{العمر}/4)+4$).",
+   "a_en": "(a) $P_AO_2 = F_iO_2(P_{atm}-P_{H_2O}) - \\dfrac{P_aCO_2}{R} = 0.21(760-47) - \\dfrac{40}{0.8} = 0.21(713) - 50 = 149.7 - 50 = 99.7$ mmHg. (b) A–a gradient $= P_AO_2 - P_aO_2 = 99.7 - 90 \\approx 10$ mmHg. This is normal (expected $\\lesssim 10$–15 mmHg in a healthy young adult; a common age estimate is $(\\text{age}/4)+4$).",
+   "answer": "P_AO2 ≈ 99.7 mmHg; A–a gradient ≈ 10 mmHg (normal for a young adult)",
+   "keywords": [
+    "alveolar gas equation",
+    "معادلة الغاز السنخي",
+    "A-a gradient",
+    "الفرق السنخي الشرياني",
+    "PAO2",
+    "respiratory exchange ratio",
+    "نسبة التبادل التنفسي",
+    "oxygenation"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في حالة إفراز مرتفع للهرمون المضاد للإدرار (ADH)، ينتج شخص بولاً بمعدل 2.0 مل/دقيقة بأسمولالية بول 600 ملي أسمول/كغ؛ وأسمولالية البلازما 300 ملي أسمول/كغ. (أ) احسب التصفية الأسمولية $C_{osm}$. (ب) احسب تصفية الماء الحر $C_{H_2O}$. (ج) فسّر إشارة $C_{H_2O}$ من حيث تأثير ADH على القناة الجامعة.",
+   "q_en": "Under high ADH (antidiuretic hormone) secretion, a subject produces urine at 2.0 mL/min with urine osmolality 600 mOsm/kg; plasma osmolality is 300 mOsm/kg. (a) Compute the osmolar clearance $C_{osm}$. (b) Compute the free-water clearance $C_{H_2O}$. (c) Interpret the sign of $C_{H_2O}$ in terms of ADH action on the collecting duct.",
+   "a_ar": "(أ) $C_{osm} = \\dfrac{U_{osm}\\cdot \\dot V}{P_{osm}} = \\dfrac{600\\times2.0}{300} = 4.0$ مل/دقيقة. (ب) $C_{H_2O} = \\dot V - C_{osm} = 2.0 - 4.0 = -2.0$ مل/دقيقة. (ج) القيمة السالبة تعني أن الماء الحر يُعاد امتصاصه (حفظ صافٍ للماء لا إطراحه). فارتفاع ADH يُدرج قنوات أكوابورين-2 في الغشاء القمّي للقناة الجامعة، مما يسمح بإعادة امتصاص الماء نزولاً مع التدرّج الأسموزي النخاعي، فيصبح البول مركّزاً ($U_{osm}>P_{osm}$) و$C_{H_2O}<0$.",
+   "a_en": "(a) $C_{osm} = \\dfrac{U_{osm}\\cdot \\dot V}{P_{osm}} = \\dfrac{600\\times2.0}{300} = 4.0$ mL/min. (b) $C_{H_2O} = \\dot V - C_{osm} = 2.0 - 4.0 = -2.0$ mL/min. (c) The negative value means free water is being reabsorbed (net conservation of water, not excretion). High ADH inserts aquaporin-2 channels in the collecting-duct apical membrane, allowing water reabsorption down the medullary osmotic gradient, so urine is concentrated ($U_{osm}>P_{osm}$) and $C_{H_2O}<0$.",
+   "answer": "C_osm = 4.0 mL/min; C_H2O = −2.0 mL/min (negative → net free-water reabsorption via ADH/aquaporin-2)",
+   "keywords": [
+    "free water clearance",
+    "تصفية الماء الحر",
+    "ADH",
+    "الهرمون المضاد للإدرار",
+    "osmolar clearance",
+    "aquaporin-2",
+    "أكوابورين",
+    "collecting duct"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أثناء اختبار جهد متدرّج يستهلك الشخص الأكسجين بمعدل $\\dot V_{O_2}=250\\ \\text{مل O}_2/\\text{دقيقة}$. يحمل الدم الشرياني $200\\ \\text{مل O}_2/\\text{لتر}$ ويحمل الدم الوريدي المختلط (في الشريان الرئوي) $150\\ \\text{مل O}_2/\\text{لتر}$. معدّل ضربات القلب $70\\ \\text{نبضة/دقيقة}$. باستخدام مبدأ فِك (Fick)، احسب: (أ) النتاج القلبي، (ب) حجم الضربة، (ج) نسبة استخلاص الأكسجين لكامل الجسم.",
+   "q_en": "During a graded exercise test a subject consumes oxygen at a rate of $\\dot V_{O_2}=250\\ \\text{mL O}_2/\\text{min}$. Arterial blood carries $200\\ \\text{mL O}_2/\\text{L}$ and mixed-venous (pulmonary-artery) blood carries $150\\ \\text{mL O}_2/\\text{L}$. Heart rate is $70\\ \\text{beats/min}$. Using the Fick principle, compute (a) cardiac output, (b) stroke volume, and (c) the whole-body oxygen extraction ratio.",
+   "a_ar": "وفق مبدأ فِك $\\dot V_{O_2}=CO\\,(C_aO_2-C_vO_2)$، إذًا $CO=\\dfrac{250}{200-150}=5.0\\ \\text{لتر/دقيقة}$. حجم الضربة $=CO/HR=5000\\ \\text{مل}/70=71.4\\ \\text{مل}$. نسبة استخلاص الأكسجين $=\\dfrac{C_aO_2-C_vO_2}{C_aO_2}=\\dfrac{50}{200}=0.25$ أي 25%. وهي قيم طبيعية.",
+   "a_en": "By the Fick principle $\\dot V_{O_2}=CO\\,(C_aO_2-C_vO_2)$, so $CO=\\dfrac{250}{200-150}=5.0\\ \\text{L/min}$. Stroke volume $=CO/HR=5000\\ \\text{mL}/70=71.4\\ \\text{mL}$. The oxygen extraction ratio $=\\dfrac{C_aO_2-C_vO_2}{C_aO_2}=\\dfrac{50}{200}=0.25$ (25%). These are normal resting-to-mild values.",
+   "answer": "CO = 5.0 L/min; SV = 71.4 mL; O2 extraction ratio = 0.25 (25%)",
+   "keywords": [
+    "مبدأ فِك",
+    "Fick principle",
+    "النتاج القلبي",
+    "cardiac output",
+    "حجم الضربة",
+    "stroke volume",
+    "oxygen extraction",
+    "استخلاص الأكسجين"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "عصبون عند $37^\\circ\\text{م}$ نفاذياته الغشائية النسبية $P_K:P_{Na}:P_{Cl}=1:0.04:0.45$، وتراكيز الأيونات (ملّي مول): $[K^+]_o=4,\\ [K^+]_i=140$؛ $[Na^+]_o=145,\\ [Na^+]_i=15$؛ $[Cl^-]_o=110,\\ [Cl^-]_i=10$. باستخدام معادلة غولدمان–هودجكِن–كاتس (GHK)، احسب جهد الراحة الغشائي. خُذ $RT/F=26.7\\ \\text{ملّي فولت}$.",
+   "q_en": "A neuron at $37^\\circ\\text{C}$ has relative membrane permeabilities $P_K:P_{Na}:P_{Cl}=1:0.04:0.45$ and the ion concentrations (mM): $[K^+]_o=4,\\ [K^+]_i=140$; $[Na^+]_o=145,\\ [Na^+]_i=15$; $[Cl^-]_o=110,\\ [Cl^-]_i=10$. Using the Goldman–Hodgkin–Katz equation, compute the resting membrane potential. Take $RT/F=26.7\\ \\text{mV}$.",
+   "a_ar": "بما أن الكلور أنيون، تُعكس حدوده الداخلية/الخارجية: $V_m=\\dfrac{RT}{F}\\ln\\dfrac{P_K[K]_o+P_{Na}[Na]_o+P_{Cl}[Cl]_i}{P_K[K]_i+P_{Na}[Na]_i+P_{Cl}[Cl]_o}$. البسط $=1(4)+0.04(145)+0.45(10)=14.3$؛ المقام $=1(140)+0.04(15)+0.45(110)=190.1$. إذًا $V_m=26.7\\ln(14.3/190.1)=26.7(-2.588)=-69.1\\ \\text{ملّي فولت}$.",
+   "a_en": "For anions Cl the inside/outside terms swap: $V_m=\\dfrac{RT}{F}\\ln\\dfrac{P_K[K]_o+P_{Na}[Na]_o+P_{Cl}[Cl]_i}{P_K[K]_i+P_{Na}[Na]_i+P_{Cl}[Cl]_o}$. Numerator $=1(4)+0.04(145)+0.45(10)=14.3$; denominator $=1(140)+0.04(15)+0.45(110)=190.1$. Thus $V_m=26.7\\ln(14.3/190.1)=26.7(-2.588)=-69.1\\ \\text{mV}$.",
+   "answer": "V_m ≈ -69.1 mV",
+   "keywords": [
+    "معادلة غولدمان",
+    "GHK equation",
+    "جهد الراحة",
+    "resting membrane potential",
+    "نفاذية أيونية",
+    "permeability",
+    "Goldman-Hodgkin-Katz"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "مريض يتنفّس هواء الغرفة ($F_{IO_2}=0.21$) عند مستوى البحر (الضغط الجوي $760\\ \\text{ملم زئبق}$، وضغط بخار الماء المشبع $47\\ \\text{ملم زئبق}$ عند حرارة الجسم)، ولديه $P_aCO_2=40\\ \\text{ملم زئبق}$ و$P_aO_2=95\\ \\text{ملم زئبق}$. بافتراض نسبة تبادل تنفّسي $R=0.8$، احسب الضغط السنخي المثالي للأكسجين $P_{AO_2}$ وفرق الأكسجين السنخي–الشرياني (A–a). هل هو طبيعي؟",
+   "q_en": "A patient breathing room air ($F_{IO_2}=0.21$) at sea level (barometric pressure $760\\ \\text{mmHg}$, saturated water-vapor pressure $47\\ \\text{mmHg}$ at body temperature) has arterial $P_aCO_2=40\\ \\text{mmHg}$ and $P_aO_2=95\\ \\text{mmHg}$. Assuming a respiratory exchange ratio $R=0.8$, compute the ideal alveolar $P_{AO_2}$ and the alveolar–arterial (A–a) oxygen gradient. Is it normal?",
+   "a_ar": "الضغط الشهيقي $P_{IO_2}=F_{IO_2}(P_{atm}-P_{H_2O})=0.21(760-47)=149.7\\ \\text{ملم زئبق}$. معادلة الغاز السنخي: $P_{AO_2}=P_{IO_2}-\\dfrac{P_aCO_2}{R}=149.7-\\dfrac{40}{0.8}=99.7\\ \\text{ملم زئبق}$. الفرق A–a $=99.7-95\\approx4.7\\ \\text{ملم زئبق}$، وهو طبيعي لشاب بالغ (عادةً $<10$–$15\\ \\text{ملم زئبق}$).",
+   "a_en": "Inspired $P_{IO_2}=F_{IO_2}(P_{atm}-P_{H_2O})=0.21(760-47)=149.7\\ \\text{mmHg}$. Alveolar gas equation: $P_{AO_2}=P_{IO_2}-\\dfrac{P_aCO_2}{R}=149.7-\\dfrac{40}{0.8}=149.7-50=99.7\\ \\text{mmHg}$. A–a gradient $=P_{AO_2}-P_aO_2=99.7-95\\approx4.7\\ \\text{mmHg}$, which is normal for a young adult (typically $<10$–$15\\ \\text{mmHg}$).",
+   "answer": "P_AO2 ≈ 99.7 mmHg; A–a gradient ≈ 4.7 mmHg (normal)",
+   "keywords": [
+    "معادلة الغاز السنخي",
+    "alveolar gas equation",
+    "فرق A-a",
+    "A-a gradient",
+    "نسبة التبادل التنفسي",
+    "respiratory exchange ratio",
+    "PAO2"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يُحقَن هرمون وريديًا بمعدل ثابت $10\\ \\mu\\text{g/دقيقة}$ حتى بلوغ تركيز بلازمي مستقر عند $5\\ \\text{نانوغرام/مل}$. عند إيقاف الحقن يتناقص التركيز البلازمي أُسّيًا بعمر نصف $20\\ \\text{دقيقة}$. بافتراض نموذج حجرة واحدة، احسب معدّل التصفية الأيضية (MCR) وحجم التوزيع الظاهري $V_d$.",
+   "q_en": "A hormone is infused intravenously at a constant rate of $10\\ \\mu\\text{g/min}$ until a steady-state plasma concentration of $5\\ \\text{ng/mL}$ is reached. When the infusion stops, the plasma concentration decays exponentially with a half-life of $20\\ \\text{min}$. Assuming a single-compartment model, compute the metabolic clearance rate (MCR) and the apparent volume of distribution $V_d$.",
+   "a_ar": "عند الحالة المستقرة يتساوى معدّل الإدخال مع معدّل الإزالة، فيكون $MCR=\\dfrac{\\text{معدل الحقن}}{C_{ss}}$. بتحويل الوحدات $5\\ \\text{نانوغرام/مل}=5\\ \\mu\\text{g/لتر}$، إذًا $MCR=\\dfrac{10}{5}=2.0\\ \\text{لتر/دقيقة}$. وبما أن التصفية $=k\\,V_d=\\dfrac{\\ln 2}{t_{1/2}}V_d$، فإن $V_d=\\dfrac{MCR\\cdot t_{1/2}}{\\ln 2}=\\dfrac{2.0\\times20}{0.693}\\approx57.7\\ \\text{لتر}$.",
+   "a_en": "At steady state, input rate = removal rate, so $MCR=\\dfrac{\\text{infusion rate}}{C_{ss}}$. Converting units, $5\\ \\text{ng/mL}=5\\ \\mu\\text{g/L}$, giving $MCR=\\dfrac{10\\ \\mu\\text{g/min}}{5\\ \\mu\\text{g/L}}=2.0\\ \\text{L/min}$. Since clearance $=k\\,V_d=\\dfrac{\\ln 2}{t_{1/2}}V_d$, then $V_d=\\dfrac{MCR\\cdot t_{1/2}}{\\ln 2}=\\dfrac{2.0\\times20}{0.693}\\approx57.7\\ \\text{L}$.",
+   "answer": "MCR = 2.0 L/min; V_d ≈ 57.7 L",
+   "keywords": [
+    "التصفية الأيضية",
+    "metabolic clearance rate",
+    "حجم التوزيع",
+    "volume of distribution",
+    "عمر النصف",
+    "half-life",
+    "الحالة المستقرة",
+    "steady state"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "محور عصبي غير مُمَيَّلَن نصف قطره $a=5\\ \\mu\\text{m}$، ومقاومته الغشائية النوعية $R_m=2000\\ \\Omega\\cdot\\text{cm}^2$، ومقاومية السيتوبلازم المحوري $R_i=100\\ \\Omega\\cdot\\text{cm}$. باعتباره كابلًا سلبيًا، احسب ثابت الطول (المسافة) $\\lambda$، وحدّد أي كسر من جهد ثابت تحت العتبي يتبقّى على بُعد $1\\ \\text{ملم}$ من موضع الحقن.",
+   "q_en": "An unmyelinated axon has radius $a=5\\ \\mu\\text{m}$, specific membrane resistance $R_m=2000\\ \\Omega\\cdot\\text{cm}^2$, and axoplasmic resistivity $R_i=100\\ \\Omega\\cdot\\text{cm}$. Treating it as a passive cable, compute the length (space) constant $\\lambda$, and determine what fraction of a steady subthreshold voltage remains $1\\ \\text{mm}$ from the injection site.",
+   "a_ar": "لكابل أسطواني $\\lambda=\\sqrt{\\dfrac{a\\,R_m}{2R_i}}$. بوضع $a=5\\times10^{-4}\\ \\text{cm}$: $\\lambda=\\sqrt{\\dfrac{(5\\times10^{-4})(2000)}{2(100)}}=\\sqrt{0.005}=0.0707\\ \\text{cm}=0.707\\ \\text{ملم}$. التناقص في الحالة المستقرة $V(x)=V_0e^{-x/\\lambda}$، فعند $x=1\\ \\text{ملم}$: $e^{-1/0.707}=e^{-1.414}\\approx0.243$، أي يتبقّى نحو $24.3\\%$ من الجهد.",
+   "a_en": "For a cylindrical cable $\\lambda=\\sqrt{\\dfrac{a\\,R_m}{2R_i}}$. With $a=5\\times10^{-4}\\ \\text{cm}$: $\\lambda=\\sqrt{\\dfrac{(5\\times10^{-4})(2000)}{2(100)}}=\\sqrt{0.005}=0.0707\\ \\text{cm}=0.707\\ \\text{mm}$. Steady-state decay is $V(x)=V_0e^{-x/\\lambda}$, so at $x=1\\ \\text{mm}$: $e^{-1/0.707}=e^{-1.414}\\approx0.243$, i.e. about $24.3\\%$ of the voltage remains.",
+   "answer": "λ ≈ 0.707 mm; fraction remaining at 1 mm ≈ 0.243 (24.3%)",
+   "keywords": [
+    "ثابت الطول",
+    "length constant",
+    "نظرية الكابل",
+    "cable theory",
+    "المحور العصبي",
+    "space constant",
+    "passive decay",
+    "مقاومة غشائية"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

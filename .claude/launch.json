@@ -4,8 +4,11 @@
     {
       "name": "firas",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["server.mjs"],
-      "port": 3000
+      "runtimeArgs": [
+        "server.mjs"
+      ],
+      "port": 1988,
+      "autoPort": true
     }
   ]
 }

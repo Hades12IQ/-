@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 10 32 44" width="32" height="44" role="img" aria-label="Firas AI">
+  <title>Firas AI</title>
+  <!-- THE BEAM. Tight bounds: the viewBox is the artwork itself (32x44), so this drops into a
+       layout with no invisible padding to compensate for. Transparent by construction — there
+       is no background element at all.
+       currentColor: inherits the surrounding text colour, so one file works on any ground.
+       The lower arm is held at 72% opacity to keep the two-tone reading of the brand mark
+       without hard-coding a second colour that would fight its context. -->
+  <path d="M18 10h6.5v44H18Z" fill="currentColor"/>
+  <path d="M24.5 10H50l-5 8.5H24.5Z" fill="currentColor"/>
+  <path d="M24.5 27H42l-4.5 8.5H24.5Z" fill="currentColor" opacity=".72"/>
+</svg>

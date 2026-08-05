@@ -1,0 +1,181 @@
+{
+ "subject": "math",
+ "topic": "sequences",
+ "title": "sequences — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "لتكن المتتالية $(a_n)$ معرَّفة بالعلاقة التراجعية $a_1 = 1$ و $a_{n+1} = \\dfrac{a_n}{1+a_n}$ لكل $n\\ge 1$. أوجد الصيغة الصريحة لـ $a_n$ بدلالة $n$، ثم احسب $\\displaystyle\\lim_{n\\to\\infty} a_n$.",
+   "q_en": "Let the sequence $(a_n)$ be defined by $a_1 = 1$ and $a_{n+1} = \\dfrac{a_n}{1+a_n}$ for all $n\\ge 1$. Find the closed form of $a_n$ in terms of $n$, then evaluate $\\displaystyle\\lim_{n\\to\\infty} a_n$.",
+   "a_ar": "بما أن جميع الحدود موجبة، نأخذ المقلوب: $\\dfrac{1}{a_{n+1}} = \\dfrac{1+a_n}{a_n} = \\dfrac{1}{a_n} + 1$. إذًا المتتالية $b_n = \\dfrac{1}{a_n}$ حسابية بأساس $1$ وحدّها الأول $b_1 = 1$، فيكون $b_n = n$ ومنه $a_n = \\dfrac{1}{n}$. وبالتالي $\\displaystyle\\lim_{n\\to\\infty} a_n = 0$.",
+   "a_en": "Since all terms are positive, take reciprocals: $\\dfrac{1}{a_{n+1}} = \\dfrac{1+a_n}{a_n} = \\dfrac{1}{a_n} + 1$. Thus $b_n = \\dfrac{1}{a_n}$ is arithmetic with common difference $1$ and $b_1 = 1$, so $b_n = n$ and $a_n = \\dfrac{1}{n}$. Therefore $\\displaystyle\\lim_{n\\to\\infty} a_n = 0$.",
+   "answer": "$a_n = \\dfrac{1}{n}$, and $\\lim_{n\\to\\infty} a_n = 0$.",
+   "keywords": [
+    "recurrence",
+    "متتالية تراجعية",
+    "reciprocal trick",
+    "المقلوب",
+    "arithmetic",
+    "convergence",
+    "التقارب",
+    "closed form"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "تُعرَّف المتتالية $(a_n)$ بـ $a_1 = 1$ و $a_{n+1} = 2a_n + 3^{\\,n}$ لكل $n\\ge 1$. أوجد صيغة صريحة لـ $a_n$.",
+   "q_en": "The sequence $(a_n)$ is defined by $a_1 = 1$ and $a_{n+1} = 2a_n + 3^{\\,n}$ for all $n\\ge 1$. Find a closed form for $a_n$.",
+   "a_ar": "الحل العام للمعادلة المتجانسة هو $A\\cdot 2^n$. نبحث عن حل خاص بالشكل $c\\cdot 3^n$: بالتعويض $c\\cdot 3^{n+1} = 2c\\cdot 3^n + 3^n$ نحصل على $3c = 2c + 1$ أي $c = 1$، فالحل الخاص $3^n$. إذًا $a_n = A\\cdot 2^n + 3^n$، ومن $a_1 = 1$ نجد $2A + 3 = 1$ أي $A = -1$. وبالتالي $a_n = 3^n - 2^n$.",
+   "a_en": "The homogeneous solution is $A\\cdot 2^n$. Seek a particular solution $c\\cdot 3^n$: substituting gives $c\\cdot 3^{n+1} = 2c\\cdot 3^n + 3^n$, so $3c = 2c + 1$, i.e. $c = 1$, giving particular solution $3^n$. Hence $a_n = A\\cdot 2^n + 3^n$, and $a_1 = 1$ gives $2A + 3 = 1$, so $A = -1$. Therefore $a_n = 3^n - 2^n$.",
+   "answer": "$a_n = 3^{\\,n} - 2^{\\,n}$.",
+   "keywords": [
+    "linear recurrence",
+    "متتالية تراجعية خطية",
+    "particular solution",
+    "حل خاص",
+    "homogeneous",
+    "3^n-2^n",
+    "غير متجانسة"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب مجموع السلسلة $\\displaystyle\\sum_{k=1}^{\\infty} \\frac{1}{k(k+2)}$ باستخدام المجموع الجزئي التلسكوبي.",
+   "q_en": "Evaluate the series $\\displaystyle\\sum_{k=1}^{\\infty} \\frac{1}{k(k+2)}$ using a telescoping partial sum.",
+   "a_ar": "نُجزّئ: $\\dfrac{1}{k(k+2)} = \\dfrac{1}{2}\\left(\\dfrac{1}{k} - \\dfrac{1}{k+2}\\right)$. المجموع الجزئي $S_n = \\dfrac{1}{2}\\left(1 + \\dfrac{1}{2} - \\dfrac{1}{n+1} - \\dfrac{1}{n+2}\\right)$ لأن الحدود الوسطى تتلاشى. بأخذ النهاية عندما $n\\to\\infty$ يتلاشى الحدّان الأخيران، فنحصل على $S = \\dfrac{1}{2}\\cdot\\dfrac{3}{2} = \\dfrac{3}{4}$.",
+   "a_en": "Partial fractions: $\\dfrac{1}{k(k+2)} = \\dfrac{1}{2}\\left(\\dfrac{1}{k} - \\dfrac{1}{k+2}\\right)$. The partial sum telescopes to $S_n = \\dfrac{1}{2}\\left(1 + \\dfrac{1}{2} - \\dfrac{1}{n+1} - \\dfrac{1}{n+2}\\right)$. Letting $n\\to\\infty$, the last two terms vanish, giving $S = \\dfrac{1}{2}\\cdot\\dfrac{3}{2} = \\dfrac{3}{4}$.",
+   "answer": "$\\dfrac{3}{4}$",
+   "keywords": [
+    "telescoping",
+    "سلسلة تلسكوبية",
+    "partial fractions",
+    "التجزئة إلى كسور",
+    "series sum",
+    "مجموع سلسلة",
+    "convergence"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لتكن المتتالية $(a_n)$ معرَّفة بـ $a_1 = \\sqrt{2}$ و $a_{n+1} = \\sqrt{2 + a_n}$. برهن أن المتتالية متقاربة، ثم أوجد نهايتها.",
+   "q_en": "Let $(a_n)$ be defined by $a_1 = \\sqrt{2}$ and $a_{n+1} = \\sqrt{2 + a_n}$. Prove the sequence converges, then find its limit.",
+   "a_ar": "بالتحقق بالاستقراء أن $a_n < 2$: صحيح لـ $a_1 = \\sqrt2 < 2$، وإذا كان $a_n < 2$ فإن $a_{n+1} = \\sqrt{2+a_n} < \\sqrt{4} = 2$. كما أنها متزايدة لأن $a_{n+1}^2 - a_n^2 = 2 + a_n - a_n^2 = (2-a_n)(1+a_n) > 0$ عندما $a_n < 2$. إذًا المتتالية متزايدة ومحدودة من الأعلى فهي متقاربة نحو نهاية $L$ تحقق $L = \\sqrt{2+L}$، أي $L^2 - L - 2 = 0$ ومنه $L = 2$ (نرفض $L = -1$).",
+   "a_en": "By induction $a_n < 2$: true for $a_1 = \\sqrt2 < 2$, and if $a_n < 2$ then $a_{n+1} = \\sqrt{2+a_n} < \\sqrt{4} = 2$. It is increasing since $a_{n+1}^2 - a_n^2 = 2 + a_n - a_n^2 = (2-a_n)(1+a_n) > 0$ while $a_n < 2$. Being increasing and bounded above, it converges to $L$ satisfying $L = \\sqrt{2+L}$, i.e. $L^2 - L - 2 = 0$, so $L = 2$ (rejecting $L = -1$).",
+   "answer": "The sequence converges and $\\lim_{n\\to\\infty} a_n = 2$.",
+   "keywords": [
+    "nested radical",
+    "جذور متداخلة",
+    "monotone bounded",
+    "متزايدة محدودة",
+    "fixed point",
+    "النقطة الثابتة",
+    "limit",
+    "التقارب"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لتكن المتتالية $(x_n)$ معرَّفة بـ $x_1 = \\dfrac{1}{2}$ و $x_{n+1} = x_n^2 - x_n + 1$. أثبت أن $(x_n)$ متزايدة ومحدودة، وأوجد نهايتها.",
+   "q_en": "Let $(x_n)$ be defined by $x_1 = \\dfrac{1}{2}$ and $x_{n+1} = x_n^2 - x_n + 1$. Show $(x_n)$ is increasing and bounded, and find its limit.",
+   "a_ar": "لاحظ أن $x_{n+1} - x_n = x_n^2 - 2x_n + 1 = (x_n - 1)^2 \\ge 0$، فالمتتالية متزايدة. ونبرهن بالاستقراء أن $x_n < 1$: صحيح لـ $x_1 = \\tfrac12$، وإذا $0 < x_n < 1$ فإن $x_{n+1} - 1 = x_n^2 - x_n = x_n(x_n - 1) < 0$ أي $x_{n+1} < 1$ (وأيضًا $x_{n+1} = x_n(x_n-1)+1 > 0$). إذًا المتتالية متزايدة ومحدودة من الأعلى بـ $1$ فهي متقاربة نحو $L$ يحقق $L = L^2 - L + 1$، أي $(L-1)^2 = 0$ ومنه $L = 1$.",
+   "a_en": "Note $x_{n+1} - x_n = x_n^2 - 2x_n + 1 = (x_n - 1)^2 \\ge 0$, so the sequence is increasing. By induction $x_n < 1$: true for $x_1 = \\tfrac12$, and if $0 < x_n < 1$ then $x_{n+1} - 1 = x_n^2 - x_n = x_n(x_n - 1) < 0$, so $x_{n+1} < 1$ (also $x_{n+1} = x_n(x_n-1)+1 > 0$). Increasing and bounded above by $1$, it converges to $L$ with $L = L^2 - L + 1$, i.e. $(L-1)^2 = 0$, so $L = 1$.",
+   "answer": "The sequence converges and $\\lim_{n\\to\\infty} x_n = 1$.",
+   "keywords": [
+    "nonlinear recurrence",
+    "تراجع غير خطي",
+    "monotone bounded",
+    "متزايدة محدودة",
+    "fixed point",
+    "النقطة الثابتة",
+    "convergence",
+    "التقارب"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "المتتالية $(a_n)$ معرَّفة بالعلاقة $a_1=1$ و $a_{n+1}=a_n+\\dfrac{1}{a_n}$ لكل $n\\ge 1$. أوجد $\\lfloor a_{1000}\\rfloor$.",
+   "q_en": "The sequence $(a_n)$ is defined by $a_1=1$ and $a_{n+1}=a_n+\\dfrac{1}{a_n}$ for $n\\ge 1$. Determine $\\lfloor a_{1000}\\rfloor$.",
+   "a_ar": "بالتربيع نحصل على $a_{n+1}^2=a_n^2+2+\\dfrac{1}{a_n^2}$، ومنه $a_n^2=2n-1+\\sum_{k=1}^{n-1}\\dfrac{1}{a_k^2}$. وبما أنّ المجموع موجب فإنّ $a_{1000}^2>1999$، أي $a_{1000}>44.7$. ومن $a_k^2\\ge 2k-1$ نجد $\\sum_{k=1}^{999}\\frac{1}{a_k^2}\\le\\sum_{k=1}^{999}\\frac{1}{2k-1}<5$، فيكون $a_{1000}^2<2004$ و $a_{1000}<44.77<45$. إذن $44<a_{1000}<45$ وبالتالي $\\lfloor a_{1000}\\rfloor=44$.",
+   "a_en": "Squaring gives $a_{n+1}^2=a_n^2+2+\\dfrac{1}{a_n^2}$, so $a_n^2=2n-1+\\sum_{k=1}^{n-1}\\dfrac{1}{a_k^2}$. Since the sum is positive, $a_{1000}^2>1999$, hence $a_{1000}>44.7$. Also $a_k^2\\ge 2k-1$ gives $\\sum_{k=1}^{999}\\frac{1}{a_k^2}\\le\\sum_{k=1}^{999}\\frac{1}{2k-1}<5$, so $a_{1000}^2<2004$ and $a_{1000}<44.77<45$. Therefore $44<a_{1000}<45$ and $\\lfloor a_{1000}\\rfloor=44$.",
+   "answer": "44",
+   "keywords": [
+    "متتالية تراجعية",
+    "recurrence",
+    "floor",
+    "a_n^2 asymptotics",
+    "sqrt(2n)",
+    "تقدير النمو",
+    "olympiad sequence"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "لتكن $a_0=1$ و $a_{n+1}=\\sin(a_n)$ لكل $n\\ge 0$. مع العلم أنّ $a_n\\to 0$، أوجد القيمة الدقيقة للنهاية $\\displaystyle\\lim_{n\\to\\infty}\\sqrt{n}\\,a_n$.",
+   "q_en": "Let $a_0=1$ and $a_{n+1}=\\sin(a_n)$ for $n\\ge 0$. It is known that $a_n\\to 0$. Determine the exact value of $\\displaystyle\\lim_{n\\to\\infty}\\sqrt{n}\\,a_n$.",
+   "a_ar": "بما أنّ $a_n\\to 0$ نستعمل $\\sin x=x-\\frac{x^3}{6}+O(x^5)$، فيكون $a_{n+1}^2=a_n^2-\\frac{a_n^4}{3}+O(a_n^6)$. نضع $b_n=1/a_n^2$، فنحصل على $b_{n+1}=b_n\\big(1-\\frac{a_n^2}{3}+O(a_n^4)\\big)^{-1}=b_n+\\frac13+O(a_n^2)$، أي $b_{n+1}-b_n\\to\\frac13$. وبمبرهنة تشيزارو/شتولتس $\\frac{b_n}{n}\\to\\frac13$ أي $n\\,a_n^2\\to 3$. إذن $\\sqrt{n}\\,a_n\\to\\sqrt{3}$.",
+   "a_en": "Since $a_n\\to 0$, use $\\sin x=x-\\frac{x^3}{6}+O(x^5)$, so $a_{n+1}^2=a_n^2-\\frac{a_n^4}{3}+O(a_n^6)$. Let $b_n=1/a_n^2$; then $b_{n+1}=b_n\\big(1-\\frac{a_n^2}{3}+O(a_n^4)\\big)^{-1}=b_n+\\frac13+O(a_n^2)$, so $b_{n+1}-b_n\\to\\frac13$. By the Cesàro/Stolz theorem $\\frac{b_n}{n}\\to\\frac13$, i.e. $n\\,a_n^2\\to 3$. Hence $\\sqrt{n}\\,a_n\\to\\sqrt{3}$.",
+   "answer": "$\\sqrt{3}$",
+   "keywords": [
+    "نهاية متتالية",
+    "sin iteration",
+    "Stolz",
+    "Cesàro",
+    "asymptotic",
+    "التقارب",
+    "sqrt(3)",
+    "تحليل مقارب"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "متتالية تحقّق $a_0=a_1=1$ و $a_{n+1}=\\dfrac{a_n^2+2}{a_{n-1}}$ لكل $n\\ge 1$. أثبت أنّ كل حدّ $a_n$ عدد صحيح، وأوجد الثابت $c$ الذي يحقّق $a_{n+1}=c\\,a_n-a_{n-1}$ لكل $n\\ge 1$.",
+   "q_en": "A sequence satisfies $a_0=a_1=1$ and $a_{n+1}=\\dfrac{a_n^2+2}{a_{n-1}}$ for $n\\ge 1$. Prove that every $a_n$ is an integer, and find the constant $c$ such that $a_{n+1}=c\\,a_n-a_{n-1}$ for all $n\\ge 1$.",
+   "a_ar": "من $a_{n+1}a_{n-1}=a_n^2+2$ و $a_n a_{n-2}=a_{n-1}^2+2$، وبالطرح نجد $a_{n+1}a_{n-1}-a_n a_{n-2}=a_n^2-a_{n-1}^2$، أي $a_{n-1}(a_{n+1}+a_{n-1})=a_n(a_n+a_{n-2})$. إذن $\\frac{a_{n+1}+a_{n-1}}{a_n}=\\frac{a_n+a_{n-2}}{a_{n-1}}=\\cdots=\\frac{a_2+a_0}{a_1}$. وبما أنّ $a_2=(1+2)/1=3$ فإنّ هذه النسبة تساوي $\\frac{3+1}{1}=4$. إذن $a_{n+1}=4a_n-a_{n-1}$، وهي علاقة تراجعية خطية بمعاملات صحيحة، وبالاستقراء كل الحدود أعداد صحيحة ($1,1,3,11,41,153,\\dots$). والثابت هو $c=4$.",
+   "a_en": "From $a_{n+1}a_{n-1}=a_n^2+2$ and $a_n a_{n-2}=a_{n-1}^2+2$, subtracting gives $a_{n+1}a_{n-1}-a_n a_{n-2}=a_n^2-a_{n-1}^2$, i.e. $a_{n-1}(a_{n+1}+a_{n-1})=a_n(a_n+a_{n-2})$. Thus $\\frac{a_{n+1}+a_{n-1}}{a_n}=\\frac{a_n+a_{n-2}}{a_{n-1}}=\\cdots=\\frac{a_2+a_0}{a_1}$. With $a_2=(1+2)/1=3$ this ratio equals $\\frac{3+1}{1}=4$. Hence $a_{n+1}=4a_n-a_{n-1}$, a linear integer recurrence, so by induction all terms are integers ($1,1,3,11,41,153,\\dots$). The constant is $c=4$.",
+   "answer": "$c=4$ (وبالتالي $a_{n+1}=4a_n-a_{n-1}$؛ الحدود $1,1,3,11,41,153,\\dots$ جميعها أعداد صحيحة)",
+   "keywords": [
+    "علاقة تراجعية غير خطية",
+    "integer sequence",
+    "invariant",
+    "linearization",
+    "4a_n - a_{n-1}",
+    "ثابت المتتالية",
+    "Somos-like"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "المتتالية معرَّفة بـ $a_1=2$ و $a_{n+1}=a_n^2-a_n+1$ لكل $n\\ge 1$ (متتالية سيلفستر). احسب $\\displaystyle\\sum_{n=1}^{\\infty}\\frac{1}{a_n}$.",
+   "q_en": "The sequence is defined by $a_1=2$ and $a_{n+1}=a_n^2-a_n+1$ for $n\\ge 1$ (Sylvester's sequence). Evaluate $\\displaystyle\\sum_{n=1}^{\\infty}\\frac{1}{a_n}$.",
+   "a_ar": "لاحظ أنّ $a_{n+1}-1=a_n(a_n-1)$، ومنه $\\dfrac{1}{a_{n+1}-1}=\\dfrac{1}{a_n(a_n-1)}=\\dfrac{1}{a_n-1}-\\dfrac{1}{a_n}$، وبإعادة الترتيب $\\dfrac{1}{a_n}=\\dfrac{1}{a_n-1}-\\dfrac{1}{a_{n+1}-1}$. فيتقلّص المجموع تلسكوبيًّا: $\\sum_{n=1}^{N}\\frac{1}{a_n}=\\frac{1}{a_1-1}-\\frac{1}{a_{N+1}-1}=1-\\frac{1}{a_{N+1}-1}$. وبما أنّ $a_n\\to\\infty$ (نموّ أُسّي مضاعف) يتلاشى الباقي ويكون المجموع $1$.",
+   "a_en": "Note $a_{n+1}-1=a_n(a_n-1)$, so $\\dfrac{1}{a_{n+1}-1}=\\dfrac{1}{a_n(a_n-1)}=\\dfrac{1}{a_n-1}-\\dfrac{1}{a_n}$, which rearranges to $\\dfrac{1}{a_n}=\\dfrac{1}{a_n-1}-\\dfrac{1}{a_{n+1}-1}$. The sum telescopes: $\\sum_{n=1}^{N}\\frac{1}{a_n}=\\frac{1}{a_1-1}-\\frac{1}{a_{N+1}-1}=1-\\frac{1}{a_{N+1}-1}$. Since $a_n\\to\\infty$ (doubly exponentially), the tail vanishes and the sum equals $1$.",
+   "answer": "$1$",
+   "keywords": [
+    "متتالية سيلفستر",
+    "Sylvester sequence",
+    "telescoping",
+    "مجموع تلسكوبي",
+    "1/a_n",
+    "سلسلة لا نهائية",
+    "unit fractions"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "سلسلة هندسية لا نهائية حدودها حقيقية مجموعها $4$، والسلسلة المكوَّنة من مكعّبات حدودها مجموعها $192$. علمًا أنّ كلتا السلسلتين متقاربة، أوجد الأساس (النسبة الشائعة) $r$.",
+   "q_en": "An infinite geometric series of real terms has sum $4$, and the series formed by the cubes of its terms has sum $192$. Given that both series converge, find the common ratio $r$.",
+   "a_ar": "بأخذ الحدّ الأول $a$ والأساس $r$ (مع $|r|<1$): $\\dfrac{a}{1-r}=4$ و $\\dfrac{a^3}{1-r^3}=192$. بتكعيب الأولى $a^3=64(1-r)^3$، ومنه $\\dfrac{64(1-r)^3}{1-r^3}=192$، أي $\\dfrac{(1-r)^3}{(1-r)(1+r+r^2)}=3$، فيكون $\\dfrac{(1-r)^2}{1+r+r^2}=3$. وبالنشر: $1-2r+r^2=3+3r+3r^2\\Rightarrow 2r^2+5r+2=0\\Rightarrow r=-\\tfrac12$ أو $r=-2$. ولأنّ التقارب يستلزم $|r|<1$ فإنّ $r=-\\tfrac12$ (وعندها $a=6$).",
+   "a_en": "With first term $a$ and ratio $r$ (with $|r|<1$): $\\dfrac{a}{1-r}=4$ and $\\dfrac{a^3}{1-r^3}=192$. Cubing the first, $a^3=64(1-r)^3$, so $\\dfrac{64(1-r)^3}{1-r^3}=192$, i.e. $\\dfrac{(1-r)^3}{(1-r)(1+r+r^2)}=3$, giving $\\dfrac{(1-r)^2}{1+r+r^2}=3$. Expanding: $1-2r+r^2=3+3r+3r^2\\Rightarrow 2r^2+5r+2=0\\Rightarrow r=-\\tfrac12$ or $r=-2$. Convergence requires $|r|<1$, so $r=-\\tfrac12$ (then $a=6$).",
+   "answer": "$r=-\\dfrac{1}{2}$",
+   "keywords": [
+    "سلسلة هندسية",
+    "geometric series",
+    "common ratio",
+    "الأساس",
+    "sum of cubes",
+    "مجموع المكعبات",
+    "convergence |r|<1"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

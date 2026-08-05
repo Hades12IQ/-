@@ -1,0 +1,179 @@
+{
+ "subject": "math",
+ "topic": "algebra",
+ "title": "algebra — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "أوجد جميع الدوال $f$ المعرّفة عند $x\\neq 0$ والتي تحقّق $f(x)+2f\\!\\left(\\tfrac{1}{x}\\right)=3x$ لكل عدد حقيقي غير صفري $x$.",
+   "q_en": "Find all functions $f$ defined for $x\\neq 0$ satisfying $f(x)+2f\\!\\left(\\tfrac{1}{x}\\right)=3x$ for every nonzero real $x$.",
+   "a_ar": "نعوّض $x$ بـ $\\tfrac1x$ لنحصل على معادلة ثانية $f\\!\\left(\\tfrac1x\\right)+2f(x)=\\tfrac{3}{x}$. باعتبار $f(x)$ و $f(1/x)$ مجهولين نحلّ الجملة الخطية: نضرب الثانية في $2$ ونطرح الأولى فنجد $3f(x)=\\tfrac{6}{x}-3x$. إذن $f(x)=\\dfrac{2}{x}-x$. وبالتعويض المباشر نتحقّق أنّ $\\left(\\tfrac2x-x\\right)+2\\left(2x-\\tfrac1x\\right)=3x$، فهذا هو الحل الوحيد.",
+   "a_en": "Replace $x$ by $\\tfrac1x$ to get a second equation $f\\!\\left(\\tfrac1x\\right)+2f(x)=\\tfrac{3}{x}$. Treating $f(x)$ and $f(1/x)$ as unknowns, solve the linear system: multiply the second by $2$ and subtract the first, giving $3f(x)=\\tfrac{6}{x}-3x$. Hence $f(x)=\\dfrac{2}{x}-x$. Direct substitution confirms $\\left(\\tfrac2x-x\\right)+2\\left(2x-\\tfrac1x\\right)=3x$, so this is the unique solution.",
+   "answer": "$f(x)=\\dfrac{2}{x}-x$",
+   "keywords": [
+    "functional equation",
+    "معادلة تابعية",
+    "substitution",
+    "f(1/x)",
+    "linear system",
+    "الدوال",
+    "تعويض"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أعداد حقيقية $x,y,z$ تحقّق $x+y+z=1$ و $x^2+y^2+z^2=21$ و $x^3+y^3+z^3=55$. أوجد قيمة $xyz$ وحدّد المجموعة $\\{x,y,z\\}$.",
+   "q_en": "Real numbers $x,y,z$ satisfy $x+y+z=1$, $x^2+y^2+z^2=21$, and $x^3+y^3+z^3=55$. Find the value of $xyz$ and determine the multiset $\\{x,y,z\\}$.",
+   "a_ar": "لتكن $e_1=x+y+z=1$ و $e_2=xy+yz+zx$ و $e_3=xyz$. من $x^2+y^2+z^2=e_1^2-2e_2$ نجد $21=1-2e_2$ أي $e_2=-10$. ومن متطابقة نيوتن $p_3=e_1p_2-e_2p_1+3e_3$ نحصل $55=21+10+3e_3=31+3e_3$ فيكون $e_3=8$. إذن $x,y,z$ هي جذور المعادلة $t^3-t^2-10t-8=0$ التي تتحلّل إلى $(t+1)(t+2)(t-4)=0$. ومنه $\\{x,y,z\\}=\\{-2,-1,4\\}$ و $xyz=8$.",
+   "a_en": "Let $e_1=x+y+z=1$, $e_2=xy+yz+zx$, $e_3=xyz$. From $x^2+y^2+z^2=e_1^2-2e_2$ we get $21=1-2e_2$, so $e_2=-10$. Newton's identity $p_3=e_1p_2-e_2p_1+3e_3$ gives $55=1\\cdot21-(-10)\\cdot1+3e_3=31+3e_3$, so $e_3=8$. Thus $x,y,z$ are the roots of $t^3-t^2-10t-8=0$, which factors as $(t+1)(t+2)(t-4)=0$. Hence $\\{x,y,z\\}=\\{-2,-1,4\\}$ and $xyz=8$.",
+   "answer": "$xyz=8$، $\\{x,y,z\\}=\\{-2,-1,4\\}$",
+   "keywords": [
+    "symmetric functions",
+    "متطابقات نيوتن",
+    "power sums",
+    "المتناظرات",
+    "xyz",
+    "cubic roots",
+    "جملة معادلات"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أوجد جميع كثيرات الحدود $P(x)$ ذات المعاملات الحقيقية التي تحقّق $P(x)\\,P(2x^2)=P(2x^3+x)$ لكل عدد حقيقي $x$.",
+   "q_en": "Find all polynomials $P(x)$ with real coefficients satisfying $P(x)\\,P(2x^2)=P(2x^3+x)$ for every real $x$.",
+   "a_ar": "الحل $P\\equiv 0$ يحقّق المعادلة. وإلا فليكن $\\deg P=n$ ومعامله الرئيسي $a$. بمقارنة الحدود العليا: الطرف الأيسر معامله الرئيسي $a^2 2^n$ ودرجته $3n$، والطرف الأيمن معامله $a\\,2^n$ ودرجته $3n$، فيلزم $a^2 2^n=a2^n$ أي $a=1$ (واحدي). وكثير الحدود $x^2+1$ يحقّق المطابقة لأنّ $(x^2+1)(4x^4+1)=(2x^3+x)^2+1$، والمعادلة ضربية في $P$، فكلّ قوّة $(x^2+1)^n$ تحقّقها؛ وتحليل الدرجة والجذور يبيّن أنّها الحلول غير الصفرية الوحيدة. الجواب: $P(x)=(x^2+1)^n$ لعدد صحيح غير سالب $n$ (وعند $n=0$ يكون $P\\equiv1$)، إضافةً إلى $P\\equiv 0$.",
+   "a_en": "If $P\\equiv 0$ it works. Otherwise let $\\deg P=n$ with leading coefficient $a$. Comparing leading terms: the left side has leading coefficient $a^2 2^n$ and degree $3n$, the right side has leading coefficient $a\\,2^{n}$ and degree $3n$, forcing $a^2 2^n=a2^n$, i.e. $a=1$ (monic). The polynomial $x^2+1$ satisfies the identity since $(x^2+1)(4x^4+1)=(2x^3+x)^2+1$, and the equation is multiplicative in $P$, so every power $(x^2+1)^n$ works; a degree/root analysis shows these are the only nonzero solutions. Answer: $P(x)=(x^2+1)^n$ for a nonnegative integer $n$ (with $n=0$ giving $P\\equiv1$), together with $P\\equiv 0$.",
+   "answer": "$P(x)=(x^2+1)^n,\\ n\\in\\mathbb{Z}_{\\ge 0}$ (و $P\\equiv 0$)",
+   "keywords": [
+    "polynomial functional equation",
+    "معادلة تابعية كثيرات حدود",
+    "monic",
+    "x^2+1",
+    "leading coefficient",
+    "الحد الرئيسي",
+    "identity"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أعداد حقيقية غير صفرية $x,y,z$ تحقّق $x+\\dfrac{1}{y}=1$ و $y+\\dfrac{1}{z}=1$. برهن أنّ $z+\\dfrac{1}{x}=1$ وأوجد قيمة $xyz$.",
+   "q_en": "Nonzero real numbers $x,y,z$ satisfy $x+\\dfrac{1}{y}=1$ and $y+\\dfrac{1}{z}=1$. Prove that $z+\\dfrac{1}{x}=1$ and find the value of $xyz$.",
+   "a_ar": "من $x+\\tfrac1y=1$ نجد $y=\\tfrac{1}{1-x}$. ومن $y+\\tfrac1z=1$ نجد $\\tfrac1z=1-y=1-\\tfrac{1}{1-x}=\\tfrac{-x}{1-x}$، فيكون $z=\\tfrac{x-1}{x}=1-\\tfrac1x$. إذن $z+\\tfrac1x=\\left(1-\\tfrac1x\\right)+\\tfrac1x=1$، وهذا يثبت العلاقة الثالثة. وأخيرًا $xyz=x\\cdot\\tfrac{1}{1-x}\\cdot\\tfrac{x-1}{x}=\\tfrac{x-1}{1-x}=-1$.",
+   "a_en": "From $x+\\tfrac1y=1$ we get $y=\\tfrac{1}{1-x}$. From $y+\\tfrac1z=1$ we get $\\tfrac1z=1-y=1-\\tfrac{1}{1-x}=\\tfrac{-x}{1-x}$, so $z=\\tfrac{x-1}{x}=1-\\tfrac1x$. Then $z+\\tfrac1x=\\left(1-\\tfrac1x\\right)+\\tfrac1x=1$, proving the third relation. Finally $xyz=x\\cdot\\tfrac{1}{1-x}\\cdot\\tfrac{x-1}{x}=\\tfrac{x-1}{1-x}=-1$.",
+   "answer": "$z+\\dfrac1x=1$ و $xyz=-1$",
+   "keywords": [
+    "cyclic system",
+    "جملة دورية",
+    "reciprocal",
+    "xyz=-1",
+    "substitution",
+    "التعويض",
+    "symmetry"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "حلّل $x^{8}+x^{4}+1$ تحليلًا كاملًا إلى كثيرات حدود غير قابلة للاختزال على الأعداد الصحيحة.",
+   "q_en": "Factor $x^{8}+x^{4}+1$ completely into irreducible polynomials over the integers.",
+   "a_ar": "نستخدم فكرة الجمع والطرح: $x^8+x^4+1=(x^4+x^2+1)(x^4-x^2+1)$، إذ إنّ حاصل ضربهما يعطي $x^8+x^4+1$. ثمّ $x^4+x^2+1=(x^2+1)^2-x^2=(x^2+x+1)(x^2-x+1)$. أمّا العامل $x^4-x^2+1$ فهو غير قابل للاختزال على $\\mathbb{Z}$ (وهو كثير الحدود الدائري الثاني عشر). إذن $x^8+x^4+1=(x^2+x+1)(x^2-x+1)(x^4-x^2+1)$.",
+   "a_en": "Use the identity $a^2+a+1=(a^2-a+1)\\cdot\\tfrac{a^3+1}{a+1}$ via the Sophie-Germain/telescoping trick: $x^8+x^4+1=(x^4+x^2+1)(x^4-x^2+1)$, since multiplying these gives $x^8+x^4+1$. Next $x^4+x^2+1=(x^2+x+1)(x^2-x+1)$ (add and subtract $x^2$: $(x^2+1)^2-x^2$). The factor $x^4-x^2+1$ is irreducible over $\\mathbb{Z}$ (it is the $12$th cyclotomic polynomial). Hence $x^8+x^4+1=(x^2+x+1)(x^2-x+1)(x^4-x^2+1)$.",
+   "answer": "$(x^2+x+1)(x^2-x+1)(x^4-x^2+1)$",
+   "keywords": [
+    "factoring",
+    "تحليل",
+    "Sophie Germain",
+    "cyclotomic",
+    "الدائري",
+    "irreducible",
+    "x^8+x^4+1",
+    "إضافة وطرح"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "جِد جميع الدوال $f:\\mathbb{R}\\to\\mathbb{R}$ التي تُحقّق $f(x^2+f(y))=y+f(x)^2$ لكل عددين حقيقيين $x,y$.",
+   "q_en": "Find all functions $f:\\mathbb{R}\\to\\mathbb{R}$ satisfying $f(x^2+f(y))=y+f(x)^2$ for all real $x,y$.",
+   "a_ar": "الحل الوحيد هو $f(x)=x$. بتثبيت $x$ وتغيير $y$ يأخذ الطرف الأيمن كل قيمة حقيقية فتكون $f$ شاملة؛ وإذا كان $f(y_1)=f(y_2)$ لزم $y_1=y_2$ فتكون متباينة، إذن تقابل. بوضع $x=0$ نجد $f(f(y))=y+c^2$ حيث $c=f(0)$. نختار $a$ بحيث $f(a)=0$، وبوضع $y=a$ نحصل على $f(x^2)=a+f(x)^2$، ثم $x=0$ تعطي $c=a+c^2$. وبمقارنة المعادلة بعد تبديل $x$ و$y$ (لأن $f(x^2)-f(x)^2$ يساوي الثابت $a$) نستنتج $c=0$ ومنه $a=0$ و$f(x^2)=f(x)^2\\ge0$، فتكون $f$ غير سالبة على $[0,\\infty)$ و$f(f(y))=y$. عندئذٍ تكون $f$ تطابقًا متزايدًا تقابليًا، وهذا مع المعادلة الأصلية يفرض $f(x)=x$، والتعويض المباشر يؤكّد ذلك.",
+   "a_en": "The only solution is $f(x)=x$. Fixing $x$ and varying $y$, the right side takes every real value, so $f$ is surjective; and $f(y_1)=f(y_2)$ forces $y_1=y_2$, so $f$ is injective, hence bijective. Setting $x=0$ gives $f(f(y))=y+c^2$ with $c=f(0)$. Picking $a$ with $f(a)=0$ and putting $y=a$ yields $f(x^2)=a+f(x)^2$; then $x=0$ gives $c=a+c^2$. Comparing the equation with $x,y$ swapped (using that $f(x^2)-f(x)^2$ is the constant $a$) forces $c=0$, so $a=0$ and $f(x^2)=f(x)^2\\ge0$, i.e. $f$ is nonnegative on $[0,\\infty)$ and $f(f(y))=y$. This makes $f$ an increasing bijective involution, which together with the original relation forces $f(x)=x$; direct substitution confirms it works.",
+   "answer": "$f(x)=x$",
+   "keywords": [
+    "functional equation",
+    "معادلة دالية",
+    "involution",
+    "تقابل",
+    "surjective injective",
+    "f(x)=x",
+    "IMO 1992"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "جِد جميع كثيرات الحدود $P(x)$ ذات المعاملات الحقيقية التي تُحقّق $P(x)\\,P(2x^2)=P(2x^3+x)$ لكل عدد حقيقي $x$.",
+   "q_en": "Find all polynomials $P(x)$ with real coefficients such that $P(x)\\,P(2x^2)=P(2x^3+x)$ for all real $x$.",
+   "a_ar": "الحلول هي بالضبط $P(x)=(x^2+1)^n$ للأعداد الصحيحة $n\\ge0$ (إضافةً إلى الحل التافه $P\\equiv0$). بمقارنة معاملات الحد الأعلى: إذا كانت $\\deg P=d$ ومعامل الصدارة $k$ فإن المطابقة تعطي $k\\cdot k\\,2^d=k\\,2^d$ ومنه $k=1$ (أحادية). وإذا كان $r$ جذرًا عقديًا فإن $2r^3+r$ جذر أيضًا؛ وتكرار التحويل $r\\mapsto 2r^3+r$ ينتج جذورًا لا نهائية إلا إذا حُفظ المقياس، وهذا يفرض $|r|=1$ مع كون $r$ تخيليًا محضًا أي $r=\\pm i$. إذن $P(x)=(x-i)^a(x+i)^b$، وشرط الحقيقية وتوازن التعدد يفرضان $a=b=n$ فيكون $P(x)=(x^2+1)^n$. وبالتعويض العكسي تتحقق المطابقة $(x^2+1)(4x^4+1)=(2x^3+x)^2+1$، مما يؤكد أن كل $P$ من هذا الشكل يحقق المعادلة.",
+   "a_en": "The solutions are exactly $P(x)=(x^2+1)^n$ for integers $n\\ge0$ (together with the trivial $P\\equiv0$). Comparing leading coefficients, if $\\deg P=d$ and leading coefficient $k$, the identity gives $k\\cdot k\\,2^d=k\\,2^d$, so $k=1$ (monic). If $r$ is a complex root, then $2r^3+r$ is also a root; iterating $r\\mapsto 2r^3+r$ would produce infinitely many roots unless $|r|$ is preserved, which for this map forces $|r|=1$ with $r$ purely imaginary, giving $r=\\pm i$. Hence $P(x)=(x-i)^a(x+i)^b$; reality and the multiplicity balance force $a=b=n$, so $P(x)=(x^2+1)^n$. Substituting back, $(x^2+1)(4x^4+1)=(2x^3+x)^2+1$ holds, confirming every such $P$ works.",
+   "answer": "$P(x)=(x^2+1)^n,\\ n\\ge0$ (وكذلك $P\\equiv0$)",
+   "keywords": [
+    "polynomial functional equation",
+    "كثير حدود",
+    "roots \\pm i",
+    "جذور تخيلية",
+    "monic",
+    "(x^2+1)^n",
+    "معادلة كثيرات الحدود"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "الأعداد الحقيقية $a,b,c$ تُحقّق $a+b+c=3$ و$a^2+b^2+c^2=3$ و$a^3+b^3+c^3=3$. جِد جميع القيم الممكنة للثلاثية $(a,b,c)$.",
+   "q_en": "The real numbers $a,b,c$ satisfy $a+b+c=3$, $a^2+b^2+c^2=3$, and $a^3+b^3+c^3=3$. Find all possible values of $(a,b,c)$.",
+   "a_ar": "الحل الوحيد هو $a=b=c=1$. لتكن $e_1,e_2,e_3$ المتناظرات الأولية. من $p_1=3$ نجد $e_1=3$؛ ومن $p_2=e_1^2-2e_2=3$ نجد $e_2=3$؛ ومتطابقة نيوتن $p_3=e_1p_2-e_2p_1+3e_3$ تعطي $3=3\\cdot3-3\\cdot3+3e_3$ ومنه $e_3=1$. إذن $a,b,c$ هي جذور المعادلة $t^3-3t^2+3t-1=(t-1)^3=0$، فيكون $a=b=c=1$ هو الحل الوحيد (الحقيقي، بل والعقدي أيضًا).",
+   "a_en": "The only solution is $a=b=c=1$. Let $e_1,e_2,e_3$ be the elementary symmetric polynomials. From $p_1=3$ we get $e_1=3$; from $p_2=e_1^2-2e_2=3$ we get $e_2=3$; and Newton's identity $p_3=e_1p_2-e_2p_1+3e_3$ gives $3=3\\cdot3-3\\cdot3+3e_3$, so $e_3=1$. Thus $a,b,c$ are the roots of $t^3-3t^2+3t-1=(t-1)^3=0$, giving $a=b=c=1$ as the unique (real, and in fact only complex) solution.",
+   "answer": "$a=b=c=1$",
+   "keywords": [
+    "symmetric polynomials",
+    "متناظرات",
+    "Newton identities",
+    "متطابقات نيوتن",
+    "power sums",
+    "مجاميع القوى",
+    "(t-1)^3"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "حدّد جميع الأعداد الصحيحة $n$ التي يكون عندها $n^4+4$ عددًا أوليًا.",
+   "q_en": "Determine all integers $n$ for which $n^4+4$ is a prime number.",
+   "a_ar": "فقط $n=\\pm1$ (وكلٌّ منهما يعطي $n^4+4=5$). باستخدام متطابقة صوفي جيرمان: $n^4+4=(n^2-2n+2)(n^2+2n+2)=\\big((n-1)^2+1\\big)\\big((n+1)^2+1\\big)$. كلا العاملين عدد صحيح موجب. ولكي يكون $n^4+4$ أوليًا يجب أن يساوي أحد العاملين $1$؛ و$(n-1)^2+1=1$ تتطلب $n=1$، و$(n+1)^2+1=1$ تتطلب $n=-1$، وهما المرشحان الوحيدان وكلاهما يعطي $5$ وهو أولي. أما عند $|n|\\ge2$ (وكذلك $n=0$ الذي يعطي $4$) فكلا العاملين أكبر من $1$ فيكون العدد مركّبًا.",
+   "a_en": "Only $n=\\pm1$ (each giving $n^4+4=5$). Using the Sophie Germain identity, $n^4+4=(n^2-2n+2)(n^2+2n+2)=\\big((n-1)^2+1\\big)\\big((n+1)^2+1\\big)$. Both factors are positive integers. For $n^4+4$ to be prime one factor must equal $1$; since $(n-1)^2+1=1$ needs $n=1$ and $(n+1)^2+1=1$ needs $n=-1$, these are the only candidates, and both give $5$, which is prime. For $|n|\\ge2$ (and $n=0$, giving $4$) both factors exceed $1$, so the number is composite.",
+   "answer": "$n=\\pm1$ (حيث $n^4+4=5$)",
+   "keywords": [
+    "Sophie Germain identity",
+    "متطابقة صوفي جيرمان",
+    "factoring",
+    "تحليل",
+    "n^4+4",
+    "prime",
+    "عدد أولي"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "لتكن $a,b,c$ الجذور الثلاثة للمعادلة $x^3-x-1=0$. احسب $\\dfrac{1+a}{1-a}+\\dfrac{1+b}{1-b}+\\dfrac{1+c}{1-c}$.",
+   "q_en": "Let $a,b,c$ be the three roots of $x^3-x-1=0$. Compute $\\dfrac{1+a}{1-a}+\\dfrac{1+b}{1-b}+\\dfrac{1+c}{1-c}$.",
+   "a_ar": "القيمة هي $-7$. نكتب $\\frac{1+t}{1-t}=-1+\\frac{2}{1-t}$، فيصبح المجموع $-3+2\\sum\\frac{1}{1-a}$. ولأن $P(x)=x^3-x-1=\\prod(x-a_i)$ فإن $\\sum\\frac{1}{1-a_i}=\\frac{P'(1)}{P(1)}$. وهنا $P(1)=1-1-1=-1$ و$P'(x)=3x^2-1$ ومنه $P'(1)=2$، فيكون $\\sum\\frac{1}{1-a_i}=\\frac{2}{-1}=-2$. إذن المجموع المطلوب هو $-3+2(-2)=-7$.",
+   "a_en": "The value is $-7$. Write $\\frac{1+t}{1-t}=-1+\\frac{2}{1-t}$, so the sum equals $-3+2\\sum\\frac{1}{1-a}$. For $P(x)=x^3-x-1=\\prod(x-a_i)$ we have $\\sum\\frac{1}{1-a_i}=\\frac{P'(1)}{P(1)}$. Here $P(1)=1-1-1=-1$ and $P'(x)=3x^2-1$ so $P'(1)=2$, giving $\\sum\\frac{1}{1-a_i}=\\frac{2}{-1}=-2$. Therefore the required sum is $-3+2(-2)=-7$.",
+   "answer": "$-7$",
+   "keywords": [
+    "Vieta",
+    "فييتا",
+    "roots of cubic",
+    "جذور معادلة تكعيبية",
+    "logarithmic derivative",
+    "المشتقة اللوغاريتمية",
+    "symmetric sum",
+    "x^3-x-1"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

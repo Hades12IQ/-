@@ -1,0 +1,184 @@
+{
+ "subject": "science",
+ "topic": "chem-thermochemistry",
+ "title": "chem-thermochemistry — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "باستخدام إنثالبيات التكوين القياسية ΔH°f: ‏CO₂(g) = ‏−393.5 kJ/mol، ‏H₂O(l) = ‏−285.8 kJ/mol، ‏C₃H₈(g) = ‏−103.8 kJ/mol (و O₂(g) = 0)، احسب إنثالبي احتراق البروبان القياسي للتفاعل: ‏C₃H₈(g) + 5O₂(g) → 3CO₂(g) + 4H₂O(l).",
+   "q_en": "Using standard enthalpies of formation ΔH°f: CO₂(g) = −393.5 kJ/mol, H₂O(l) = −285.8 kJ/mol, C₃H₈(g) = −103.8 kJ/mol (O₂(g) = 0), calculate the standard enthalpy of combustion of propane, C₃H₈(g) + 5O₂(g) → 3CO₂(g) + 4H₂O(l).",
+   "a_ar": "نطبّق قانون هس: $\\Delta H^\\circ = \\sum n\\,\\Delta H^\\circ_f(\\text{النواتج}) - \\sum n\\,\\Delta H^\\circ_f(\\text{المتفاعلات})$. النواتج: $3(-393.5) + 4(-285.8) = -1180.5 - 1143.2 = -2323.7$ kJ. المتفاعلات: $(-103.8) + 5(0) = -103.8$ kJ. إذن $\\Delta H^\\circ = -2323.7 - (-103.8) = -2219.9$ kJ لكل مول بروبان. التفاعل شديد الطرد للحرارة.",
+   "a_en": "Apply Hess's law: $\\Delta H^\\circ_{rxn} = \\sum n\\,\\Delta H^\\circ_f(\\text{products}) - \\sum n\\,\\Delta H^\\circ_f(\\text{reactants})$. Products: $3(-393.5) + 4(-285.8) = -1180.5 - 1143.2 = -2323.7$ kJ. Reactants: $(-103.8) + 5(0) = -103.8$ kJ. Therefore $\\Delta H^\\circ = -2323.7 - (-103.8) = -2219.9$ kJ/mol of propane. The reaction is strongly exothermic.",
+   "answer": "ΔH° = −2219.9 kJ/mol",
+   "keywords": [
+    "إنثالبي الاحتراق",
+    "enthalpy of combustion",
+    "قانون هس",
+    "Hess's law",
+    "propane",
+    "إنثالبي التكوين",
+    "standard formation enthalpy"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في مسعّر كوب القهوة، مُزج 100.0 mL من HCl تركيزه 1.00 M مع 100.0 mL من NaOH تركيزه 1.00 M، وكلاهما عند 25.00 °C ابتداءً. ارتفعت درجة الحرارة إلى 31.80 °C. افترض كثافة المحلول = 1.00 g/mL والحرارة النوعية = 4.18 J·g⁻¹·°C⁻¹، وأن للمسعّر نفسه سعة حرارية قدرها 15.0 J/°C. احسب إنثالبي التعادل المولي، ΔH، بوحدة kJ لكل مول من الماء المتكوّن.",
+   "q_en": "In a coffee-cup calorimeter, 100.0 mL of 1.00 M HCl and 100.0 mL of 1.00 M NaOH, both initially at 25.00 °C, are mixed. The temperature rises to 31.80 °C. Assume solution density = 1.00 g/mL and specific heat = 4.18 J·g⁻¹·°C⁻¹, and that the calorimeter itself has a heat capacity of 15.0 J/°C. Calculate the molar enthalpy of neutralization, ΔH, in kJ/mol of water formed.",
+   "a_ar": "الكتلة الكلية = 200.0 g، وΔT = 6.80 °C. الحرارة الممتصة بالمحلول: $q_{soln} = 200.0 \\times 4.18 \\times 6.80 = 5684.8$ J. والحرارة الممتصة بالمسعّر: $q_{cal} = 15.0 \\times 6.80 = 102.0$ J. الحرارة المنطلقة من التفاعل $= 5684.8 + 102.0 = 5786.8$ J. عدد مولات الماء المتكوّن $= 0.1000$ mol. إذن $\\Delta H = -5786.8 / 0.1000 = -57868$ J/mol $\\approx -57.9$ kJ/mol.",
+   "a_en": "Total mass = 200.0 g, ΔT = 6.80 °C. Heat absorbed by solution: $q_{soln} = 200.0 \\times 4.18 \\times 6.80 = 5684.8$ J. Heat absorbed by calorimeter: $q_{cal} = 15.0 \\times 6.80 = 102.0$ J. Heat released by reaction $= q_{soln} + q_{cal} = 5786.8$ J. Moles of water formed $= 0.1000$ mol. $\\Delta H = -5786.8 / 0.1000 = -57868$ J/mol $\\approx -57.9$ kJ/mol.",
+   "answer": "ΔH ≈ −57.9 kJ/mol (−57868 J/mol)",
+   "keywords": [
+    "calorimetry",
+    "المسعّر الحراري",
+    "enthalpy of neutralization",
+    "إنثالبي التعادل",
+    "heat capacity",
+    "السعة الحرارية",
+    "q=mcΔT"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "قدّر إنثالبي هدرجة الإيثين، ‏C₂H₄(g) + H₂(g) → C₂H₆(g)، باستخدام متوسط إنثالبيات الروابط (kJ/mol): ‏C=C = 612، ‏C–C = 348، ‏C–H = 413، ‏H–H = 436.",
+   "q_en": "Estimate the enthalpy of hydrogenation of ethene, C₂H₄(g) + H₂(g) → C₂H₆(g), using mean bond enthalpies (kJ/mol): C=C = 612, C–C = 348, C–H = 413, H–H = 436.",
+   "a_ar": "$\\Delta H = \\sum(\\text{الروابط المكسورة}) - \\sum(\\text{الروابط المتكوّنة})$. المكسورة: ‏C=C (612) + أربع روابط C–H (في الإيثين) + H–H (436). المتكوّنة: ‏C–C (348) + ست روابط C–H (في الإيثان). روابط C–H الأربع في الإيثين مشتركة بين الطرفين، فالصافي رابطتا C–H متكوّنتان. $\\Delta H = [612 + 436] - [348 + 2(413)] = 1048 - 348 - 826 = -126$ kJ/mol. طارد للحرارة، ويتوافق مع القيمة التجريبية (≈ −137 kJ/mol؛ والفرق ناتج عن تقريب متوسطات إنثالبيات الروابط).",
+   "a_en": "$\\Delta H = \\sum(\\text{bonds broken}) - \\sum(\\text{bonds formed})$. Broken: C=C (612) + 4×C–H (in ethene) + H–H (436). Formed: C–C (348) + 6×C–H (in ethane). The four C–H bonds of ethene are common to both sides, so net C–H change = 2 bonds formed. $\\Delta H = [612 + 436] - [348 + 2(413)] = 1048 - 348 - 826 = -126$ kJ/mol. Exothermic, consistent with the experimental value (≈ −137 kJ/mol; the difference reflects the approximation of mean bond enthalpies).",
+   "answer": "ΔH ≈ −126 kJ/mol",
+   "keywords": [
+    "bond enthalpy",
+    "إنثالبي الرابطة",
+    "hydrogenation",
+    "الهدرجة",
+    "ethene",
+    "الإيثين",
+    "mean bond energy",
+    "متوسط طاقة الرابطة"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "إذا كان (1) C(s) + O₂(g) → CO₂(g)، ‏ΔH₁ = −393.5 kJ/mol و(2) CO(g) + ½O₂(g) → CO₂(g)، ‏ΔH₂ = −283.0 kJ/mol، فاستخدم قانون هس لإيجاد إنثالبي تكوين أول أكسيد الكربون القياسي، أي ΔH للتفاعل ‏C(s) + ½O₂(g) → CO(g). (لا يمكن تكوين CO نقيًّا بالاحتراق المباشر، لذا يُوجَد بطريقة غير مباشرة.)",
+   "q_en": "Given (1) C(s) + O₂(g) → CO₂(g), ΔH₁ = −393.5 kJ/mol and (2) CO(g) + ½O₂(g) → CO₂(g), ΔH₂ = −283.0 kJ/mol, use Hess's law to determine the standard enthalpy of formation of carbon monoxide, i.e. ΔH for C(s) + ½O₂(g) → CO(g). (CO cannot be formed cleanly by direct combustion, so it must be found indirectly.)",
+   "a_ar": "التفاعل المطلوب = التفاعل (1) مطروحًا منه التفاعل (2): نعكس (2) ونجمعه مع (1). $\\Delta H_f(\\text{CO}) = \\Delta H_1 - \\Delta H_2 = -393.5 - (-283.0) = -110.5$ kJ/mol. التحقق: جمع C+O₂→CO₂ ‏(−393.5) مع المعكوس CO₂→CO+½O₂ ‏(+283.0) يحذف CO₂ و½O₂، فينتج C+½O₂→CO بقيمة ΔH = −110.5 kJ/mol.",
+   "a_en": "Target = reaction (1) minus reaction (2): reverse (2) and add to (1). $\\Delta H_f(\\text{CO}) = \\Delta H_1 - \\Delta H_2 = -393.5 - (-283.0) = -110.5$ kJ/mol. Check: adding C+O₂→CO₂ (−393.5) to CO₂→CO+½O₂ (+283.0) cancels one CO₂ and ½O₂, giving C+½O₂→CO with ΔH = −110.5 kJ/mol.",
+   "answer": "ΔH°f(CO) = −110.5 kJ/mol",
+   "keywords": [
+    "Hess's law",
+    "قانون هس",
+    "enthalpy of formation",
+    "إنثالبي التكوين",
+    "carbon monoxide",
+    "أول أكسيد الكربون",
+    "indirect determination"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في تخليق الأمونيا ‏N₂(g) + 3H₂(g) → 2NH₃(g)، ‏ΔH° = −92.4 kJ عند 298 K. باستخدام قانون كيرشوف والسعات الحرارية المولية Cp,m (J·mol⁻¹·K⁻¹): ‏N₂ = 29.1، ‏H₂ = 28.8، ‏NH₃ = 35.1 (يُفترض عدم اعتمادها على درجة الحرارة)، احسب ΔH° لهذا التفاعل عند 398 K.",
+   "q_en": "For the synthesis of ammonia N₂(g) + 3H₂(g) → 2NH₃(g), ΔH° = −92.4 kJ at 298 K. Using Kirchhoff's law and the molar heat capacities Cp,m (J·mol⁻¹·K⁻¹): N₂ = 29.1, H₂ = 28.8, NH₃ = 35.1 (assumed temperature-independent), calculate ΔH° for this reaction at 398 K.",
+   "a_ar": "قانون كيرشوف: $\\Delta H^\\circ(T_2) = \\Delta H^\\circ(T_1) + \\Delta C_p\\,(T_2 - T_1)$. ‏$\\Delta C_p = 2(35.1) - [29.1 + 3(28.8)] = 70.2 - 115.5 = -45.3$ J/K. وعلى مدى ΔT = 100 K: ‏$\\Delta C_p \\Delta T = -45.3 \\times 100 = -4530$ J = −4.53 kJ. إذن $\\Delta H^\\circ(398) = -92.4 + (-4.53) = -96.9$ kJ. يصبح التفاعل أكثر طردًا للحرارة قليلًا عند الحرارة الأعلى.",
+   "a_en": "Kirchhoff: $\\Delta H^\\circ(T_2) = \\Delta H^\\circ(T_1) + \\Delta C_p\\,(T_2 - T_1)$. $\\Delta C_p = 2(35.1) - [29.1 + 3(28.8)] = 70.2 - 115.5 = -45.3$ J/K. Over ΔT = 100 K: $\\Delta C_p \\Delta T = -45.3 \\times 100 = -4530$ J = −4.53 kJ. $\\Delta H^\\circ(398) = -92.4 + (-4.53) = -96.9$ kJ. The reaction becomes slightly more exothermic at the higher temperature.",
+   "answer": "ΔH°(398 K) = −96.9 kJ",
+   "keywords": [
+    "Kirchhoff's law",
+    "قانون كيرشوف",
+    "اعتماد الإنثالبي على الحرارة",
+    "temperature dependence",
+    "heat capacity",
+    "السعة الحرارية",
+    "ammonia synthesis",
+    "ΔCp"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "باستخدام دورة بورن–هابر، احسب المحتوى الحراري الشبكي لكلوريد الصوديوم NaCl (المُعرَّف كتغيّر المحتوى الحراري للتفاعل Na$^+$(g) + Cl$^-$(g) → NaCl(s)). المعطيات (kJ/mol): المحتوى الحراري القياسي لتكوين NaCl(s) $=-411$؛ محتوى تسامي الصوديوم $=+108$؛ طاقة التأين الأولى للصوديوم $=+496$؛ طاقة تفكك رابطة Cl$_2$(g) $=+242$؛ الألفة الإلكترونية للكلور $=-349$.",
+   "q_en": "Using a Born–Haber cycle, calculate the lattice enthalpy of NaCl (defined as the enthalpy change for Na$^+$(g) + Cl$^-$(g) → NaCl(s)). Data (kJ/mol): standard enthalpy of formation of NaCl(s) = $-411$; enthalpy of sublimation of Na(s) = $+108$; first ionization energy of Na = $+496$; bond dissociation enthalpy of Cl$_2$(g) = $+242$; electron affinity of Cl(g) = $-349$.",
+   "a_ar": "بتطبيق قانون هس على الدورة: $\\Delta H_f = \\Delta H_{sub} + \\tfrac12 D(\\mathrm{Cl_2}) + IE + EA + \\Delta H_{lattice}$. بالتعويض: $-411 = 108 + 121 + 496 - 349 + \\Delta H_{lattice}$، ومنه $\\Delta H_{lattice} = -411 - 376 = -787$ kJ/mol. إذن المحتوى الحراري الشبكي $-787$ kJ/mol (بمقدار $787$ kJ/mol، طارد للحرارة بشدة).",
+   "a_en": "Hess's law around the cycle gives $\\Delta H_f = \\Delta H_{sub} + \\tfrac12 D(\\mathrm{Cl_2}) + IE + EA + \\Delta H_{lattice}$. Insert the numbers: $-411 = 108 + 121 + 496 - 349 + \\Delta H_{lattice}$, so $\\Delta H_{lattice} = -411 - 376 = -787$ kJ/mol. The lattice enthalpy is $-787$ kJ/mol (magnitude $787$ kJ/mol, strongly exothermic).",
+   "answer": "$\\Delta H_{lattice} = -787$ kJ/mol (magnitude 787 kJ/mol)",
+   "keywords": [
+    "Born-Haber",
+    "دورة بورن هابر",
+    "lattice energy",
+    "الطاقة الشبكية",
+    "Hess law",
+    "قانون هس",
+    "NaCl",
+    "enthalpy of formation"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في مسعر قنبلة عند حجم ثابت، قيست طاقة الاحتراق الداخلية المولية للأوكتان السائل عند 298 K فكانت $\\Delta_c U = -5461$ kJ/mol للتفاعل C$_8$H$_{18}$(l) + $\\tfrac{25}{2}$O$_2$(g) → 8 CO$_2$(g) + 9 H$_2$O(l). احسب المحتوى الحراري المولي القياسي للاحتراق $\\Delta_c H$ عند 298 K. استخدم $R = 8.314$ J mol$^{-1}$ K$^{-1}$.",
+   "q_en": "In a constant-volume bomb calorimeter the molar internal energy of combustion of liquid octane at 298 K is measured as $\\Delta_c U = -5461$ kJ/mol for C$_8$H$_{18}$(l) + $\\tfrac{25}{2}$O$_2$(g) → 8 CO$_2$(g) + 9 H$_2$O(l). Calculate the standard molar enthalpy of combustion $\\Delta_c H$ at 298 K. Use $R = 8.314$ J mol$^{-1}$ K$^{-1}$.",
+   "a_ar": "يُحسب $\\Delta n_{gas}$ من المواد الغازية فقط: النواتج $8$ mol غاز والمتفاعلات $12.5$ mol غاز، إذن $\\Delta n_{gas} = 8 - 12.5 = -4.5$. ثم $\\Delta_c H = \\Delta_c U + \\Delta n_{gas}RT = -5461 + (-4.5)(8.314\\times10^{-3})(298) = -5461 - 11.15$ kJ/mol. إذن $\\Delta_c H = -5472$ kJ/mol.",
+   "a_en": "Only gaseous species count for $\\Delta n_{gas}$: products $8$ mol gas, reactants $12.5$ mol gas, so $\\Delta n_{gas} = 8 - 12.5 = -4.5$. Then $\\Delta_c H = \\Delta_c U + \\Delta n_{gas}RT = -5461 + (-4.5)(8.314\\times10^{-3})(298) = -5461 - 11.15$ kJ/mol. Thus $\\Delta_c H = -5472$ kJ/mol.",
+   "answer": "$\\Delta_c H = -5472$ kJ/mol",
+   "keywords": [
+    "bomb calorimeter",
+    "مسعر القنبلة",
+    "ΔU vs ΔH",
+    "الطاقة الداخلية",
+    "Δn_gas",
+    "octane combustion",
+    "احتراق الأوكتان",
+    "calorimetry"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "للتفاعل N$_2$(g) + 3 H$_2$(g) → 2 NH$_3$(g) لدينا $\\Delta H^\\circ_{298} = -92.22$ kJ. باستخدام قانون كيرشوف مع سعات حرارية مولية مستقلة عن درجة الحرارة $C_p$(N$_2$) = 29.12، $C_p$(H$_2$) = 28.82، $C_p$(NH$_3$) = 35.06 J mol$^{-1}$ K$^{-1}$، احسب $\\Delta H^\\circ$ عند 500 K.",
+   "q_en": "For N$_2$(g) + 3 H$_2$(g) → 2 NH$_3$(g), $\\Delta H^\\circ_{298} = -92.22$ kJ. Using Kirchhoff's law with temperature-independent molar heat capacities $C_p$(N$_2$) = 29.12, $C_p$(H$_2$) = 28.82, $C_p$(NH$_3$) = 35.06 J mol$^{-1}$ K$^{-1}$, calculate $\\Delta H^\\circ$ at 500 K.",
+   "a_ar": "$\\Delta C_p = 2(35.06) - 29.12 - 3(28.82) = 70.12 - 29.12 - 86.46 = -45.46$ J K$^{-1}$. بقانون كيرشوف: $\\Delta H^\\circ_{500} = \\Delta H^\\circ_{298} + \\Delta C_p (500-298) = -92220 + (-45.46)(202) = -92220 - 9182.9$ J $= -101403$ J. إذن $\\Delta H^\\circ_{500} \\approx -101.4$ kJ.",
+   "a_en": "$\\Delta C_p = 2(35.06) - 29.12 - 3(28.82) = 70.12 - 29.12 - 86.46 = -45.46$ J K$^{-1}$. Kirchhoff: $\\Delta H^\\circ_{500} = \\Delta H^\\circ_{298} + \\Delta C_p (500-298) = -92220 + (-45.46)(202) = -92220 - 9182.9$ J $= -101403$ J. So $\\Delta H^\\circ_{500} \\approx -101.4$ kJ.",
+   "answer": "$\\Delta H^\\circ_{500} \\approx -101.4$ kJ",
+   "keywords": [
+    "Kirchhoff law",
+    "قانون كيرشوف",
+    "ΔCp",
+    "temperature dependence",
+    "الاعتماد على درجة الحرارة",
+    "ammonia synthesis",
+    "تخليق الأمونيا",
+    "enthalpy"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "قدّر طاقة الرنين (عدم التمركز) التجريبية للبنزين. المحتوى الحراري القياسي التجريبي لتكوين البنزين الغازي هو $+82.9$ kJ/mol. باستخدام متوسط طاقات الروابط C–H = 413، C–C = 348، C=C = 615 kJ/mol ومحتويات التذرية $\\Delta H_f$(C,g) = 716.7، $\\Delta H_f$(H,g) = 218.0 kJ/mol، احسب أولًا المحتوى الحراري الافتراضي لتكوين حلقة كيكوليه المتمركزة 1,3,5-سيكلوهكساترايين (3 روابط C–C، 3 روابط C=C، 6 روابط C–H)، ثم أوجد طاقة الرنين.",
+   "q_en": "Estimate the empirical resonance (delocalization) energy of benzene. The experimental standard enthalpy of formation of gaseous benzene is $+82.9$ kJ/mol. Using average bond enthalpies C–H = 413, C–C = 348, C=C = 615 kJ/mol and atomization enthalpies $\\Delta H_f$(C,g) = 716.7, $\\Delta H_f$(H,g) = 218.0 kJ/mol, first compute the hypothetical $\\Delta H_f$ of a localized Kekulé 1,3,5-cyclohexatriene (3 C–C, 3 C=C, 6 C–H), then find the resonance energy.",
+   "a_ar": "تذرية 6 C(s) + 3 H$_2$ إلى ذرات تتطلب $6(716.7) + 6(218.0) = 4300.2 + 1308.0 = 5608.2$ kJ. وتكوين الروابط المتمركزة يطلق $6(413) + 3(348) + 3(615) = 2478 + 1044 + 1845 = 5367$ kJ. إذن المحتوى الافتراضي $\\Delta H_f = 5608.2 - 5367 = +241.2$ kJ/mol. وطاقة الرنين $= \\Delta H_f(\\text{الافتراضي}) - \\Delta H_f(\\text{الفعلي}) = 241.2 - 82.9 = +158.3$ kJ/mol من الاستقرار الإضافي.",
+   "a_en": "Atomizing 6 C(s) + 3 H$_2$ to atoms costs $6(716.7) + 6(218.0) = 4300.2 + 1308.0 = 5608.2$ kJ. Forming the localized bonds releases $6(413) + 3(348) + 3(615) = 2478 + 1044 + 1845 = 5367$ kJ. Hypothetical $\\Delta H_f = 5608.2 - 5367 = +241.2$ kJ/mol. Resonance energy $= \\Delta H_f(\\text{hypothetical}) - \\Delta H_f(\\text{actual}) = 241.2 - 82.9 = +158.3$ kJ/mol of extra stabilization.",
+   "answer": "Resonance energy $\\approx +158$ kJ/mol (hypothetical $\\Delta H_f = +241.2$ kJ/mol)",
+   "keywords": [
+    "resonance energy",
+    "طاقة الرنين",
+    "benzene",
+    "البنزين",
+    "bond enthalpy",
+    "طاقة الرابطة",
+    "Kekulé",
+    "delocalization"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "احسب درجة حرارة اللهب الأديباتية لاحتراق الهيدروجين في هواء متكافئ ستوكيومتريًا: H$_2$(g) + $\\tfrac12$O$_2$(g) + $\\tfrac12(3.76)$N$_2$(g) → H$_2$O(g) + 1.88 N$_2$(g)، بفرض دخول جميع المتفاعلات عند 298 K، دون فقد حراري، وسعات حرارية ثابتة $C_p$(H$_2$O,g) = 33.6 و $C_p$(N$_2$) = 29.1 J mol$^{-1}$ K$^{-1}$. خذ $\\Delta H^\\circ$ لتكوين H$_2$O(g) $= -241.8$ kJ/mol.",
+   "q_en": "Calculate the adiabatic flame temperature for the combustion of hydrogen in stoichiometric air, H$_2$(g) + $\\tfrac12$O$_2$(g) + $\\tfrac12(3.76)$N$_2$(g) → H$_2$O(g) + 1.88 N$_2$(g), assuming all reactants enter at 298 K, no heat loss, and constant heat capacities $C_p$(H$_2$O,g) = 33.6 and $C_p$(N$_2$) = 29.1 J mol$^{-1}$ K$^{-1}$. Take $\\Delta H^\\circ$ for forming H$_2$O(g) $= -241.8$ kJ/mol.",
+   "a_ar": "عند ضغط ثابت وبدون فقد حراري، تُستخدَم الحرارة المنطلقة لتسخين النواتج من 298 K إلى $T$. السعة الحرارية للنواتج $= 33.6 + 1.88(29.1) = 33.6 + 54.71 = 88.31$ J K$^{-1}$. من موازنة الطاقة: $241800 = 88.31\\,(T - 298)$، ومنه $T - 298 = 2738$ K، أي $T \\approx 3036$ K. (النيتروجين المخفِّف يخفض درجة حرارة اللهب كثيرًا مقارنةً بالأكسجين النقي.)",
+   "a_en": "Adiabatic, constant pressure: the heat released heats the products from 298 K to $T$. Product heat capacity $= 33.6 + 1.88(29.1) = 33.6 + 54.71 = 88.31$ J K$^{-1}$. Energy balance: $241800 = 88.31\\,(T - 298)$, so $T - 298 = 2738$ K, giving $T \\approx 3036$ K. (The N$_2$ diluent lowers the flame temperature substantially versus pure O$_2$.)",
+   "answer": "$T_{ad} \\approx 3036$ K",
+   "keywords": [
+    "adiabatic flame temperature",
+    "درجة حرارة اللهب الأديباتية",
+    "energy balance",
+    "موازنة الطاقة",
+    "hydrogen combustion",
+    "احتراق الهيدروجين",
+    "heat capacity",
+    "stoichiometric air"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

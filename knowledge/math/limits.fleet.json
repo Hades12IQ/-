@@ -1,0 +1,182 @@
+{
+ "subject": "math",
+ "topic": "limits",
+ "title": "limits — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "احسب $\\displaystyle\\lim_{x\\to 0}\\frac{\\tan x - x}{x^{3}}$.",
+   "q_en": "Evaluate $\\displaystyle\\lim_{x\\to 0}\\frac{\\tan x - x}{x^{3}}$.",
+   "a_ar": "نستخدم مفكوك ماكلورين $\\tan x = x + \\frac{x^{3}}{3} + \\frac{2x^{5}}{15} + \\cdots$، إذًا $\\tan x - x = \\frac{x^{3}}{3} + O(x^{5})$. وبالقسمة على $x^{3}$ نحصل على $\\frac{1}{3} + O(x^{2})$. وبالمثل، تطبيق قاعدة لوبيتال ثلاث مرات على الصيغة $\\frac{0}{0}$ يعطي القيمة نفسها. إذًا النهاية هي $\\frac{1}{3}$.",
+   "a_en": "Use the Maclaurin expansion $\\tan x = x + \\frac{x^{3}}{3} + \\frac{2x^{5}}{15} + \\cdots$, so $\\tan x - x = \\frac{x^{3}}{3} + O(x^{5})$. Dividing by $x^{3}$ gives $\\frac{1}{3} + O(x^{2})$. Equivalently, applying L'Hopital three times to the $\\frac{0}{0}$ form yields the same value. Hence the limit is $\\frac{1}{3}$.",
+   "answer": "$\\dfrac{1}{3}$",
+   "keywords": [
+    "نهاية",
+    "limit",
+    "tan x",
+    "مفكوك تايلور",
+    "Taylor series",
+    "L'Hopital",
+    "لوبيتال"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب $\\displaystyle\\lim_{x\\to 0}\\frac{(1+x)^{1/x} - e}{x}$.",
+   "q_en": "Evaluate $\\displaystyle\\lim_{x\\to 0}\\frac{(1+x)^{1/x} - e}{x}$.",
+   "a_ar": "نكتب $(1+x)^{1/x} = \\exp\\!\\big(\\tfrac{1}{x}\\ln(1+x)\\big)$. وبما أن $\\ln(1+x) = x - \\tfrac{x^2}{2} + \\tfrac{x^3}{3} - \\cdots$، فإن $\\tfrac{1}{x}\\ln(1+x) = 1 - \\tfrac{x}{2} + \\tfrac{x^2}{3} - \\cdots$. إذًا $(1+x)^{1/x} = e\\cdot\\exp\\!\\big(-\\tfrac{x}{2}+\\tfrac{x^2}{3}-\\cdots\\big) = e\\big(1 - \\tfrac{x}{2} + O(x^2)\\big)$. ومنه $\\frac{(1+x)^{1/x}-e}{x} = -\\tfrac{e}{2} + O(x)$، فتكون النهاية $-\\frac{e}{2}$.",
+   "a_en": "Write $(1+x)^{1/x} = \\exp\\!\\big(\\tfrac{1}{x}\\ln(1+x)\\big)$. Since $\\ln(1+x) = x - \\tfrac{x^2}{2} + \\tfrac{x^3}{3} - \\cdots$, we get $\\tfrac{1}{x}\\ln(1+x) = 1 - \\tfrac{x}{2} + \\tfrac{x^2}{3} - \\cdots$. Thus $(1+x)^{1/x} = e\\cdot\\exp\\!\\big(-\\tfrac{x}{2}+\\tfrac{x^2}{3}-\\cdots\\big) = e\\big(1 - \\tfrac{x}{2} + O(x^2)\\big)$. Therefore $\\frac{(1+x)^{1/x}-e}{x} = -\\tfrac{e}{2} + O(x)$, and the limit is $-\\frac{e}{2}$.",
+   "answer": "$-\\dfrac{e}{2}$",
+   "keywords": [
+    "نهاية",
+    "limit",
+    "العدد e",
+    "exponential limit",
+    "مفكوك لوغاريتم",
+    "logarithm expansion",
+    "(1+x)^{1/x}"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب $\\displaystyle\\lim_{x\\to\\infty}\\Big(x - x^{2}\\ln\\!\\big(1+\\tfrac{1}{x}\\big)\\Big)$.",
+   "q_en": "Evaluate $\\displaystyle\\lim_{x\\to\\infty}\\Big(x - x^{2}\\ln\\!\\big(1+\\tfrac{1}{x}\\big)\\Big)$.",
+   "a_ar": "لنضع $t = \\tfrac{1}{x}\\to 0^{+}$. باستخدام $\\ln(1+t) = t - \\tfrac{t^2}{2} + \\tfrac{t^3}{3} - \\cdots$ نجد $x^2\\ln(1+\\tfrac1x) = \\tfrac{1}{t^2}\\big(t - \\tfrac{t^2}{2} + \\tfrac{t^3}{3} - \\cdots\\big) = \\tfrac{1}{t} - \\tfrac{1}{2} + \\tfrac{t}{3} - \\cdots$. وبما أن $x = \\tfrac{1}{t}$ فإن المقدار يساوي $\\tfrac{1}{t} - \\big(\\tfrac{1}{t} - \\tfrac{1}{2} + \\tfrac{t}{3} - \\cdots\\big) = \\tfrac{1}{2} - \\tfrac{t}{3} + \\cdots \\to \\tfrac{1}{2}$. إذًا النهاية هي $\\frac{1}{2}$.",
+   "a_en": "Let $t = \\tfrac{1}{x}\\to 0^{+}$. Using $\\ln(1+t) = t - \\tfrac{t^2}{2} + \\tfrac{t^3}{3} - \\cdots$, we have $x^2\\ln(1+\\tfrac1x) = \\tfrac{1}{t^2}\\big(t - \\tfrac{t^2}{2} + \\tfrac{t^3}{3} - \\cdots\\big) = \\tfrac{1}{t} - \\tfrac{1}{2} + \\tfrac{t}{3} - \\cdots$. Since $x = \\tfrac{1}{t}$, the expression equals $\\tfrac{1}{t} - \\big(\\tfrac{1}{t} - \\tfrac{1}{2} + \\tfrac{t}{3} - \\cdots\\big) = \\tfrac{1}{2} - \\tfrac{t}{3} + \\cdots \\to \\tfrac{1}{2}$. The limit is $\\frac{1}{2}$.",
+   "answer": "$\\dfrac{1}{2}$",
+   "keywords": [
+    "نهاية عند اللانهاية",
+    "limit at infinity",
+    "ln(1+1/x)",
+    "مفكوك تايلور",
+    "asymptotic expansion",
+    "تعويض",
+    "substitution"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لأي قيم حقيقية $p$ تتقارب المتسلسلة $\\displaystyle\\sum_{n=2}^{\\infty}\\frac{1}{n\\,(\\ln n)^{p}}$؟ مع التبرير.",
+   "q_en": "For which real values of $p$ does the series $\\displaystyle\\sum_{n=2}^{\\infty}\\frac{1}{n\\,(\\ln n)^{p}}$ converge? Justify.",
+   "a_ar": "الحدود موجبة ومتناقصة في النهاية، فينطبق اختبار التكامل. نعتبر $\\int_{2}^{\\infty}\\frac{dx}{x(\\ln x)^{p}}$؛ وبالتعويض $u=\\ln x$، $du=\\tfrac{dx}{x}$، يصبح $\\int_{\\ln 2}^{\\infty}\\frac{du}{u^{p}}$، وهو تكامل من النوع $p$ يتقارب إذا وفقط إذا $p>1$. (عند $p=1$ يعطي $\\ln u\\to\\infty$.) إذًا تتقارب المتسلسلة إذا وفقط إذا $p>1$.",
+   "a_en": "The terms are positive and eventually decreasing, so the integral test applies. Consider $\\int_{2}^{\\infty}\\frac{dx}{x(\\ln x)^{p}}$; with $u=\\ln x$, $du=\\tfrac{dx}{x}$, this becomes $\\int_{\\ln 2}^{\\infty}\\frac{du}{u^{p}}$, a $p$-integral that converges iff $p>1$. (For $p=1$ it gives $\\ln u\\to\\infty$.) Therefore the series converges if and only if $p>1$.",
+   "answer": "$p>1$",
+   "keywords": [
+    "تقارب المتسلسلة",
+    "series convergence",
+    "اختبار التكامل",
+    "integral test",
+    "المتسلسلة اللوغاريتمية",
+    "logarithmic series",
+    "p-series"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أوجد الثابتين الحقيقيين $a,b$ اللذين تكون عندهما النهاية $\\displaystyle\\lim_{x\\to 0}\\frac{\\sin 3x + a x + b x^{3}}{x^{5}}$ موجودة ومنتهية، ثم احسب قيمتها.",
+   "q_en": "Find the real constants $a,b$ for which $\\displaystyle\\lim_{x\\to 0}\\frac{\\sin 3x + a x + b x^{3}}{x^{5}}$ exists and is finite, and evaluate that limit.",
+   "a_ar": "نفكّ $\\sin 3x = 3x - \\tfrac{(3x)^3}{6} + \\tfrac{(3x)^5}{120} - \\cdots = 3x - \\tfrac{9}{2}x^{3} + \\tfrac{81}{40}x^{5} - \\cdots$. ولكي تكون النهاية منتهية يجب أن ينعدم معاملا $x$ و$x^{3}$ في البسط: $3 + a = 0$ و$-\\tfrac{9}{2} + b = 0$، ومنه $a = -3$، $b = \\tfrac{9}{2}$. عندئذٍ يصبح البسط $\\tfrac{81}{40}x^{5} + O(x^{7})$، فتكون النهاية $\\frac{81}{40}$.",
+   "a_en": "Expand $\\sin 3x = 3x - \\tfrac{(3x)^3}{6} + \\tfrac{(3x)^5}{120} - \\cdots = 3x - \\tfrac{9}{2}x^{3} + \\tfrac{81}{40}x^{5} - \\cdots$. For the limit to be finite the coefficients of $x$ and $x^{3}$ in the numerator must vanish: $3 + a = 0$ and $-\\tfrac{9}{2} + b = 0$, giving $a = -3$, $b = \\tfrac{9}{2}$. Then the numerator is $\\tfrac{81}{40}x^{5} + O(x^{7})$, so the limit equals $\\frac{81}{40}$.",
+   "answer": "$a=-3,\\ b=\\tfrac{9}{2},\\ \\text{limit}=\\tfrac{81}{40}$",
+   "keywords": [
+    "نهاية",
+    "limit",
+    "تحديد الثوابت",
+    "determine constants",
+    "مفكوك ماكلورين",
+    "Maclaurin series",
+    "sin 3x"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب النهاية $\\displaystyle\\lim_{x\\to 0}\\left(\\frac{1}{\\sin^2 x}-\\frac{1}{x^2}\\right)$.",
+   "q_en": "Evaluate $\\displaystyle\\lim_{x\\to 0}\\left(\\frac{1}{\\sin^2 x}-\\frac{1}{x^2}\\right)$.",
+   "a_ar": "نكتب $\\sin x = x-\\frac{x^3}{6}+O(x^5)$، فيكون $\\sin^2 x = x^2\\left(1-\\frac{x^2}{3}+O(x^4)\\right)$. ومنه $\\frac{1}{\\sin^2 x}=\\frac{1}{x^2}\\left(1+\\frac{x^2}{3}+O(x^4)\\right)=\\frac{1}{x^2}+\\frac13+O(x^2)$. وبطرح $\\frac{1}{x^2}$ يتبقّى $\\frac13+O(x^2)$، فالنهاية تساوي $\\frac13$.",
+   "a_en": "Write $\\sin x = x-\\frac{x^3}{6}+O(x^5)$, so $\\sin^2 x = x^2\\left(1-\\frac{x^2}{3}+O(x^4)\\right)$. Then $\\frac{1}{\\sin^2 x}=\\frac{1}{x^2}\\left(1+\\frac{x^2}{3}+O(x^4)\\right)=\\frac{1}{x^2}+\\frac13+O(x^2)$. Subtracting $\\frac{1}{x^2}$ leaves $\\frac13+O(x^2)$, so the limit is $\\frac13$.",
+   "answer": "$\\dfrac{1}{3}$",
+   "keywords": [
+    "نهاية",
+    "limit",
+    "Taylor series",
+    "متسلسلة تايلور",
+    "sin",
+    "L'Hopital",
+    "لوبيتال",
+    "1/3"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "احسب النهاية $\\displaystyle\\lim_{x\\to 0^+}\\left(\\frac{1^x+2^x+3^x}{3}\\right)^{1/x}$.",
+   "q_en": "Evaluate $\\displaystyle\\lim_{x\\to 0^+}\\left(\\frac{1^x+2^x+3^x}{3}\\right)^{1/x}$.",
+   "a_ar": "لِنَضع $L$ للنهاية ونأخذ اللوغاريتم: $\\ln L=\\lim_{x\\to0^+}\\frac{1}{x}\\ln\\frac{1^x+2^x+3^x}{3}$. وبما أنّ $a^x=1+x\\ln a+O(x^2)$، فإنّ المتوسط يساوي $1+\\frac{x}{3}(\\ln1+\\ln2+\\ln3)+O(x^2)$، ولوغاريتمه $\\frac{x}{3}\\ln(1\\cdot2\\cdot3)+O(x^2)$. إذن $\\ln L=\\frac13\\ln 6$، ومنه $L=6^{1/3}=\\sqrt[3]{6}$ (وهو المتوسط الهندسي).",
+   "a_en": "Let $L$ be the limit and take logs: $\\ln L=\\lim_{x\\to0^+}\\frac{1}{x}\\ln\\frac{1^x+2^x+3^x}{3}$. Since $a^x=1+x\\ln a+O(x^2)$, the mean is $1+\\frac{x}{3}(\\ln1+\\ln2+\\ln3)+O(x^2)$, so its log is $\\frac{x}{3}\\ln(1\\cdot2\\cdot3)+O(x^2)$. Thus $\\ln L=\\frac13\\ln 6$, giving $L=6^{1/3}=\\sqrt[3]{6}$ (the geometric mean).",
+   "answer": "$\\sqrt[3]{6}$",
+   "keywords": [
+    "نهاية",
+    "limit",
+    "geometric mean",
+    "المتوسط الهندسي",
+    "logarithm",
+    "exponent",
+    "أس",
+    "cube root"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "بيّن هل تتقارب المتسلسلة $\\displaystyle\\sum_{n=1}^{\\infty}\\frac{1}{n(n+1)(n+2)}$، وإذا كانت متقاربة فأوجد مجموعها بالضبط.",
+   "q_en": "Determine whether the series $\\displaystyle\\sum_{n=1}^{\\infty}\\frac{1}{n(n+1)(n+2)}$ converges, and if so find its exact sum.",
+   "a_ar": "بالتفكيك إلى كسور جزئية: $\\frac{1}{n(n+1)(n+2)}=\\frac12\\left(\\frac{1}{n(n+1)}-\\frac{1}{(n+1)(n+2)}\\right)$. وهذه متسلسلة تلسكوبية، فمجموعها الجزئي هو $\\frac12\\left(\\frac{1}{1\\cdot2}-\\frac{1}{(N+1)(N+2)}\\right)$. وعندما $N\\to\\infty$ يؤول إلى $\\frac12\\cdot\\frac12=\\frac14$، فالمتسلسلة متقاربة ومجموعها $\\frac14$.",
+   "a_en": "Partial fractions give $\\frac{1}{n(n+1)(n+2)}=\\frac12\\left(\\frac{1}{n(n+1)}-\\frac{1}{(n+1)(n+2)}\\right)$. This telescopes: the partial sum is $\\frac12\\left(\\frac{1}{1\\cdot2}-\\frac{1}{(N+1)(N+2)}\\right)$. As $N\\to\\infty$ this tends to $\\frac12\\cdot\\frac12=\\frac14$, so the series converges with sum $\\frac14$.",
+   "answer": "converges, sum $=\\dfrac{1}{4}$",
+   "keywords": [
+    "متسلسلة",
+    "series",
+    "telescoping",
+    "تلسكوبية",
+    "partial fractions",
+    "كسور جزئية",
+    "convergence",
+    "تقارب"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "احسب النهاية $\\displaystyle\\lim_{n\\to\\infty} n\\left(\\left(1+\\frac{1}{n}\\right)^{n}-e\\right)$.",
+   "q_en": "Evaluate $\\displaystyle\\lim_{n\\to\\infty} n\\left(\\left(1+\\frac{1}{n}\\right)^{n}-e\\right)$.",
+   "a_ar": "نكتب $\\left(1+\\frac1n\\right)^n=\\exp\\!\\big(n\\ln(1+\\tfrac1n)\\big)$. وبما أنّ $n\\ln(1+\\tfrac1n)=1-\\frac{1}{2n}+\\frac{1}{3n^2}-\\cdots$، فإنّ $\\left(1+\\frac1n\\right)^n=e\\cdot\\exp\\!\\left(-\\frac{1}{2n}+O(n^{-2})\\right)=e\\left(1-\\frac{1}{2n}+O(n^{-2})\\right)$. ومنه $\\left(1+\\frac1n\\right)^n-e=-\\frac{e}{2n}+O(n^{-2})$، وبالضرب في $n$ نحصل على النهاية $-\\frac{e}{2}$.",
+   "a_en": "Write $\\left(1+\\frac1n\\right)^n=\\exp\\!\\big(n\\ln(1+\\tfrac1n)\\big)$. Since $n\\ln(1+\\tfrac1n)=1-\\frac{1}{2n}+\\frac{1}{3n^2}-\\cdots$, we get $\\left(1+\\frac1n\\right)^n=e\\cdot\\exp\\!\\left(-\\frac{1}{2n}+O(n^{-2})\\right)=e\\left(1-\\frac{1}{2n}+O(n^{-2})\\right)$. Hence $\\left(1+\\frac1n\\right)^n-e=-\\frac{e}{2n}+O(n^{-2})$, and multiplying by $n$ gives the limit $-\\frac{e}{2}$.",
+   "answer": "$-\\dfrac{e}{2}$",
+   "keywords": [
+    "نهاية",
+    "limit",
+    "العدد e",
+    "asymptotic",
+    "تقريب مقارب",
+    "logarithm expansion",
+    "نشر",
+    "rate of convergence"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "احسب النهاية $\\displaystyle\\lim_{x\\to 0}\\frac{\\sin(\\tan x)-\\tan(\\sin x)}{x^{7}}$.",
+   "q_en": "Evaluate $\\displaystyle\\lim_{x\\to 0}\\frac{\\sin(\\tan x)-\\tan(\\sin x)}{x^{7}}$.",
+   "a_ar": "ننشر الدالتين حتى الرتبة $x^7$. باستعمال $\\tan x=x+\\frac{x^3}{3}+\\frac{2x^5}{15}+\\frac{17x^7}{315}+\\cdots$ و $\\sin x=x-\\frac{x^3}{6}+\\frac{x^5}{120}-\\frac{x^7}{5040}+\\cdots$، نجد $\\sin(\\tan x)=x+\\frac{x^3}{6}-\\frac{x^5}{40}-\\frac{55x^7}{1008}+\\cdots$ و $\\tan(\\sin x)=x+\\frac{x^3}{6}-\\frac{x^5}{40}-\\frac{107x^7}{5040}+\\cdots$. تتلاشى جميع الحدود حتى $x^5$، ويكون الفرق $\\left(-\\frac{55}{1008}+\\frac{107}{5040}\\right)x^7=-\\frac{x^7}{30}+\\cdots$. إذن النهاية هي $-\\frac{1}{30}$.",
+   "a_en": "Expand both functions to order $x^7$. Using $\\tan x=x+\\frac{x^3}{3}+\\frac{2x^5}{15}+\\frac{17x^7}{315}+\\cdots$ and $\\sin x=x-\\frac{x^3}{6}+\\frac{x^5}{120}-\\frac{x^7}{5040}+\\cdots$, one finds $\\sin(\\tan x)=x+\\frac{x^3}{6}-\\frac{x^5}{40}-\\frac{55x^7}{1008}+\\cdots$ and $\\tan(\\sin x)=x+\\frac{x^3}{6}-\\frac{x^5}{40}-\\frac{107x^7}{5040}+\\cdots$. All terms up to $x^5$ cancel, and the difference is $\\left(-\\frac{55}{1008}+\\frac{107}{5040}\\right)x^7=-\\frac{x^7}{30}+\\cdots$. Therefore the limit is $-\\frac{1}{30}$.",
+   "answer": "$-\\dfrac{1}{30}$",
+   "keywords": [
+    "نهاية",
+    "limit",
+    "Taylor expansion",
+    "نشر تايلور",
+    "sin tan",
+    "تعويض الدوال",
+    "higher order",
+    "-1/30"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

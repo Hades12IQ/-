@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Firas AI">
+  <title>Firas AI</title>
+  <!-- SQUARE ICON — avatars, favicons, app tiles. Still transparent: no background rect.
+       The artwork's natural bounds are x 18-50, y 10-54, which is 2px right of centre in a
+       64 box. translate(-2 0) centres it exactly (16 left, 16 right, 10 top, 10 bottom), so
+       a circular avatar crop does not shave one side more than the other. -->
+  <g transform="translate(-2 0)">
+    <path d="M18 10h6.5v44H18Z" fill="#237A68"/>
+    <path d="M24.5 10H50l-5 8.5H24.5Z" fill="#237A68"/>
+    <path d="M24.5 27H42l-4.5 8.5H24.5Z" fill="#14544A"/>
+  </g>
+</svg>

@@ -1,0 +1,182 @@
+{
+ "subject": "science",
+ "topic": "phys-dynamics",
+ "title": "phys-dynamics — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "كتلة $m_1 = 4\\,\\text{kg}$ موضوعة على مستوى مائل بزاوية $30^\\circ$ ومعامل الاحتكاك الحركي بينها وبين المستوى $\\mu = 0.20$. وهي متصلة بخيط خفيف غير قابل للتمدد يمر عبر بكرة عديمة الاحتكاك في قمة المستوى بكتلة معلّقة $m_2 = 3\\,\\text{kg}$. يُترك النظام من السكون. خذ $g = 9.8\\,\\text{m/s}^2$. أوجد تسارع النظام والشد في الخيط.",
+   "q_en": "A block of mass $m_1 = 4\\,\\text{kg}$ rests on an incline of angle $30^\\circ$ with coefficient of kinetic friction $\\mu = 0.20$ between block and incline. It is connected by a light inextensible string over a frictionless pulley at the top of the incline to a hanging block of mass $m_2 = 3\\,\\text{kg}$. The system is released from rest. Take $g = 9.8\\,\\text{m/s}^2$. Find the acceleration of the system and the tension in the string.",
+   "a_ar": "نتحقق أولاً من حدوث الحركة: القوة الدافعة هي $m_2 g = 29.4\\,\\text{N}$، بينما أقصى قوة معارِضة (مركبة الثقل صعوداً مع الاحتكاك) هي $m_1 g\\sin30^\\circ + \\mu m_1 g\\cos30^\\circ = 19.6 + 6.79 = 26.4\\,\\text{N}$، إذن تهبط $m_2$ وتنزلق $m_1$ صعوداً. بتطبيق قانون نيوتن الثاني على النظام: $a = \\dfrac{m_2 g - m_1 g\\sin\\theta - \\mu m_1 g\\cos\\theta}{m_1 + m_2} = \\dfrac{29.4 - 26.4}{7} \\approx 0.43\\,\\text{m/s}^2$. والشد هو $T = m_2(g - a) = 3(9.8 - 0.43) \\approx 28.1\\,\\text{N}$.",
+   "a_en": "First check that motion occurs: the driving force is $m_2 g = 29.4\\,\\text{N}$, while the maximum opposing force (gravity component up-incline plus friction) is $m_1 g\\sin30^\\circ + \\mu m_1 g\\cos30^\\circ = 19.6 + 6.79 = 26.4\\,\\text{N}$, so $m_2$ descends and $m_1$ slides up. Applying Newton's second law to the system: $a = \\dfrac{m_2 g - m_1 g\\sin\\theta - \\mu m_1 g\\cos\\theta}{m_1 + m_2} = \\dfrac{29.4 - 26.4}{7} \\approx 0.43\\,\\text{m/s}^2$. The tension is $T = m_2(g - a) = 3(9.8 - 0.43) \\approx 28.1\\,\\text{N}$.",
+   "answer": "$a \\approx 0.43\\,\\text{m/s}^2$, $T \\approx 28.1\\,\\text{N}$",
+   "keywords": [
+    "مستوى مائل",
+    "احتكاك",
+    "بكرة",
+    "tension",
+    "incline",
+    "Newton's second law",
+    "شد الخيط",
+    "friction"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "كتلة $m = 10\\,\\text{kg}$ موضوعة على أرض أفقية خشنة معامل الاحتكاك بينها وبين الأرض $\\mu = 0.50$. تُطبَّق قوة $F$ على الكتلة تصنع زاوية $\\alpha$ فوق الأفقي. أوجد الزاوية $\\alpha$ التي تجعل مقدار $F$ اللازم لبدء تحريك الكتلة أصغر ما يمكن، وأوجد تلك القوة الصغرى. خذ $g = 9.8\\,\\text{m/s}^2$.",
+   "q_en": "A block of mass $m = 10\\,\\text{kg}$ rests on a rough horizontal floor with coefficient of friction $\\mu = 0.50$. A force $F$ is applied to the block directed at an angle $\\alpha$ above the horizontal. Find the angle $\\alpha$ that minimizes the magnitude of $F$ needed to just set the block in motion, and find that minimum force. Take $g = 9.8\\,\\text{m/s}^2$.",
+   "a_ar": "عند وشك الحركة، أفقياً $F\\cos\\alpha = \\mu N$ ورأسياً $N = mg - F\\sin\\alpha$. بالحل: $F = \\dfrac{\\mu m g}{\\cos\\alpha + \\mu\\sin\\alpha}$. تصغُر $F$ عندما يكبُر المقام، وذلك عند $\\tan\\alpha = \\mu$ أي $\\alpha = \\arctan(0.5) \\approx 26.57^\\circ$. عند هذه الزاوية يساوي المقام $\\sqrt{1+\\mu^2}$، فتكون $F_{\\min} = \\dfrac{\\mu m g}{\\sqrt{1+\\mu^2}} = \\dfrac{0.5 \\times 10 \\times 9.8}{\\sqrt{1.25}} \\approx 43.8\\,\\text{N}$.",
+   "a_en": "At the verge of motion, horizontally $F\\cos\\alpha = \\mu N$ and vertically $N = mg - F\\sin\\alpha$. Solving: $F = \\dfrac{\\mu m g}{\\cos\\alpha + \\mu\\sin\\alpha}$. This is minimized when the denominator is maximized, which occurs at $\\tan\\alpha = \\mu$, i.e. $\\alpha = \\arctan(0.5) \\approx 26.57^\\circ$. At that angle the denominator equals $\\sqrt{1+\\mu^2}$, so $F_{\\min} = \\dfrac{\\mu m g}{\\sqrt{1+\\mu^2}} = \\dfrac{0.5 \\times 10 \\times 9.8}{\\sqrt{1.25}} \\approx 43.8\\,\\text{N}$.",
+   "answer": "$\\alpha = \\arctan(\\mu) \\approx 26.57^\\circ$, $F_{\\min} = \\dfrac{\\mu m g}{\\sqrt{1+\\mu^2}} \\approx 43.8\\,\\text{N}$",
+   "keywords": [
+    "أقل قوة",
+    "optimization",
+    "زاوية مثلى",
+    "friction angle",
+    "احتكاك",
+    "minimum force",
+    "تفاضل",
+    "arctan"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "الكتلة A كتلتها $2\\,\\text{kg}$ موضوعة فوق الكتلة B كتلتها $3\\,\\text{kg}$، وهذه على أرض ملساء. معامل الاحتكاك السكوني بين A وB هو $\\mu = 0.30$؛ والأرض ملساء. تُطبَّق قوة أفقية $F$ على الكتلة السفلية B. أوجد أكبر قيمة لـ $F$ تتحرك عندها الكتلتان معاً (دون انزلاق A على B)، والتسارع المشترك المقابل. خذ $g = 9.8\\,\\text{m/s}^2$.",
+   "q_en": "Block A of mass $2\\,\\text{kg}$ sits on top of block B of mass $3\\,\\text{kg}$, which rests on a frictionless floor. The coefficient of static friction between A and B is $\\mu = 0.30$; the floor is frictionless. A horizontal force $F$ is applied to the lower block B. Find the maximum value of $F$ for which the two blocks move together (A does not slip on B), and the corresponding common acceleration. Take $g = 9.8\\,\\text{m/s}^2$.",
+   "a_ar": "الكتلة A لا يُسرّعها إلا احتكاك B، فأقصى تسارع ممكن لها هو $a_{\\max} = \\mu g = 0.30 \\times 9.8 = 2.94\\,\\text{m/s}^2$. وإذا تحركتا معاً بهذا التسارع فإن القوة اللازمة على النظام كله (كتلة كلية $5\\,\\text{kg}$، أرض ملساء) هي $F_{\\max} = (m_A + m_B)a_{\\max} = 5 \\times 2.94 = 14.7\\,\\text{N}$. وبتجاوزها لا يستطيع احتكاك A تأمين القوة اللازمة فتنزلق A.",
+   "a_en": "Block A is accelerated only by friction from B, so its maximum possible acceleration is $a_{\\max} = \\mu g = 0.30 \\times 9.8 = 2.94\\,\\text{m/s}^2$. If they move together with this acceleration, the required force on the whole system (total mass $5\\,\\text{kg}$, frictionless floor) is $F_{\\max} = (m_A + m_B)a_{\\max} = 5 \\times 2.94 = 14.7\\,\\text{N}$. Beyond this, the friction on A cannot supply the needed force and A slips.",
+   "answer": "$a_{\\max} = \\mu g = 2.94\\,\\text{m/s}^2$, $F_{\\max} = 14.7\\,\\text{N}$",
+   "keywords": [
+    "كتلة فوق كتلة",
+    "stacked blocks",
+    "انزلاق",
+    "static friction",
+    "احتكاك سكوني",
+    "common acceleration",
+    "تسارع مشترك",
+    "slip"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "كتلة $m = 5\\,\\text{kg}$ موضوعة على مستوى مائل خشن بزاوية $37^\\circ$ ومعامل احتكاك سكوني $\\mu_s = 0.50$. تُطبَّق قوة أفقية $F$ (موجَّهة نحو المستوى، في المستوى الرأسي). أوجد مدى قيم $F$ التي يبقى عندها الجسم في اتزان (لا ينزلق صعوداً ولا هبوطاً). خذ $g = 9.8\\,\\text{m/s}^2$، $\\sin37^\\circ = 0.602$، $\\cos37^\\circ = 0.799$.",
+   "q_en": "A block of mass $m = 5\\,\\text{kg}$ rests on a rough incline of angle $37^\\circ$ with coefficient of static friction $\\mu_s = 0.50$. A horizontal force $F$ (directed into the incline, in the vertical plane) is applied. Find the range of values of $F$ for which the block remains in equilibrium (neither slides down nor up). Take $g = 9.8\\,\\text{m/s}^2$, $\\sin37^\\circ = 0.602$, $\\cos37^\\circ = 0.799$.",
+   "a_ar": "نحلّل القوى موازياً وعمودياً على المستوى مع $N = mg\\cos\\theta + F\\sin\\theta$. عند وشك الانزلاق هبوطاً يكون الاحتكاك صعوداً: $F\\cos\\theta + \\mu_s N = mg\\sin\\theta$، فينتج $F_{\\min} = \\dfrac{mg(\\sin\\theta - \\mu_s\\cos\\theta)}{\\cos\\theta + \\mu_s\\sin\\theta} \\approx 9.0\\,\\text{N}$. وعند وشك الانزلاق صعوداً يكون الاحتكاك هبوطاً: $F\\cos\\theta = mg\\sin\\theta + \\mu_s N$، فينتج $F_{\\max} = \\dfrac{mg(\\sin\\theta + \\mu_s\\cos\\theta)}{\\cos\\theta - \\mu_s\\sin\\theta} \\approx 98.6\\,\\text{N}$. إذن يتحقق الاتزان عند $9.0\\,\\text{N} \\le F \\le 98.6\\,\\text{N}$.",
+   "a_en": "Resolve along and normal to the incline with $N = mg\\cos\\theta + F\\sin\\theta$. At the verge of sliding down, friction acts up: $F\\cos\\theta + \\mu_s N = mg\\sin\\theta$, giving $F_{\\min} = \\dfrac{mg(\\sin\\theta - \\mu_s\\cos\\theta)}{\\cos\\theta + \\mu_s\\sin\\theta} \\approx 9.0\\,\\text{N}$. At the verge of sliding up, friction acts down: $F\\cos\\theta = mg\\sin\\theta + \\mu_s N$, giving $F_{\\max} = \\dfrac{mg(\\sin\\theta + \\mu_s\\cos\\theta)}{\\cos\\theta - \\mu_s\\sin\\theta} \\approx 98.6\\,\\text{N}$. Thus equilibrium holds for $9.0\\,\\text{N} \\le F \\le 98.6\\,\\text{N}$.",
+   "answer": "$9.0\\,\\text{N} \\le F \\le 98.6\\,\\text{N}$",
+   "keywords": [
+    "قوة أفقية",
+    "مستوى مائل",
+    "equilibrium range",
+    "احتكاك سكوني",
+    "incline",
+    "holding force",
+    "اتزان",
+    "friction limits"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "ثلاث كتل $m_1 = 1\\,\\text{kg}$ و$m_2 = 2\\,\\text{kg}$ و$m_3 = 3\\,\\text{kg}$ على استقامة واحدة فوق سطح أفقي أملس، متصلة بهذا الترتيب بخيطين خفيفين. تُطبَّق قوة أفقية $F = 12\\,\\text{N}$ على $m_3$ تسحب السلسلة على امتداد الخط ($m_1$ في المقدمة و$m_3$ في المؤخرة). أوجد تسارع النظام والشد في كل من الخيطين الرابطين.",
+   "q_en": "Three blocks of masses $m_1 = 1\\,\\text{kg}$, $m_2 = 2\\,\\text{kg}$, and $m_3 = 3\\,\\text{kg}$ lie in a straight line on a frictionless horizontal surface, connected in that order by two light strings. A horizontal force $F = 12\\,\\text{N}$ is applied to $m_3$, pulling the chain along the line ($m_1$ leading, $m_3$ at the back). Find the acceleration of the system and the tension in each of the two connecting strings.",
+   "a_ar": "للنظام كله: $a = \\dfrac{F}{m_1 + m_2 + m_3} = \\dfrac{12}{6} = 2\\,\\text{m/s}^2$. الخيط بين $m_1$ و$m_2$ يسحب $m_1$ فقط: $T_{12} = m_1 a = 1 \\times 2 = 2\\,\\text{N}$. والخيط بين $m_2$ و$m_3$ يسحب $m_1$ و$m_2$ معاً: $T_{23} = (m_1 + m_2)a = 3 \\times 2 = 6\\,\\text{N}$.",
+   "a_en": "For the whole system, $a = \\dfrac{F}{m_1 + m_2 + m_3} = \\dfrac{12}{6} = 2\\,\\text{m/s}^2$. The string between $m_1$ and $m_2$ pulls only $m_1$: $T_{12} = m_1 a = 1 \\times 2 = 2\\,\\text{N}$. The string between $m_2$ and $m_3$ pulls $m_1$ and $m_2$ together: $T_{23} = (m_1 + m_2)a = 3 \\times 2 = 6\\,\\text{N}$.",
+   "answer": "$a = 2\\,\\text{m/s}^2$, $T_{12} = 2\\,\\text{N}$, $T_{23} = 6\\,\\text{N}$",
+   "keywords": [
+    "كتل متصلة",
+    "strings tension",
+    "نظام كتل",
+    "connected blocks",
+    "تسارع",
+    "chain of masses",
+    "شد",
+    "Newton"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يستقر جسم كتلته $m=2\\,\\text{kg}$ على مستوٍ مائل خشن زاويته $\\alpha=30^\\circ$ ومعامل الاحتكاك السكوني $\\mu=0.25$. تُطبَّق قوة أفقية $F$ على الجسم (تدفعه نحو المستوى). أوجد المجال الكامل لقيم $F$ التي يبقى عندها الجسم في اتزان سكوني. خذ $g=9.8\\,\\text{m/s}^2$.",
+   "q_en": "A block of mass $m=2\\,\\text{kg}$ rests on a rough incline of angle $\\alpha=30^\\circ$ with coefficient of static friction $\\mu=0.25$. A horizontal force $F$ is applied to the block (pushing it toward the incline). Find the full range of $F$ for which the block remains in static equilibrium. Take $g=9.8\\,\\text{m/s}^2$.",
+   "a_ar": "لتكن $\\varphi=\\arctan\\mu=14.04^\\circ$. القوة العمودية $N=mg\\cos\\alpha+F\\sin\\alpha$. عند وشك الانزلاق للأسفل يكون الاحتكاك (للأعلى) أقصى ما يمكن: $F\\cos\\alpha+\\mu N=mg\\sin\\alpha$ ومنه $F_{\\min}=mg\\dfrac{\\sin\\alpha-\\mu\\cos\\alpha}{\\cos\\alpha+\\mu\\sin\\alpha}=mg\\tan(\\alpha-\\varphi)$. وعند وشك الانزلاق للأعلى (الاحتكاك للأسفل) نحصل على $F_{\\max}=mg\\dfrac{\\sin\\alpha+\\mu\\cos\\alpha}{\\cos\\alpha-\\mu\\sin\\alpha}=mg\\tan(\\alpha+\\varphi)$. عدديًا $F\\in[5.61\\,\\text{N},\\,18.95\\,\\text{N}]$.",
+   "a_en": "Let $\\varphi=\\arctan\\mu=14.04^\\circ$. The normal force is $N=mg\\cos\\alpha+F\\sin\\alpha$. Impending slip down needs friction (up) at max: $F\\cos\\alpha+\\mu N=mg\\sin\\alpha$, giving $F_{\\min}=mg\\dfrac{\\sin\\alpha-\\mu\\cos\\alpha}{\\cos\\alpha+\\mu\\sin\\alpha}=mg\\tan(\\alpha-\\varphi)$. Impending slip up (friction down) gives $F_{\\max}=mg\\dfrac{\\sin\\alpha+\\mu\\cos\\alpha}{\\cos\\alpha-\\mu\\sin\\alpha}=mg\\tan(\\alpha+\\varphi)$. Numerically $F\\in[mg\\tan15.96^\\circ,\\;mg\\tan44.04^\\circ]=[5.61\\,\\text{N},\\,18.95\\,\\text{N}]$.",
+   "answer": "$F\\in[mg\\tan(\\alpha-\\varphi),\\,mg\\tan(\\alpha+\\varphi)]=[5.61\\,\\text{N},\\,18.95\\,\\text{N}]$, where $\\varphi=\\arctan\\mu=14.04^\\circ$.",
+   "keywords": [
+    "مستوى مائل",
+    "احتكاك",
+    "horizontal force",
+    "incline equilibrium",
+    "tan(α±φ)",
+    "نطاق القوة",
+    "friction angle"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "إسفين أملس كتلته $M=3\\,\\text{kg}$ وزاوية ميله $\\theta=45^\\circ$ موضوع على أرض ملساء. يُترك جسم كتلته $m=1\\,\\text{kg}$ من السكون على وجه الإسفين المائل. أوجد (أ) التسارع الأفقي للإسفين، و(ب) القوة العمودية بين الجسم والإسفين. خذ $g=9.8\\,\\text{m/s}^2$.",
+   "q_en": "A frictionless wedge of mass $M=3\\,\\text{kg}$ with incline angle $\\theta=45^\\circ$ sits on a frictionless floor. A block of mass $m=1\\,\\text{kg}$ is released from rest on the wedge's incline. Find (a) the horizontal acceleration of the wedge and (b) the normal force between block and wedge. Take $g=9.8\\,\\text{m/s}^2$.",
+   "a_ar": "بتحليل النظام المقترن (لاغرانج أو نيوتن) يكون تسارع الإسفين $A=\\dfrac{mg\\sin\\theta\\cos\\theta}{M+m\\sin^2\\theta}$ والقوة العمودية عند التماس $N=\\dfrac{mMg\\cos\\theta}{M+m\\sin^2\\theta}$. وبما أن $\\sin^2 45^\\circ=\\tfrac12$ فإن $M+m\\sin^2\\theta=3.5$. إذن $A=\\dfrac{1\\cdot9.8\\cdot0.5}{3.5}=1.40\\,\\text{m/s}^2$ و$N=\\dfrac{1\\cdot3\\cdot9.8\\cdot(\\sqrt2/2)}{3.5}=5.94\\,\\text{N}$.",
+   "a_en": "Using Lagrangian/Newtonian analysis for the coupled system, the wedge acceleration is $A=\\dfrac{mg\\sin\\theta\\cos\\theta}{M+m\\sin^2\\theta}$ and the contact normal force is $N=\\dfrac{mMg\\cos\\theta}{M+m\\sin^2\\theta}$. With $\\sin^2 45^\\circ=\\tfrac12$: $M+m\\sin^2\\theta=3.5$. Thus $A=\\dfrac{1\\cdot9.8\\cdot0.5}{3.5}=1.40\\,\\text{m/s}^2$ and $N=\\dfrac{1\\cdot3\\cdot9.8\\cdot(\\sqrt2/2)}{3.5}=5.94\\,\\text{N}$.",
+   "answer": "$A=\\dfrac{mg\\sin\\theta\\cos\\theta}{M+m\\sin^2\\theta}=1.40\\,\\text{m/s}^2$; $N=\\dfrac{mMg\\cos\\theta}{M+m\\sin^2\\theta}=5.94\\,\\text{N}$.",
+   "keywords": [
+    "إسفين متحرك",
+    "wedge block",
+    "frictionless",
+    "normal force",
+    "نظام مقترن",
+    "conservation of momentum",
+    "تسارع الإسفين"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يُلَفّ حبل $3$ لفّات كاملة حول عمود أسطواني ثابت؛ ومعامل الاحتكاك بين الحبل والأسطوانة $\\mu=0.3$. يمسك بحّار أحد طرفيه بقوة $100\\,\\text{N}$. اشتقّ العلاقة بين شدّتي الطرفين، واحسب أقصى حمل يمكن أن يحمله الطرف الآخر دون انزلاق.",
+   "q_en": "A rope is wrapped $3$ full turns around a fixed cylindrical bollard; the coefficient of friction between rope and cylinder is $\\mu=0.3$. A sailor holds one end with a force of $100\\,\\text{N}$. Derive the relation between the two end tensions and compute the maximum load the other end can hold without slipping.",
+   "a_ar": "لعنصر يقابل زاوية $d\\phi$، يعطي الاتزان القطري $dN=T\\,d\\phi$، ويعطي الاتزان المماسي عند وشك الانزلاق $dT=\\mu\\,dN=\\mu T\\,d\\phi$. وبالمكاملة على زاوية اللفّ $\\theta$ نحصل على معادلة الكابستان $\\dfrac{T_{\\max}}{T_{\\min}}=e^{\\mu\\theta}$. هنا $\\theta=3\\cdot2\\pi=6\\pi$ إذن $\\mu\\theta=0.3\\cdot6\\pi=5.655$، ومنه $T_{\\max}=100\\,e^{5.655}\\approx2.86\\times10^{4}\\,\\text{N}$.",
+   "a_en": "For an element subtending $d\\phi$, radial balance gives $dN=T\\,d\\phi$ and tangential balance at impending slip gives $dT=\\mu\\,dN=\\mu T\\,d\\phi$. Integrating over the wrap angle $\\theta$: $\\dfrac{T_{\\max}}{T_{\\min}}=e^{\\mu\\theta}$ (the capstan equation). Here $\\theta=3\\cdot2\\pi=6\\pi$, so $\\mu\\theta=0.3\\cdot6\\pi=5.655$. Thus $T_{\\max}=100\\,e^{5.655}\\approx2.86\\times10^{4}\\,\\text{N}$.",
+   "answer": "$T_{\\max}=T_{\\min}e^{\\mu\\theta}=100\\,e^{0.3\\cdot6\\pi}\\approx2.86\\times10^{4}\\,\\text{N}$ (capstan equation).",
+   "keywords": [
+    "معادلة الكابستان",
+    "capstan equation",
+    "rope friction",
+    "tension ratio",
+    "لفّ الحبل",
+    "e^{μθ}",
+    "احتكاك الحبل"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "جسم $A$ ($m_A=5\\,\\text{kg}$) موضوع على مستوٍ مائل خشن زاويته $30^\\circ$ (احتكاك حركي $\\mu=0.2$). خيط يمرّ فوق بكرة ملساء عند القمّة يصل $A$ بجسم $B$ ($m_B=4\\,\\text{kg}$) معلَّق بحرية. حدِّد اتجاه الحركة والتسارع وشدّة الخيط. خذ $g=9.8\\,\\text{m/s}^2$.",
+   "q_en": "A block $A$ ($m_A=5\\,\\text{kg}$) lies on a rough incline of angle $30^\\circ$ (kinetic friction $\\mu=0.2$). A string over a frictionless pulley at the top connects $A$ to a freely hanging block $B$ ($m_B=4\\,\\text{kg}$). Determine the direction of motion, the acceleration, and the string tension. Take $g=9.8\\,\\text{m/s}^2$.",
+   "a_ar": "القوة الدافعة $m_Bg=39.2\\,\\text{N}$؛ وأقصى مقاومة (مركّبة الوزن $+$ الاحتكاك) هي $m_Ag\\sin30^\\circ+\\mu m_Ag\\cos30^\\circ=24.5+8.49=32.99\\,\\text{N}<39.2$، لذا ينزل $B$ ويصعد $A$ على المستوى (الاحتكاك للأسفل). نيوتن: $m_Bg-T=m_Ba$ و$T-m_Ag\\sin\\theta-\\mu m_Ag\\cos\\theta=m_Aa$. بالجمع: $a=\\dfrac{m_Bg-m_Ag(\\sin\\theta+\\mu\\cos\\theta)}{m_A+m_B}=\\dfrac{6.21}{9}=0.690\\,\\text{m/s}^2$، و$T=36.44\\,\\text{N}$.",
+   "a_en": "Driving force is $m_Bg=39.2\\,\\text{N}$; maximum resistance (gravity component $+$ friction) is $m_Ag\\sin30^\\circ+\\mu m_Ag\\cos30^\\circ=24.5+8.49=32.99\\,\\text{N}<39.2$, so $B$ descends and $A$ moves up the incline (friction acts down-incline). Newton: $m_Bg-T=m_Ba$ and $T-m_Ag\\sin\\theta-\\mu m_Ag\\cos\\theta=m_Aa$. Adding: $a=\\dfrac{m_Bg-m_Ag(\\sin\\theta+\\mu\\cos\\theta)}{m_A+m_B}=\\dfrac{6.21}{9}=0.690\\,\\text{m/s}^2$, and $T=36.44\\,\\text{N}$.",
+   "answer": "$B$ descends, $A$ moves up; $a=0.690\\,\\text{m/s}^2$, $T=36.44\\,\\text{N}$.",
+   "keywords": [
+    "بكرة",
+    "pulley",
+    "incline friction",
+    "tension",
+    "كتلة معلقة",
+    "atwood incline",
+    "تسارع النظام"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يُراد سحب جسم كتلته $m=10\\,\\text{kg}$ إلى أعلى مستوٍ مائل خشن زاويته $\\alpha=20^\\circ$ (معامل احتكاك $\\mu=0.5$) بسرعة ثابتة بقوة $F$ مطبَّقة بزاوية قابلة للتعديل $\\beta$ فوق سطح المستوى. أوجد الزاوية $\\beta$ التي تُصغِّر $F$، وأصغر قيمة للقوة. خذ $g=9.8\\,\\text{m/s}^2$.",
+   "q_en": "A block of mass $m=10\\,\\text{kg}$ is to be pulled up a rough incline of angle $\\alpha=20^\\circ$ (coefficient of friction $\\mu=0.5$) at constant velocity by a force $F$ applied at an adjustable angle $\\beta$ above the incline surface. Find the angle $\\beta$ that minimizes $F$, and the minimum force. Take $g=9.8\\,\\text{m/s}^2$.",
+   "a_ar": "عند السرعة الثابتة: $F\\cos\\beta=mg\\sin\\alpha+\\mu N$ و$N=mg\\cos\\alpha-F\\sin\\beta$. بوضع $\\mu=\\tan\\varphi$ ودمج المعادلتين نحصل على $F\\cos(\\beta-\\varphi)=mg\\sin(\\alpha+\\varphi)$، ومنه $F=\\dfrac{mg\\sin(\\alpha+\\varphi)}{\\cos(\\beta-\\varphi)}$. تصغُر $F$ عندما $\\cos(\\beta-\\varphi)=1$ أي $\\beta=\\varphi=\\arctan0.5=26.57^\\circ$. عندئذٍ $F_{\\min}=mg\\sin(\\alpha+\\varphi)=10\\cdot9.8\\cdot\\sin46.57^\\circ=71.2\\,\\text{N}$.",
+   "a_en": "Equations at constant velocity: $F\\cos\\beta=mg\\sin\\alpha+\\mu N$ and $N=mg\\cos\\alpha-F\\sin\\beta$. Writing $\\mu=\\tan\\varphi$ and combining gives $F\\cos(\\beta-\\varphi)=mg\\sin(\\alpha+\\varphi)$, so $F=\\dfrac{mg\\sin(\\alpha+\\varphi)}{\\cos(\\beta-\\varphi)}$. This is minimized when $\\cos(\\beta-\\varphi)=1$, i.e. $\\beta=\\varphi=\\arctan0.5=26.57^\\circ$. Then $F_{\\min}=mg\\sin(\\alpha+\\varphi)=10\\cdot9.8\\cdot\\sin46.57^\\circ=71.2\\,\\text{N}$.",
+   "answer": "$\\beta=\\varphi=\\arctan\\mu=26.57^\\circ$; $F_{\\min}=mg\\sin(\\alpha+\\varphi)=71.2\\,\\text{N}$.",
+   "keywords": [
+    "أصغر قوة",
+    "optimal angle",
+    "minimum force",
+    "friction angle",
+    "سحب على مستوى مائل",
+    "sin(α+φ)",
+    "تحسين الزاوية"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

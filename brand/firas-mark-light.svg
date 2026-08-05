@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 10 32 44" width="32" height="44" role="img" aria-label="Firas AI">
+  <title>Firas AI</title>
+  <!-- For LIGHT grounds. Exact brand tones from styles.css:
+       --color-accent #237A68 (stem + upper arm) and --color-accent-deep #14544A (lower arm). -->
+  <path d="M18 10h6.5v44H18Z" fill="#237A68"/>
+  <path d="M24.5 10H50l-5 8.5H24.5Z" fill="#237A68"/>
+  <path d="M24.5 27H42l-4.5 8.5H24.5Z" fill="#14544A"/>
+</svg>

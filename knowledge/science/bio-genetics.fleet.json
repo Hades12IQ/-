@@ -1,0 +1,189 @@
+{
+ "subject": "science",
+ "topic": "bio-genetics",
+ "title": "bio-genetics — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "عمى الألوان الأحمر-الأخضر صفة متنحية مرتبطة بالكروموسوم X. في مجتمع كبير في حالة اتزان هاردي-فاينبرغ، 8% من الذكور مصابون بعمى الألوان. (أ) ما النسبة المتوقعة للإناث المصابات؟ (ب) ما النسبة المتوقعة للإناث الحاملات (متغايرات الزيجوت)؟",
+   "q_en": "Red-green color blindness is an X-linked recessive trait. In a large population at Hardy-Weinberg equilibrium, 8% of males are color blind. (a) What fraction of females are expected to be color blind? (b) What fraction of females are expected to be heterozygous carriers?",
+   "a_ar": "بما أن الذكور فرديو الصبغي (hemizygous)، فإن تردد الأليل المسبب يساوي تردد الإصابة عند الذكور: $q=0.08$ وبالتالي $p=0.92$. (أ) الإناث المصابات متماثلات الزيجوت المتنحية: $q^2=(0.08)^2=0.0064$ أي $0.64\\%$. (ب) الإناث الحاملات متغايرات الزيجوت: $2pq=2(0.92)(0.08)=0.1472$ أي $14.72\\%$.",
+   "a_en": "Because males are hemizygous, the frequency of the color-blind allele equals the male affected frequency: $q=0.08$, so $p=0.92$. (a) Affected females are homozygous recessive: $q^2=(0.08)^2=0.0064$, i.e. $0.64\\%$. (b) Carrier females are heterozygous: $2pq=2(0.92)(0.08)=0.1472$, i.e. $14.72\\%$.",
+   "answer": "Affected females = q² = 0.0064 (0.64%); carrier females = 2pq = 0.1472 (14.72%)",
+   "keywords": [
+    "Hardy-Weinberg",
+    "اتزان هاردي-فاينبرغ",
+    "X-linked",
+    "مرتبط بالجنس",
+    "color blindness",
+    "عمى الألوان",
+    "carrier frequency",
+    "2pq"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "تزاوج اختباري ثلاثي الهجين للجينات a و b و c أعطى 1000 نسل: a b c = 356، + + + = 356، a b + = 94، + + c = 94، a + c = 44، + b + = 44، + b c = 6، a + + = 6. حدّد (أ) ترتيب الجينات، (ب) المسافات الوراثية بين الجينات المتجاورة، (ج) معامل التوافق والتداخل.",
+   "q_en": "A trihybrid testcross for genes a, b, c gives these 1000 progeny: a b c = 356, + + + = 356, a b + = 94, + + c = 94, a + c = 44, + b + = 44, + b c = 6, a + + = 6. Determine (a) the gene order, (b) the map distances between adjacent genes, and (c) the coefficient of coincidence and interference.",
+   "a_ar": "الطُرز الأبوية (الأكبر) هي $abc$/$+++$؛ والعبور المزدوج (الأصغر، 6+6=12) هو $+bc$/$a++$. بمقارنة العبور المزدوج بالأبوي، يتبدّل الجين $a$ فقط، فيكون $a$ هو الجين الأوسط: الترتيب $b-a-c$. متأشبات المنطقة الأولى (b–a): $a+c,+b+,+bc,a++ = 44+44+6+6=100 \\Rightarrow 10$ سنتيمورغان. متأشبات المنطقة الثانية (a–c): $ab+,++c,+bc,a++ = 94+94+6+6=200 \\Rightarrow 20$ سنتيمورغان. المتوقع للعبور المزدوج $=0.10\\times0.20\\times1000=20$، والمُلاحظ $=12$، فيكون معامل التوافق $CoC=12/20=0.6$ والتداخل $=1-0.6=0.4$.",
+   "a_en": "Parentals (largest) are $abc$/$+++$; double crossovers (smallest, 6+6=12) are $+bc$/$a++$. Comparing a DCO to a parental, only gene $a$ switches, so $a$ is the middle gene: order $b-a-c$. Region I (b–a) recombinants: $a+c,+b+,+bc,a++ = 44+44+6+6=100 \\Rightarrow 10$ cM. Region II (a–c) recombinants: $ab+,++c,+bc,a++ = 94+94+6+6=200 \\Rightarrow 20$ cM. Expected DCO $=0.10\\times0.20\\times1000=20$; observed $=12$, so $CoC=12/20=0.6$ and interference $=1-0.6=0.4$.",
+   "answer": "Order b–a–c; b–a = 10 cM, a–c = 20 cM; CoC = 0.6, interference = 0.4",
+   "keywords": [
+    "three-point cross",
+    "التزاوج الثلاثي",
+    "map distance",
+    "المسافة الوراثية",
+    "interference",
+    "التداخل",
+    "coefficient of coincidence",
+    "gene order",
+    "العبور المزدوج"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يعتمد لون الزهرة على جينين يُظهران تفوقاً تكميلياً (متنحياً مزدوجاً): يتكوّن الصبغ البنفسجي فقط عند وجود أليل سائد واحد على الأقل من كل جين (A_B_)؛ وكل الطُرز الأخرى بيضاء، ما يعطي نسبة 9 بنفسجي : 7 أبيض في الجيل الثاني. هُجِّن سلالتان بيضاوان نقيتان (AAbb و aaBB) وتم التلقيح الذاتي للجيل الأول البنفسجي. من بين نباتات الجيل الثاني البيضاء، ما الكسر الذي يكون نقياً (متماثل الزيجوت في الموقعين)؟",
+   "q_en": "Flower color depends on two genes showing complementary (duplicate recessive) epistasis: purple pigment forms only when at least one dominant allele of each gene is present (A_B_); all other genotypes are white, giving a 9 purple : 7 white F2 ratio. Two true-breeding white lines (AAbb and aaBB) are crossed and the purple F1 is selfed. Among the white F2 plants, what fraction are true-breeding (homozygous at both loci)?",
+   "a_ar": "تشمل فئة البيضاء 7/16 كل الطُرز التي هي $aa\\_\\_$ أو $\\_\\_bb$: $aaBB(1)$ و$aaBb(2)$ و$aabb(1)$ و$AAbb(1)$ و$Aabb(2)=7/16$. أما البيضاء النقية (متماثلة الزيجوت تماماً) فهي $aaBB$ و$aabb$ و$AAbb = 3/16$. لذا فإن كسر النباتات البيضاء النقية هو $\\frac{3/16}{7/16}=\\frac{3}{7}$.",
+   "a_en": "The 7/16 white class comprises all genotypes that are $aa\\_\\_$ or $\\_\\_bb$: $aaBB(1),aaBb(2),aabb(1),AAbb(1),Aabb(2)=7/16$. The true-breeding (fully homozygous) whites are $aaBB$, $aabb$, and $AAbb = 3/16$. Therefore the fraction of white plants that are true-breeding is $\\frac{3/16}{7/16}=\\frac{3}{7}$.",
+   "answer": "3/7",
+   "keywords": [
+    "epistasis",
+    "التفوق",
+    "complementary genes",
+    "9:7 ratio",
+    "duplicate recessive",
+    "true-breeding",
+    "النقي وراثياً",
+    "dihybrid"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "الجينان A و B مرتبطان بتردد تأشب قدره 20%. فرد متغاير الزيجوت بالوضع المقترن (cis)، AB/ab، لُقِّح ذاتياً مع فرد آخر مطابق له بالوضع المقترن. ما التردد المتوقع للنسل ab/ab (متماثل الزيجوت المتنحي)، وكيف يقارَن بالقيمة المتوقعة في حالة التوزيع المستقل؟",
+   "q_en": "Genes A and B are linked with a recombination frequency of 20%. A heterozygote in the cis (coupling) configuration, AB/ab, is self-crossed with another identical cis heterozygote. What is the expected frequency of ab/ab (homozygous recessive) offspring, and how does it compare to the value expected under independent assortment?",
+   "a_ar": "للفرد متغاير الزيجوت المقترن $AB/ab$ بتردد تأشب $RF=0.20$، يتكوّن كل مشيج أبوي بتردد $(1-0.20)/2=0.40$ والمتأشب بتردد $0.20/2=0.10$. إذن $P(ab)=0.40$. ويتطلب النسل $ab/ab$ مشيج $ab$ من كل أب: $P=0.40\\times0.40=0.16$. في حالة التوزيع المستقل يكون تردد مشيج $ab$ هو $0.25$ فينتج $0.25^2=0.0625$؛ فالارتباط في الوضع المقترن يرفع تردد المتنحي المزدوج إلى $0.16$.",
+   "a_en": "For a cis heterozygote $AB/ab$ with $RF=0.20$, the parental gametes each occur at $(1-0.20)/2=0.40$ and recombinants at $0.20/2=0.10$. So $P(ab)=0.40$. An $ab/ab$ offspring requires an $ab$ gamete from each parent: $P=0.40\\times0.40=0.16$. Under independent assortment each $ab$ gamete would be $0.25$, giving $0.25^2=0.0625$; linkage in coupling raises the double-recessive frequency to $0.16$.",
+   "answer": "0.16 (vs 0.0625 under independent assortment)",
+   "keywords": [
+    "linkage",
+    "الارتباط",
+    "recombination frequency",
+    "تردد التأشب",
+    "cis coupling",
+    "الوضع المقترن",
+    "gamete frequency",
+    "dihybrid self-cross"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في مجتمع في اتزان هاردي-فاينبرغ لنظام فصائل الدم ABO (الأليلات I^A و I^B و i، حيث I^A و I^B سيّدان مشتركان و i متنحٍّ)، ترددات الطُرز الظاهرية هي: O = 36%، A = 45%، B = 13%، AB = 6%. احسب ترددات الأليلات I^A و I^B و i.",
+   "q_en": "In a population at Hardy-Weinberg equilibrium for the ABO blood group system (alleles I^A, I^B, i with I^A and I^B codominant and i recessive), the phenotype frequencies are: O = 36%, A = 45%, B = 13%, AB = 6%. Calculate the allele frequencies of I^A, I^B, and i.",
+   "a_ar": "لتكن $p=f(I^A)$ و$q=f(I^B)$ و$r=f(i)$. الفصيلة O هي $ii=r^2$ إذن $r=\\sqrt{0.36}=0.6$. وأيضاً $f(O)+f(A)=(r+p)^2$ فيكون $p+r=\\sqrt{0.36+0.45}=\\sqrt{0.81}=0.9\\Rightarrow p=0.3$. و$f(O)+f(B)=(r+q)^2$ فيكون $q+r=\\sqrt{0.36+0.13}=\\sqrt{0.49}=0.7\\Rightarrow q=0.1$. التحقق: $p+q+r=0.3+0.1+0.6=1$ و$AB=2pq=2(0.3)(0.1)=0.06$ ✓.",
+   "a_en": "Let $p=f(I^A),\\ q=f(I^B),\\ r=f(i)$. Type O is $ii=r^2$, so $r=\\sqrt{0.36}=0.6$. Also $f(O)+f(A)=(r+p)^2$, giving $p+r=\\sqrt{0.36+0.45}=\\sqrt{0.81}=0.9\\Rightarrow p=0.3$. And $f(O)+f(B)=(r+q)^2$, giving $q+r=\\sqrt{0.36+0.13}=\\sqrt{0.49}=0.7\\Rightarrow q=0.1$. Check: $p+q+r=0.3+0.1+0.6=1$ and $AB=2pq=2(0.3)(0.1)=0.06$ ✓.",
+   "answer": "f(I^A)=0.3, f(I^B)=0.1, f(i)=0.6",
+   "keywords": [
+    "ABO blood group",
+    "فصائل الدم",
+    "multiple alleles",
+    "الأليلات المتعددة",
+    "Hardy-Weinberg",
+    "اتزان هاردي-فاينبرغ",
+    "codominance",
+    "allele frequency",
+    "تردد الأليل"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في مجتمع كبير يتزاوج عشوائيًا وهو في حالة اتزان هاردي-فاينبرغ، عمى الألوان الأحمر-الأخضر صفة متنحية مرتبطة بالكروموسوم X ويصيب 8% من الذكور. بافتراض تساوي أعداد الذكور والإناث: (أ) ما نسبة النساء الحاملات متغايرات اللواقح (الناقلات)؟ (ب) من بين جميع المصابين بعمى الألوان في المجتمع كله، ما النسبة التي تمثلها الإناث؟",
+   "q_en": "In a large randomly-mating population at Hardy-Weinberg equilibrium, red-green colour blindness is X-linked recessive and affects 8% of males. Assuming equal numbers of males and females: (a) What fraction of women are heterozygous carriers? (b) Of ALL colour-blind individuals in the whole population, what fraction are female?",
+   "a_ar": "بما أن الذكور أحادية اللاقحة (hemizygous)، فإن تردد الأليل يساوي معدل الإصابة عند الذكور: $q=0.08$ ومنه $p=0.92$. (أ) تردد النساء الناقلات (متغايرات اللواقح) هو $2pq = 2(0.92)(0.08) = 0.1472$ أي 14.72%. (ب) تردد الإناث المصابات $q^2 = 0.0064$ وتردد الذكور المصابين $q = 0.08$. مع تساوي الجنسين، تكون نسبة الإناث من مجموع المصابين $\\frac{q^2}{q+q^2} = \\frac{0.0064}{0.0864} = \\frac{2}{27} \\approx 7.41\\%$.",
+   "a_en": "Since males are hemizygous, the allele frequency equals the male affection rate: $q=0.08$, so $p=0.92$. (a) Carrier (heterozygous) women have frequency $2pq = 2(0.92)(0.08) = 0.1472$, i.e. 14.72%. (b) Affected females have frequency $q^2 = 0.0064$; affected males $q = 0.08$. With equal sexes, the female share of all colour-blind individuals is $\\frac{q^2}{q+q^2} = \\frac{0.0064}{0.0864} = \\frac{2}{27} \\approx 7.41\\%$.",
+   "answer": "(a) Carrier women = 2pq = 0.1472 (14.72%); (b) Female fraction of colour-blind = 2/27 ≈ 7.41%",
+   "keywords": [
+    "هاردي-فاينبرغ",
+    "Hardy-Weinberg",
+    "عمى الألوان",
+    "X-linked",
+    "حاملة متغايرة",
+    "carrier frequency",
+    "allele frequency",
+    "اتزان جيني"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "تزاوج اختباري ثلاثي النقاط لأنثى ثلاثية الهجونة (الجينات 1 و2 و3 بهذا الترتيب على كروموسوم واحد) مع ذكر متنحٍّ تمامًا أعطى 1000 من النسل: الأصناف الأبوية 380 و379؛ العبور المفرد في المنطقة I (بين الجينين 1 و2) 46 و45؛ العبور المفرد في المنطقة II (بين الجينين 2 و3) 71 و70؛ العبور المزدوج 5 و4. احسب المسافات على الخريطة للمنطقتين I وII، ومعامل التوافق (coefficient of coincidence) والتداخل (interference).",
+   "q_en": "A three-point testcross of a trihybrid female (genes 1, 2, 3 in that order on one chromosome) with a fully recessive male gave 1000 progeny: parental classes 380 and 379; single crossovers in region I (between genes 1 and 2) 46 and 45; single crossovers in region II (between genes 2 and 3) 71 and 70; double crossovers 5 and 4. Compute the map distances for regions I and II, and the coefficient of coincidence and interference.",
+   "a_ar": "معيدات التركيب في المنطقة I = العبور المفرد I + العبور المزدوج = $(46+45)+(5+4)=100$، فالمسافة I $=100/1000=10$ سنتيمورغان. معيدات التركيب في المنطقة II = $(71+70)+(5+4)=150$، فالمسافة II $=15$ سنتيمورغان. العبور المزدوج المتوقع $= 0.10\\times0.15\\times1000 = 15$، والملاحَظ $=9$. معامل التوافق $= 9/15 = 0.6$، والتداخل $= 1-0.6 = 0.4$.",
+   "a_en": "Region I recombinants = single-CO I + double-CO = $(46+45)+(5+4)=100$, so distance I $=100/1000=10$ cM. Region II recombinants = $(71+70)+(5+4)=150$, so distance II $=15$ cM. Expected double crossovers $= 0.10\\times0.15\\times1000 = 15$; observed $=9$. Coefficient of coincidence $= 9/15 = 0.6$; interference $= 1-0.6 = 0.4$.",
+   "answer": "Region I = 10 cM; Region II = 15 cM; coefficient of coincidence = 0.6; interference = 0.4",
+   "keywords": [
+    "تزاوج اختباري ثلاثي",
+    "three-point testcross",
+    "عبور مزدوج",
+    "map distance",
+    "معامل التوافق",
+    "interference",
+    "سنتيمورغان",
+    "linkage"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "مرض جسمي متنحٍّ ذو نفاذية كاملة. امرأة سليمة المظهر لها أخ مصاب، ووالداها غير مصابين. تزوجت رجلًا معروفًا أنه حامل متغاير اللواقح، ولديهما بالفعل 3 أطفال غير مصابين. باستخدام التحليل البيزي: (أ) ما احتمال أن تكون المرأة حاملة؟ (ب) ما احتمال أن يكون طفلهما التالي مصابًا؟",
+   "q_en": "An autosomal recessive disease shows full penetrance. A phenotypically normal woman has an affected brother; both of her parents are unaffected. She marries a man who is a known heterozygous carrier, and they already have 3 unaffected children. Using Bayesian analysis: (a) What is the probability the woman is a carrier? (b) What is the probability their NEXT child will be affected?",
+   "a_ar": "بما أن أخاها مصاب فإن الوالدين $Aa\\times Aa$. وبما أنها غير مصابة فاحتمالها القبلي كحاملة هو $\\tfrac{2}{3}$ (و$\\tfrac{1}{3}$ غير حاملة). مع زوج حامل، يكون كل طفل سليمًا باحتمال $\\tfrac34$ إن كانت حاملة، وباحتمال $1$ إن لم تكن. الاحتمال البعدي لكونها حاملة $= \\frac{\\frac23(\\frac34)^3}{\\frac23(\\frac34)^3 + \\frac13(1)} = \\frac{27}{59} \\approx 0.458$. (ب) احتمال إصابة الطفل التالي $= \\frac{27}{59}\\times\\frac14 = \\frac{27}{236} \\approx 0.114$.",
+   "a_en": "Since her brother is affected, both parents are $Aa\\times Aa$. Given she is unaffected, her prior carrier probability is $\\tfrac{2}{3}$ (and $\\tfrac{1}{3}$ non-carrier). With a carrier husband, each child is unaffected with probability $\\tfrac34$ if she carries, and probability $1$ if she does not. Posterior carrier probability $= \\frac{\\frac23(\\frac34)^3}{\\frac23(\\frac34)^3 + \\frac13(1)} = \\frac{27}{59} \\approx 0.458$. (b) Next child affected $= \\frac{27}{59}\\times\\frac14 = \\frac{27}{236} \\approx 0.114$.",
+   "answer": "(a) P(carrier) = 27/59 ≈ 0.458; (b) P(next child affected) = 27/236 ≈ 0.114",
+   "keywords": [
+    "تحليل بيزي",
+    "Bayesian pedigree",
+    "احتمال الحمل الوراثي",
+    "carrier probability",
+    "جسمي متنحٍّ",
+    "autosomal recessive",
+    "شجرة العائلة",
+    "posterior"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في كلاب اللابرادور، يتحكم في لون الفراء جينان غير مرتبطين: الجين B (الأسود B_ سائد على البني bb) والجين E، حيث النمط الجيني ee متفوق (epistatic) وينتج اللون الأصفر بغض النظر عن النمط الجيني عند B (تفوق متنحٍّ، نسبة الجيل الثاني 9:3:4). كلب أسود نمطه الجيني BbEe يُهجَّن مع كلب أصفر نمطه الجيني bbEe. أعطِ النسبة المظهرية المتوقعة (أسود : بني : أصفر) للجراء.",
+   "q_en": "In Labrador retrievers, coat colour is governed by two unlinked genes: gene B (black B_ dominant over brown bb) and gene E, where genotype ee is epistatic and produces yellow regardless of the B genotype (recessive epistasis, F2 ratio 9:3:4). A black dog of genotype BbEe is crossed with a yellow dog of genotype bbEe. Give the expected phenotypic ratio (black : brown : yellow) of the puppies.",
+   "a_ar": "نفصل حسب كل جين. الموضع B: $Bb\\times bb \\rightarrow \\tfrac12\\,Bb : \\tfrac12\\,bb$. الموضع E: $Ee\\times Ee \\rightarrow \\tfrac34\\,E\\_ : \\tfrac14\\,ee$. أي جرو $ee$ يكون أصفر $=\\tfrac14$. ومن بين جراء $E\\_$ (بنسبة $\\tfrac34$): الأسود يتطلب $B\\_$ (بنسبة $\\tfrac12$) فيعطي $\\tfrac34\\times\\tfrac12=\\tfrac38$؛ والبني يتطلب $bb$ (بنسبة $\\tfrac12$) فيعطي $\\tfrac38$. إذن أسود : بني : أصفر $=\\tfrac38:\\tfrac38:\\tfrac14 = 3:3:2$.",
+   "a_en": "Split by gene. B locus: $Bb\\times bb \\rightarrow \\tfrac12\\,Bb : \\tfrac12\\,bb$. E locus: $Ee\\times Ee \\rightarrow \\tfrac34\\,E\\_ : \\tfrac14\\,ee$. Any $ee$ pup is yellow $=\\tfrac14$. Among $E\\_$ pups ($\\tfrac34$): black requires $B\\_$ ($\\tfrac12$) giving $\\tfrac34\\times\\tfrac12=\\tfrac38$; brown requires $bb$ ($\\tfrac12$) giving $\\tfrac38$. So black : brown : yellow $=\\tfrac38:\\tfrac38:\\tfrac14 = 3:3:2$.",
+   "answer": "Black : Brown : Yellow = 3 : 3 : 2",
+   "keywords": [
+    "تفوق متنحٍّ",
+    "recessive epistasis",
+    "لابرادور",
+    "Labrador coat colour",
+    "نسبة مظهرية",
+    "phenotypic ratio",
+    "9:3:4",
+    "dihybrid"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "جينان A وB مرتبطان بتردد إعادة تركيب قدره 20%. نبات ثنائي الهجونة في الوضع المتصل (cis/coupling)، AB/ab، يُلقَّح ذاتيًا. بافتراض السيادة في كلا الموضعين، أعطِ النسبة المظهرية المتوقعة لنسل الجيل الثاني F2: A_B_ : A_bb : aaB_ : aabb.",
+   "q_en": "Two genes A and B are linked with a recombination frequency of 20%. A dihybrid plant in cis (coupling) configuration, AB/ab, is self-pollinated. Assuming dominance at both loci, give the expected phenotypic ratio of the F2 offspring: A_B_ : A_bb : aaB_ : aabb.",
+   "a_ar": "مع $r=0.2$ في الوضع المتصل، ترددات الأمشاج: الأبوية $AB=ab=\\tfrac{1-r}{2}=0.4$ والمعاد تركيبها $Ab=aB=\\tfrac{r}{2}=0.1$. متنحي الصفتين $aabb$ يحتاج مشيج $ab$ من كل أب: $0.4\\times0.4=0.16$. تردد $bb=0.5^2=0.25$ وتردد $aa=0.25$، فيكون $A\\_bb=0.25-0.16=0.09$ و$aaB\\_=0.09$؛ و$A\\_B\\_=1-0.25-0.25+0.16=0.66$. إذن $A\\_B\\_:A\\_bb:aaB\\_:aabb = 0.66:0.09:0.09:0.16 = 66:9:9:16$.",
+   "a_en": "With $r=0.2$ in coupling, gamete frequencies are parental $AB=ab=\\tfrac{1-r}{2}=0.4$ and recombinant $Ab=aB=\\tfrac{r}{2}=0.1$. The double-recessive $aabb$ needs an $ab$ gamete from each parent: $0.4\\times0.4=0.16$. Frequency of $bb=0.5^2=0.25$ and of $aa=0.25$, so $A\\_bb=0.25-0.16=0.09$ and $aaB\\_=0.09$; $A\\_B\\_=1-0.25-0.25+0.16=0.66$. Thus $A\\_B\\_:A\\_bb:aaB\\_:aabb = 0.66:0.09:0.09:0.16 = 66:9:9:16$.",
+   "answer": "A_B_ : A_bb : aaB_ : aabb = 0.66 : 0.09 : 0.09 : 0.16 = 66 : 9 : 9 : 16",
+   "keywords": [
+    "ارتباط جيني",
+    "linkage",
+    "إعادة التركيب",
+    "recombination frequency",
+    "وضع متصل",
+    "coupling cis",
+    "F2 ratio",
+    "تلقيح ذاتي"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

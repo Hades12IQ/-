@@ -1,0 +1,161 @@
+{
+ "subject": "math",
+ "topic": "combinatorics",
+ "title": "combinatorics — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "كم عدد الدوال الشاملة (الغامرة) من مجموعة مكوّنة من 8 عناصر على مجموعة مكوّنة من 4 عناصر؟ أعطِ العدد الدقيق.",
+   "q_en": "How many functions from an 8-element set onto a 4-element set are surjective (onto)? Give the exact count.",
+   "a_ar": "باستخدام مبدأ الاحتواء والاستبعاد، عدد الدوال الشاملة من مجموعة حجمها $8$ على مجموعة حجمها $4$ هو $\\sum_{k=0}^{4}(-1)^k\\binom{4}{k}(4-k)^8$. بالحساب: $4^8-4\\cdot3^8+6\\cdot2^8-4\\cdot1^8 = 65536-26244+1536-4 = 40824$. وهذا يساوي أيضًا $4!\\,S(8,4)=24\\cdot1701=40824$ حيث $S(8,4)$ عدد ستيرلنغ من النوع الثاني. العدد الدقيق هو $40824$.",
+   "a_en": "By inclusion-exclusion, the number of surjections from a set of size $8$ onto a set of size $4$ is $\\sum_{k=0}^{4}(-1)^k\\binom{4}{k}(4-k)^8$. Computing: $4^8-4\\cdot3^8+6\\cdot2^8-4\\cdot1^8 = 65536-26244+1536-4 = 40824$. Equivalently this equals $4!\\,S(8,4)=24\\cdot1701=40824$, where $S(8,4)$ is a Stirling number of the second kind. The exact count is $40824$.",
+   "answer": "40824",
+   "keywords": [
+    "surjections",
+    "دوال شاملة",
+    "inclusion-exclusion",
+    "الاحتواء والاستبعاد",
+    "Stirling numbers",
+    "أعداد ستيرلنغ",
+    "onto functions"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أثبت أنّ أيّ مجموعة جزئية مكوّنة من 101 عددًا مختارة من $\\{1,2,\\dots,200\\}$ يجب أن تحتوي على عددين مختلفين أحدهما يقسم الآخر. وهل 101 هو أصغر حجم يضمن ذلك؟",
+   "q_en": "Prove that any subset of 101 numbers chosen from $\\{1,2,\\dots,200\\}$ must contain two distinct numbers such that one divides the other. Is 101 the smallest size for which this is guaranteed?",
+   "a_ar": "اكتب كل عدد على الصورة $2^a\\cdot m$ حيث $m$ فردي؛ فيقع الجزء الفردي $m$ في $\\{1,3,5,\\dots,199\\}$، أي هناك $100$ قيمة فردية ممكنة فقط. اختيار $101$ عددًا يفرض بمبدأ حجرة الحمام وجود عددين لهما الجزء الفردي نفسه $m$، وليكونا $2^a m$ و$2^b m$ مع $a<b$؛ عندئذ الأصغر يقسم الأكبر. ونعم، $101$ هو الأصغر: فالأعداد المئة $\\{101,102,\\dots,200\\}$ لا تحتوي أيّ زوج كهذا (لا عنصر يبلغ ضِعف آخر على الأقل)، فلا تكفي $100$ عددًا.",
+   "a_en": "Write every integer as $2^a\\cdot m$ with $m$ odd; the odd part $m$ lies in $\\{1,3,5,\\dots,199\\}$, giving exactly $100$ possible odd parts. Choosing $101$ numbers forces, by the pigeonhole principle, two numbers with the same odd part $m$, say $2^a m$ and $2^b m$ with $a<b$; then the smaller divides the larger. Yes, $101$ is smallest: the $100$ numbers $\\{101,102,\\dots,200\\}$ contain no such pair (no element is at least double another), so $100$ numbers do not suffice.",
+   "answer": "101 is the minimum; proof via odd-part pigeonhole (100 odd parts), and {101,...,200} shows 100 fails.",
+   "keywords": [
+    "pigeonhole",
+    "حجرة الحمام",
+    "divisibility",
+    "القابلية للقسمة",
+    "odd part",
+    "الجزء الفردي",
+    "extremal set"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب بالضبط قيمة المجموع $\\sum_{k=0}^{10} k\\binom{10}{k}^2$.",
+   "q_en": "Evaluate the sum $\\sum_{k=0}^{10} k\\binom{10}{k}^2$ exactly.",
+   "a_ar": "نستخدم $k\\binom{10}{k}=10\\binom{9}{k-1}$، فيصبح $\\sum_{k} k\\binom{10}{k}^2 = 10\\sum_{k}\\binom{9}{k-1}\\binom{10}{k}$. وبكتابة $\\binom{10}{k}=\\binom{10}{10-k}$ وتطبيق متطابقة فاندرموند نحصل على $\\sum_{k}\\binom{9}{k-1}\\binom{10}{10-k}=\\binom{19}{9}$. إذن المجموع يساوي $10\\binom{19}{9}=10\\cdot92378=923780$. (الصيغة العامة: $\\sum_k k\\binom{n}{k}^2=n\\binom{2n-1}{n-1}$.)",
+   "a_en": "Use $k\\binom{10}{k}=10\\binom{9}{k-1}$, so $\\sum_{k} k\\binom{10}{k}^2 = 10\\sum_{k}\\binom{9}{k-1}\\binom{10}{k}$. Writing $\\binom{10}{k}=\\binom{10}{10-k}$ and applying Vandermonde's identity, $\\sum_{k}\\binom{9}{k-1}\\binom{10}{10-k}=\\binom{19}{9}$. Hence the sum equals $10\\binom{19}{9}=10\\cdot92378=923780$. (General formula: $\\sum_k k\\binom{n}{k}^2=n\\binom{2n-1}{n-1}$.)",
+   "answer": "923780",
+   "keywords": [
+    "binomial",
+    "معامل ثنائي",
+    "Vandermonde",
+    "متطابقة فاندرموند",
+    "binomial identity",
+    "مجموع",
+    "committee counting"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "تُوضَع ستّ رسائل في ستّة مظاريف مُعنونة مسبقًا (رسالة واحدة لكل مظروف). بكم طريقة يمكن ذلك بحيث لا تدخل أيّ رسالة في مظروفها الصحيح؟",
+   "q_en": "Six letters are placed into six pre-addressed envelopes (one per envelope). In how many ways can this be done so that no letter goes into its own correct envelope?",
+   "a_ar": "هذا يحسب عدد التبديلات الخالية من النقاط الثابتة (الاضطرابات) لِـ$6$ عناصر: $D_6=6!\\sum_{k=0}^{6}\\frac{(-1)^k}{k!}=720\\left(1-1+\\tfrac12-\\tfrac16+\\tfrac{1}{24}-\\tfrac{1}{120}+\\tfrac{1}{720}\\right)$. وهذا يساوي $720-720+360-120+30-6+1=265$. فالعدد الدقيق للطرق هو $265$ (ويكافئ $D_6=\\lfloor 6!/e+\\tfrac12\\rfloor$).",
+   "a_en": "This counts derangements of $6$ objects, $D_6=6!\\sum_{k=0}^{6}\\frac{(-1)^k}{k!}=720\\left(1-1+\\tfrac12-\\tfrac16+\\tfrac{1}{24}-\\tfrac{1}{120}+\\tfrac{1}{720}\\right)$. This equals $720-720+360-120+30-6+1=265$. The exact number of ways is $265$ (equivalently $D_6=\\lfloor 6!/e+\\tfrac12\\rfloor$).",
+   "answer": "265",
+   "keywords": [
+    "derangement",
+    "الاضطرابات",
+    "fixed point",
+    "نقطة ثابتة",
+    "inclusion-exclusion",
+    "الاحتواء والاستبعاد",
+    "D_6",
+    "permutations"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب عدد الدوال الشاملة (الغامرة) من مجموعة مكوّنة من 8 عناصر متمايزة إلى مجموعة مكوّنة من 4 عناصر متمايزة.",
+   "q_en": "Count the number of surjective (onto) functions from a set of 8 distinct elements to a set of 4 distinct elements.",
+   "a_ar": "بمبدأ الاحتواء والاستبعاد، عدد الدوال الشاملة من مجموعة من $n$ عنصرًا إلى مجموعة من $k$ عنصرًا هو $\\sum_{j=0}^{k}(-1)^j\\binom{k}{j}(k-j)^n$. بوضع $n=8,\\ k=4$: $4^8-\\binom{4}{1}3^8+\\binom{4}{2}2^8-\\binom{4}{3}1^8 = 65536-4(6561)+6(256)-4$، وهو يساوي $40824$. (وبالمثل $4!\\cdot S(8,4)=24\\cdot 1701=40824$.)",
+   "a_en": "By inclusion–exclusion, the number of surjections from an $n$-set onto a $k$-set is $\\sum_{j=0}^{k}(-1)^j\\binom{k}{j}(k-j)^n$. With $n=8,\\ k=4$: $4^8-\\binom{4}{1}3^8+\\binom{4}{2}2^8-\\binom{4}{3}1^8 = 65536-4(6561)+6(256)-4 = 65536-26244+1536-4$. This equals $40824$. (Equivalently $4!\\cdot S(8,4)=24\\cdot 1701=40824$.)",
+   "answer": "40824",
+   "keywords": [
+    "surjection",
+    "دوال شاملة",
+    "inclusion-exclusion",
+    "الاحتواء والاستبعاد",
+    "Stirling numbers",
+    "أعداد ستيرلنغ",
+    "onto functions"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أوجد عدد الحلول الصحيحة للمعادلة $x_1+x_2+x_3+x_4+x_5 = 25$ حيث $0 \\le x_i \\le 9$ لكل $i$.",
+   "q_en": "Find the number of integer solutions to $x_1+x_2+x_3+x_4+x_5 = 25$ with $0 \\le x_i \\le 9$ for each $i$.",
+   "a_ar": "بدون الحدود العليا يكون العدد $\\binom{25+4}{4}=\\binom{29}{4}$. نطرح بمبدأ الاحتواء والاستبعاد الحالات التي يكون فيها $x_i\\ge 10$ (بالتعويض $x_i'=x_i-10$): فيكون العدد $\\sum_{j\\ge 0}(-1)^j\\binom{5}{j}\\binom{25-10j+4}{4}$. وهذا يساوي $\\binom{29}{4}-5\\binom{19}{4}+10\\binom{9}{4} = 23751-19380+1260 = 5631$.",
+   "a_en": "Without upper bounds the count is $\\binom{25+4}{4}=\\binom{29}{4}$. Subtract, via inclusion–exclusion, the cases where some $x_i\\ge 10$ (substitute $x_i'=x_i-10$): the count is $\\sum_{j\\ge 0}(-1)^j\\binom{5}{j}\\binom{25-10j+4}{4}$. This gives $\\binom{29}{4}-5\\binom{19}{4}+10\\binom{9}{4} = 23751-5(3876)+10(126) = 23751-19380+1260 = 5631$.",
+   "answer": "5631",
+   "keywords": [
+    "bounded solutions",
+    "حلول مقيدة",
+    "inclusion-exclusion",
+    "الاحتواء والاستبعاد",
+    "stars and bars",
+    "النجوم والفواصل",
+    "integer solutions"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أثبت أنه لكل عدد صحيح موجب $n$ تكون $\\sum_{k=0}^{n} k\\binom{n}{k}^2 = n\\binom{2n-1}{n-1}$، ثم احسب المجموع عند $n=7$.",
+   "q_en": "Prove that for every positive integer $n$, $\\sum_{k=0}^{n} k\\binom{n}{k}^2 = n\\binom{2n-1}{n-1}$, and evaluate the sum for $n=7$.",
+   "a_ar": "نستعمل متطابقة الامتصاص $k\\binom{n}{k}=n\\binom{n-1}{k-1}$. عندئذ $\\sum_k k\\binom{n}{k}^2 = n\\sum_k \\binom{n-1}{k-1}\\binom{n}{k} = n\\sum_k \\binom{n-1}{k-1}\\binom{n}{n-k}$. وبمتطابقة فاندرموند يكون المجموع الأخير $\\binom{(n-1)+n}{n-1}=\\binom{2n-1}{n-1}$، فينتج $n\\binom{2n-1}{n-1}$. وعند $n=7$: $7\\binom{13}{6}=7\\cdot 1716 = 12012$.",
+   "a_en": "Use the absorption identity $k\\binom{n}{k}=n\\binom{n-1}{k-1}$. Then $\\sum_k k\\binom{n}{k}^2 = n\\sum_k \\binom{n-1}{k-1}\\binom{n}{k} = n\\sum_k \\binom{n-1}{k-1}\\binom{n}{n-k}$. By Vandermonde's identity the last sum is $\\binom{(n-1)+n}{n-1}=\\binom{2n-1}{n-1}$, giving $n\\binom{2n-1}{n-1}$. For $n=7$: $7\\binom{13}{6}=7\\cdot 1716 = 12012$.",
+   "answer": "$n\\binom{2n-1}{n-1}$; for $n=7$ the value is $12012$",
+   "keywords": [
+    "binomial identity",
+    "متطابقة ثنائية الحد",
+    "Vandermonde",
+    "فاندرموند",
+    "absorption identity",
+    "الامتصاص",
+    "combinatorial proof"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أوجد أصغر عدد صحيح $N$ بحيث إن أي اختيار لـ $N$ عددًا متمايزًا من المجموعة $\\{1,2,\\dots,100\\}$ يجب أن يحتوي على عددين أحدهما يقسم الآخر.",
+   "q_en": "Determine the smallest integer $N$ such that any choice of $N$ distinct numbers from $\\{1,2,\\dots,100\\}$ must contain two numbers, one of which divides the other.",
+   "a_ar": "نكتب كل عدد بالصورة $2^a\\cdot m$ حيث $m$ فردي؛ فيأخذ الجزء الفردي $m\\in\\{1,3,5,\\dots,99\\}$ ما مقداره $50$ قيمة بالضبط. أي عددين لهما نفس الجزء الفردي يكون أحدهما قاسمًا للآخر. بمبدأ الحمام، أي $51$ عددًا يفرضان وجود عددين يتشاركان الجزء الفردي نفسه، ومن ثم زوج قابل للقسمة، فيكون $N\\le 51$. والمجموعة $\\{51,52,\\dots,100\\}$ تحوي $50$ عنصرًا ولا يقسم أي منها الآخر (لأن أصغر مضاعف $2\\cdot 51=102>100$)، فلا يكفي $50$. إذن $N=51$.",
+   "a_en": "Write each integer as $2^a\\cdot m$ with $m$ odd; the odd part $m\\in\\{1,3,5,\\dots,99\\}$ takes exactly $50$ values. Two numbers with the same odd part are comparable under divisibility (one divides the other). By pigeonhole, any $51$ numbers force two sharing an odd part, hence a divisibility pair, so $N\\le 51$. The set $\\{51,52,\\dots,100\\}$ has $50$ elements and no element divides another (the smallest double $2\\cdot 51=102>100$), so $50$ is not enough. Therefore $N=51$.",
+   "answer": "$N=51$",
+   "keywords": [
+    "pigeonhole",
+    "مبدأ الحمام",
+    "divisibility",
+    "القابلية للقسمة",
+    "antichain",
+    "سلسلة مضادة",
+    "odd part"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أثبت أنه لكل عدد صحيح غير سالب $n$ يكون $\\displaystyle\\sum_{k=0}^{n} \\frac{(-1)^k}{k+1}\\binom{n}{k} = \\frac{1}{n+1}$.",
+   "q_en": "Prove that for every nonnegative integer $n$, $\\displaystyle\\sum_{k=0}^{n} \\frac{(-1)^k}{k+1}\\binom{n}{k} = \\frac{1}{n+1}$.",
+   "a_ar": "نستعمل $\\frac{1}{k+1}\\binom{n}{k} = \\frac{1}{n+1}\\binom{n+1}{k+1}$. فيصبح المجموع $\\frac{1}{n+1}\\sum_{k=0}^{n}(-1)^k\\binom{n+1}{k+1} = -\\frac{1}{n+1}\\sum_{j=1}^{n+1}(-1)^j\\binom{n+1}{j}$. وبما أن $\\sum_{j=0}^{n+1}(-1)^j\\binom{n+1}{j}=(1-1)^{n+1}=0$، فإن $\\sum_{j=1}^{n+1}(-1)^j\\binom{n+1}{j} = -\\binom{n+1}{0} = -1$. ومن ثمّ يساوي المجموع $-\\frac{1}{n+1}(-1)=\\frac{1}{n+1}$. (وبالمثل $\\int_0^1 (1-x)^n\\,dx = \\frac{1}{n+1}$ بنشر ذي الحدين.)",
+   "a_en": "Use $\\frac{1}{k+1}\\binom{n}{k} = \\frac{1}{n+1}\\binom{n+1}{k+1}$. Then the sum is $\\frac{1}{n+1}\\sum_{k=0}^{n}(-1)^k\\binom{n+1}{k+1} = -\\frac{1}{n+1}\\sum_{j=1}^{n+1}(-1)^j\\binom{n+1}{j}$. Since $\\sum_{j=0}^{n+1}(-1)^j\\binom{n+1}{j}=(1-1)^{n+1}=0$, the tail $\\sum_{j=1}^{n+1}(-1)^j\\binom{n+1}{j} = -\\binom{n+1}{0} = -1$. Hence the sum equals $-\\frac{1}{n+1}(-1)=\\frac{1}{n+1}$. (Equivalently, $\\int_0^1 (1-x)^n\\,dx = \\frac{1}{n+1}$ expanded by the binomial theorem.)",
+   "answer": "$\\dfrac{1}{n+1}$",
+   "keywords": [
+    "alternating sum",
+    "مجموع متناوب",
+    "binomial theorem",
+    "مبرهنة ذي الحدين",
+    "hockey-stick",
+    "متطابقة ثنائية",
+    "integral trick"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

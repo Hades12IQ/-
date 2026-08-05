@@ -1,0 +1,228 @@
+{
+  "generatedFrom": [
+    "math",
+    "science",
+    "arabic",
+    "quran",
+    "cs",
+    "english"
+  ],
+  "files": 55,
+  "topics": 50,
+  "entries": 468,
+  "chunks": 468,
+  "subjects": {
+    "math": {
+      "algebra": {
+        "title": "الجبر — Algebra",
+        "entries": 7
+      },
+      "calculus": {
+        "title": "التفاضل والتكامل — Calculus",
+        "entries": 8
+      },
+      "combinatorics": {
+        "title": "combinatorics — fleet (advanced + olympiad)",
+        "entries": 9
+      },
+      "complex-numbers": {
+        "title": "complex-numbers — fleet (advanced + olympiad)",
+        "entries": 9
+      },
+      "derivatives": {
+        "title": "derivatives — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "geometry": {
+        "title": "الهندسة — Geometry",
+        "entries": 6
+      },
+      "inequalities": {
+        "title": "inequalities — fleet (advanced + olympiad)",
+        "entries": 7
+      },
+      "integrals": {
+        "title": "integrals — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "limits": {
+        "title": "limits — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "number-theory": {
+        "title": "number-theory — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "probability": {
+        "title": "probability — fleet (advanced + olympiad)",
+        "entries": 8
+      },
+      "sequences": {
+        "title": "sequences — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "statistics": {
+        "title": "الإحصاء والاحتمالات — Statistics & Probability",
+        "entries": 5
+      },
+      "trigonometry": {
+        "title": "حساب المثلثات — Trigonometry",
+        "entries": 5
+      }
+    },
+    "science": {
+      "bio-cell-molecular": {
+        "title": "bio-cell-molecular — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "bio-ecology-evolution": {
+        "title": "bio-ecology-evolution — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "bio-genetics": {
+        "title": "bio-genetics — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "bio-physiology": {
+        "title": "bio-physiology — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "biology": {
+        "title": "الأحياء — Biology",
+        "entries": 6
+      },
+      "chem-acids-bases": {
+        "title": "chem-acids-bases — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "chem-equilibrium": {
+        "title": "chem-equilibrium — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "chem-redox": {
+        "title": "chem-redox — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "chem-stoichiometry": {
+        "title": "chem-stoichiometry — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "chem-thermochemistry": {
+        "title": "chem-thermochemistry — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "chemistry": {
+        "title": "الكيمياء — Chemistry",
+        "entries": 6
+      },
+      "phys-circuits": {
+        "title": "phys-circuits — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "phys-dynamics": {
+        "title": "phys-dynamics — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "phys-electrostatics": {
+        "title": "phys-electrostatics — fleet (advanced + olympiad)",
+        "entries": 9
+      },
+      "phys-energy-momentum": {
+        "title": "phys-energy-momentum — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "phys-gravitation": {
+        "title": "phys-gravitation — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "phys-kinematics": {
+        "title": "phys-kinematics — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "phys-magnetism": {
+        "title": "phys-magnetism — fleet (advanced + olympiad)",
+        "entries": 9
+      },
+      "phys-thermodynamics": {
+        "title": "phys-thermodynamics — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "phys-waves-optics": {
+        "title": "phys-waves-optics — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "physics": {
+        "title": "الفيزياء — Physics",
+        "entries": 6
+      }
+    },
+    "arabic": {
+      "aroudh": {
+        "title": "aroudh — fleet (advanced + olympiad)",
+        "entries": 3
+      },
+      "balagha": {
+        "title": "البلاغة — Rhetoric",
+        "entries": 6
+      },
+      "imla": {
+        "title": "الإملاء وعلامات الترقيم — Spelling & Punctuation",
+        "entries": 5
+      },
+      "irab": {
+        "title": "irab — fleet (advanced + olympiad)",
+        "entries": 9
+      },
+      "nahw": {
+        "title": "النحو والإعراب — Arabic Grammar",
+        "entries": 8
+      },
+      "sarf": {
+        "title": "sarf — fleet (advanced + olympiad)",
+        "entries": 7
+      }
+    },
+    "quran": {
+      "irab": {
+        "title": "إعراب القرآن — أساسيات — Qur'anic I'rab basics",
+        "entries": 5
+      },
+      "quran-balagha": {
+        "title": "quran-balagha — fleet (advanced + olympiad)",
+        "entries": 9
+      },
+      "quran-irab": {
+        "title": "quran-irab — fleet (advanced + olympiad)",
+        "entries": 7
+      }
+    },
+    "cs": {
+      "algorithms": {
+        "title": "algorithms — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "data-structures-dp": {
+        "title": "data-structures-dp — fleet (advanced + olympiad)",
+        "entries": 9
+      },
+      "discrete-math": {
+        "title": "discrete-math — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "graphs-complexity": {
+        "title": "graphs-complexity — fleet (advanced + olympiad)",
+        "entries": 10
+      }
+    },
+    "english": {
+      "grammar": {
+        "title": "grammar — fleet (advanced + olympiad)",
+        "entries": 10
+      },
+      "vocab-rhetoric": {
+        "title": "vocab-rhetoric — fleet (advanced + olympiad)",
+        "entries": 8
+      }
+    }
+  }
+}

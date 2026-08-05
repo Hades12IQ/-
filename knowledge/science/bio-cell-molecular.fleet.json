@@ -1,0 +1,183 @@
+{
+ "subject": "science",
+ "topic": "bio-cell-molecular",
+ "title": "bio-cell-molecular — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "في جزيء DNA مزدوج السلسلة، تمتلك إحدى السلسلتين (السلسلة 1) التركيب القاعدي التالي: A = 32%، G = 18%، T = 20%، C = 30%. بالنسبة للجزيء المزدوج بالكامل، احسب (أ) النسبة المئوية للأدينين و(ب) النسبة الكلية %(A + T).",
+   "q_en": "In a double-stranded DNA molecule, one strand (strand 1) has the base composition A = 32%, G = 18%, T = 20%, C = 30%. For the entire double-stranded molecule, calculate (a) the percentage of adenine and (b) the total %(A + T).",
+   "a_ar": "قاعدة تشارغاف (A%=T% و G%=C%) تنطبق على الجزيء المزدوج بالكامل وليس على سلسلة مفردة. تمتلك السلسلة المكمّلة (2) التركيب: A = 20%، T = 32%، G = 30%، C = 18% (كل قاعدة تقترن بمكمّلتها). ونسبة كل قاعدة في الجزيء الكامل هي متوسط السلسلتين: $A_{كامل} = (32+20)/2 = 26\\%$، وبالتماثل $T=26\\%$ و$G=C=(18+30)/2 = 24\\%$. إذًا الأدينين $= 26\\%$ و$\\%(A+T) = 52\\%$.",
+   "a_en": "Chargaff's rule (A%=T%, G%=C%) holds for the whole duplex but NOT for a single strand. The complementary strand 2 has A = 20%, T = 32%, G = 30%, C = 18% (each base pairs with its complement). For the whole molecule each base % is the average of the two strands: $A_{whole} = (32+20)/2 = 26\\%$, and by symmetry $T_{whole}=26\\%$, $G_{whole}=C_{whole}=(18+30)/2 = 24\\%$. Thus adenine $= 26\\%$ and $\\%(A+T) = 26+26 = 52\\%$.",
+   "answer": "Adenine = 26%; %(A+T) = 52%",
+   "keywords": [
+    "Chargaff",
+    "قاعدة تشارغاف",
+    "base composition",
+    "التركيب القاعدي",
+    "DNA",
+    "سلسلة مكمّلة",
+    "adenine"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "جزيء DNA منقّى تمامًا وسلسلتاه معلّمتان بالنظير الثقيل 15N نُقل إلى وسط يحتوي فقط على 14N (خفيف)، وسُمح له بالتضاعف ثلاث مرات بالضبط (تضاعف شبه محافظ، تحليل تدرّج كثافة CsCl). بعد الجولة الثالثة، ما نسبة الجزيئات المزدوجة الهجينة (15N/14N) وما نسبة الجزيئات الخفيفة بالكامل (14N/14N)؟",
+   "q_en": "A fully purified DNA molecule in which both strands are labeled with the heavy isotope 15N is transferred to a medium containing only 14N (light) and allowed to replicate exactly three times (semiconservative replication, CsCl density-gradient analysis). After the third round, what fraction of the double-stranded molecules is hybrid (15N/14N) and what fraction is fully light (14N/14N)?",
+   "a_ar": "في التضاعف شبه المحافظ تبقى السلسلتان الأصليتان الثقيلتان محفوظتين إلى الأبد؛ لا تختفيان بل تُخفَّفان فقط. بدءًا من جزيء واحد (سلسلتان ثقيلتان)، بعد 3 جولات يوجد $2^3 = 8$ جزيئات تحوي $2\\times8 = 16$ سلسلة، منها سلسلتان فقط لا تزالان ثقيلتين. كل سلسلة ثقيلة تقترن الآن بسلسلة خفيفة فتنتج جزيئين هجينين؛ والباقي $8-2 = 6$ جزيئات خفيفة بالكامل. إذًا نسبة الهجين $= 2/8 = 1/4$ ونسبة الخفيف $= 6/8 = 3/4$.",
+   "a_en": "In semiconservative replication the two original heavy strands are conserved forever; they never disappear, only get diluted. Starting from 1 duplex (2 heavy strands), after 3 rounds there are $2^3 = 8$ duplexes containing $2\\times8 = 16$ strands, of which exactly 2 are still heavy. Each heavy strand now pairs with a light strand, giving 2 hybrid duplexes; the remaining $8-2 = 6$ are fully light. Therefore hybrid fraction $= 2/8 = 1/4$ and fully light fraction $= 6/8 = 3/4$.",
+   "answer": "Hybrid = 1/4 (25%); fully light = 3/4 (75%)",
+   "keywords": [
+    "Meselson-Stahl",
+    "ميسيلسون-ستال",
+    "semiconservative",
+    "شبه محافظ",
+    "15N",
+    "تضاعف DNA",
+    "density gradient"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "جزيء mRNA حقيقي النواة ناضج (باستثناء ذيل poly-A) طوله 1299 نيوكليوتيدة ويحتوي على منطقة غير مترجمة 5' UTR طولها 120 نيوكليوتيدة و3' UTR طولها 180 نيوكليوتيدة. بافتراض أن الترجمة تبدأ عند أول AUG مباشرة بعد 5' UTR وتنتهي عند كودون إيقاف واحد ضمن الإطار عند بداية 3' UTR، كم عدد الأحماض الأمينية في عديد الببتيد المُشفَّر (كما يُصنَّع ابتداءً، شاملًا الميثيونين البادئ)؟",
+   "q_en": "A mature eukaryotic mRNA (excluding its poly-A tail) is 1,299 nucleotides long and contains a 5' UTR of 120 nt and a 3' UTR of 180 nt. Assuming translation begins at the first AUG immediately after the 5' UTR and ends at a single in-frame stop codon at the start of the 3' UTR, how many amino acids does the encoded polypeptide contain (as initially synthesized, including the initiator methionine)?",
+   "a_ar": "طول إطار القراءة المفتوح = الإجمالي − المناطق غير المترجمة $= 1299 - 120 - 180 = 999$ نيوكليوتيدة. تُقرأ هذه المنطقة المشفِّرة كثلاثيات، فتحوي $999/3 = 333$ كودونًا. أحدها كودون الإيقاف الذي لا يشفّر أي حمض أميني، فيبقى $333 - 1 = 332$ كودونًا مُشفِّرًا. إذًا يحتوي عديد الببتيد كما يُصنَّع ابتداءً على 332 حمضًا أمينيًا (شاملًا الميثيونين البادئ الطرفي N، قبل أي اقتطاع بعد الترجمة).",
+   "a_en": "The open reading frame length = total − UTRs = $1299 - 120 - 180 = 999$ nt. This coding region is read in triplets, so it contains $999/3 = 333$ codons. One of these is the stop codon, which specifies no amino acid, leaving $333 - 1 = 332$ sense codons. Hence the polypeptide as initially synthesized contains 332 amino acids (including the N-terminal initiator methionine, before any post-translational cleavage).",
+   "answer": "332 amino acids",
+   "keywords": [
+    "ORF",
+    "إطار القراءة المفتوح",
+    "codon",
+    "كودون",
+    "UTR",
+    "translation",
+    "ترجمة",
+    "stop codon"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "إنزيم يتبع حركية ميكايليس-منتن حيث Km = 2 mM وVmax = 100 µmol·min⁻¹. بوجود مثبّط تنافسي بتركيز [I] = 8 mM يرتفع Km الظاهري إلى 6 mM (يبقى Vmax ثابتًا). (أ) أوجد ثابت التثبيط Ki. (ب) احسب سرعة التفاعل في النظام المثبَّط عند [S] = 2 mM.",
+   "q_en": "An enzyme obeys Michaelis-Menten kinetics with Km = 2 mM and Vmax = 100 µmol·min⁻¹. In the presence of a competitive inhibitor at [I] = 8 mM, the apparent Km rises to 6 mM (Vmax unchanged). (a) Determine the inhibition constant Ki. (b) Calculate the reaction velocity in the inhibited system at [S] = 2 mM.",
+   "a_ar": "في التثبيط التنافسي $K_m^{app} = K_m\\left(1 + \\tfrac{[I]}{K_i}\\right)$. إذًا $6 = 2\\left(1 + \\tfrac{8}{K_i}\\right) \\Rightarrow 3 = 1 + \\tfrac{8}{K_i} \\Rightarrow \\tfrac{8}{K_i} = 2 \\Rightarrow K_i = 4$ mM. (ب) باستخدام $v = \\dfrac{V_{max}[S]}{K_m^{app} + [S]} = \\dfrac{100 \\times 2}{6 + 2} = \\dfrac{200}{8} = 25$ µmol·min⁻¹.",
+   "a_en": "For competitive inhibition $K_m^{app} = K_m\\left(1 + \\tfrac{[I]}{K_i}\\right)$. So $6 = 2\\left(1 + \\tfrac{8}{K_i}\\right) \\Rightarrow 3 = 1 + \\tfrac{8}{K_i} \\Rightarrow \\tfrac{8}{K_i} = 2 \\Rightarrow K_i = 4$ mM. (b) Using $v = \\dfrac{V_{max}[S]}{K_m^{app} + [S]} = \\dfrac{100 \\times 2}{6 + 2} = \\dfrac{200}{8} = 25$ µmol·min⁻¹.",
+   "answer": "Ki = 4 mM; v = 25 µmol·min⁻¹",
+   "keywords": [
+    "Michaelis-Menten",
+    "ميكايليس-منتن",
+    "competitive inhibition",
+    "تثبيط تنافسي",
+    "Km",
+    "Ki",
+    "enzyme kinetics",
+    "Vmax"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "مزرعة خلوية تنمو أسّيًّا (غير متزامنة) زمن تضاعف عددها يساوي زمن الدورة الخلوية T = 24 ساعة، وطور الانقسام الفتيلي (M) يستغرق t_M = 0.5 ساعة وهو الجزء الأخير من الدورة. باستخدام التوزيع العمري في الحالة المستقرة لتجمّع أسّي، احسب مؤشّر الانقسام الدقيق (نسبة الخلايا في طور M)، وقارنه بالتقدير الساذج t_M/T.",
+   "q_en": "An exponentially (asynchronously) growing cell culture has a population doubling time equal to the cell-cycle time T = 24 h, and mitosis (M phase) lasts t_M = 0.5 h and is the final segment of the cycle. Using the steady-state age distribution of an exponential population, calculate the exact mitotic index (fraction of cells in M phase), and compare it with the naive estimate t_M/T.",
+   "a_ar": "في تجمّع ينمو أسّيًّا تكون كثافة الأعمار في الحالة المستقرة $f(a) = 2k\\,e^{-ka}$ حيث $k = \\ln 2 / T$، مُطبَّعة على $a\\in[0,T]$. وبما أن طور M هو الجزء الأخير $[T - t_M, T]$ فإن نسبته $\\int_{T-t_M}^{T} f(a)\\,da = 2e^{-kT}\\left(e^{k t_M}-1\\right) = 2(\\tfrac{1}{2})\\left(2^{t_M/T}-1\\right) = 2^{t_M/T}-1$. إذًا $MI = 2^{0.5/24}-1 = 2^{1/48}-1 \\approx 0.01454 = 1.45\\%$. وهذا أقل بوضوح من التقدير الساذج $t_M/T = 0.5/24 = 2.08\\%$، لأن التجمّع النامي غنيّ بالخلايا الفتيّة وفقير بالخلايا المسنّة (المتأخرة في الدورة، أي المنقسمة).",
+   "a_en": "For an exponentially growing population the steady-state age density is $f(a) = 2k\\,e^{-ka}$ with $k = \\ln 2 / T$, normalized over $a\\in[0,T]$. Since M is the terminal segment $[T - t_M, T]$, its fraction is $\\int_{T-t_M}^{T} f(a)\\,da = 2e^{-kT}\\left(e^{k t_M}-1\\right) = 2(\\tfrac{1}{2})\\left(2^{t_M/T}-1\\right) = 2^{t_M/T}-1$. Thus $MI = 2^{0.5/24}-1 = 2^{1/48}-1 \\approx 0.01454 = 1.45\\%$. This is notably lower than the naive $t_M/T = 0.5/24 = 2.08\\%$, because a growing population is enriched in young cells and depleted of old (late-cycle, mitotic) cells.",
+   "answer": "Mitotic index = 2^(1/48) − 1 ≈ 1.45% (naive t_M/T = 2.08%)",
+   "keywords": [
+    "mitotic index",
+    "مؤشّر الانقسام",
+    "cell cycle",
+    "الدورة الخلوية",
+    "age distribution",
+    "التوزيع العمري",
+    "exponential growth",
+    "M phase"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "تُنمّى مستعمرة بكتيرية أجيالاً عديدة في وسط يحتوي فقط على نظير النيتروجين الثقيل $^{15}\\text{N}$، بحيث تصبح كل سلاسل الـ DNA ثقيلة. عند الزمن صفر تُنقل الخلايا إلى وسط يحتوي فقط على النيتروجين الخفيف $^{14}\\text{N}$ وتُترك لتنقسم بتزامن. بافتراض تضاعف شبه محافظ بحت دون تحلّل أي سلسلة، اشتق تعبيراً عن كسر جزيئات الـ DNA المزدوجة الهجينة (سلسلة ثقيلة وأخرى خفيفة) بعد $n$ جولة من التضاعف، وأعطِ القيمة العددية عند $n=3$.",
+   "q_en": "A population of bacteria is grown for many generations in medium containing only the heavy nitrogen isotope $^{15}\\text{N}$, so that every DNA strand is heavy. At time zero the cells are shifted to medium containing only light $^{14}\\text{N}$ and allowed to divide synchronously. Assuming purely semiconservative replication with no strand degradation, derive an expression for the fraction of DNA duplexes that are hybrid (one heavy strand, one light strand) after $n$ rounds of replication, and give the numerical value at $n=3$.",
+   "a_ar": "تبقى السلسلتان الثقيلتان الأصليتان محفوظتين دائماً؛ تظل كل منهما مقترنة بسلسلة خفيفة بعد الجولة الأولى وتبقى هجينة بعدها. بعد $n$ جولة يكون إجمالي عدد الجزيئات المزدوجة $2^n$، لكن عدد ما يحتوي منها على سلسلة ثقيلة قديمة ثابت عند $2$ بالضبط. لذا كسر الهجين هو $\\dfrac{2}{2^{n}} = 2^{1-n}$ (صالح لِ $n\\ge 1$)، والباقي $1-2^{1-n}$ خفيف بالكامل. عند $n=3$ نحصل على $2^{-2}=\\tfrac14 = 0.25$.",
+   "a_en": "The two original heavy strands are conserved forever; each remains base-paired to a light strand after the first round and stays hybrid thereafter. After $n$ replications the total number of duplexes is $2^n$, but the number containing an old heavy strand is fixed at exactly $2$. Hence the hybrid fraction is $\\dfrac{2}{2^{n}} = 2^{1-n}$ (valid for $n\\ge 1$), with the remaining $1-2^{1-n}$ being fully light. At $n=3$ this gives $2^{-2}=\\tfrac14 = 0.25$.",
+   "answer": "Hybrid fraction $= 2^{1-n}$; at $n=3$, $=\\tfrac14=0.25$",
+   "keywords": [
+    "Meselson-Stahl",
+    "semiconservative",
+    "شبه محافظ",
+    "تضاعف DNA",
+    "hybrid density",
+    "نظير النيتروجين",
+    "replication"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "كروموسوم بكتيريا E. coli الحلقي طوله $4.6\\times10^{6}$ زوج قاعدي، ويُضاعَف من نقطة أصل واحدة بواسطة شوكتي تضاعف تتحركان في اتجاهين متعاكسين حتى تلتقيا. يُنتج تخليق السلسلة المتأخرة قطع أوكازاكي بطول متوسط $1000$ نيوكليوتيد. بافتراض أن كامل قالب السلسلة المتأخرة يُنسخ بشكل متقطع في قطع بهذا الحجم، احسب العدد الكلي لقطع أوكازاكي المتولّدة في جولة تضاعف كاملة واحدة للكروموسوم.",
+   "q_en": "The circular E. coli chromosome is $4.6\\times10^{6}$ base pairs and is replicated from a single origin by two replication forks moving bidirectionally until they meet. Lagging-strand synthesis produces Okazaki fragments of average length $1000$ nucleotides. Assuming the entire lagging-strand template is copied discontinuously in fragments of this size, calculate the total number of Okazaki fragments generated in one complete round of chromosome replication.",
+   "a_ar": "في كل نصف من نصفي الجزيء المزدوج توجد سلسلة قائدة (متصلة) وسلسلة متأخرة (متقطعة). عبر الكروموسوم كامله يجب أن تنسخ السلاسل المتأخرة مجتمعةً ما يعادل طول سلسلة كاملة واحدة، أي $4.6\\times10^{6}$ نيوكليوتيد من التخليق المتقطع. وبقسمة ذلك على حجم القطعة $1000$ نيوكليوتيد نحصل على $\\dfrac{4.6\\times10^{6}}{1000}=4600$ قطعة أوكازاكي.",
+   "a_en": "In each of the two duplex halves there is one leading strand (continuous) and one lagging strand (discontinuous). Across the whole chromosome the lagging strands together must copy the equivalent of one full strand length, i.e. $4.6\\times10^{6}$ nucleotides of discontinuous synthesis. Dividing by the $1000$-nt fragment size gives $\\dfrac{4.6\\times10^{6}}{1000}=4600$ Okazaki fragments.",
+   "answer": "$4600$ Okazaki fragments",
+   "keywords": [
+    "Okazaki fragments",
+    "قطع أوكازاكي",
+    "lagging strand",
+    "السلسلة المتأخرة",
+    "E. coli replication",
+    "شوكة التضاعف",
+    "DNA replication"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "باستخدام الشيفرة الوراثية القياسية، اعتبر كل استبدال ممكن لقاعدة واحدة مُطبَّق على كل من الكودونات الحسّية الـ61 (لكل كودون 3 مواضع $\\times$ 3 قواعد بديلة $= 9$ استبدالات مفردة ممكنة). بافتراض أن كل هذه الاستبدالات متساوية الاحتمال، ما الاحتمال الدقيق لأن يكون استبدال قاعدة مفردة عشوائي في كودون حسّي عشوائي مرادفاً (صامتاً، أي يرمّز لنفس الحمض الأميني)؟ أعطِ الجواب ككسر مختزل وكقيمة عشرية بثلاث منازل.",
+   "q_en": "Using the standard genetic code, consider every possible single-base substitution applied to each of the 61 sense codons (each codon has 3 positions $\\times$ 3 alternative bases $= 9$ possible single substitutions). Treating all such substitutions as equally likely, what is the exact probability that a random single-base substitution in a random sense codon is synonymous (silent, i.e. encodes the same amino acid)? Give the answer as a reduced fraction and a decimal to three places.",
+   "a_ar": "يوجد $61\\times9=549$ استبدالاً مفرداً ممكناً للكودونات الحسّية. بتعداد الشيفرة القياسية، فإن $134$ منها بالضبط تُنتج نفس الحمض الأميني (وتتركّز في الموضع الثالث «المتذبذب» وفي العائلات رباعية وسداسية التنكّس). لذا الاحتمال هو $\\dfrac{134}{549}\\approx0.244$. والكسر $\\tfrac{134}{549}$ مختزل أصلاً ($549=3^2\\cdot61$؛ $134=2\\cdot67$، لا يشتركان في عامل).",
+   "a_en": "There are $61\\times9=549$ possible single-base substitutions of sense codons. Enumerating the standard code, exactly $134$ of these yield the same amino acid (these are concentrated at third ('wobble') positions and at the fourfold/sixfold degenerate families). The probability is therefore $\\dfrac{134}{549}\\approx0.244$. The fraction $\\tfrac{134}{549}$ is already in lowest terms ($549=3^2\\cdot61$; $134=2\\cdot67$, sharing no common factor).",
+   "answer": "$\\tfrac{134}{549}\\approx 0.244$",
+   "keywords": [
+    "genetic code",
+    "الشيفرة الوراثية",
+    "synonymous mutation",
+    "طفرة مرادفة",
+    "wobble",
+    "التذبذب",
+    "degeneracy",
+    "codon"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يتبع إنزيم حركية ميكايليس-مينتن، $v = \\dfrac{V_{\\max}[S]}{K_m+[S]}$. عند تركيز الركيزة $[S]_1$ يسير التفاعل بمعدل $0.25\\,V_{\\max}$، وعند $[S]_2$ يسير بمعدل $0.75\\,V_{\\max}$. عبّر عن $[S]_1$ و $[S]_2$ بوحدات $K_m$، وحدّد النسبة $[S]_2/[S]_1$ اللازمة لتغطية هذا المدى من الربع إلى ثلاثة الأرباع من $V_{\\max}$.",
+   "q_en": "An enzyme obeys Michaelis-Menten kinetics, $v = \\dfrac{V_{\\max}[S]}{K_m+[S]}$. At substrate concentration $[S]_1$ the reaction runs at $0.25\\,V_{\\max}$, and at $[S]_2$ it runs at $0.75\\,V_{\\max}$. Express $[S]_1$ and $[S]_2$ in units of $K_m$, and determine the ratio $[S]_2/[S]_1$ required to span this quarter-to-three-quarters range of $V_{\\max}$.",
+   "a_ar": "بوضع $\\dfrac{[S]}{K_m+[S]}=f$ نحصل على $[S]=K_m\\dfrac{f}{1-f}$. عند $f=0.25$: $[S]_1 = K_m\\dfrac{0.25}{0.75}=\\tfrac13 K_m$. وعند $f=0.75$: $[S]_2 = K_m\\dfrac{0.75}{0.25}=3K_m$. فتكون النسبة $\\dfrac{[S]_2}{[S]_1}=\\dfrac{3K_m}{K_m/3}=9$. أي أن منحنى الإشباع الزائدي يتطلّب زيادة $[S]$ بمقدار 9 أضعاف للانتقال من 25% إلى 75% من $V_{\\max}$.",
+   "a_en": "Setting $\\dfrac{[S]}{K_m+[S]}=f$ gives $[S]=K_m\\dfrac{f}{1-f}$. For $f=0.25$: $[S]_1 = K_m\\dfrac{0.25}{0.75}=\\tfrac13 K_m$. For $f=0.75$: $[S]_2 = K_m\\dfrac{0.75}{0.25}=3K_m$. The ratio is $\\dfrac{[S]_2}{[S]_1}=\\dfrac{3K_m}{K_m/3}=9$. Thus a hyperbolic saturation curve needs an $81/... $ — specifically a 9-fold increase in $[S]$ to move from 25% to 75% of $V_{\\max}$.",
+   "answer": "$[S]_1=\\tfrac13 K_m$, $[S]_2=3K_m$, ratio $=9$",
+   "keywords": [
+    "Michaelis-Menten",
+    "ميكايليس مينتن",
+    "enzyme kinetics",
+    "حركية الإنزيم",
+    "Km",
+    "saturation curve",
+    "منحنى الإشباع",
+    "Vmax"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في تجمّع خلوي غير متزامن ينمو أسّياً (بحالة مستقرة مقاربة)، لا يتوزّع عمر الخلايا بانتظام: كثافة العمر هي $\\varphi(a)=\\dfrac{2\\ln 2}{T_c}\\,2^{-a/T_c}$ للعمر $a\\in[0,T_c]$، لأن الخلايا الفتية (المنقسمة حديثاً) ممثّلة تمثيلاً زائداً. لدورة خلوية طولها الكلي $T_c=24$ ساعة بأطوار مدتها $G_1=11$، $S=8$، $G_2=4$، $M=1$ ساعة (بهذا الترتيب)، احسب الكسر الدقيق للخلايا في طور S، وقارنه بالتقدير الساذج $S/T_c$.",
+   "q_en": "In an exponentially (asymptotically steadily) growing asynchronous cell population, cell age is not uniformly distributed: the age density is $\\varphi(a)=\\dfrac{2\\ln 2}{T_c}\\,2^{-a/T_c}$ for age $a\\in[0,T_c]$, because young (recently divided) cells are over-represented. For a cell cycle of total length $T_c=24$ h with phase durations $G_1=11$ h, $S=8$ h, $G_2=4$ h, $M=1$ h (in that order), compute the exact fraction of cells in S phase, and compare it with the naive estimate $S/T_c$.",
+   "a_ar": "يمتد طور S من عمر خلية $a_1=G_1=11$ ساعة إلى $a_2=G_1+S=19$ ساعة. الكسر هو $\\int_{a_1}^{a_2}\\varphi(a)\\,da = 2\\left(2^{-a_1/T_c}-2^{-a_2/T_c}\\right) = 2\\left(2^{-11/24}-2^{-19/24}\\right)\\approx 2(0.7288-0.5787)=0.300$. فيكون نحو $30.0\\%$ من الخلايا في طور S. وهذا أقل من القيمة الساذجة $S/T_c=8/24=0.333$، لأن توزيع العمر الأسّي يعطي وزناً أكبر للأعمار المبكرة (قبل S)، فتُمثَّل الأطوار المتأخرة تمثيلاً ناقصاً.",
+   "a_en": "S phase spans cell ages from $a_1=G_1=11$ h to $a_2=G_1+S=19$ h. The fraction is $\\int_{a_1}^{a_2}\\varphi(a)\\,da = 2\\left(2^{-a_1/T_c}-2^{-a_2/T_c}\\right) = 2\\left(2^{-11/24}-2^{-19/24}\\right)\\approx 2(0.7288-0.5787)=0.300$. So $\\approx30.0\\%$ of cells are in S. This is below the naive value $S/T_c=8/24=0.333$, because the exponential age distribution weights the earlier (pre-S) ages more heavily, under-representing later phases.",
+   "answer": "$2\\left(2^{-11/24}-2^{-19/24}\\right)\\approx 0.300$ (i.e. $\\approx30.0\\%$), below naive $0.333$",
+   "keywords": [
+    "cell cycle",
+    "الدورة الخلوية",
+    "age distribution",
+    "توزيع العمر",
+    "exponential growth",
+    "S phase",
+    "طور S",
+    "mitotic index"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

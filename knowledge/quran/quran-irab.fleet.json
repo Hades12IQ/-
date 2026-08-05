@@ -1,0 +1,133 @@
+{
+ "subject": "quran",
+ "topic": "quran-irab",
+ "title": "quran-irab — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "في قوله تعالى: ﴿وَإِنْ كَادُوا لَيَفْتِنُونَكَ عَنِ الَّذِي أَوْحَيْنَا إِلَيْكَ لِتَفْتَرِيَ عَلَيْنَا غَيْرَهُ﴾ [الإسراء: 73]، أعرب ﴿إِنْ﴾ واللام في ﴿لَيَفْتِنُونَكَ﴾ إعرابًا دقيقًا، مبيّنًا نوع ﴿كَادَ﴾ وحكم دخول اللام على خبرها.",
+   "q_en": "In the verse ﴿وَإِنْ كَادُوا لَيَفْتِنُونَكَ عَنِ الَّذِي أَوْحَيْنَا إِلَيْكَ لِتَفْتَرِيَ عَلَيْنَا غَيْرَهُ﴾ (al-Isrāʾ 73), give a precise iʿrāb of ﴿إِنْ﴾ and the lām in ﴿لَيَفْتِنُونَكَ﴾, explaining the type of ﴿كَادَ﴾ and the ruling on the lām entering its predicate.",
+   "a_ar": "﴿إِنْ﴾ هنا مخففة من الثقيلة (وليست النافية ولا الشرطية)، مهملة، واسمها ضمير الشأن المحذوف، والجملة بعدها خبرها. و﴿كَادُوا﴾ فعل ماضٍ ناقص من أفعال المقاربة، والواو اسمها. واللام في ﴿لَيَفْتِنُونَكَ﴾ هي اللام الفارقة التي تلزم عند تخفيف ﴿إِنَّ﴾ لتفرّق بينها وبين النافية. وجملة ﴿يَفْتِنُونَكَ﴾ في محل نصب خبر ﴿كَادُوا﴾، وهذا الخبر جاء مقترنًا باللام على خلاف الأصل في أفعال المقاربة، لكنه صحيح باعتبار أنه خبر ﴿كَادَ﴾ لا خبرٌ للامٍ مستقلة. الدليل على أن ﴿إِنْ﴾ مخففة لا نافية: اقتران خبرها باللام الفارقة والمعنى الموجب.",
+   "a_en": "Here ﴿إِنْ﴾ is the \"lightened\" form of the heavy إِنَّ (not the negative nor the conditional), rendered inoperative, whose omitted noun is the pronoun of the matter (ḍamīr al-shaʾn), and the following clause is its predicate. ﴿كَادُوا﴾ is a defective past-tense verb of approximation (min afʿāl al-muqāraba), with the wāw as its ism (subject). The lām in ﴿لَيَفْتِنُونَكَ﴾ is the distinguishing lām (al-lām al-fāriqa) that obligatorily accompanies the lightened إِنَّ to distinguish it from the negative إِنْ. The clause ﴿يَفْتِنُونَكَ﴾ is in the accusative position as the predicate of ﴿كَادُوا﴾; it exceptionally carries the lām, valid because the lām belongs to the lightened إِنَّ construction, not to كاد itself. The proof that إِنْ is lightened, not negative, is the affirmative meaning and the distinguishing lām.",
+   "answer": "﴿إِنْ﴾ مخففة من الثقيلة مهملة، اسمها ضمير الشأن محذوف؛ واللام في ﴿لَيَفْتِنُونَكَ﴾ لام فارقة لازمة للتخفيف؛ و﴿كَادُوا﴾ فعل مقاربة ناقص، الواو اسمها وجملة ﴿يَفْتِنُونَكَ﴾ خبرها.",
+   "keywords": [
+    "إن المخففة",
+    "اللام الفارقة",
+    "كاد",
+    "أفعال المقاربة",
+    "ضمير الشأن",
+    "al-Isrāʾ 73",
+    "lightened inna",
+    "lām al-fāriqa"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿لَيْسَ الْبِرَّ أَنْ تُوَلُّوا وُجُوهَكُمْ قِبَلَ الْمَشْرِقِ وَالْمَغْرِبِ﴾ [البقرة: 177] على قراءة نصب ﴿الْبِرَّ﴾، عيّن اسم ﴿لَيْسَ﴾ وخبرها، وبيّن سبب جواز القراءتين (رفع البِرّ ونصبه).",
+   "q_en": "In ﴿لَيْسَ الْبِرَّ أَنْ تُوَلُّوا وُجُوهَكُمْ قِبَلَ الْمَشْرِقِ وَالْمَغْرِبِ﴾ (al-Baqara 177) under the reading with ﴿الْبِرَّ﴾ in the accusative, identify the ism and khabar of ﴿لَيْسَ﴾, and explain why both readings (nominative and accusative of al-birr) are permissible.",
+   "a_ar": "في قراءة النصب ﴿الْبِرَّ﴾ خبر ﴿لَيْسَ﴾ مقدَّم منصوب، واسمها هو المصدر المؤوَّل من ﴿أَنْ تُوَلُّوا﴾ في محل رفع (التقدير: ليس البِرَّ توليتُكم وجوهكم). وفي قراءة الرفع ﴿الْبِرُّ﴾ اسم ﴿لَيْسَ﴾ مرفوع، والخبر هو المصدر المؤوَّل من ﴿أَنْ تُوَلُّوا﴾ في محل نصب. وجاز الوجهان لأن كلا الطرفين معرفة (البِرّ معرَّف بـ«أل»، والمصدر المؤوَّل معرفة)، فصح جعل أيّهما اسمًا والآخر خبرًا؛ لكن الأرجح والأشهر في الرواية النصب، وعليه يكون الخبر مقدَّمًا على الاسم.",
+   "a_en": "Under the accusative reading, ﴿الْبِرَّ﴾ is the fronted, accusative khabar of ﴿لَيْسَ﴾, while its ism is the interpreted maṣdar from ﴿أَنْ تُوَلُّوا﴾, in the nominative position (\"lit. your turning your faces is not the birr\"). Under the nominative reading, ﴿الْبِرُّ﴾ is the nominative ism of ﴿لَيْسَ﴾ and the khabar is the interpreted maṣdar from ﴿أَنْ تُوَلُّوا﴾ in the accusative position. Both are permissible because both elements are definite (al-birr by the article, and the interpreted maṣdar is definite), so either may serve as ism and the other as khabar. The stronger and more widely transmitted reading is the accusative, on which the khabar precedes the ism.",
+   "answer": "قراءة النصب: ﴿الْبِرَّ﴾ خبر ليس مقدَّم منصوب، واسمها المصدر المؤوَّل من ﴿أَنْ تُوَلُّوا﴾ مرفوع محلًّا. وجاز الوجهان لأن الطرفين معرفتان.",
+   "keywords": [
+    "ليس",
+    "اسم ليس وخبرها",
+    "المصدر المؤول",
+    "أن تولوا",
+    "تقديم الخبر",
+    "al-Baqara 177",
+    "laysa",
+    "maṣdar muʾawwal"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿وَمَا كَانَ لِمُؤْمِنٍ أَنْ يَقْتُلَ مُؤْمِنًا إِلَّا خَطَأً﴾ [النساء: 92]، أعرب ﴿خَطَأً﴾ مبيّنًا وجهه الإعرابي الراجح، وموقع المصدر المؤوَّل ﴿أَنْ يَقْتُلَ﴾ من ﴿كَانَ﴾.",
+   "q_en": "In ﴿وَمَا كَانَ لِمُؤْمِنٍ أَنْ يَقْتُلَ مُؤْمِنًا إِلَّا خَطَأً﴾ (al-Nisāʾ 92), parse ﴿خَطَأً﴾ giving the preferred grammatical analysis, and state the syntactic role of the interpreted maṣdar ﴿أَنْ يَقْتُلَ﴾ relative to ﴿كَانَ﴾.",
+   "a_ar": "المصدر المؤوَّل من ﴿أَنْ يَقْتُلَ﴾ في محل رفع اسم ﴿كَانَ﴾، والجار والمجرور ﴿لِمُؤْمِنٍ﴾ في محل نصب خبر ﴿كَانَ﴾ مقدَّم (التقدير: ما كان القتلُ كائنًا لمؤمنٍ). و﴿خَطَأً﴾ منصوب على الاستثناء المنقطع، أي: لكن إن قتله خطأً؛ فهو استثناء ليس من جنس المستثنى منه لأن الكلام في نفي إباحة القتل العمد، والخطأ ليس داخلًا في العمد المنفي. وقيل ﴿خَطَأً﴾ حال أو نائب عن المفعول المطلق (قتلًا خطأً)، لكن الأرجح الاستثناء المنقطع بمعنى «لكن».",
+   "a_en": "The interpreted maṣdar from ﴿أَنْ يَقْتُلَ﴾ is in the nominative position as the ism of ﴿كَانَ﴾, and the prepositional phrase ﴿لِمُؤْمِنٍ﴾ is the fronted khabar of ﴿كَانَ﴾ in the accusative position (i.e., \"killing is not [permissible] for a believer\"). ﴿خَطَأً﴾ is accusative as a disjoined exception (istithnāʾ munqaṭiʿ), meaning \"but if he kills him by mistake\"; it is not of the same category as the excepted-from term, since the negation concerns the permissibility of intentional killing, and accidental killing is not part of that. Some parse ﴿خَطَأً﴾ as a ḥāl or as standing in for the absolute object (qatlan khaṭaʾan), but the preferred view is the disjoined exception in the sense of \"but/except.\"",
+   "answer": "﴿أَنْ يَقْتُلَ﴾ مصدر مؤوَّل في محل رفع اسم كان، و﴿لِمُؤْمِنٍ﴾ خبر كان مقدَّم. و﴿خَطَأً﴾ منصوب على الاستثناء المنقطع (بمعنى «لكن»).",
+   "keywords": [
+    "استثناء منقطع",
+    "خطأ",
+    "كان",
+    "اسم كان",
+    "المصدر المؤول",
+    "al-Nisāʾ 92",
+    "istithnāʾ munqaṭiʿ",
+    "khaṭaʾ"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿وَإِذْ يَرْفَعُ إِبْرَاهِيمُ الْقَوَاعِدَ مِنَ الْبَيْتِ وَإِسْمَاعِيلُ رَبَّنَا تَقَبَّلْ مِنَّا﴾ [البقرة: 127]، أعرب ﴿رَبَّنَا﴾ وبيّن العامل في ﴿إِذْ﴾، وموقع جملة ﴿تَقَبَّلْ مِنَّا﴾، مع توجيه حذف القول.",
+   "q_en": "In ﴿وَإِذْ يَرْفَعُ إِبْرَاهِيمُ الْقَوَاعِدَ مِنَ الْبَيْتِ وَإِسْمَاعِيلُ رَبَّنَا تَقَبَّلْ مِنَّا﴾ (al-Baqara 127), parse ﴿رَبَّنَا﴾, identify the operator (ʿāmil) governing ﴿إِذْ﴾, and the role of the clause ﴿تَقَبَّلْ مِنَّا﴾, accounting for the elided verb of saying.",
+   "a_ar": "﴿إِذْ﴾ ظرف زمان مبني في محل نصب، والعامل فيه فعل محذوف تقديره «اذكُر» (اذكُر إذ يرفع). و﴿رَبَّنَا﴾ منادى مضاف منصوب، وحُذف حرف النداء (يا) تخفيفًا، والتقدير «يا ربَّنا». وجملة ﴿تَقَبَّلْ مِنَّا﴾ جملة دعائية إنشائية جواب النداء، لا محل لها من الإعراب. والجملة كلها ﴿رَبَّنَا تَقَبَّلْ مِنَّا﴾ مقولٌ لقولٍ محذوف، تقديره «يقولان» أو «قائلَين»، وهذه الجملة المحذوفة (الحال) في محل نصب حال من ﴿إِبْرَاهِيمُ وَإِسْمَاعِيلُ﴾، أي: يرفعان القواعد حال كونهما قائلَين ربَّنا تقبَّل منا.",
+   "a_en": "﴿إِذْ﴾ is an indeclinable adverb of time in the accusative position, governed by an elided verb estimated as \"udhkur\" (\"recall/mention when Ibrāhīm was raising...\"). ﴿رَبَّنَا﴾ is a vocative in the construct (munādā muḍāf), accusative, with the vocative particle (yā) elided for lightness (\"O our Lord\"). The clause ﴿تَقَبَّلْ مِنَّا﴾ is a supplicatory (inshāʾī) clause answering the vocative, with no iʿrāb position. The whole ﴿رَبَّنَا تَقَبَّلْ مِنَّا﴾ is the object of an elided verb of saying, estimated as \"yaqūlāni\" / \"qāʾilayn\"; this elided saying-clause functions as a ḥāl (circumstantial) in the accusative from ﴿إِبْرَاهِيمُ وَإِسْمَاعِيلُ﴾, i.e., \"they raise the foundations while saying: Our Lord, accept from us.\"",
+   "answer": "﴿إِذْ﴾ ظرف في محل نصب عامله فعل محذوف «اذكُر». ﴿رَبَّنَا﴾ منادى مضاف منصوب بحذف حرف النداء. وجملة ﴿تَقَبَّلْ مِنَّا﴾ دعائية لا محل لها، والمقول كله في محل نصب حال بتقدير القول «قائلَين».",
+   "keywords": [
+    "إذ",
+    "المنادى",
+    "حذف حرف النداء",
+    "حذف القول",
+    "جملة الحال",
+    "al-Baqara 127",
+    "munādā",
+    "elided qawl"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿لَٰكِنِ الرَّاسِخُونَ فِي الْعِلْمِ مِنْهُمْ وَالْمُؤْمِنُونَ يُؤْمِنُونَ بِمَا أُنزِلَ إِلَيْكَ وَمَا أُنزِلَ مِن قَبْلِكَ وَالْمُقِيمِينَ الصَّلَاةَ وَالْمُؤْتُونَ الزَّكَاةَ﴾ (النساء: 162)، أعرب ﴿الْمُقِيمِينَ﴾ وبيّن سبب نصبها مع أنها معطوفة ظاهراً على مرفوعات، واذكر أوجه التوجيه النحوي المعتبرة.",
+   "q_en": "In ﴿لَٰكِنِ الرَّاسِخُونَ فِي الْعِلْمِ مِنْهُمْ وَالْمُؤْمِنُونَ يُؤْمِنُونَ بِمَا أُنزِلَ إِلَيْكَ وَمَا أُنزِلَ مِن قَبْلِكَ وَالْمُقِيمِينَ الصَّلَاةَ وَالْمُؤْتُونَ الزَّكَاةَ﴾ (al-Nisā’: 162), parse ﴿الْمُقِيمِينَ﴾ and explain why it is in the accusative (naṣb) though it apparently coordinates with nominatives, giving the recognized grammatical justifications.",
+   "a_ar": "﴿الْمُقِيمِينَ﴾ منصوبة، وعلامة نصبها الياء لأنها جمع مذكر سالم. والوجه المختار عند جمهور المحققين (سيبويه والزمخشري وأبي حيان) أنها منصوبة على المدح بفعل محذوف تقديره «أمدحُ» أو «أعني»، أي: القطع عن العطف إلى النصب على الاختصاص/المدح، والتقدير: أمدحُ المقيمين الصلاةَ. وهذا أسلوب عربي فصيح يُقطَع فيه النعت أو المعطوف إلى النصب لإفادة التعظيم والاهتمام بشأن الصلاة. وليست لحناً كما توهّم بعضهم، بل جاءت على سنن العرب في القطع. ﴿الصَّلَاةَ﴾ مفعول به لاسم الفاعل ﴿الْمُقِيمِينَ﴾ منصوب. ووجهٌ آخر مرجوح: عطفها على ﴿بِمَا﴾ (بما أنزل... وبالمقيمين) أو على ضمير ﴿مِنْهُمْ﴾، لكنّ وجه القطع للمدح هو الأشهر والأقوى.",
+   "a_en": "﴿الْمُقِيمِينَ﴾ is accusative, marked by yā’ (sound masculine plural). The preferred view of the leading grammarians (Sībawayh, al-Zamakhsharī, Abū Ḥayyān) is that it is manṣūb ‘alā al-madḥ — accusative of praise governed by an elided verb estimated as ‘amdaḥu’/‘a‘nī’ (“I praise / I mean the observers of prayer”). This is the eloquent Arabic device of ‘qaṭ‘’ (cutting off a coordinated element into the accusative) to signal glorification and special attention to prayer. It is not a solecism, as some wrongly supposed, but follows established Arab usage. ﴿الصَّلَاةَ﴾ is the accusative object of the active participle ﴿الْمُقِيمِينَ﴾. A weaker alternative reads it as coordinated onto ﴿بِمَا﴾ (‘believe … and in the observers of prayer’) or onto the pronoun in ﴿مِنْهُمْ﴾, but the accusative-of-praise (qaṭ‘) analysis is the most famous and strongest.",
+   "answer": "﴿المقيمين﴾: منصوب على المدح/الاختصاص بفعل محذوف تقديره «أمدح» أو «أعني»، وعلامة نصبه الياء (جمع مذكر سالم)، على أسلوب القطع؛ و﴿الصلاة﴾ مفعول به لاسم الفاعل. وليس لحناً بل جارٍ على سنن العرب في القطع للتعظيم.",
+   "keywords": [
+    "النساء 162",
+    "المقيمين",
+    "النصب على المدح",
+    "القطع",
+    "accusative of praise",
+    "qaṭʿ",
+    "جمع مذكر سالم",
+    "سيبويه"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في قراءة الجمهور ﴿إِنَّ هَٰذَانِ لَسَاحِرَانِ﴾ (طه: 63) بألف في ﴿هَٰذَانِ﴾، أعرب ﴿هَٰذَانِ﴾ و﴿لَسَاحِرَانِ﴾، وبيّن كيف تُوجَّه القراءة نحوياً مع أن اسم ﴿إِنَّ﴾ حقّه النصب، مع ذكر أقوى التوجيهات.",
+   "q_en": "In the majority reading ﴿إِنَّ هَٰذَانِ لَسَاحِرَانِ﴾ (Ṭā-Hā: 63) with alif in ﴿هَٰذَانِ﴾, parse ﴿هَٰذَانِ﴾ and ﴿لَسَاحِرَانِ﴾, and explain how the reading is grammatically justified even though the noun of ﴿إِنَّ﴾ should be in the accusative, citing the strongest reconciliations.",
+   "a_ar": "﴿هَٰذَانِ﴾ اسم ﴿إِنَّ﴾، و﴿سَاحِرَانِ﴾ خبرها مرفوع بالألف، واللام في ﴿لَسَاحِرَانِ﴾ هي اللام المزحلقة (لام الابتداء) دخلت على الخبر. أما بقاء ﴿هَٰذَانِ﴾ بالألف فله توجيهات: (1) أشهرها أنها لغة بني الحارث بن كعب وخثعم وكنانة الذين يُلزمون المثنى الألف في الأحوال الثلاثة فيقولون: رأيتُ الزيدانِ، فتكون الألف علامة الاسم دون إعراب. (2) أنّ ﴿إِنَّ﴾ هنا بمعنى «نعم» (حرف جواب)، و﴿هَٰذَانِ﴾ مبتدأ مرفوع بالألف و﴿لَسَاحِرَانِ﴾ خبره، واللام داخلة على الخبر. (3) على اسمٍ ضميرِ شأنٍ محذوف تقديره «إنّه»، والجملة الاسمية بعده خبر ﴿إِنَّ﴾. والوجه الأول (لغة الحارث) هو أقوى التوجيهات وأشهرها. وقرأ آخرون ﴿إِنَّ هَٰذَيْنِ﴾ بالياء على القياس.",
+   "a_en": "﴿هَٰذَانِ﴾ is the noun (ism) of ﴿إِنَّ﴾, ﴿سَاحِرَانِ﴾ its predicate (nominative, marked by alif), and the lām in ﴿لَسَاحِرَانِ﴾ is the ‘displaced’ lām al-ibtidā’ attached to the predicate. The retention of the alif in ﴿هَٰذَانِ﴾ has several justifications: (1) Most famously it reflects the dialect of Balḥārith b. Ka‘b, Khath‘am, and Kināna, who keep the dual with alif in all three cases (e.g., ra’aytu al-zaydāni), so the alif marks the dual without indicating case. (2) ﴿إِنَّ﴾ here functions as ‘na‘am’ (a particle of assent), making ﴿هَٰذَانِ﴾ a nominative subject and ﴿لَسَاحِرَانِ﴾ its predicate, with the lām on the predicate. (3) An elided pronoun of the matter (ḍamīr al-sha’n), i.e. innahu, is the noun of inna, and the following nominal sentence is its predicate. The first (the Balḥārith dialect) is the strongest and most cited. Others read ﴿إِنَّ هَٰذَيْنِ﴾ with yā’, on the regular analogy.",
+   "answer": "﴿هذان﴾ اسم إنّ (على لغة الحارث بن كعب يُلزم المثنى الألف رفعاً ونصباً وجراً، فالألف علامة التثنية لا الإعراب)؛ ﴿ساحران﴾ خبر إنّ مرفوع بالألف؛ واللام في ﴿لساحران﴾ لام الابتداء المزحلقة. وأقوى التوجيهات: لغة بني الحارث. وثمّة أوجه أخرى: إنّ بمعنى «نعم»، أو ضمير شأن محذوف.",
+   "keywords": [
+    "طه 63",
+    "إن هذان",
+    "لغة الحارث بن كعب",
+    "اللام المزحلقة",
+    "ḍamīr al-shaʾn",
+    "dual alif",
+    "لام الابتداء",
+    "اسم إنّ"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿قُلْ أَفَغَيْرَ اللَّهِ تَأْمُرُونِّي أَعْبُدُ أَيُّهَا الْجَاهِلُونَ﴾ (الزمر: 64)، أعرب ﴿غَيْرَ﴾ وبيّن العامل فيها، وأعرب جملة ﴿أَعْبُدُ﴾ وموقعها، مع توجيه تقديم ﴿غَيْرَ اللَّهِ﴾.",
+   "q_en": "In ﴿قُلْ أَفَغَيْرَ اللَّهِ تَأْمُرُونِّي أَعْبُدُ أَيُّهَا الْجَاهِلُونَ﴾ (al-Zumar: 64), parse ﴿غَيْرَ﴾ and identify its governor (‘āmil), parse the clause ﴿أَعْبُدُ﴾ and its function, and explain the fronting of ﴿غَيْرَ اللَّهِ﴾.",
+   "a_ar": "﴿غَيْرَ﴾ مفعول به منصوب، وعامل النصب فيه الفعل ﴿أَعْبُدُ﴾ المتأخر لا ﴿تَأْمُرُونِّي﴾؛ فالتقدير: أفغيرَ الله أعبدُ تأمرونّي. و﴿اللَّهِ﴾ مضاف إليه مجرور. وجملة ﴿أَعْبُدُ﴾ في محل نصب: إما بدل اشتمال من الياء في ﴿تَأْمُرُونِّي﴾ (تأمرونّي بأن أعبد)، أو على تقدير حرف الجر المحذوف؛ والفعل ﴿تَأْمُرُونِّي﴾ فيه نونان: نون الرفع ونون الوقاية، أُدغمتا فشُدِّدت النون. وقُدِّم ﴿غَيْرَ اللَّهِ﴾ على عامله ﴿أَعْبُدُ﴾ لإفادة الحصر والإنكار والتوبيخ (الاختصاص الإنكاري): أي أهذا المعبود الباطل يُؤمَر بعبادته دون الله؟ والهمزة للاستفهام الإنكاري والفاء عاطفة. و﴿أَيُّهَا﴾ منادى، و﴿الْجَاهِلُونَ﴾ نعت/بدل مرفوع.",
+   "a_en": "﴿غَيْرَ﴾ is a manṣūb direct object, and its governor is the later verb ﴿أَعْبُدُ﴾, not ﴿تَأْمُرُونِّي﴾; the sense is “Is it other than Allah that you order me to worship?” (aghayra-llāhi a‘budu). ﴿اللَّهِ﴾ is a genitive muḍāf ilayhi. The clause ﴿أَعْبُدُ﴾ is in an accusative position: either as badal ishtimāl from the ‘ī’ (me) in ﴿تَأْمُرُونِّي﴾ (‘you order me — to worship’), or on an elided preposition (‘bi-an a‘buda’). The verb ﴿تَأْمُرُونِّي﴾ contains two nūns — the nūn of raf‘ and the nūn of protection (nūn al-wiqāya) — assimilated into one geminated nūn. ﴿غَيْرَ اللَّهِ﴾ is fronted before its governor ﴿أَعْبُدُ﴾ to convey exclusivity, denial, and rebuke (interrogative ikhtiṣāṣ): “Is it this false object that I am ordered to worship instead of Allah?” The hamza is the hamza of denial and the fā’ is coordinating. ﴿أَيُّهَا﴾ is a vocative and ﴿الْجَاهِلُونَ﴾ its nominative adjunct.",
+   "answer": "﴿غير﴾: مفعول به منصوب، وعامله الفعل المتأخر ﴿أعبد﴾ (لا «تأمرونّي»)، و﴿الله﴾ مضاف إليه مجرور؛ وجملة ﴿أعبد﴾ في محل نصب بدل اشتمال من ياء «تأمرونّي» (أو على نزع الخافض). قُدّم ﴿غير الله﴾ على عامله للحصر والإنكار والتوبيخ. و«تأمرونّي» فيها نون الرفع ونون الوقاية مُدغمتان.",
+   "keywords": [
+    "الزمر 64",
+    "أفغير الله أعبد",
+    "تقديم المعمول",
+    "بدل اشتمال",
+    "نون الوقاية",
+    "hamza inkariyya",
+    "الحصر",
+    "عامل متأخر"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

@@ -1,0 +1,178 @@
+{
+ "subject": "science",
+ "topic": "phys-energy-momentum",
+ "title": "phys-energy-momentum — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "رصاصة كتلتها $12\\text{ g}$ تتحرك بسرعة $380\\text{ m/s}$ تنغرس في كتلة $4.0\\text{ kg}$ موضوعة على طاولة عديمة الاحتكاك. الكتلة متصلة بنابض أفقي ثابته $k=1200\\text{ N/m}$ (مرتخٍ ابتداءً). أوجد أقصى انضغاط للنابض.",
+   "q_en": "A $12\\text{ g}$ bullet moving at $380\\text{ m/s}$ embeds itself in a $4.0\\text{ kg}$ block resting on a frictionless table. The block is attached to a horizontal spring of stiffness $k=1200\\text{ N/m}$ (initially relaxed). Find the maximum compression of the spring.",
+   "a_ar": "يُحفَظ الزخم في تصادم الانغراس (لا تُحفَظ الطاقة): $V=\\frac{mv}{m+M}=\\frac{0.012\\times380}{4.012}=1.137\\text{ m/s}$. بعد التصادم تتحول الطاقة الحركية بالكامل إلى طاقة النابض: $\\tfrac12(m+M)V^2=\\tfrac12kx^2$، فيكون $x=V\\sqrt{\\frac{m+M}{k}}=1.137\\sqrt{4.012/1200}$. ومنه $x\\approx0.0657\\text{ m}$ (أي $6.57\\text{ cm}$). لاحظ أن افتراض حفظ الطاقة الحركية خلال التصادم خطأ هنا.",
+   "a_en": "Momentum is conserved in the embedding collision (energy is not): $V=\\frac{mv}{m+M}=\\frac{0.012\\times380}{4.012}=1.137\\text{ m/s}$. After the collision, kinetic energy converts fully to spring energy: $\\tfrac12(m+M)V^2=\\tfrac12kx^2$, so $x=V\\sqrt{\\frac{m+M}{k}}=1.137\\sqrt{4.012/1200}$. This gives $x\\approx0.0657\\text{ m}$ ($6.57\\text{ cm}$). Note that using KE conservation across the collision would be wrong here.",
+   "answer": "$x \\approx 0.0657\\text{ m}$ (6.57 cm)",
+   "keywords": [
+    "ballistic pendulum",
+    "انضغاط النابض",
+    "تصادم عديم المرونة",
+    "conservation of momentum",
+    "حفظ الزخم",
+    "spring energy",
+    "بندول قذفي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في تصادم مباشر مرن أحادي البعد، تصطدم عربة كتلتها $2.0\\text{ kg}$ تتحرك بسرعة $5.0\\text{ m/s}$ بعربة ساكنة كتلتها $6.0\\text{ kg}$. أوجد سرعة كل عربة بعد التصادم والكسر من الطاقة الحركية الابتدائية المنتقل إلى العربة الثانية.",
+   "q_en": "In a one-dimensional elastic head-on collision, a $2.0\\text{ kg}$ cart moving at $5.0\\text{ m/s}$ strikes a stationary $6.0\\text{ kg}$ cart. Find the velocity of each cart after the collision and the fraction of the initial kinetic energy transferred to the second cart.",
+   "a_ar": "لتصادم مرن أحادي البعد والهدف ساكن: $v_1=\\frac{m_1-m_2}{m_1+m_2}u_1=\\frac{2-6}{8}(5)=-2.5\\text{ m/s}$ و $v_2=\\frac{2m_1}{m_1+m_2}u_1=\\frac{4}{8}(5)=2.5\\text{ m/s}$. ترتد العربة الأخف. الكسر المنتقل $\\frac{4m_1m_2}{(m_1+m_2)^2}=\\frac{4(2)(6)}{64}=0.75$، أي $75\\%$.",
+   "a_en": "For a 1D elastic collision with the target at rest: $v_1=\\frac{m_1-m_2}{m_1+m_2}u_1=\\frac{2-6}{8}(5)=-2.5\\text{ m/s}$ and $v_2=\\frac{2m_1}{m_1+m_2}u_1=\\frac{4}{8}(5)=2.5\\text{ m/s}$. The lighter cart rebounds. The fraction transferred is $\\frac{4m_1m_2}{(m_1+m_2)^2}=\\frac{4(2)(6)}{64}=0.75$, i.e. $75\\%$.",
+   "answer": "$v_1=-2.5\\text{ m/s},\\ v_2=+2.5\\text{ m/s}$; fraction transferred $=0.75$ (75%)",
+   "keywords": [
+    "elastic collision",
+    "تصادم مرن",
+    "fraction of energy transferred",
+    "كسر الطاقة",
+    "one-dimensional",
+    "ارتداد",
+    "final velocities"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "جسم كتلته $2.0\\text{ kg}$ ساكن ابتداءً، يُدفع على سطح عديم الاحتكاك بقوة تعتمد على الموضع $F(x)=(4x-x^2)\\text{ N}$ (حيث $x$ بالأمتار) تؤثر من $x=0$ إلى $x=3.0\\text{ m}$. باستخدام مبرهنة الشغل-الطاقة، أوجد سرعة الجسم عند $x=3.0\\text{ m}$.",
+   "q_en": "A $2.0\\text{ kg}$ object, initially at rest, is pushed along a frictionless surface by a position-dependent force $F(x)=(4x-x^2)\\text{ N}$ (with $x$ in metres) acting from $x=0$ to $x=3.0\\text{ m}$. Using the work-energy theorem, find the object's speed at $x=3.0\\text{ m}$.",
+   "a_ar": "الشغل المبذول $W=\\int_0^3(4x-x^2)\\,dx=\\left[2x^2-\\tfrac{x^3}{3}\\right]_0^3=18-9=9\\text{ J}$. بمبرهنة الشغل-الطاقة $W=\\tfrac12mv^2$ (البدء من السكون)، إذن $v=\\sqrt{2W/m}=\\sqrt{2(9)/2}=3.0\\text{ m/s}$.",
+   "a_en": "The work done is $W=\\int_0^3(4x-x^2)\\,dx=\\left[2x^2-\\tfrac{x^3}{3}\\right]_0^3=18-9=9\\text{ J}$. By the work-energy theorem $W=\\tfrac12mv^2$ (starts from rest), so $v=\\sqrt{2W/m}=\\sqrt{2(9)/2}=3.0\\text{ m/s}$.",
+   "answer": "$v=3.0\\text{ m/s}$",
+   "keywords": [
+    "work-energy theorem",
+    "مبرهنة الشغل والطاقة",
+    "variable force",
+    "قوة متغيرة",
+    "integral of force",
+    "تكامل",
+    "speed"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "كتلة $1.5\\text{ kg}$ تنزلق بسرعة $8.0\\text{ m/s}$ تتصادم وتلتصق بكتلة ساكنة $2.5\\text{ kg}$. ثم تنزلق الكتلة المجمّعة على سطح معامل احتكاكه الحركي $\\mu_k=0.30$. خذ $g=9.8\\text{ m/s}^2$. ما المسافة التي تقطعها الكتلة المجمّعة قبل التوقف؟",
+   "q_en": "A $1.5\\text{ kg}$ block sliding at $8.0\\text{ m/s}$ collides and sticks to a stationary $2.5\\text{ kg}$ block. The combined mass then slides across a surface with coefficient of kinetic friction $\\mu_k=0.30$. Take $g=9.8\\text{ m/s}^2$. How far does the combined mass travel before stopping?",
+   "a_ar": "أولاً نحفظ الزخم في التصادم عديم المرونة تماماً: $V=\\frac{m_1u}{m_1+m_2}=\\frac{1.5\\times8}{4.0}=3.0\\text{ m/s}$. ثم نطبّق الشغل-الطاقة مع الاحتكاك: $\\tfrac12(m_1+m_2)V^2=\\mu_k(m_1+m_2)g\\,d$، إذن $d=\\frac{V^2}{2\\mu_k g}=\\frac{9}{2(0.30)(9.8)}\\approx1.53\\text{ m}$.",
+   "a_en": "First, conserve momentum in the perfectly inelastic collision: $V=\\frac{m_1u}{m_1+m_2}=\\frac{1.5\\times8}{4.0}=3.0\\text{ m/s}$. Then apply work-energy with friction: $\\tfrac12(m_1+m_2)V^2=\\mu_k(m_1+m_2)g\\,d$, so $d=\\frac{V^2}{2\\mu_k g}=\\frac{9}{2(0.30)(9.8)}\\approx1.53\\text{ m}$.",
+   "answer": "$d \\approx 1.53\\text{ m}$",
+   "keywords": [
+    "perfectly inelastic",
+    "تصادم عديم المرونة",
+    "kinetic friction",
+    "احتكاك حركي",
+    "stopping distance",
+    "مسافة التوقف",
+    "حفظ الزخم"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "كرة كتلتها $0.50\\text{ kg}$ تتحرك بسرعة $4.0\\text{ m/s}$ تتصادم تصادماً مرناً مع كرة مماثلة ساكنة. بعد التصادم تنحرف الكرة الساقطة بزاوية $30^\\circ$ عن اتجاهها الأصلي. أوجد سرعة كل كرة بعد التصادم واتجاه الكرة المصدومة.",
+   "q_en": "A ball of mass $0.50\\text{ kg}$ moving at $4.0\\text{ m/s}$ collides elastically with an identical stationary ball. After the collision the incident ball is deflected $30^\\circ$ from its original direction. Find the speed of each ball after the collision and the direction of the struck ball.",
+   "a_ar": "في التصادم المرن ثنائي البعد بين كتلتين متساويتين (إحداهما ساكنة ابتداءً)، تكون السرعتان الناتجتان متعامدتين دائماً. لذا تتحرك الكرة المصدومة بزاوية $90^\\circ-30^\\circ=60^\\circ$ على الجهة المقابلة. تُوجد السرعتان من مركّبات الزخم: $v_1=u\\cos30^\\circ=4(0.866)=3.46\\text{ m/s}$ و $v_2=u\\sin30^\\circ=4(0.5)=2.0\\text{ m/s}$. التحقق: $v_1^2+v_2^2=12+4=16=u^2$، مما يؤكد حفظ الطاقة الحركية.",
+   "a_en": "For a 2D elastic collision between equal masses (one initially at rest), the two outgoing velocities are always perpendicular. Hence the struck ball moves at $90^\\circ-30^\\circ=60^\\circ$ on the opposite side. The speeds follow from momentum components: $v_1=u\\cos30^\\circ=4(0.866)=3.46\\text{ m/s}$ and $v_2=u\\sin30^\\circ=4(0.5)=2.0\\text{ m/s}$. Check: $v_1^2+v_2^2=12+4=16=u^2$, confirming kinetic energy is conserved.",
+   "answer": "$v_1=2\\sqrt{3}\\approx3.46\\text{ m/s}$ at $30^\\circ$; $v_2=2.0\\text{ m/s}$ at $60^\\circ$ (opposite side); the two paths are perpendicular",
+   "keywords": [
+    "2D elastic collision",
+    "تصادم مرن ثنائي البعد",
+    "equal masses",
+    "كتل متساوية",
+    "perpendicular",
+    "تعامد المسارين",
+    "glancing collision",
+    "حفظ الزخم"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "تُطلَق رصاصة كتلتها $m=10\\text{ g}$ أفقياً فتغرز في الطرف السفلي الحر لقضيب منتظم كتلته $M=1\\text{ kg}$ وطوله $L=1\\text{ m}$، معلَّق رأسياً ومثبَّت بمِفصل عند طرفه العلوي (بلا احتكاك). خذ $g=9.8\\text{ m/s}^2$. أوجد أقل سرعة للرصاصة كي يُكمِل القضيب (مع الرصاصة المغروزة) دورة رأسية كاملة حول المفصل.",
+   "q_en": "A bullet of mass $m=10\\text{ g}$ is fired horizontally and embeds itself in the lower free end of a uniform rod of mass $M=1\\text{ kg}$ and length $L=1\\text{ m}$ that hangs vertically and is pivoted at its top end (frictionless). Take $g=9.8\\text{ m/s}^2$. Find the minimum bullet speed so that the rod (with the embedded bullet) just completes a full vertical rotation about the pivot.",
+   "a_ar": "الغرز تصادم غير مرن، لذا نستخدم حفظ الزخم الزاوي حول المفصل: $m v L = I\\omega$ حيث $I=\\tfrac{1}{3}ML^2+mL^2=L^2(\\tfrac{M}{3}+m)$. لإكمال الدورة بالكاد يجب أن تتحول كل الطاقة الحركية الدورانية إلى ازدياد طاقة الوضع في الوضع المقلوب: يرتفع مركز كتلة القضيب بمقدار $L$ والرصاصة بمقدار $2L$، فيكون $\\tfrac12 I\\omega^2 = (M+2m)gL$. بحذف $\\omega$ نحصل على $v=\\dfrac{\\sqrt{2gL(\\tfrac{M}{3}+m)(M+2m)}}{m}$، وبالتعويض $v\\approx 262\\text{ m/s}$.",
+   "a_en": "The embedding is inelastic, so use angular-momentum conservation about the pivot: $m v L = I\\omega$ with $I=\\tfrac{1}{3}ML^2+mL^2=L^2(\\tfrac{M}{3}+m)$. To just complete the circle, all rotational KE must convert to the PE rise of the inverted configuration: the rod's COM rises by $L$ and the bullet by $2L$, so $\\tfrac12 I\\omega^2 = (M+2m)gL$. Eliminating $\\omega$ gives $v=\\dfrac{\\sqrt{2gL(\\tfrac{M}{3}+m)(M+2m)}}{m}$. Substituting yields $v\\approx 262\\text{ m/s}$.",
+   "answer": "$v=\\dfrac{\\sqrt{2gL\\left(\\tfrac{M}{3}+m\\right)(M+2m)}}{m}\\approx 262\\text{ m/s}$",
+   "keywords": [
+    "ballistic pendulum",
+    "قضيب صلب",
+    "angular momentum",
+    "الزخم الزاوي",
+    "full circle",
+    "لحظة القصور الذاتي",
+    "conservation of energy"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "تستقر كرة صغيرة كتلتها $m$ فوق كرة أكبر كتلتها $M=3m$ مباشرة؛ يُترك الزوج من السكون فيسقطان معاً مسافة $h$ ويصلان الأرض بسرعة $v=\\sqrt{2gh}$. ترتد الكرة الكبيرة مرونياً عن الأرض (فتنعكس سرعتها) ثم تصطدم تصادماً مرونياً أحادي البُعد بالكرة الصغيرة التي ما زالت تهبط بسرعة $v$. باعتبار الكرتين نقطيتين، أوجد أقصى ارتفاع تبلغه الكرة الصغيرة، واذكر الحدّ الأقصى النظري للارتفاع عندما $M/m\\to\\infty$.",
+   "q_en": "A small ball of mass $m$ rests directly on top of a larger ball of mass $M=3m$; the pair is released from rest so both fall together through height $h$ and reach the ground with speed $v=\\sqrt{2gh}$. The large ball bounces elastically off the floor (reversing its velocity) and then collides elastically, one-dimensionally, with the small ball still moving down at $v$. Treating the balls as point masses, find the maximum height the small ball rises to, and state the theoretical maximum height as the mass ratio $M/m\\to\\infty$.",
+   "a_ar": "قبيل التصادم الثاني تتحرك الكرة الكبيرة لأعلى بسرعة $+v$ والصغيرة لأسفل بسرعة $-v$. في التصادم المرن أحادي البُعد تكون سرعة الكرة الصغيرة النهائية $v'=\\dfrac{(m-M)(-v)+2M(+v)}{M+m}=\\dfrac{(3M-m)}{M+m}\\,v$. وبوضع $M=3m$: $v'=\\dfrac{8m}{4m}v=2v$، فترتفع إلى $H=\\dfrac{v'^2}{2g}=4h$. وعندما $M/m\\to\\infty$ يصبح $v'\\to 3v$ و $H\\to 9h$.",
+   "a_en": "Just before the second collision the large ball moves up at $+v$ and the small ball down at $-v$. For a 1-D elastic collision the small ball's final speed is $v'=\\dfrac{(m-M)(-v)+2M(+v)}{M+m}=\\dfrac{(3M-m)}{M+m}\\,v$. With $M=3m$: $v'=\\dfrac{8m}{4m}v=2v$, so it rises to $H=\\dfrac{v'^2}{2g}=4h$. As $M/m\\to\\infty$, $v'\\to 3v$ and $H\\to 9h$.",
+   "answer": "$H=4h$ (for $M=3m$); theoretical maximum $H\\to 9h$ as $M/m\\to\\infty$",
+   "keywords": [
+    "two-ball drop",
+    "تصادم مرن",
+    "elastic collision",
+    "كرتان متراكبتان",
+    "superball",
+    "ارتفاع الارتداد",
+    "momentum"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "ينزلق كتلة $m=1\\text{ kg}$ على السطح المائل الأملس (بزاوية $\\alpha=30^\\circ$) لإسفين كتلته $M=2\\text{ kg}$ حرّ الحركة على أرض أفقية ملساء. انطلاقاً من السكون، وبعد أن يهبط الكتلة ارتفاعاً رأسياً $h=1\\text{ m}$، أوجد سرعة ارتداد الإسفين. خذ $g=9.8\\text{ m/s}^2$.",
+   "q_en": "A block of mass $m=1\\text{ kg}$ slides down the frictionless incline (angle $\\alpha=30^\\circ$) of a wedge of mass $M=2\\text{ kg}$ that is free to slide on a frictionless horizontal floor. Starting from rest, after the block has descended a vertical height $h=1\\text{ m}$, find the recoil speed of the wedge. Take $g=9.8\\text{ m/s}^2$.",
+   "a_ar": "يُحفَظ الزخم الأفقي (صفر ابتداءً). ليكن $u$ سرعة الكتلة نسبةً إلى الإسفين على طول المائل و $V$ سرعة الإسفين. يعطي الزخم $V=\\dfrac{m u\\cos\\alpha}{M+m}$. وبعد تعويض مركّبات سرعة الكتلة في إطار الأرض، يُختزل حفظ الطاقة إلى $u^2=\\dfrac{2gh(M+m)}{M+m\\sin^2\\alpha}$. ومنه $V=m\\cos\\alpha\\sqrt{\\dfrac{2gh}{(M+m)(M+m\\sin^2\\alpha)}}$. عددياً $u\\approx5.11\\text{ m/s}$ و $V\\approx 1.48\\text{ m/s}$.",
+   "a_en": "Horizontal momentum is conserved (zero initially). Let $u$ be the block's speed relative to the wedge along the incline and $V$ the wedge speed. Momentum gives $V=\\dfrac{m u\\cos\\alpha}{M+m}$. Energy conservation, after substituting the block's ground-frame velocity components, reduces to $u^2=\\dfrac{2gh(M+m)}{M+m\\sin^2\\alpha}$. Hence $V=m\\cos\\alpha\\sqrt{\\dfrac{2gh}{(M+m)(M+m\\sin^2\\alpha)}}$. Numerically $u\\approx5.11\\text{ m/s}$ and $V\\approx 1.48\\text{ m/s}$.",
+   "answer": "$V=m\\cos\\alpha\\sqrt{\\dfrac{2gh}{(M+m)(M+m\\sin^2\\alpha)}}\\approx 1.48\\text{ m/s}$",
+   "keywords": [
+    "movable wedge",
+    "إسفين متحرك",
+    "conservation of momentum",
+    "حفظ الزخم",
+    "frictionless",
+    "سرعة الارتداد",
+    "relative velocity"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "سلسلة مرنة منتظمة كتلتها الكلية $M$ وطولها $L$ (كثافة طولية $\\lambda=M/L$) تُمسَك رأسياً وطرفها السفلي يلامس طاولة بالكاد، ثم تُترَك من السكون. بافتراض أن كل حلقة تتوقف فوراً عند الاصطدام وأن الحلقات فوقها تسقط سقوطاً حراً، أوجد القوة الكلية التي تؤثر بها السلسلة على الطاولة عند اللحظة التي تكون فيها قد تراكم عليها طول $x$.",
+   "q_en": "A uniform flexible chain of total mass $M$ and length $L$ (linear density $\\lambda=M/L$) is held vertically with its lower end just touching a table, then released from rest. Assuming each link comes instantly to rest on impact and links above fall freely, find the total force the chain exerts on the table at the instant a length $x$ has already piled on it.",
+   "a_ar": "لقوة الطاولة جزآن: الوزن الساكن للجزء المتراكم $W=\\lambda x g$، إضافةً إلى ردّ فعل تدفّق زخم الحلقات الواصلة. تصل الحلقات إلى الطاولة بسرعة $v=\\sqrt{2gx}$ (سقوط حرّ خلال $x$)؛ وتصل الكتلة بمعدّل $\\dfrac{dm}{dt}=\\lambda v$، فتُنتج دفعاً $F_{\\text{imp}}=v\\dfrac{dm}{dt}=\\lambda v^2=\\lambda(2gx)=2\\lambda x g$. وبالجمع تكون القوة الكلية $F=\\lambda x g+2\\lambda x g=3\\lambda x g=\\dfrac{3Mxg}{L}$ — أي ثلاثة أمثال وزن السلسلة المتراكمة.",
+   "a_en": "The table force has two parts: the static weight of the piled portion, $W=\\lambda x g$, plus the reaction to the momentum flux of arriving links. Links reach the table with speed $v=\\sqrt{2gx}$ (free fall through $x$); mass arrives at rate $\\dfrac{dm}{dt}=\\lambda v$, delivering thrust $F_{\\text{imp}}=v\\dfrac{dm}{dt}=\\lambda v^2=\\lambda(2gx)=2\\lambda x g$. Adding, the total force is $F=\\lambda x g+2\\lambda x g=3\\lambda x g=\\dfrac{3Mxg}{L}$ — three times the weight of the chain already down.",
+   "answer": "$F=3\\lambda x g=\\dfrac{3Mxg}{L}$ (three times the weight of the fallen part)",
+   "keywords": [
+    "falling chain",
+    "سلسلة ساقطة",
+    "variable mass",
+    "الكتلة المتغيرة",
+    "momentum flux",
+    "قوة الطاولة",
+    "dm/dt"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "جُسيم كتلته $m_1$ يتحرك بسرعة $v_0$ يصطدم تصادماً مرونياً بجُسيم ساكن كتلته $m_2<m_1$. ولأن القذيفة أثقل، لا يمكنها الاستطارة بزوايا اعتباطية. اشتق أكبر زاوية استطارة ممكنة $\\theta_{\\max}$ للجُسيم $m_1$ في إطار المختبر، ثم احسبها عند $m_1=4m_2$.",
+   "q_en": "A particle of mass $m_1$ moving with speed $v_0$ collides elastically with a stationary particle of mass $m_2<m_1$. Because the projectile is heavier, it cannot scatter through arbitrary angles. Derive the maximum possible lab-frame scattering angle $\\theta_{\\max}$ of $m_1$, and evaluate it for $m_1=4m_2$.",
+   "a_ar": "في إطار مركز الكتلة يستطير $m_1$ بزاوية $\\phi$ محتفظاً بسرعته في ذلك الإطار. وبالتحويل إلى إطار المختبر: $\\tan\\theta=\\dfrac{\\sin\\phi}{\\cos\\phi+ (m_1/m_2)}$ (لأن سرعة مركز الكتلة تساوي سرعة $m_1$ في إطار المركز مضروبة في $m_1/m_2$). وبتعظيم المقدار على $\\phi$ نجد $\\cos\\phi=-m_2/m_1$، ومنه $\\sin\\theta_{\\max}=\\dfrac{m_2}{m_1}$. وعند $m_1=4m_2$: $\\sin\\theta_{\\max}=\\tfrac14$، أي $\\theta_{\\max}=\\arcsin(0.25)\\approx 14.5^\\circ$.",
+   "a_en": "In the center-of-mass frame $m_1$ scatters through angle $\\phi$ keeping its CM speed. Transforming to the lab, $\\tan\\theta=\\dfrac{\\sin\\phi}{\\cos\\phi+ (m_1/m_2)}$ (since the CM speed equals $m_1$'s CM-frame speed times $m_1/m_2$). Maximizing over $\\phi$ gives $\\cos\\phi=-m_2/m_1$, and then $\\sin\\theta_{\\max}=\\dfrac{m_2}{m_1}$. For $m_1=4m_2$: $\\sin\\theta_{\\max}=\\tfrac14$, so $\\theta_{\\max}=\\arcsin(0.25)\\approx 14.5^\\circ$.",
+   "answer": "$\\sin\\theta_{\\max}=\\dfrac{m_2}{m_1}$; for $m_1=4m_2$, $\\theta_{\\max}=\\arcsin(1/4)\\approx 14.5^\\circ$",
+   "keywords": [
+    "elastic scattering",
+    "زاوية الاستطارة",
+    "maximum angle",
+    "إطار مركز الكتلة",
+    "center of mass",
+    "heavy projectile",
+    "sin theta = m2/m1"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

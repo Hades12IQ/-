@@ -1,0 +1,169 @@
+{
+ "subject": "science",
+ "topic": "phys-kinematics",
+ "title": "phys-kinematics — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "يُقذف جسم من قاعدة مستوٍ مائل يصنع زاوية $\\beta = 30^\\circ$ مع الأفق، بسرعة إطلاق $v_0 = 20\\ \\text{m/s}$ (خذ $g = 9.8\\ \\text{m/s}^2$). أوجد زاوية الإطلاق (مقيسة من الأفق) التي تجعل المدى المقيس على طول المستوى المائل أعظميًا، وقيمة ذلك المدى الأعظمي.",
+   "q_en": "A projectile is launched from the base of an incline that makes an angle $\\beta = 30^\\circ$ with the horizontal, with launch speed $v_0 = 20\\ \\text{m/s}$ (take $g = 9.8\\ \\text{m/s}^2$). Find the launch angle (measured from the horizontal) that maximizes the range measured along the incline, and the value of that maximum range.",
+   "a_ar": "المدى على طول المستوى هو $R=\\dfrac{2v_0^2\\cos\\theta\\,\\sin(\\theta-\\beta)}{g\\cos^2\\beta}$. بتعظيمه بالنسبة إلى $\\theta$ نحصل على زاوية الإطلاق المثلى $\\theta=45^\\circ+\\tfrac{\\beta}{2}=60^\\circ$ (وهي تنصّف الزاوية بين المستوى المائل والعمودي). يُختزل المدى الأعظمي إلى $R_{\\max}=\\dfrac{v_0^2}{g(1+\\sin\\beta)}=\\dfrac{400}{9.8(1.5)}\\approx 27.2\\ \\text{m}$.",
+   "a_en": "Along the incline the range is $R=\\dfrac{2v_0^2\\cos\\theta\\,\\sin(\\theta-\\beta)}{g\\cos^2\\beta}$. Maximizing over $\\theta$ gives the optimal launch angle $\\theta=45^\\circ+\\tfrac{\\beta}{2}=60^\\circ$ (it bisects the incline and the vertical). The maximum range reduces to $R_{\\max}=\\dfrac{v_0^2}{g(1+\\sin\\beta)}=\\dfrac{400}{9.8(1.5)}\\approx 27.2\\ \\text{m}$.",
+   "answer": "$\\theta = 60^\\circ$, $R_{\\max} = \\dfrac{v_0^2}{g(1+\\sin\\beta)} \\approx 27.2\\ \\text{m}$",
+   "keywords": [
+    "projectile on incline",
+    "مقذوف على مستوى مائل",
+    "أقصى مدى",
+    "optimal launch angle",
+    "المدى الأعظمي",
+    "range up incline"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "نهر عرضه $d = 100\\ \\text{m}$ يجري بتيار منتظم سرعته $v_r = 3\\ \\text{m/s}$. يستطيع قارب أن يتحرك بسرعة $v_b = 5\\ \\text{m/s}$ بالنسبة إلى الماء. (أ) إذا وُجِّه القارب ليصل إلى النقطة المقابلة تمامًا لنقطة البداية على الضفة الأخرى، فبأي زاوية بالنسبة إلى اتجاه العبور المستقيم يجب توجيهه (نحو أعلى النهر)، وكم يستغرق العبور؟ (ب) أمّا إذا وُجِّه عموديًا على الضفة مباشرةً لتحقيق أقل زمن عبور، فكم ينحرف عن مساره نحو أسفل النهر؟",
+   "q_en": "A river of width $d = 100\\ \\text{m}$ flows with a uniform current of speed $v_r = 3\\ \\text{m/s}$. A boat can move at $v_b = 5\\ \\text{m/s}$ relative to the water. (a) If the boat is steered to reach the point directly opposite the start on the far bank, at what angle relative to the straight-across direction must it head (upstream), and how long does the crossing take? (b) If instead the boat is steered straight across (perpendicular to the bank) for the minimum crossing time, how far downstream does it drift?",
+   "a_ar": "(أ) للوصول إلى النقطة المقابلة تمامًا يجب أن يلغي المركّب نحو أعلى النهر التيار: $v_b\\sin\\theta=v_r$، فتكون $\\theta=\\arcsin(3/5)=36.87^\\circ$. سرعة العبور الفعّالة هي $\\sqrt{v_b^2-v_r^2}=4\\ \\text{m/s}$، فيكون زمن العبور $t=100/4=25\\ \\text{s}$. (ب) بالتوجيه عموديًا مباشرةً يكون الزمن $=d/v_b=100/5=20\\ \\text{s}$، والانحراف نحو أسفل النهر هو $v_r t=3\\times20=60\\ \\text{m}$.",
+   "a_en": "(a) To land directly opposite, the upstream component must cancel the current: $v_b\\sin\\theta=v_r$, so $\\theta=\\arcsin(3/5)=36.87^\\circ$. The effective crossing speed is $\\sqrt{v_b^2-v_r^2}=4\\ \\text{m/s}$, giving crossing time $t=100/4=25\\ \\text{s}$. (b) Heading straight across, time $=d/v_b=100/5=20\\ \\text{s}$, and the downstream drift is $v_r t=3\\times20=60\\ \\text{m}$.",
+   "answer": "(a) $\\theta = 36.87^\\circ$ upstream, $t = 25\\ \\text{s}$; (b) drift $= 60\\ \\text{m}$ in $t = 20\\ \\text{s}$",
+   "keywords": [
+    "relative velocity",
+    "عبور النهر",
+    "السرعة النسبية",
+    "river crossing",
+    "انحراف التيار",
+    "boat and current"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "تُقذف كرة من مستوى الأرض ويجب أن تمرّ فوق الركن العلوي لجدار يقع على مسافة أفقية $x = 10\\ \\text{m}$ وارتفاع $y = 4\\ \\text{m}$ من نقطة الإطلاق (خذ $g = 9.8\\ \\text{m/s}^2$). أوجد أقل سرعة إطلاق يمكن بها للمسار أن يبلغ تلك النقطة، وزاوية الإطلاق المقابلة.",
+   "q_en": "A ball is thrown from ground level and must pass over the top corner of a wall located at horizontal distance $x = 10\\ \\text{m}$ and height $y = 4\\ \\text{m}$ from the launch point (take $g = 9.8\\ \\text{m/s}^2$). Find the minimum launch speed for which the trajectory can reach that point, and the corresponding launch angle.",
+   "a_ar": "أقل سرعة لبلوغ هدف $(x,y)$ تحقق $v_0^2=g\\left(y+\\sqrt{x^2+y^2}\\right)$. هنا $\\sqrt{x^2+y^2}=\\sqrt{116}=10.77\\ \\text{m}$، إذن $v_0^2=9.8(4+10.77)=144.75$، فتكون $v_0\\approx 12.03\\ \\text{m/s}$. وزاوية الإطلاق المثلى هي $\\theta=\\arctan\\!\\dfrac{y+\\sqrt{x^2+y^2}}{x}=\\arctan(1.477)\\approx 55.9^\\circ$.",
+   "a_en": "The minimum speed to reach a target $(x,y)$ satisfies $v_0^2=g\\left(y+\\sqrt{x^2+y^2}\\right)$. Here $\\sqrt{x^2+y^2}=\\sqrt{116}=10.77\\ \\text{m}$, so $v_0^2=9.8(4+10.77)=144.75$, giving $v_0\\approx 12.03\\ \\text{m/s}$. The optimal launch angle is $\\theta=\\arctan\\!\\dfrac{y+\\sqrt{x^2+y^2}}{x}=\\arctan(1.477)\\approx 55.9^\\circ$.",
+   "answer": "$v_0 = \\sqrt{g\\left(y+\\sqrt{x^2+y^2}\\right)} \\approx 12.03\\ \\text{m/s}$, $\\theta \\approx 55.9^\\circ$",
+   "keywords": [
+    "minimum launch speed",
+    "أقل سرعة إطلاق",
+    "clearing a wall",
+    "تجاوز الجدار",
+    "projectile target point",
+    "optimal angle"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في اللحظة التي يمرّ فيها حافلة تتحرك بسرعة ثابتة $v = 10\\ \\text{m/s}$ بجانب سيارة ساكنة، تبدأ السيارة بالتسارع بانتظام من السكون بمعدل $a = 2\\ \\text{m/s}^2$ في الاتجاه نفسه. (أ) بعد كم من الزمن من البداية تلحق السيارة بالحافلة، وكم تكون قد قطعت من مسافة عندئذٍ؟ (ب) ما أقصى مسافة تتقدّم بها الحافلة على السيارة، وفي أي لحظة زمنية يحدث ذلك؟",
+   "q_en": "At the instant a bus moving at a constant $v = 10\\ \\text{m/s}$ passes a car at rest, the car begins to accelerate uniformly from rest at $a = 2\\ \\text{m/s}^2$ in the same direction. (a) How long after the start does the car catch up with the bus, and how far has it travelled by then? (b) What is the maximum distance by which the bus leads the car, and at what time does this occur?",
+   "a_ar": "(أ) تلحق السيارة بالحافلة عندما $\\tfrac12 a t^2 = v t$، أي $t=\\dfrac{2v}{a}=\\dfrac{20}{2}=10\\ \\text{s}$، وتكون قد قطعت $v t = 100\\ \\text{m}$. (ب) تكون الفجوة $s_{حافلة}-s_{سيارة}=vt-\\tfrac12 a t^2$ عظمى عندما تتساوى السرعتان، $at=v\\Rightarrow t=v/a=5\\ \\text{s}$. وأقصى تقدّم هو $10(5)-\\tfrac12(2)(25)=50-25=25\\ \\text{m}$.",
+   "a_en": "(a) The car catches the bus when $\\tfrac12 a t^2 = v t$, i.e. $t=\\dfrac{2v}{a}=\\dfrac{20}{2}=10\\ \\text{s}$, having travelled $v t = 100\\ \\text{m}$. (b) The gap $s_{bus}-s_{car}=vt-\\tfrac12 a t^2$ is maximal when their speeds are equal, $at=v\\Rightarrow t=v/a=5\\ \\text{s}$. The maximum lead is $10(5)-\\tfrac12(2)(25)=50-25=25\\ \\text{m}$.",
+   "answer": "(a) $t = 10\\ \\text{s}$, distance $= 100\\ \\text{m}$; (b) max lead $= 25\\ \\text{m}$ at $t = 5\\ \\text{s}$",
+   "keywords": [
+    "catching up",
+    "حركة في بُعد واحد",
+    "تسارع منتظم",
+    "uniform acceleration",
+    "أقصى فجوة",
+    "car and bus"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "عند $t=0$ تقع السفينة $B$ عند الموضع $(10, 20)\\ \\text{km}$ بالنسبة إلى السفينة $A$. تتحرك السفينة $A$ بسرعة متجهة $(30, 0)\\ \\text{km/h}$ وتتحرك السفينة $B$ بسرعة متجهة $(26, -3)\\ \\text{km/h}$. باعتبار الحركتين منتظمتين، أوجد زمن أقرب اقتراب وأقل مسافة بين السفينتين.",
+   "q_en": "At $t=0$, ship $B$ is located at position $(10, 20)\\ \\text{km}$ relative to ship $A$. Ship $A$ moves with velocity $(30, 0)\\ \\text{km/h}$ and ship $B$ moves with velocity $(26, -3)\\ \\text{km/h}$. Treating the motions as uniform, find the time of closest approach and the minimum distance between the ships.",
+   "a_ar": "نعمل في إطار السفينة $A$: الموضع النسبي $\\mathbf{r}_0=(10,20)$ والسرعة النسبية $\\mathbf{v}_{rel}=\\mathbf{v}_B-\\mathbf{v}_A=(-4,-3)\\ \\text{km/h}$، ومقدارها $|\\mathbf{v}_{rel}|=5$. يحدث أقرب اقتراب عند $t=-\\dfrac{\\mathbf{r}_0\\cdot\\mathbf{v}_{rel}}{|\\mathbf{v}_{rel}|^2}=-\\dfrac{(-40-60)}{25}=4\\ \\text{h}$. عندئذٍ $\\mathbf{r}=(10-16,\\,20-12)=(-6,8)$، فتكون أقل مسافة $\\sqrt{36+64}=10\\ \\text{km}$.",
+   "a_en": "Work in $A$'s frame: relative position $\\mathbf{r}_0=(10,20)$ and relative velocity $\\mathbf{v}_{rel}=\\mathbf{v}_B-\\mathbf{v}_A=(-4,-3)\\ \\text{km/h}$, with $|\\mathbf{v}_{rel}|=5$. The closest approach occurs at $t=-\\dfrac{\\mathbf{r}_0\\cdot\\mathbf{v}_{rel}}{|\\mathbf{v}_{rel}|^2}=-\\dfrac{(-40-60)}{25}=4\\ \\text{h}$. Then $\\mathbf{r}=(10-16,\\,20-12)=(-6,8)$, so the minimum distance is $\\sqrt{36+64}=10\\ \\text{km}$.",
+   "answer": "$t = 4\\ \\text{h}$, minimum distance $= 10\\ \\text{km}$",
+   "keywords": [
+    "closest approach",
+    "أقرب اقتراب",
+    "السرعة النسبية",
+    "relative velocity",
+    "minimum distance",
+    "two ships"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يُقذَف جسم من أسفل مستوٍ مائل بزاوية $\\beta = 30^\\circ$ عن الأفق، بسرعة $v = 20\\,\\text{m/s}$. بأخذ $g = 9.8\\,\\text{m/s}^2$، أوجد زاوية القذف (مقيسة عن الأفق) التي تجعل المدى المقيس على طول المستوى المائل أعظمياً، ثم احسب هذا المدى الأعظمي.",
+   "q_en": "A projectile is launched from the foot of a plane inclined at $\\beta = 30^\\circ$ to the horizontal, with speed $v = 20\\,\\text{m/s}$. Taking $g = 9.8\\,\\text{m/s}^2$, find the launch angle (measured from the horizontal) that maximizes the range measured along the incline, and compute that maximum range.",
+   "a_ar": "بتدوير المحاور على طول المستوى المائل يكون المدى $R=\\dfrac{2v^2\\cos\\theta\\,\\sin(\\theta-\\beta)}{g\\cos^2\\beta}$. يكون أعظمياً عند $\\theta=45^\\circ+\\tfrac{\\beta}{2}=60^\\circ$، أي أن متجه القذف ينصّف الزاوية بين المستوى المائل والعمودي. ويبسّط المدى الأعظمي إلى $R_{\\max}=\\dfrac{v^2}{g(1+\\sin\\beta)}=\\dfrac{400}{9.8\\times1.5}\\approx 27.2\\,\\text{m}$.",
+   "a_en": "Rotating axes along the incline, the range is $R=\\dfrac{2v^2\\cos\\theta\\,\\sin(\\theta-\\beta)}{g\\cos^2\\beta}$. This is maximized when $\\theta=45^\\circ+\\tfrac{\\beta}{2}=60^\\circ$, i.e. the launch velocity bisects the incline and the vertical. The maximum range simplifies to $R_{\\max}=\\dfrac{v^2}{g(1+\\sin\\beta)}=\\dfrac{400}{9.8\\times1.5}\\approx 27.2\\,\\text{m}$.",
+   "answer": "$\\theta=60^\\circ$, $R_{\\max}=\\dfrac{v^2}{g(1+\\sin\\beta)}\\approx 27.2\\,\\text{m}$",
+   "keywords": [
+    "projectile on incline",
+    "مدى على مستوٍ مائل",
+    "زاوية القذف المثلى",
+    "optimal launch angle",
+    "range maximization",
+    "قذائف"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "عند $t=0$ تقع السفينة $B$ على بُعد $10\\,\\text{km}$ شرق السفينة $A$. تُبحر $A$ شمالاً بسرعة $20\\,\\text{km/h}$، وتُبحر $B$ بمتجه سرعة $(-10,\\,10)\\,\\text{km/h}$ (مركّبة غرباً وأخرى شمالاً). باستخدام السرعة النسبية، أوجد زمن أقرب اقتراب وأقل مسافة فاصلة بين السفينتين.",
+   "q_en": "At $t=0$, ship $B$ is $10\\,\\text{km}$ due east of ship $A$. Ship $A$ sails due north at $20\\,\\text{km/h}$; ship $B$ sails with velocity $(-10,\\,10)\\,\\text{km/h}$ (west and north components). Using relative velocity, find the time of closest approach and the minimum separation between the ships.",
+   "a_ar": "الموضع النسبي $\\vec r_0=\\vec r_B-\\vec r_A=(10,0)$ والسرعة النسبية $\\vec v_{rel}=\\vec v_B-\\vec v_A=(-10,-10)$. يحدث أقرب اقتراب عند $t=-\\dfrac{\\vec r_0\\cdot\\vec v_{rel}}{|\\vec v_{rel}|^2}=\\dfrac{100}{200}=0.5\\,\\text{h}$. والمسافة عندها $|\\vec r_0+\\vec v_{rel}t|=|(5,-5)|=5\\sqrt2\\approx7.07\\,\\text{km}$.",
+   "a_en": "Relative position $\\vec r_0=\\vec r_B-\\vec r_A=(10,0)$ and relative velocity $\\vec v_{rel}=\\vec v_B-\\vec v_A=(-10,-10)$. Closest approach occurs at $t=-\\dfrac{\\vec r_0\\cdot\\vec v_{rel}}{|\\vec v_{rel}|^2}=\\dfrac{100}{200}=0.5\\,\\text{h}$. The separation there is $|\\vec r_0+\\vec v_{rel}t|=|(5,-5)|=5\\sqrt2\\approx7.07\\,\\text{km}$.",
+   "answer": "$t=0.5\\,\\text{h}$ (30 min), $d_{\\min}=5\\sqrt2\\approx7.07\\,\\text{km}$",
+   "keywords": [
+    "relative velocity",
+    "السرعة النسبية",
+    "closest approach",
+    "أقرب اقتراب",
+    "ship collision",
+    "أقل مسافة"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يقع هدف على مسافة أفقية $d=30\\,\\text{m}$ وارتفاع $h=10\\,\\text{m}$ فوق نقطة القذف. بأخذ $g=9.8\\,\\text{m/s}^2$، أوجد أقل سرعة قذف لازمة ليصل المقذوف إلى الهدف، وزاوية القذف عند هذه السرعة الدنيا.",
+   "q_en": "A target is located at horizontal distance $d=30\\,\\text{m}$ and height $h=10\\,\\text{m}$ above the launch point. With $g=9.8\\,\\text{m/s}^2$, find the minimum launch speed required for a projectile to reach the target, and the launch angle at that minimum speed.",
+   "a_ar": "لهدف ثابت، تحقّق مسار السرعة الدنيا $v_{\\min}^2=g\\left(h+\\sqrt{d^2+h^2}\\right)$، ويكون متجه القذف منصّفاً للزاوية بين العمودي وخطّ النظر إلى الهدف: $\\tan\\theta=\\dfrac{h+\\sqrt{d^2+h^2}}{d}$. عددياً $v_{\\min}=\\sqrt{9.8(10+\\sqrt{1000})}\\approx20.2\\,\\text{m/s}$ عند $\\theta\\approx54.2^\\circ$.",
+   "a_en": "For a fixed target the minimum-speed trajectory satisfies $v_{\\min}^2=g\\left(h+\\sqrt{d^2+h^2}\\right)$, and the launch velocity bisects the vertical and the line of sight to the target: $\\tan\\theta=\\dfrac{h+\\sqrt{d^2+h^2}}{d}$. Numerically $v_{\\min}=\\sqrt{9.8(10+\\sqrt{1000})}\\approx20.2\\,\\text{m/s}$ at $\\theta\\approx54.2^\\circ$.",
+   "answer": "$v_{\\min}=\\sqrt{g\\left(h+\\sqrt{d^2+h^2}\\right)}\\approx20.2\\,\\text{m/s}$, $\\theta\\approx54.2^\\circ$",
+   "keywords": [
+    "minimum launch speed",
+    "أقل سرعة قذف",
+    "projectile target",
+    "hit a point",
+    "إصابة هدف",
+    "زاوية مثلى"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "نهر عرضه $w=200\\,\\text{m}$ يجري بتيّار سرعته $u=5\\,\\text{m/s}$. يتحرك قارب بسرعة $v=3\\,\\text{m/s}$ نسبةً إلى الماء (أي $v<u$ فلا يمكن بلوغ الضفة المقابلة عبوراً مستقيماً). أوجد اتجاه توجيه القارب الذي يُصغّر الانحراف مع التيّار، وقيمة هذا الانحراف الأدنى.",
+   "q_en": "A river of width $w=200\\,\\text{m}$ flows with current speed $u=5\\,\\text{m/s}$. A boat can move at $v=3\\,\\text{m/s}$ relative to the water (so $v<u$ and the far bank cannot be reached straight across). Find the heading that minimizes the downstream drift, and the value of that minimum drift.",
+   "a_ar": "ليكن القارب موجَّهاً بميلٍ نحو المنبع بزاوية $\\theta$ عن اتجاه العبور المستقيم؛ فيكون الانحراف $x=\\dfrac{w(u-v\\sin\\theta)}{v\\cos\\theta}$. وبوضع $dx/d\\theta=0$ نجد $\\sin\\theta=\\dfrac{v}{u}=0.6$، أي $\\theta=\\arcsin(0.6)\\approx36.87^\\circ$ نحو المنبع. والانحراف الأدنى $x_{\\min}=\\dfrac{w\\sqrt{u^2-v^2}}{v}=\\dfrac{200\\times4}{3}=\\dfrac{800}{3}\\approx266.7\\,\\text{m}$.",
+   "a_en": "Let the boat head tilted upstream by angle $\\theta$ from the straight-across direction; drift $x=\\dfrac{w(u-v\\sin\\theta)}{v\\cos\\theta}$. Setting $dx/d\\theta=0$ gives $\\sin\\theta=\\dfrac{v}{u}=0.6$, so $\\theta=\\arcsin(0.6)\\approx36.87^\\circ$ upstream. The minimum drift is $x_{\\min}=\\dfrac{w\\sqrt{u^2-v^2}}{v}=\\dfrac{200\\times4}{3}=\\dfrac{800}{3}\\approx266.7\\,\\text{m}$.",
+   "answer": "$\\sin\\theta=v/u$ ($\\theta\\approx36.87^\\circ$ upstream), $x_{\\min}=\\dfrac{w\\sqrt{u^2-v^2}}{v}=\\dfrac{800}{3}\\approx266.7\\,\\text{m}$",
+   "keywords": [
+    "river crossing",
+    "عبور النهر",
+    "minimum drift",
+    "انحراف أدنى",
+    "relative velocity",
+    "تيّار النهر",
+    "boat heading"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "لرجلٍ يمشي شرقاً بسرعة $4\\,\\text{m/s}$ يبدو المطر آتياً من الأمام بزاوية $30^\\circ$ عن العمودي. وعندما يزيد سرعته إلى $8\\,\\text{m/s}$ شرقاً يبدو المطر آتياً من الأمام بزاوية $60^\\circ$ عن العمودي. أوجد السرعة الحقيقية للمطر (المركّبتين الأفقية والعمودية) ومقدار سرعته.",
+   "q_en": "To a man walking east at $4\\,\\text{m/s}$, rain appears to fall from ahead at $30^\\circ$ to the vertical. When he speeds up to $8\\,\\text{m/s}$ east, the rain appears to come from ahead at $60^\\circ$ to the vertical. Find the true velocity of the rain (horizontal and vertical components) and its speed.",
+   "a_ar": "لتكن للسرعة الحقيقية للمطر مركّبة شرقية $v_x$ ومركّبة عمودية للأسفل $v_y$. المركّبة الأفقية الظاهرية هي $v_x-V$ (والميل إلى الأمام يعني أنها سالبة)، فيكون $\\tan\\!\\varphi=\\dfrac{V-v_x}{v_y}$. إذن $\\tan30^\\circ=\\dfrac{4-v_x}{v_y}$ و$\\tan60^\\circ=\\dfrac{8-v_x}{v_y}$. وبالحل نجد $v_x=2\\,\\text{m/s}$ (شرقاً) و$v_y=2\\sqrt3\\,\\text{m/s}$ (للأسفل)، فسرعة المطر $\\sqrt{2^2+(2\\sqrt3)^2}=4\\,\\text{m/s}$ باتجاه $30^\\circ$ شرق العمودي.",
+   "a_en": "Let the rain's true velocity have eastward component $v_x$ and downward component $v_y$. The apparent horizontal component is $v_x-V$ (front-tilt means it is negative), so $\\tan\\!\\varphi=\\dfrac{V-v_x}{v_y}$. Thus $\\tan30^\\circ=\\dfrac{4-v_x}{v_y}$ and $\\tan60^\\circ=\\dfrac{8-v_x}{v_y}$. Solving gives $v_x=2\\,\\text{m/s}$ (east) and $v_y=2\\sqrt3\\,\\text{m/s}$ (down), so the rain's speed is $\\sqrt{2^2+(2\\sqrt3)^2}=4\\,\\text{m/s}$, directed $30^\\circ$ east of vertical.",
+   "answer": "$v_x=2\\,\\text{m/s}$ east, $v_y=2\\sqrt3\\,\\text{m/s}$ down; speed $=4\\,\\text{m/s}$ at $30^\\circ$ east of vertical",
+   "keywords": [
+    "rain velocity",
+    "سرعة المطر",
+    "relative velocity",
+    "السرعة النسبية",
+    "apparent angle",
+    "الزاوية الظاهرية",
+    "walking observer"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

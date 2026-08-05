@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 44" width="210" height="44" role="img" aria-label="Firas AI">
+  <title>Firas AI</title>
+  <!-- HORIZONTAL LOCKUP — mark + wordmark, transparent.
+       The wordmark is live <text>, not outlines: converting to paths needs a font binary this
+       repo does not carry, and shipping a wrong-font outline would be worse than a fallback.
+       The stack matches the site (Archivo, then system) — if Archivo is absent the shape of
+       the letters changes slightly but nothing breaks. For print or a third party who will
+       not have the font, outline this text in a vector editor first.
+       "AI" carries the accent so the lockup reads as one word with an emphasis, matching the
+       header treatment in the app. -->
+  <g>
+    <path d="M18 10h6.5v44H18Z" fill="#237A68" transform="translate(-18 -10) scale(1)"/>
+    <path d="M24.5 10H50l-5 8.5H24.5Z" fill="#237A68" transform="translate(-18 -10)"/>
+    <path d="M24.5 27H42l-4.5 8.5H24.5Z" fill="#14544A" transform="translate(-18 -10)"/>
+  </g>
+  <text x="48" y="33"
+        font-family="Archivo, 'Noto Sans Arabic', system-ui, -apple-system, sans-serif"
+        font-size="30" font-weight="600" letter-spacing="-0.6" fill="#1A1A18">Firas <tspan fill="#237A68">AI</tspan></text>
+</svg>

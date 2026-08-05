@@ -1,0 +1,171 @@
+{
+ "subject": "math",
+ "topic": "trigonometry",
+ "title": "trigonometry — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "أثبت المتطابقة $\\tan\\theta\\,\\tan(60^\\circ-\\theta)\\,\\tan(60^\\circ+\\theta)=\\tan 3\\theta$، ثم استعملها لإيجاد قيمة $\\tan 20^\\circ\\,\\tan 40^\\circ\\,\\tan 80^\\circ$.",
+   "q_en": "Prove the identity $\\tan\\theta\\,\\tan(60^\\circ-\\theta)\\,\\tan(60^\\circ+\\theta)=\\tan 3\\theta$, and use it to evaluate $\\tan 20^\\circ\\,\\tan 40^\\circ\\,\\tan 80^\\circ$.",
+   "a_ar": "بضرب الحدين: $\\tan(60^\\circ-\\theta)\\tan(60^\\circ+\\theta)=\\dfrac{\\tan^2 60^\\circ-\\tan^2\\theta}{1-\\tan^2 60^\\circ\\tan^2\\theta}=\\dfrac{3-\\tan^2\\theta}{1-3\\tan^2\\theta}$ حيث $\\tan60^\\circ=\\sqrt3$. ومنه $\\tan\\theta\\cdot\\dfrac{3-\\tan^2\\theta}{1-3\\tan^2\\theta}=\\dfrac{3\\tan\\theta-\\tan^3\\theta}{1-3\\tan^2\\theta}=\\tan 3\\theta$ وهي صيغة الزاوية الثلاثية. وبوضع $\\theta=20^\\circ$ نحصل على $\\tan 20^\\circ\\tan 40^\\circ\\tan 80^\\circ=\\tan 60^\\circ=\\sqrt3$.",
+   "a_en": "Multiply $\\tan(60^\\circ-\\theta)\\tan(60^\\circ+\\theta)=\\dfrac{\\tan^2 60^\\circ-\\tan^2\\theta}{1-\\tan^2 60^\\circ\\tan^2\\theta}=\\dfrac{3-\\tan^2\\theta}{1-3\\tan^2\\theta}$ (using $\\tan60^\\circ=\\sqrt3$). Then $\\tan\\theta\\cdot\\dfrac{3-\\tan^2\\theta}{1-3\\tan^2\\theta}=\\dfrac{3\\tan\\theta-\\tan^3\\theta}{1-3\\tan^2\\theta}=\\tan 3\\theta$, which is exactly the triple-angle formula. Setting $\\theta=20^\\circ$ gives $\\tan 20^\\circ\\tan 40^\\circ\\tan 80^\\circ=\\tan 60^\\circ=\\sqrt3$.",
+   "answer": "$\\tan 20^\\circ\\,\\tan 40^\\circ\\,\\tan 80^\\circ=\\sqrt{3}$",
+   "keywords": [
+    "triple angle",
+    "متطابقة الظل",
+    "tan 3θ",
+    "tan20 tan40 tan80",
+    "identities",
+    "الزاوية الثلاثية",
+    "sqrt3"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "مثلث أطوال أضلاعه $a=4$، $b=5$، $c=6$. أوجد بالضبط جيوب تمام زواياه $A<B<C$، وأثبت أن الزاوية الكبرى تساوي تماماً ضعف الزاوية الصغرى، أي $C=2A$.",
+   "q_en": "A triangle has sides $a=4$, $b=5$, $c=6$. Find the exact cosines of the three angles $A<B<C$, and prove that the largest angle equals exactly twice the smallest, i.e. $C=2A$.",
+   "a_ar": "بقانون جيب التمام: $\\cos A=\\dfrac{b^2+c^2-a^2}{2bc}=\\dfrac{25+36-16}{60}=\\dfrac34$، و$\\cos B=\\dfrac{16+36-25}{48}=\\dfrac{9}{16}$، و$\\cos C=\\dfrac{16+25-36}{40}=\\dfrac18$. وبما أن $A$ تقابل أصغر ضلع و$C$ تقابل أكبر ضلع فإن $A<B<C$. والآن $\\cos 2A=2\\cos^2 A-1=2\\cdot\\dfrac{9}{16}-1=\\dfrac18=\\cos C$، وبما أن $2A$ و$C$ كلاهما في المجال $(0,\\pi)$ نستنتج $C=2A$.",
+   "a_en": "By the law of cosines, $\\cos A=\\dfrac{b^2+c^2-a^2}{2bc}=\\dfrac{25+36-16}{60}=\\dfrac34$, $\\cos B=\\dfrac{16+36-25}{48}=\\dfrac{9}{16}$, and $\\cos C=\\dfrac{16+25-36}{40}=\\dfrac18$. Since $A$ is opposite the shortest side and $C$ the longest, $A<B<C$. Now $\\cos 2A=2\\cos^2 A-1=2\\cdot\\dfrac{9}{16}-1=\\dfrac18=\\cos C$; as both $2A$ and $C$ lie in $(0,\\pi)$, we conclude $C=2A$.",
+   "answer": "$\\cos A=\\tfrac34,\\ \\cos B=\\tfrac{9}{16},\\ \\cos C=\\tfrac18$, and $C=2A$",
+   "keywords": [
+    "law of cosines",
+    "قانون جيب التمام",
+    "4 5 6 triangle",
+    "C=2A",
+    "double angle",
+    "المثلث",
+    "cosines"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أوجد جميع حلول المعادلة $\\sin x+\\sin 2x+\\sin 3x=0$ في الفترة $[0,2\\pi)$.",
+   "q_en": "Find all solutions of $\\sin x+\\sin 2x+\\sin 3x=0$ in the interval $[0,2\\pi)$.",
+   "a_ar": "نجمع الحدّين الطرفيين: $\\sin x+\\sin 3x=2\\sin 2x\\cos x$، فتصير المعادلة $2\\sin 2x\\cos x+\\sin 2x=\\sin 2x\\,(2\\cos x+1)=0$. فإمّا $\\sin 2x=0$ فينتج $x=0,\\tfrac{\\pi}{2},\\pi,\\tfrac{3\\pi}{2}$، وإمّا $\\cos x=-\\tfrac12$ فينتج $x=\\tfrac{2\\pi}{3},\\tfrac{4\\pi}{3}$. إذن هناك ستة حلول في الفترة $[0,2\\pi)$.",
+   "a_en": "Group the outer terms: $\\sin x+\\sin 3x=2\\sin 2x\\cos x$, so the equation becomes $2\\sin 2x\\cos x+\\sin 2x=\\sin 2x\\,(2\\cos x+1)=0$. Either $\\sin 2x=0$, giving $x=0,\\tfrac{\\pi}{2},\\pi,\\tfrac{3\\pi}{2}$, or $\\cos x=-\\tfrac12$, giving $x=\\tfrac{2\\pi}{3},\\tfrac{4\\pi}{3}$. Thus there are six solutions in $[0,2\\pi)$.",
+   "answer": "$x\\in\\left\\{0,\\ \\tfrac{\\pi}{2},\\ \\tfrac{2\\pi}{3},\\ \\pi,\\ \\tfrac{4\\pi}{3},\\ \\tfrac{3\\pi}{2}\\right\\}$",
+   "keywords": [
+    "trig equation",
+    "معادلة مثلثية",
+    "sum to product",
+    "حلول المعادلة",
+    "sin x + sin2x + sin3x",
+    "factoring"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أوجد بالضبط قيمة المجموع $S=\\cos\\dfrac{2\\pi}{7}+\\cos\\dfrac{4\\pi}{7}+\\cos\\dfrac{6\\pi}{7}$.",
+   "q_en": "Evaluate exactly the sum $S=\\cos\\dfrac{2\\pi}{7}+\\cos\\dfrac{4\\pi}{7}+\\cos\\dfrac{6\\pi}{7}$.",
+   "a_ar": "نضرب $S$ في $2\\sin\\dfrac{\\pi}{7}$ ونستعمل $2\\sin\\tfrac{\\pi}{7}\\cos\\tfrac{2k\\pi}{7}=\\sin\\tfrac{(2k+1)\\pi}{7}-\\sin\\tfrac{(2k-1)\\pi}{7}$. فيتلاشى المجموع تداخلياً: $2\\sin\\tfrac{\\pi}{7}\\,S=\\sin\\tfrac{7\\pi}{7}-\\sin\\tfrac{\\pi}{7}=\\sin\\pi-\\sin\\tfrac{\\pi}{7}=-\\sin\\tfrac{\\pi}{7}$. وبالقسمة على $2\\sin\\tfrac{\\pi}{7}\\neq0$ نحصل على $S=-\\tfrac12$.",
+   "a_en": "Multiply $S$ by $2\\sin\\dfrac{\\pi}{7}$ and use $2\\sin\\tfrac{\\pi}{7}\\cos\\tfrac{2k\\pi}{7}=\\sin\\tfrac{(2k+1)\\pi}{7}-\\sin\\tfrac{(2k-1)\\pi}{7}$. The sum telescopes: $2\\sin\\tfrac{\\pi}{7}\\,S=\\sin\\tfrac{7\\pi}{7}-\\sin\\tfrac{\\pi}{7}=\\sin\\pi-\\sin\\tfrac{\\pi}{7}=-\\sin\\tfrac{\\pi}{7}$. Dividing by $2\\sin\\tfrac{\\pi}{7}\\neq0$ gives $S=-\\tfrac12$.",
+   "answer": "$S=-\\dfrac12$",
+   "keywords": [
+    "telescoping",
+    "مجموع تلسكوبي",
+    "roots of unity",
+    "cos 2π/7",
+    "exact value",
+    "القيمة الضبطية",
+    "sum of cosines"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في مثلث $ABC$ (بالرموز المعتادة) عُلم أن $a\\cos A=b\\cos B$ وأن $a\\neq b$. أثبت أن المثلث قائم الزاوية، وبيّن أيّ زاوية هي القائمة.",
+   "q_en": "In triangle $ABC$ (with the usual notation) it is given that $a\\cos A=b\\cos B$ and $a\\neq b$. Prove that the triangle is right-angled, and state which angle is the right angle.",
+   "a_ar": "بقانون الجيب $a=2R\\sin A$ و$b=2R\\sin B$، فيصبح الشرط $\\sin A\\cos A=\\sin B\\cos B$، أي $\\sin 2A=\\sin 2B$. ومنه إمّا $2A=2B$ (فينتج $a=b$ وهو مستبعَد) وإمّا $2A=\\pi-2B$، أي $A+B=\\dfrac{\\pi}{2}$. عندئذ $C=\\pi-(A+B)=\\dfrac{\\pi}{2}$، فالمثلث قائم الزاوية عند $C$.",
+   "a_en": "By the law of sines $a=2R\\sin A$, $b=2R\\sin B$, so the condition becomes $\\sin A\\cos A=\\sin B\\cos B$, i.e. $\\sin 2A=\\sin 2B$. Hence either $2A=2B$ (giving $a=b$, excluded) or $2A=\\pi-2B$, i.e. $A+B=\\dfrac{\\pi}{2}$. Then $C=\\pi-(A+B)=\\dfrac{\\pi}{2}$, so the triangle is right-angled at $C$.",
+   "answer": "The triangle is right-angled at $C$ (i.e. $C=90^\\circ$)",
+   "keywords": [
+    "law of sines",
+    "قانون الجيب",
+    "right triangle",
+    "sin 2A = sin 2B",
+    "مثلث قائم",
+    "double angle",
+    "a cosA = b cosB"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب بدقة قيمة الجُداء $\\cos\\frac{\\pi}{7}\\cos\\frac{2\\pi}{7}\\cos\\frac{3\\pi}{7}$.",
+   "q_en": "Evaluate the product $\\cos\\frac{\\pi}{7}\\cos\\frac{2\\pi}{7}\\cos\\frac{3\\pi}{7}$ exactly.",
+   "a_ar": "نستعمل متطابقة التتالي. بضرب $Q=\\cos\\frac{\\pi}{7}\\cos\\frac{2\\pi}{7}\\cos\\frac{4\\pi}{7}$ في $8\\sin\\frac{\\pi}{7}$ وتطبيق $2\\sin\\theta\\cos\\theta=\\sin2\\theta$ مراراً نحصل على $8\\sin\\tfrac{\\pi}{7}\\,Q=\\sin\\tfrac{8\\pi}{7}=-\\sin\\tfrac{\\pi}{7}$، أي $Q=-\\tfrac18$. وبما أن $\\cos\\frac{3\\pi}{7}=-\\cos\\frac{4\\pi}{7}$ فإن الجُداء المطلوب هو $-Q=\\tfrac18$.",
+   "a_en": "Use the telescoping identity. Multiply $Q=\\cos\\frac{\\pi}{7}\\cos\\frac{2\\pi}{7}\\cos\\frac{4\\pi}{7}$ by $8\\sin\\frac{\\pi}{7}$: repeated use of $2\\sin\\theta\\cos\\theta=\\sin2\\theta$ gives $8\\sin\\tfrac{\\pi}{7}\\,Q=\\sin\\tfrac{8\\pi}{7}=-\\sin\\tfrac{\\pi}{7}$, so $Q=-\\tfrac18$. Since $\\cos\\frac{3\\pi}{7}=-\\cos\\frac{4\\pi}{7}$, the required product is $-Q=\\tfrac18$.",
+   "answer": "$\\dfrac{1}{8}$",
+   "keywords": [
+    "cos pi/7",
+    "جداء جيوب التمام",
+    "telescoping",
+    "متطابقة مثلثية",
+    "product identity",
+    "سبعة"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أوجد القيمة الدقيقة للمجموع $\\sec\\frac{2\\pi}{7}+\\sec\\frac{4\\pi}{7}+\\sec\\frac{6\\pi}{7}$.",
+   "q_en": "Find the exact value of $\\sec\\frac{2\\pi}{7}+\\sec\\frac{4\\pi}{7}+\\sec\\frac{6\\pi}{7}$.",
+   "a_ar": "الأعداد $c_1=\\cos\\frac{2\\pi}{7},c_2=\\cos\\frac{4\\pi}{7},c_3=\\cos\\frac{6\\pi}{7}$ هي بالضبط جذور المعادلة $8x^3+4x^2-4x-1=0$. وبعلاقات ڤييت: $\\sum c_i=-\\tfrac12$ و$\\sum c_ic_j=-\\tfrac12$ و$c_1c_2c_3=\\tfrac18$. إذن $\\sum\\sec=\\sum\\frac{1}{c_i}=\\dfrac{\\sum c_ic_j}{c_1c_2c_3}=\\dfrac{-1/2}{1/8}=-4.$",
+   "a_en": "The numbers $c_1=\\cos\\frac{2\\pi}{7},c_2=\\cos\\frac{4\\pi}{7},c_3=\\cos\\frac{6\\pi}{7}$ are exactly the three roots of $8x^3+4x^2-4x-1=0$. By Vieta: $\\sum c_i=-\\tfrac12$, $\\sum c_ic_j=-\\tfrac12$, $c_1c_2c_3=\\tfrac18$. Hence $\\sum\\sec=\\sum\\frac{1}{c_i}=\\dfrac{\\sum c_ic_j}{c_1c_2c_3}=\\dfrac{-1/2}{1/8}=-4.$",
+   "answer": "$-4$",
+   "keywords": [
+    "secant sum",
+    "قاطع التمام",
+    "Vieta",
+    "علاقات فييت",
+    "cubic roots",
+    "2pi/7"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في مثلث $ABC$ تحقق الزوايا $3\\sin A+4\\cos B=6$ و$4\\sin B+3\\cos A=1$. أوجد الزاوية $C$.",
+   "q_en": "In triangle $ABC$ the angles satisfy $3\\sin A+4\\cos B=6$ and $4\\sin B+3\\cos A=1$. Determine angle $C$.",
+   "a_ar": "نُربّع ونجمع: $(3\\sin A+4\\cos B)^2+(4\\sin B+3\\cos A)^2=37$. بالنشر: $9+16+24(\\sin A\\cos B+\\cos A\\sin B)=25+24\\sin(A+B)=37$، إذن $\\sin(A+B)=\\tfrac12$ أي $\\sin C=\\tfrac12$. فيكون $C=30^\\circ$ أو $150^\\circ$. لو كان $C=150^\\circ$ لكان $A+B=30^\\circ$ ومنه $3\\sin A+4\\cos B<3\\sin30^\\circ+4=5.5<6$ وهذا تناقض. إذن $C=30^\\circ=\\tfrac{\\pi}{6}$.",
+   "a_en": "Square and add: $(3\\sin A+4\\cos B)^2+(4\\sin B+3\\cos A)^2=37$. Expanding, $9+16+24(\\sin A\\cos B+\\cos A\\sin B)=25+24\\sin(A+B)=37$, so $\\sin(A+B)=\\tfrac12$, i.e. $\\sin C=\\tfrac12$. Thus $C=30^\\circ$ or $150^\\circ$. If $C=150^\\circ$ then $A+B=30^\\circ$, forcing $3\\sin A+4\\cos B<3\\sin30^\\circ+4=5.5<6$, a contradiction. Hence $C=30^\\circ=\\tfrac{\\pi}{6}$.",
+   "answer": "$C=30^\\circ=\\dfrac{\\pi}{6}$",
+   "keywords": [
+    "3sinA+4cosB",
+    "نظام مثلثي",
+    "angle sum",
+    "مجموع زوايا المثلث",
+    "sin(A+B)",
+    "triangle"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أوجد جميع قيم $x\\in[0,2\\pi)$ التي تحقق $\\sin^4 x+\\cos^4 x=\\sin x\\cos x$.",
+   "q_en": "Find all $x\\in[0,2\\pi)$ satisfying $\\sin^4 x+\\cos^4 x=\\sin x\\cos x$.",
+   "a_ar": "نكتب $\\sin^4x+\\cos^4x=1-2\\sin^2x\\cos^2x=1-\\tfrac12\\sin^2 2x$ و$\\sin x\\cos x=\\tfrac12\\sin 2x$. وبوضع $s=\\sin2x$: $1-\\tfrac12 s^2=\\tfrac12 s\\Rightarrow s^2+s-2=0\\Rightarrow(s-1)(s+2)=0$، فيكون $s=1$ (لأن $|s|\\le1$). ومنه $\\sin2x=1\\Rightarrow 2x=\\tfrac{\\pi}{2}+2k\\pi\\Rightarrow x=\\tfrac{\\pi}{4}+k\\pi$. وفي المجال $[0,2\\pi)$ الحلول هي $x=\\tfrac{\\pi}{4},\\ \\tfrac{5\\pi}{4}$.",
+   "a_en": "Write $\\sin^4x+\\cos^4x=1-2\\sin^2x\\cos^2x=1-\\tfrac12\\sin^2 2x$ and $\\sin x\\cos x=\\tfrac12\\sin 2x$. Letting $s=\\sin2x$: $1-\\tfrac12 s^2=\\tfrac12 s\\Rightarrow s^2+s-2=0\\Rightarrow(s-1)(s+2)=0$, so $s=1$ (since $|s|\\le1$). Then $\\sin2x=1\\Rightarrow 2x=\\tfrac{\\pi}{2}+2k\\pi\\Rightarrow x=\\tfrac{\\pi}{4}+k\\pi$. In $[0,2\\pi)$ the solutions are $x=\\tfrac{\\pi}{4},\\ \\tfrac{5\\pi}{4}$.",
+   "answer": "$x=\\dfrac{\\pi}{4},\\ \\dfrac{5\\pi}{4}$",
+   "keywords": [
+    "معادلة مثلثية",
+    "sin^4+cos^4",
+    "sin2x",
+    "حل المعادلة",
+    "double angle",
+    "quadratic in sine"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في مثلث $ABC$ نصف قطر دائرته المحيطة $R$، وتحقق أضلاعه $a^2+b^2+c^2=8R^2$. برهن أن المثلث قائم الزاوية.",
+   "q_en": "In a triangle $ABC$ with circumradius $R$, the sides satisfy $a^2+b^2+c^2=8R^2$. Prove the triangle is right-angled.",
+   "a_ar": "بقانون الجيوب $a=2R\\sin A$ ونظائره، فيصبح الشرط $4R^2(\\sin^2A+\\sin^2B+\\sin^2C)=8R^2$ أي $\\sin^2A+\\sin^2B+\\sin^2C=2$. وباستعمال متطابقة المثلث $\\sin^2A+\\sin^2B+\\sin^2C=2+2\\cos A\\cos B\\cos C$ نحصل على $\\cos A\\cos B\\cos C=0$. إذن أحد جيوب التمام معدوم، فتكون إحدى الزوايا $90^\\circ$ والمثلث قائم الزاوية. $\\blacksquare$",
+   "a_en": "By the law of sines $a=2R\\sin A$, etc., so the condition becomes $4R^2(\\sin^2A+\\sin^2B+\\sin^2C)=8R^2$, i.e. $\\sin^2A+\\sin^2B+\\sin^2C=2$. Using the triangle identity $\\sin^2A+\\sin^2B+\\sin^2C=2+2\\cos A\\cos B\\cos C$, this gives $\\cos A\\cos B\\cos C=0$. Hence one cosine vanishes, so one angle equals $90^\\circ$ and the triangle is right-angled. $\\blacksquare$",
+   "answer": "The triangle is right-angled (one angle $=90^\\circ$).",
+   "keywords": [
+    "قانون الجيوب",
+    "law of sines",
+    "circumradius",
+    "نصف القطر المحيطي",
+    "right triangle",
+    "sin^2 identity"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

@@ -1,0 +1,164 @@
+{
+ "subject": "science",
+ "topic": "phys-electrostatics",
+ "title": "phys-electrostatics — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "شحنتان نقطيتان موجبتان، $q_1=+2\\,\\mu\\text{C}$ و $q_2=+8\\,\\mu\\text{C}$، مثبّتتان على المحور السيني، حيث $q_1$ عند $x=0$ و $q_2$ عند $x=0.30\\,\\text{m}$. جد الموضع على المحور السيني حيث يكون المجال الكهربائي المحصّل صفراً، وبيّن لماذا يجب أن يقع بين الشحنتين.",
+   "q_en": "Two positive point charges, $q_1=+2\\,\\mu\\text{C}$ and $q_2=+8\\,\\mu\\text{C}$, are fixed on the x-axis with $q_1$ at $x=0$ and $q_2$ at $x=0.30\\,\\text{m}$. Find the location on the x-axis where the net electric field is zero, and explain why it must lie between the two charges.",
+   "a_ar": "بين شحنتين متماثلتين يتعاكس المجالان فيوجد بينهما موضع انعدام (أما خارجهما فيتّجه المجالان في اتجاه واحد ولا يمكن أن يتلاشيا). بمساواة المقدارين على بُعد $x$ من $q_1$: $\\dfrac{kq_1}{x^2}=\\dfrac{kq_2}{(0.30-x)^2}$، أي $\\dfrac{0.30-x}{x}=\\sqrt{q_2/q_1}=2$. إذن $0.30-x=2x\\Rightarrow x=0.10\\,\\text{m}$. موضع انعدام المجال عند $x=0.10\\,\\text{m}$ (على بُعد 0.10 m من $q_1$ و 0.20 m من $q_2$).",
+   "a_en": "Between two like charges the fields oppose, so a null exists there (outside, both fields point the same way and cannot cancel). Setting magnitudes equal at distance $x$ from $q_1$: $\\dfrac{kq_1}{x^2}=\\dfrac{kq_2}{(0.30-x)^2}$, i.e. $\\dfrac{0.30-x}{x}=\\sqrt{q_2/q_1}=2$. Thus $0.30-x=2x\\Rightarrow x=0.10\\,\\text{m}$. The zero-field point is at $x=0.10\\,\\text{m}$ (0.10 m from $q_1$, 0.20 m from $q_2$).",
+   "answer": "$x=0.10\\,\\text{m}$ from $q_1$ (0.20 m from $q_2$)",
+   "keywords": [
+    "Coulomb",
+    "مجال كهربائي",
+    "نقطة انعدام المجال",
+    "zero field",
+    "point charges",
+    "الشحنة",
+    "electric field"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "مكثّف ذو صفيحتين متوازيتين مساحة كل صفيحة $A=0.020\\,\\text{m}^2$ والمسافة بينهما $d=4.0\\,\\text{mm}$. مُلئ الفراغ تماماً بشريحتين عازلتين موضوعتين على التوالي موازيتين للصفيحتين، سُمك كل منهما $2.0\\,\\text{mm}$، وثابتاهما العازلان $\\kappa_1=2.0$ و $\\kappa_2=4.0$. جد سعة المكثّف. (استخدم $\\varepsilon_0=8.854\\times10^{-12}\\,\\text{F/m}$.)",
+   "q_en": "A parallel-plate capacitor has plate area $A=0.020\\,\\text{m}^2$ and plate separation $d=4.0\\,\\text{mm}$. The gap is completely filled by two dielectric slabs stacked parallel to the plates, each of thickness $2.0\\,\\text{mm}$, with dielectric constants $\\kappa_1=2.0$ and $\\kappa_2=4.0$. Find the capacitance. (Use $\\varepsilon_0=8.854\\times10^{-12}\\,\\text{F/m}$.)",
+   "a_ar": "الشريحتان الموضوعتان عبر الفجوة تحملان الشحنة نفسها فتعملان كمكثّفين على التوالي: $\\dfrac{1}{C}=\\dfrac{d_1}{\\kappa_1\\varepsilon_0 A}+\\dfrac{d_2}{\\kappa_2\\varepsilon_0 A}$، أي $C=\\dfrac{\\varepsilon_0 A}{d_1/\\kappa_1+d_2/\\kappa_2}$. وبما أن $d_1/\\kappa_1=1.0\\,\\text{mm}$ و $d_2/\\kappa_2=0.50\\,\\text{mm}$: $C=\\dfrac{(8.854\\times10^{-12})(0.020)}{1.5\\times10^{-3}}\\approx1.18\\times10^{-10}\\,\\text{F}=118\\,\\text{pF}$.",
+   "a_en": "Slabs stacked across the gap carry the same charge, so they act as two capacitors in series: $\\dfrac{1}{C}=\\dfrac{d_1}{\\kappa_1\\varepsilon_0 A}+\\dfrac{d_2}{\\kappa_2\\varepsilon_0 A}$, giving $C=\\dfrac{\\varepsilon_0 A}{d_1/\\kappa_1+d_2/\\kappa_2}$. With $d_1/\\kappa_1=1.0\\,\\text{mm}$ and $d_2/\\kappa_2=0.50\\,\\text{mm}$: $C=\\dfrac{(8.854\\times10^{-12})(0.020)}{1.5\\times10^{-3}}\\approx1.18\\times10^{-10}\\,\\text{F}=118\\,\\text{pF}$.",
+   "answer": "$C\\approx1.18\\times10^{-10}\\,\\text{F}\\approx118\\,\\text{pF}$",
+   "keywords": [
+    "capacitor",
+    "مكثّف",
+    "dielectric",
+    "عازل كهربائي",
+    "على التوالي",
+    "series capacitors",
+    "السعة"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أربع شحنات نقطية متماثلة $q=+3.0\\,\\mu\\text{C}$ مثبّتة عند رؤوس مربّع طول ضلعه $a=0.20\\,\\text{m}$. احسب الطاقة الكهروستاتيكية الكلية للتوزيع (الشغل اللازم لتجميعها من اللانهاية). استخدم $k=8.99\\times10^{9}\\,\\text{N·m}^2/\\text{C}^2$.",
+   "q_en": "Four identical point charges $q=+3.0\\,\\mu\\text{C}$ are held at the corners of a square of side $a=0.20\\,\\text{m}$. Compute the total electrostatic potential energy of the configuration (work needed to assemble it from infinity). Use $k=8.99\\times10^{9}\\,\\text{N·m}^2/\\text{C}^2$.",
+   "a_ar": "يوجد 6 أزواج متمايزة: 4 على الأضلاع (المسافة $a$) واثنان على القطرين (المسافة $a\\sqrt2$). $U=\\dfrac{kq^2}{a}\\left(4+\\dfrac{2}{\\sqrt2}\\right)=\\dfrac{kq^2}{a}\\left(4+\\sqrt2\\right)$. عددياً $\\dfrac{kq^2}{a}=\\dfrac{(8.99\\times10^{9})(3.0\\times10^{-6})^2}{0.20}=0.4046\\,\\text{J}$، إذن $U=0.4046\\times5.414\\approx2.19\\,\\text{J}$.",
+   "a_en": "There are 6 distinct pairs: 4 along the sides (distance $a$) and 2 along the diagonals (distance $a\\sqrt2$). $U=\\dfrac{kq^2}{a}\\left(4+\\dfrac{2}{\\sqrt2}\\right)=\\dfrac{kq^2}{a}\\left(4+\\sqrt2\\right)$. Numerically $\\dfrac{kq^2}{a}=\\dfrac{(8.99\\times10^{9})(3.0\\times10^{-6})^2}{0.20}=0.4046\\,\\text{J}$, so $U=0.4046\\times5.414\\approx2.19\\,\\text{J}$.",
+   "answer": "$U=\\dfrac{kq^2}{a}(4+\\sqrt2)\\approx2.19\\,\\text{J}$",
+   "keywords": [
+    "potential energy",
+    "طاقة الوضع الكهربائية",
+    "square charges",
+    "مربّع",
+    "assembling charges",
+    "الشغل",
+    "electrostatics"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "حلقة رفيعة نصف قطرها $R=0.10\\,\\text{m}$ تحمل شحنة موزّعة بانتظام $Q=5.0\\times10^{-8}\\,\\text{C}$. على المحور العمودي على الحلقة المارّ بمركزها، عند أي مسافة $x$ يكون المجال الكهربائي المحوري أعظمياً، وما مقدار هذا المجال الأعظمي؟ استخدم $k=8.99\\times10^{9}\\,\\text{N·m}^2/\\text{C}^2$.",
+   "q_en": "A thin ring of radius $R=0.10\\,\\text{m}$ carries a uniformly distributed charge $Q=5.0\\times10^{-8}\\,\\text{C}$. Along the axis perpendicular to the ring through its center, at what distance $x$ is the axial electric field a maximum, and what is that maximum field magnitude? Use $k=8.99\\times10^{9}\\,\\text{N·m}^2/\\text{C}^2$.",
+   "a_ar": "المجال المحوري هو $E(x)=\\dfrac{kQx}{(x^2+R^2)^{3/2}}$. بوضع $dE/dx=0$ نحصل على $x^2+R^2-3x^2=0$، أي $x=\\dfrac{R}{\\sqrt2}\\approx0.0707\\,\\text{m}$. وبالتعويض: $E_{\\max}=\\dfrac{2kQ}{3\\sqrt3\\,R^2}=\\dfrac{2(8.99\\times10^{9})(5.0\\times10^{-8})}{3\\sqrt3\\,(0.10)^2}\\approx1.73\\times10^{4}\\,\\text{N/C}$.",
+   "a_en": "The axial field is $E(x)=\\dfrac{kQx}{(x^2+R^2)^{3/2}}$. Setting $dE/dx=0$ gives $x^2+R^2-3x^2=0$, so $x=\\dfrac{R}{\\sqrt2}\\approx0.0707\\,\\text{m}$. Substituting yields $E_{\\max}=\\dfrac{2kQ}{3\\sqrt3\\,R^2}=\\dfrac{2(8.99\\times10^{9})(5.0\\times10^{-8})}{3\\sqrt3\\,(0.10)^2}\\approx1.73\\times10^{4}\\,\\text{N/C}$.",
+   "answer": "$x=R/\\sqrt2\\approx0.0707\\,\\text{m}$, $E_{\\max}=\\dfrac{2kQ}{3\\sqrt3 R^2}\\approx1.73\\times10^{4}\\,\\text{N/C}$",
+   "keywords": [
+    "ring of charge",
+    "حلقة مشحونة",
+    "axial field",
+    "المجال المحوري",
+    "maximum field",
+    "اشتقاق",
+    "electric field"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "كرة صلبة عازلة نصف قطرها $R=4.0\\,\\text{cm}$ تحمل شحنة $Q=8.0\\,\\text{nC}$ موزّعة بانتظام في كامل حجمها. باعتبار الجهد صفراً عند اللانهاية، جد الجهد الكهربائي عند مركز الكرة. استخدم $k=8.99\\times10^{9}\\,\\text{N·m}^2/\\text{C}^2$.",
+   "q_en": "An insulating solid sphere of radius $R=4.0\\,\\text{cm}$ carries charge $Q=8.0\\,\\text{nC}$ distributed uniformly throughout its volume. Taking the potential to be zero at infinity, find the electric potential at the center of the sphere. Use $k=8.99\\times10^{9}\\,\\text{N·m}^2/\\text{C}^2$.",
+   "a_ar": "لكرة عازلة مشحونة بانتظام، جهد السطح هو $V(R)=kQ/R$، وبمكاملة المجال الداخلي $E(r)=kQr/R^3$ من $R$ إلى المركز يُضاف $kQ/(2R)$، فينتج $V(0)=\\dfrac{3kQ}{2R}$. إذن $V(0)=\\dfrac{3(8.99\\times10^{9})(8.0\\times10^{-9})}{2(0.040)}\\approx2.70\\times10^{3}\\,\\text{V}$ (مقارنةً بـ $V(R)=kQ/R\\approx1.80\\times10^{3}\\,\\text{V}$ عند السطح).",
+   "a_en": "For a uniformly charged insulating sphere, the surface potential is $V(R)=kQ/R$, and integrating the internal field $E(r)=kQr/R^3$ from $R$ to the center adds $kQ/(2R)$, giving $V(0)=\\dfrac{3kQ}{2R}$. Thus $V(0)=\\dfrac{3(8.99\\times10^{9})(8.0\\times10^{-9})}{2(0.040)}\\approx2.70\\times10^{3}\\,\\text{V}$ (compared to $V(R)=kQ/R\\approx1.80\\times10^{3}\\,\\text{V}$ at the surface).",
+   "answer": "$V(0)=\\dfrac{3kQ}{2R}\\approx2.70\\times10^{3}\\,\\text{V}$",
+   "keywords": [
+    "potential",
+    "الجهد الكهربائي",
+    "uniformly charged sphere",
+    "كرة عازلة",
+    "center potential",
+    "قانون غاوس",
+    "Gauss"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "شحنة نقطية $q$ تُثبَّت على بُعد $d$ من مركز كرة موصِّلة مؤرَّضة نصف قطرها $a$ (حيث $d>a$). أوجد مقدار واتجاه القوة الكهروستاتيكية المؤثرة على $q$.",
+   "q_en": "A point charge $q$ is held at distance $d$ from the center of a grounded conducting sphere of radius $a$ (with $d>a$). Find the magnitude and direction of the electrostatic force on $q$.",
+   "a_ar": "بطريقة الصور، تُستبدل الكرة المؤرَّضة بشحنة صورة $q'=-qa/d$ تقع على بُعد $b=a^2/d$ من المركز على الخط الواصل بين $q$ والمركز. القوة على $q$ هي تجاذب كولوم بينها وبين $q'$ والمسافة بينهما $d-b=(d^2-a^2)/d$: $F=\\frac{1}{4\\pi\\epsilon_0}\\frac{qq'}{(d-b)^2}=-\\frac{1}{4\\pi\\epsilon_0}\\frac{q^2 a d}{(d^2-a^2)^2}$. القوة تجاذبية موجَّهة من $q$ نحو مركز الكرة.",
+   "a_en": "By the method of images, the grounded sphere is replaced by an image charge $q'=-qa/d$ located at $b=a^2/d$ from the center, on the line joining $q$ to the center. The force on $q$ is Coulomb attraction between $q$ and $q'$ separated by $d-b=(d^2-a^2)/d$: $F=\\frac{1}{4\\pi\\epsilon_0}\\frac{qq'}{(d-b)^2}=-\\frac{1}{4\\pi\\epsilon_0}\\frac{q^2 a d}{(d^2-a^2)^2}$. The force is attractive, directed from $q$ toward the sphere's center.",
+   "answer": "$F=\\dfrac{q^2 a d}{4\\pi\\epsilon_0 (d^2-a^2)^2}$, attractive (toward the sphere center)",
+   "keywords": [
+    "image charge",
+    "شحنة الصورة",
+    "grounded sphere",
+    "كرة مؤرضة",
+    "Coulomb force",
+    "قوة كولوم",
+    "electrostatics",
+    "كهروستاتيكا"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "تُوزَّع شحنة كلية $Q$ بانتظام في حجم كرة عازلة مصمتة نصف قطرها $a$. احسب الطاقة الكهروستاتيكية الكلية (الطاقة الذاتية) المخزونة في المجال الناتج.",
+   "q_en": "A total charge $Q$ is distributed uniformly throughout the volume of a solid insulating sphere of radius $a$. Compute the total electrostatic energy (self-energy) stored in the resulting field.",
+   "a_ar": "نبني الكرة قشرةً قشرة. عند بلوغ نصف القطر $r$ والشحنة المحتواة $Q(r/a)^3$، فإن جلب قشرة $dq=\\frac{3Q r^2}{a^3}dr$ من اللانهاية إلى الجهد $\\frac{1}{4\\pi\\epsilon_0}\\frac{Q(r/a)^3}{r}$ يكلّف $dU$. وبالتكامل: $U=\\frac{1}{4\\pi\\epsilon_0}\\frac{3Q^2}{a^6}\\int_0^a r^4\\,dr=\\frac{3}{5}\\frac{Q^2}{4\\pi\\epsilon_0 a}=\\frac{3Q^2}{20\\pi\\epsilon_0 a}$. (ويُستنتج الناتج نفسه بتكامل $\\tfrac{\\epsilon_0}{2}E^2$ على كامل الفضاء.)",
+   "a_en": "Assemble the sphere shell by shell. When the built-up radius is $r$ with enclosed charge $Q(r/a)^3$, bringing a shell $dq=\\frac{3Q r^2}{a^3}dr$ from infinity to potential $\\frac{1}{4\\pi\\epsilon_0}\\frac{Q(r/a)^3}{r}$ costs $dU$. Integrating: $U=\\frac{1}{4\\pi\\epsilon_0}\\frac{3Q^2}{a^6}\\int_0^a r^4\\,dr=\\frac{3}{5}\\frac{Q^2}{4\\pi\\epsilon_0 a}=\\frac{3Q^2}{20\\pi\\epsilon_0 a}$. (The same result follows from integrating $\\tfrac{\\epsilon_0}{2}E^2$ over all space.)",
+   "answer": "$U=\\dfrac{3Q^2}{20\\pi\\epsilon_0 a}=\\dfrac{3}{5}\\dfrac{Q^2}{4\\pi\\epsilon_0 a}$",
+   "keywords": [
+    "self energy",
+    "الطاقة الذاتية",
+    "uniformly charged sphere",
+    "كرة مشحونة بانتظام",
+    "field energy",
+    "طاقة المجال",
+    "electrostatic energy",
+    "3/5"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "حلقة رفيعة نصف قطرها $R$ تحمل شحنة كلية $Q$ موزَّعة بانتظام. على محور الحلقة، عند أي مسافة $z$ من المركز يكون المجال الكهربائي أقوى ما يمكن، وما مقدار ذلك المجال الأعظمي؟",
+   "q_en": "A thin ring of radius $R$ carries total charge $Q$ uniformly distributed. Along the axis of the ring, at what distance $z$ from the center is the electric field strongest, and what is that maximum field magnitude?",
+   "a_ar": "على المحور $E(z)=\\frac{1}{4\\pi\\epsilon_0}\\frac{Qz}{(z^2+R^2)^{3/2}}$. وبوضع $dE/dz=0$ نحصل على $z^2+R^2-3z^2=0$ أي $z=R/\\sqrt2$. وبالتعويض $(z^2+R^2)^{3/2}=(3R^2/2)^{3/2}$، فيكون $E_{\\max}=\\frac{1}{4\\pi\\epsilon_0}\\frac{Q\\,R/\\sqrt2}{(3R^2/2)^{3/2}}=\\frac{\\sqrt3\\,Q}{18\\pi\\epsilon_0 R^2}$ (وتكافئ $\\frac{2}{3\\sqrt3}\\cdot\\frac{Q}{4\\pi\\epsilon_0 R^2}$).",
+   "a_en": "On axis $E(z)=\\frac{1}{4\\pi\\epsilon_0}\\frac{Qz}{(z^2+R^2)^{3/2}}$. Setting $dE/dz=0$ gives $z^2+R^2-3z^2=0$, i.e. $z=R/\\sqrt2$. Substituting, $(z^2+R^2)^{3/2}=(3R^2/2)^{3/2}$, so $E_{\\max}=\\frac{1}{4\\pi\\epsilon_0}\\frac{Q\\,R/\\sqrt2}{(3R^2/2)^{3/2}}=\\frac{\\sqrt3\\,Q}{18\\pi\\epsilon_0 R^2}$ (equivalently $\\frac{2}{3\\sqrt3}\\cdot\\frac{Q}{4\\pi\\epsilon_0 R^2}$).",
+   "answer": "At $z=R/\\sqrt2$; $E_{\\max}=\\dfrac{\\sqrt3\\,Q}{18\\pi\\epsilon_0 R^2}$",
+   "keywords": [
+    "charged ring",
+    "حلقة مشحونة",
+    "axial field",
+    "المجال المحوري",
+    "maximum field",
+    "مجال أعظمي",
+    "z=R/√2",
+    "electric field"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أربع شحنات نقطية متطابقة $q$ مثبَّتة عند زوايا مربّع طول ضلعه $L$. ما مقدار الشحنة $Q$ التي يجب وضعها في المركز حتى تنعدم القوة الكولومية المحصّلة على كلٍّ من الشحنات الأربع في الزوايا؟",
+   "q_en": "Four identical point charges $q$ are fixed at the corners of a square of side $L$. What charge $Q$ must be placed at the center so that the net Coulomb force on each of the four corner charges is zero?",
+   "a_ar": "لشحنة زاوية واحدة، تعطي الشحنتان المجاورتان (المسافة $L$) محصلة $\\sqrt2\\,\\frac{kq^2}{L^2}$ موجَّهة للخارج على القطر، وتضيف الشحنة البعيدة (المسافة $L\\sqrt2$) مقدار $\\frac{kq^2}{2L^2}$ للخارج على القطر نفسه، فيكون المجموع $\\frac{kq^2}{L^2}\\left(\\sqrt2+\\tfrac12\\right)$. وشحنة المركز على بُعد $L/\\sqrt2$ تؤثر بقوة $\\frac{2k|Q|q}{L^2}$ للداخل. بالموازنة: $2|Q|=\\sqrt2+\\tfrac12$، ومنه $Q=-\\frac{q}{4}\\left(1+2\\sqrt2\\right)$ (سالبة، أي تجاذبية). وبالتناظر تنعدم القوة المحصّلة على شحنة المركز نفسها.",
+   "a_en": "For one corner charge, the two adjacent charges (distance $L$) give a resultant $\\sqrt2\\,\\frac{kq^2}{L^2}$ directed outward along the diagonal, and the far corner (distance $L\\sqrt2$) adds $\\frac{kq^2}{2L^2}$ outward along the same diagonal, totaling $\\frac{kq^2}{L^2}\\left(\\sqrt2+\\tfrac12\\right)$. The center charge at distance $L/\\sqrt2$ exerts $\\frac{2k|Q|q}{L^2}$ inward. Balancing: $2|Q|=\\sqrt2+\\tfrac12$, so $Q=-\\frac{q}{4}\\left(1+2\\sqrt2\\right)$ (negative, i.e. attractive). By symmetry the center charge itself feels zero net force.",
+   "answer": "$Q=-\\dfrac{q}{4}\\left(1+2\\sqrt2\\right)\\approx -0.957\\,q$",
+   "keywords": [
+    "square charges",
+    "شحنات المربع",
+    "equilibrium",
+    "اتزان",
+    "Coulomb force",
+    "قوة كولوم",
+    "center charge",
+    "شحنة المركز"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

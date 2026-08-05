@@ -1,0 +1,12 @@
+{
+  "subject": "math",
+  "topic": "trigonometry",
+  "title": "حساب المثلثات — Trigonometry",
+  "entries": [
+    { "q": "المتطابقة المثلثية الأساسية", "k": ["جيب", "جيب تمام", "متطابقة", "identity"], "a": "sin²θ + cos²θ = 1. ومنها 1 + tan²θ = sec²θ، و 1 + cot²θ = csc²θ." },
+    { "q": "تعريف الظل والقاطع", "k": ["ظل", "tan", "sec"], "a": "tan θ = sin θ / cos θ، و cot θ = cos θ / sin θ، و sec θ = 1/cos θ، و csc θ = 1/sin θ." },
+    { "q": "قانونا الجمع", "k": ["مجموع زاويتين", "addition formula"], "a": "sin(a±b) = sin a·cos b ± cos a·sin b. و cos(a±b) = cos a·cos b ∓ sin a·sin b." },
+    { "q": "قانون الجيب وقانون التمام", "k": ["قانون الجيب", "قانون جيب التمام", "law of sines", "law of cosines"], "a": "قانون الجيب: a/sin A = b/sin B = c/sin C. قانون جيب التمام: c² = a² + b² − 2ab·cos C." },
+    { "q": "قيم مثلثية لزوايا خاصة", "k": ["زوايا خاصة", "30", "45", "60", "special angles"], "a": "sin 0=0، sin 30°=½، sin 45°=√2/2، sin 60°=√3/2، sin 90°=1. و cos هي القيم نفسها بالعكس (cos 0=1, cos 30°=√3/2, cos 60°=½)." }
+  ]
+}

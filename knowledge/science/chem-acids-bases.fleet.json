@@ -1,0 +1,187 @@
+{
+ "subject": "science",
+ "topic": "chem-acids-bases",
+ "title": "chem-acids-bases — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "محلول منظم حجمه 500 مل يحتوي على حمض الخليك (CH3COOH) بتركيز 0.200 مولاري وخلات الصوديوم (CH3COONa) بتركيز 0.150 مولاري، حيث Ka = 1.8 × 10^-5. (أ) احسب الأس الهيدروجيني pH الابتدائي. (ب) احسب pH بعد إضافة 10.0 مل من حمض HCl تركيزه 1.00 مولاري. استخدم المولات في الحساب.",
+   "q_en": "A 500. mL buffer contains 0.200 M acetic acid (CH3COOH) and 0.150 M sodium acetate (CH3COONa). Ka = 1.8 x 10^-5. (a) Calculate the initial pH. (b) Calculate the pH after adding 10.0 mL of 1.00 M HCl. Assume additivity of volumes has negligible effect on the buffer ratio (work in moles).",
+   "a_ar": "‏pKa = -log(1.8 × 10^-5) = 4.745. المولات الابتدائية: الحمض = 0.100 مول، الخلات = 0.0750 مول. (أ) pH = 4.745 + log(0.0750/0.100) = 4.745 - 0.125 = 4.62. (ب) إضافة 0.0100 مول من H+ تحوّل الخلات إلى حمض: الخلات = 0.0650 مول، الحمض = 0.110 مول. pH = 4.745 + log(0.0650/0.110) = 4.745 - 0.229 = 4.52.",
+   "a_en": "pKa = -log(1.8 x 10^-5) = 4.745. Initial moles: acid = 0.100 mol, acetate = 0.0750 mol. (a) pH = 4.745 + log(0.0750/0.100) = 4.745 - 0.125 = 4.62. (b) Added H+ = 0.0100 mol converts acetate to acid: acetate = 0.0650 mol, acid = 0.110 mol. pH = 4.745 + log(0.0650/0.110) = 4.745 - 0.229 = 4.52.",
+   "answer": "(a) pH ≈ 4.62; (b) pH ≈ 4.52",
+   "keywords": [
+    "buffer",
+    "محلول منظم",
+    "Henderson-Hasselbalch",
+    "معادلة هندرسون",
+    "pH",
+    "acetic acid",
+    "حمض الخليك",
+    "pKa"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب الأس الهيدروجيني pH ونسبة التأين لمحلول تركيزه 0.0100 مولاري من حمض أحادي البروتون ضعيف HA حيث Ka = 1.0 × 10^-3. لا تستخدم التقريب المبسّط (C - x ≈ C)؛ بل حُلّ المعادلة التربيعية بدقة.",
+   "q_en": "Calculate the pH and the percent ionization of a 0.0100 M solution of a weak monoprotic acid HA with Ka = 1.0 x 10^-3. Do NOT use the simplifying approximation (C - x ≈ C); solve the quadratic exactly.",
+   "a_ar": "من Ka = x^2/(C - x) نحصل على x^2 + (1.0 × 10^-3)x - (1.0 × 10^-5) = 0. بالحل: x = [H+] = 2.70 × 10^-3 مولاري. إذن pH = -log(2.70 × 10^-3) = 2.57. نسبة التأين = (2.70 × 10^-3 / 0.0100) × 100% = 27.0%. التقريب يفشل هنا لأن Ka/C = 0.1 ليست صغيرة.",
+   "a_en": "Ka = x^2/(C - x) gives x^2 + (1.0 x 10^-3)x - (1.0 x 10^-5) = 0. Solving: x = [H+] = 2.70 x 10^-3 M. Thus pH = -log(2.70 x 10^-3) = 2.57. Percent ionization = (2.70 x 10^-3 / 0.0100) x 100% = 27.0%. The approximation would fail badly here since Ka/C = 0.1 is not small.",
+   "answer": "pH ≈ 2.57; percent ionization ≈ 27.0%",
+   "keywords": [
+    "weak acid",
+    "حمض ضعيف",
+    "percent ionization",
+    "نسبة التأين",
+    "quadratic",
+    "معادلة تربيعية",
+    "Ka",
+    "pH"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يُعايَر 25.00 مل من حمض الخليك تركيزه 0.100 مولاري (Ka = 1.8 × 10^-5) بهيدروكسيد الصوديوم NaOH تركيزه 0.100 مولاري. احسب الأس الهيدروجيني pH عند نقطة التكافؤ.",
+   "q_en": "25.00 mL of 0.100 M acetic acid (Ka = 1.8 x 10^-5) is titrated with 0.100 M NaOH. Calculate the pH at the equivalence point.",
+   "a_ar": "عند نقطة التكافؤ: مولات الخلات = 0.100 × 0.02500 = 2.50 × 10^-3 مول في 50.00 مل، أي [CH3COO-] = 0.0500 مولاري. تتحلمأ الخلات: Kb = Kw/Ka = 1.0 × 10^-14 / 1.8 × 10^-5 = 5.56 × 10^-10. إذن [OH-] = √(Kb × C) = √(5.56 × 10^-10 × 0.0500) = 5.27 × 10^-6 مولاري. pOH = 5.28، ومنه pH = 14.00 - 5.28 = 8.72 (قاعدي كما هو متوقع لنقطة تكافؤ حمض ضعيف مع قاعدة قوية).",
+   "a_en": "At equivalence, moles acetate = 0.100 x 0.02500 = 2.50 x 10^-3 mol in 50.00 mL, so [CH3COO-] = 0.0500 M. The acetate hydrolyzes: Kb = Kw/Ka = 1.0 x 10^-14 / 1.8 x 10^-5 = 5.56 x 10^-10. [OH-] = sqrt(Kb x C) = sqrt(5.56 x 10^-10 x 0.0500) = 5.27 x 10^-6 M. pOH = 5.28, so pH = 14.00 - 5.28 = 8.72 (basic, as expected for a weak-acid/strong-base equivalence point).",
+   "answer": "pH ≈ 8.72",
+   "keywords": [
+    "titration",
+    "معايرة",
+    "equivalence point",
+    "نقطة التكافؤ",
+    "hydrolysis",
+    "تحلمؤ",
+    "Kb",
+    "acetate"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "محلول مائي تركيزه 0.150 مولاري من قاعدة أحادية ضعيفة B قيست درجة حموضته pH = 11.20 عند 25 °م. أوجد Kb و pKb لهذه القاعدة.",
+   "q_en": "A 0.150 M aqueous solution of a weak monobasic base B has a measured pH of 11.20 at 25 °C. Determine Kb and pKb for the base.",
+   "a_ar": "‏pOH = 14.00 - 11.20 = 2.80، إذن [OH-] = 10^-2.80 = 1.58 × 10^-3 مولاري. للتوازن B + H2O <=> BH+ + OH-: Kb = [OH-]^2/(C - [OH-]) = (1.58 × 10^-3)^2 / (0.150 - 1.58 × 10^-3) = 2.51 × 10^-6 / 0.1484 = 1.69 × 10^-5. ومنه pKb = -log(1.69 × 10^-5) = 4.77.",
+   "a_en": "pOH = 14.00 - 11.20 = 2.80, so [OH-] = 10^-2.80 = 1.58 x 10^-3 M. For B + H2O <=> BH+ + OH-, Kb = [OH-]^2/(C - [OH-]) = (1.58 x 10^-3)^2 / (0.150 - 1.58 x 10^-3) = 2.51 x 10^-6 / 0.1484 = 1.69 x 10^-5. Thus pKb = -log(1.69 x 10^-5) = 4.77.",
+   "answer": "Kb ≈ 1.69 x 10^-5; pKb ≈ 4.77",
+   "keywords": [
+    "weak base",
+    "قاعدة ضعيفة",
+    "Kb",
+    "pKb",
+    "pOH",
+    "pH",
+    "ثابت التأين",
+    "equilibrium"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "كم غراماً من كلوريد الأمونيوم الصلب NH4Cl يجب إذابته في 250 مل من محلول النشادر NH3 تركيزه 0.200 مولاري لتحضير محلول منظم درجة حموضته pH = 9.00؟ افترض عدم تغيّر الحجم. Kb(NH3) = 1.8 × 10^-5؛ الكتلة المولية لـ NH4Cl = 53.49 غ/مول.",
+   "q_en": "How many grams of solid NH4Cl must be dissolved in 250. mL of 0.200 M NH3 to prepare a buffer of pH = 9.00? Assume no volume change. Kb(NH3) = 1.8 x 10^-5; molar mass NH4Cl = 53.49 g/mol.",
+   "a_ar": "‏pKa(NH4+) = 14.00 - pKb = 14.00 - 4.745 = 9.255. من معادلة هندرسون-هاسلبالخ: 9.00 = 9.255 + log([NH3]/[NH4+])، إذن log(النسبة) = -0.255 و [NH3]/[NH4+] = 0.556. مولات NH3 = 0.200 × 0.250 = 0.0500 مول، ومنه مولات NH4+ = 0.0500/0.556 = 0.0900 مول. كتلة NH4Cl = 0.0900 مول × 53.49 غ/مول = 4.81 غ.",
+   "a_en": "pKa(NH4+) = 14.00 - pKb = 14.00 - 4.745 = 9.255. Henderson-Hasselbalch: 9.00 = 9.255 + log([NH3]/[NH4+]), so log(ratio) = -0.255 and [NH3]/[NH4+] = 0.556. Moles NH3 = 0.200 x 0.250 = 0.0500 mol, so moles NH4+ = 0.0500/0.556 = 0.0900 mol. Mass NH4Cl = 0.0900 mol x 53.49 g/mol = 4.81 g.",
+   "answer": "≈ 4.81 g NH4Cl",
+   "keywords": [
+    "buffer preparation",
+    "تحضير محلول منظم",
+    "ammonia",
+    "نشادر",
+    "NH4Cl",
+    "Henderson-Hasselbalch",
+    "pKa",
+    "pH"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب الرقم الهيدروجيني (pH) الدقيق لمحلول حمض الهيدروكلوريك HCl تركيزه $1.0\\times10^{-8}\\,\\text{M}$ عند $25^\\circ\\text{C}$ (حيث $K_w=1.0\\times10^{-14}$). واشرح لماذا يستحيل أن تكون الإجابة الساذجة pH $=8$.",
+   "q_en": "Calculate the exact pH of a $1.0\\times10^{-8}\\,\\text{M}$ HCl solution at $25^\\circ\\text{C}$ ($K_w=1.0\\times10^{-14}$). Explain why the naive answer pH $=8$ is impossible.",
+   "a_ar": "عند هذا التركيز المنخفض جداً يغلب التأين الذاتي للماء ولا يمكن إهماله. من موازنة الشحنة $[\\text{H}^+]=[\\text{Cl}^-]+[\\text{OH}^-]=1.0\\times10^{-8}+K_w/[\\text{H}^+]$ نحصل على المعادلة التربيعية $[\\text{H}^+]^2-(1.0\\times10^{-8})[\\text{H}^+]-1.0\\times10^{-14}=0$. بحلّها: $[\\text{H}^+]=\\tfrac{1}{2}\\left(10^{-8}+\\sqrt{10^{-16}+4\\times10^{-14}}\\right)=1.05\\times10^{-7}\\,\\text{M}$، أي $\\text{pH}=6.98$. والقيمة pH $=8$ مستحيلة لأن إضافة أي حمض إلى الماء النقي لا يمكن أبداً أن تجعل المحلول قاعدياً (pH $>7$).",
+   "a_en": "At such low concentration the water autoionization dominates, so we cannot ignore it. Using charge balance $[\\text{H}^+]=[\\text{Cl}^-]+[\\text{OH}^-]=1.0\\times10^{-8}+K_w/[\\text{H}^+]$ gives the quadratic $[\\text{H}^+]^2-(1.0\\times10^{-8})[\\text{H}^+]-1.0\\times10^{-14}=0$. Solving, $[\\text{H}^+]=\\tfrac{1}{2}\\left(10^{-8}+\\sqrt{10^{-16}+4\\times10^{-14}}\\right)=1.05\\times10^{-7}\\,\\text{M}$, so $\\text{pH}=6.98$. pH $=8$ is impossible because adding any acid to pure water can never make the solution basic (pH $>7$).",
+   "answer": "pH = 6.98 ([H+] = 1.05×10⁻⁷ M)",
+   "keywords": [
+    "pH",
+    "حمض ممدد جداً",
+    "dilute strong acid",
+    "water autoionization",
+    "التأين الذاتي للماء",
+    "charge balance",
+    "موازنة الشحنة",
+    "quadratic"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يذوب بيكربونات الصوديوم $\\text{NaHCO}_3$ ليعطي الأيون المذبذب $\\text{HCO}_3^-$. بمعلومية $K_{a1}=4.45\\times10^{-7}$ و $K_{a2}=4.69\\times10^{-11}$ لحمض الكربونيك، اشتق قيمة pH لمحلول تركيزه $0.10\\,\\text{M}$ وبيّن أنها شبه مستقلة عن التركيز.",
+   "q_en": "Sodium bicarbonate $\\text{NaHCO}_3$ dissolves to give the amphiprotic ion $\\text{HCO}_3^-$. Given $K_{a1}=4.45\\times10^{-7}$ and $K_{a2}=4.69\\times10^{-11}$ for carbonic acid, derive the pH of a $0.10\\,\\text{M}$ solution and show it is nearly independent of concentration.",
+   "a_ar": "لنوع مذبذب تركيزه $C$، يعطي شرط البروتون $[\\text{H}^+]=\\sqrt{\\dfrac{K_{a1}K_{a2}C+K_{a1}K_w}{K_{a1}+C}}$. وعندما $C\\gg K_{a1}$ و $K_{a2}C\\gg K_w$ يُختزل إلى $[\\text{H}^+]\\approx\\sqrt{K_{a1}K_{a2}}$، أي $\\text{pH}\\approx\\tfrac12(pK_{a1}+pK_{a2})$ وهي خالية صراحةً من $C$. عددياً $[\\text{H}^+]=\\sqrt{4.45\\times10^{-7}\\times4.69\\times10^{-11}}=4.57\\times10^{-9}\\,\\text{M}$، أي $\\text{pH}=8.34$ (والصيغة الكاملة عند $0.10\\,\\text{M}$ تعطي $8.34$ أيضاً).",
+   "a_en": "For an amphiprotic species of concentration $C$, the proton condition yields $[\\text{H}^+]=\\sqrt{\\dfrac{K_{a1}K_{a2}C+K_{a1}K_w}{K_{a1}+C}}$. When $C\\gg K_{a1}$ and $K_{a2}C\\gg K_w$ this collapses to $[\\text{H}^+]\\approx\\sqrt{K_{a1}K_{a2}}$, i.e. $\\text{pH}\\approx\\tfrac12(pK_{a1}+pK_{a2})$, explicitly free of $C$. Numerically $[\\text{H}^+]=\\sqrt{4.45\\times10^{-7}\\times4.69\\times10^{-11}}=4.57\\times10^{-9}\\,\\text{M}$, giving $\\text{pH}=8.34$ (the full formula at $0.10\\,\\text{M}$ also gives $8.34$).",
+   "answer": "pH ≈ 8.34 (≈ ½(pKa1+pKa2), concentration-independent)",
+   "keywords": [
+    "أيون مذبذب",
+    "amphiprotic",
+    "NaHCO3",
+    "بيكربونات",
+    "pKa1 pKa2",
+    "proton condition",
+    "شرط البروتون",
+    "pH"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "ما حجم محلول NaOH تركيزه $0.100\\,\\text{M}$ الذي يجب إضافته إلى $100.0\\,\\text{mL}$ من حمض الخليك تركيزه $0.100\\,\\text{M}$ (حيث $K_a=1.8\\times10^{-5}$) لتحضير محلول منظم (buffer) قيمته pH تساوي $5.00$ بالضبط؟ افترض أن الحجوم قابلة للجمع.",
+   "q_en": "What volume of $0.100\\,\\text{M}$ NaOH must be added to $100.0\\,\\text{mL}$ of $0.100\\,\\text{M}$ acetic acid ($K_a=1.8\\times10^{-5}$) to prepare a buffer of pH exactly $5.00$? Assume volumes are additive.",
+   "a_ar": "بما أن $pK_a=-\\log(1.8\\times10^{-5})=4.745$، تعطي معادلة هندرسون–هاسلباخ $\\dfrac{[\\text{A}^-]}{[\\text{HA}]}=10^{\\,5.00-4.745}=1.80$. تحوّل NaOH مقدار $x$ مول من حمض الخليك ($0.0100\\,\\text{mol}$) إلى أسيتات، فيكون $\\dfrac{x}{0.0100-x}=1.80\\Rightarrow x=\\dfrac{1.80\\times0.0100}{2.80}=6.43\\times10^{-3}\\,\\text{mol}$. والحجم $=x/0.100=0.0643\\,\\text{L}=64.3\\,\\text{mL}$.",
+   "a_en": "With $pK_a=-\\log(1.8\\times10^{-5})=4.745$, Henderson–Hasselbalch gives $\\dfrac{[\\text{A}^-]}{[\\text{HA}]}=10^{\\,5.00-4.745}=1.80$. NaOH converts $x$ mol of the $0.0100\\,\\text{mol}$ acetic acid into acetate, so $\\dfrac{x}{0.0100-x}=1.80\\Rightarrow x=\\dfrac{1.80\\times0.0100}{2.80}=6.43\\times10^{-3}\\,\\text{mol}$. Volume $=x/0.100=0.0643\\,\\text{L}=64.3\\,\\text{mL}$.",
+   "answer": "V(NaOH) = 64.3 mL",
+   "keywords": [
+    "buffer",
+    "محلول منظم",
+    "Henderson-Hasselbalch",
+    "هندرسون هاسلباخ",
+    "acetic acid",
+    "حمض الخليك",
+    "pH 5",
+    "titration"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "احسب قيمة pH لمحلول كربونات الصوديوم $\\text{Na}_2\\text{CO}_3$ تركيزه $0.100\\,\\text{M}$ عند $25^\\circ\\text{C}$، بمعلومية ثوابت حمض الكربونيك $K_{a1}=4.45\\times10^{-7}$، $K_{a2}=4.69\\times10^{-11}$، $K_w=1.0\\times10^{-14}$.",
+   "q_en": "Calculate the pH of a $0.100\\,\\text{M}$ sodium carbonate ($\\text{Na}_2\\text{CO}_3$) solution at $25^\\circ\\text{C}$, given carbonic acid constants $K_{a1}=4.45\\times10^{-7}$, $K_{a2}=4.69\\times10^{-11}$, $K_w=1.0\\times10^{-14}$.",
+   "a_ar": "الأيون $\\text{CO}_3^{2-}$ قاعدة؛ تحلّله المائي الأول $\\text{CO}_3^{2-}+\\text{H}_2\\text{O}\\rightleftharpoons\\text{HCO}_3^-+\\text{OH}^-$ له $K_{b1}=K_w/K_{a2}=2.13\\times10^{-4}$. بحلّ $\\dfrac{x^2}{0.100-x}=2.13\\times10^{-4}$ نحصل على $x=[\\text{OH}^-]=4.51\\times10^{-3}\\,\\text{M}$ (والتحلل الثاني $K_{b2}=K_w/K_{a1}=2.25\\times10^{-8}$ مهمَل). ومن ثمّ $\\text{pOH}=2.35$، أي $\\text{pH}=11.65$.",
+   "a_en": "$\\text{CO}_3^{2-}$ is a base; its first hydrolysis $\\text{CO}_3^{2-}+\\text{H}_2\\text{O}\\rightleftharpoons\\text{HCO}_3^-+\\text{OH}^-$ has $K_{b1}=K_w/K_{a2}=2.13\\times10^{-4}$. Solving $\\dfrac{x^2}{0.100-x}=2.13\\times10^{-4}$ gives $x=[\\text{OH}^-]=4.51\\times10^{-3}\\,\\text{M}$ (the second hydrolysis, $K_{b2}=K_w/K_{a1}=2.25\\times10^{-8}$, is negligible). Then $\\text{pOH}=2.35$, so $\\text{pH}=11.65$.",
+   "answer": "pH = 11.65",
+   "keywords": [
+    "carbonate",
+    "كربونات الصوديوم",
+    "hydrolysis",
+    "تحلل مائي",
+    "Kb1",
+    "Kw/Ka2",
+    "pOH",
+    "pH"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "عيّن قيمة pH لمحلول سيانيد الأمونيوم $\\text{NH}_4\\text{CN}$ تركيزه $0.20\\,\\text{M}$ — وهو ملح لحمض ضعيف وقاعدة ضعيفة — بمعلومية $K_a(\\text{HCN})=6.2\\times10^{-10}$ و $K_b(\\text{NH}_3)=1.8\\times10^{-5}$. وبيّن أن pH مستقلة عملياً عن التركيز.",
+   "q_en": "Determine the pH of a $0.20\\,\\text{M}$ ammonium cyanide ($\\text{NH}_4\\text{CN}$) solution — a salt of a weak acid and a weak base — given $K_a(\\text{HCN})=6.2\\times10^{-10}$ and $K_b(\\text{NH}_3)=1.8\\times10^{-5}$. Show that the pH is essentially independent of concentration.",
+   "a_ar": "في ملح لحمض ضعيف وقاعدة ضعيفة يتفاعل كلا الأيونين؛ والنتيجة الدقيقة (عندما لا يكون $C$ صغيراً جداً) هي $[\\text{H}^+]=\\sqrt{\\dfrac{K_w\\,K_a(\\text{HCN})}{K_b(\\text{NH}_3)}}$ وهي خالية من حدّ التركيز. عددياً $[\\text{H}^+]=\\sqrt{\\dfrac{10^{-14}\\times6.2\\times10^{-10}}{1.8\\times10^{-5}}}=5.87\\times10^{-10}\\,\\text{M}$، أي $\\text{pH}=9.23$. وبالمكافئ $\\text{pH}=\\tfrac12\\!\\left(pK_w+pK_a(\\text{HCN})-pK_b(\\text{NH}_3)\\right)=\\tfrac12(14+9.21-4.74)=9.23$؛ وبما أن $K_a<K_b$ فالمحلول قاعدي.",
+   "a_en": "For a salt of a weak acid and weak base, both ions react; the exact result (for $C$ not too small) is $[\\text{H}^+]=\\sqrt{\\dfrac{K_w\\,K_a(\\text{HCN})}{K_b(\\text{NH}_3)}}$, which contains no concentration term. Numerically $[\\text{H}^+]=\\sqrt{\\dfrac{10^{-14}\\times6.2\\times10^{-10}}{1.8\\times10^{-5}}}=5.87\\times10^{-10}\\,\\text{M}$, giving $\\text{pH}=9.23$. Equivalently $\\text{pH}=\\tfrac12\\!\\left(pK_w+pK_a(\\text{HCN})-pK_b(\\text{NH}_3)\\right)=\\tfrac12(14+9.21-4.74)=9.23$; since $K_a<K_b$, the solution is basic.",
+   "answer": "pH = 9.23 (independent of concentration)",
+   "keywords": [
+    "سيانيد الأمونيوم",
+    "NH4CN",
+    "salt of weak acid and weak base",
+    "ملح حمض وقاعدة ضعيفين",
+    "Ka Kb",
+    "pH",
+    "concentration-independent",
+    "hydrolysis"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

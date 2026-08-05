@@ -1,0 +1,165 @@
+{
+ "subject": "arabic",
+ "topic": "irab",
+ "title": "irab — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "أعرب إعرابًا كاملًا: «ما جاءني إلا زيدٌ». وبيّن إعراب «زيدٌ» في أسلوب الحصر (النفي مع «إلا»)، ولماذا لا يُعرب مستثنى منصوبًا؟",
+   "q_en": "Parse fully: «ما جاءني إلا زيدٌ» (No one came to me except Zayd). Explain the i'rab of زيدٌ under the ḥaṣr (restriction) with نفي + إلا, and why it is not treated as mustathnā manṣūb.",
+   "a_ar": "ما: نافية، حرف مبنيّ لا محلّ له. جاءَ: فعل ماضٍ مبنيّ على الفتح. والنون في «جاءني» نون الوقاية حرف لا محلّ له، والياء ضمير متصل مبنيّ في محلّ نصب مفعول به. إلا: أداة حصر (استثناء ملغاة) لا محلّ لها. زيدٌ: فاعل «جاء» مرفوع وعلامة رفعه الضمة. والسبب أن الأسلوب استثناء مفرّغ (حُذف المستثنى منه وسبقه نفي)، فتُلغى «إلا» ويُعرب الاسم بعدها بحسب موقعه من الجملة — وهو هنا فاعل فيرفع — لا مستثنى منصوبًا.",
+   "a_en": "ما: nāfiyah, ḥarf mabnī, no position. جاءَ: māḍī fi'l mabnī 'alā al-fatḥ. The نـ in جاءَني is nūn al-wiqāyah (ḥarf, no position) and the yā' is a maf'ūl bihi ḍamīr muttaṣil mabnī in maḥall naṣb. إلا: ḥarf ḥaṣr (adāt istithnā' mulghāh), no position. زيدٌ: fā'il of جاء, marfū', sign is ḍammah. Because the sentence is istithnā' mufarragh (the mustathnā minh is omitted and the speech is negative), إلا is cancelled (mulghāh) and the noun after it takes the i'rab its role demands — here fā'il, hence raf' — not naṣb as a mustathnā.",
+   "answer": "ما: نافية. جاءَ: ماضٍ. الياء: مفعول به في محل نصب. إلا: أداة حصر. زيدٌ: فاعل مرفوع بالضمة (استثناء مفرّغ).",
+   "keywords": [
+    "استثناء مفرّغ",
+    "الحصر",
+    "إلا الملغاة",
+    "mufarragh exception",
+    "نون الوقاية",
+    "فاعل مرفوع",
+    "restriction ḥaṣr"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أعرب إعرابًا كاملًا: «كُنْ ذا خُلُقٍ تُحَبَّبْ إلى الناسِ». وبيّن إعراب «ذا»، وسبب جزم «تُحَبَّبْ» النحويّ.",
+   "q_en": "Give the full i'rab of: «كُنْ ذا خُلُقٍ تُحَبَّبْ إلى الناسِ» (Be of good character, you will be endeared to people). Explain the i'rab of ذا, the jazm of تُحَبَّبْ, and the syntactic reason for that jazm.",
+   "a_ar": "كُنْ: فعل أمر ناقص من «كان» مبنيّ على السكون، واسمها ضمير مستتر تقديره «أنتَ» في محلّ رفع. ذا: خبر «كان» منصوب وعلامة نصبه الألف لأنه من الأسماء الخمسة، وهو مضاف. خُلُقٍ: مضاف إليه مجرور بالكسرة. تُحَبَّبْ: فعل مضارع مبنيّ للمجهول مجزوم لأنه جواب الطلب (جواب الأمر «كُنْ»)، وعلامة جزمه السكون، ونائب الفاعل ضمير مستتر تقديره «أنتَ». إلى: حرف جرّ، والناسِ: اسم مجرور بالكسرة. وسبب الجزم أن المضارع الواقع جوابًا للطلب يُجزم على تقدير شرطٍ: «إن تكن ذا خلقٍ تُحبَّب».",
+   "a_en": "كُنْ: fi'l amr nāqiṣ (from كان), mabnī 'alā as-sukūn; its ism is a ḍamīr mustatir taqdīruhu «أنتَ» in maḥall raf'. ذا: khabar كان manṣūb, sign of naṣb is the alif because it is one of the al-asmā' al-khamsah; it is also muḍāf. خُلُقٍ: muḍāf ilayh majrūr, kasrah. تُحَبَّبْ: fi'l muḍāri' mabnī lil-majhūl, majzūm because it is the jawāb al-ṭalab (response to the imperative كُنْ), sign of jazm is the sukūn; its nā'ib fā'il is a ḍamīr mustatir taqdīruhu «أنتَ». إلى: ḥarf jarr; الناسِ: majrūr, kasrah. The jazm is triggered because a muḍāri' falling as the answer to a command is jussive on the implied condition «إن تكن ذا خلق تحبَّب».",
+   "answer": "كُنْ: أمر ناقص، اسمها ضمير مستتر. ذا: خبر كان منصوب بالألف (من الأسماء الخمسة)، مضاف. خُلُقٍ: مضاف إليه مجرور. تُحَبَّبْ: مضارع مجزوم بالسكون لأنه جواب الطلب.",
+   "keywords": [
+    "جواب الطلب",
+    "الأسماء الخمسة",
+    "خبر كان",
+    "jussive jawāb al-ṭalab",
+    "ذا بمعنى صاحب",
+    "مبني للمجهول",
+    "jazm"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أعرب إعرابًا كاملًا: «الطلابُ المجتهدونَ نجاحُهم مؤكَّدٌ». وبيّن إعراب كل كلمة، ومحلّ جملة «نجاحُهم مؤكَّدٌ» ومحلّ «مؤكَّدٌ» داخلها.",
+   "q_en": "Parse fully: «الطلابُ المجتهدونَ نجاحُهم مؤكَّدٌ» (The diligent students — their success is assured). Give the i'rab of every word and specify the grammatical position (maḥall) of the sentence «نجاحُهم مؤكَّدٌ» and of «مؤكَّدٌ» within it.",
+   "a_ar": "الطلابُ: مبتدأ أول مرفوع وعلامة رفعه الضمة. المجتهدونَ: نعت (صفة) للطلاب مرفوع وعلامة رفعه الواو لأنه جمع مذكر سالم. نجاحُهم: «نجاحُ» مبتدأ ثانٍ مرفوع بالضمة وهو مضاف، و«هم» ضمير متصل مبنيّ في محلّ جرّ مضاف إليه. مؤكَّدٌ: خبر المبتدأ الثاني مرفوع بالضمة. وجملة «نجاحُهم مؤكَّدٌ» اسمية في محلّ رفع خبر المبتدأ الأول «الطلاب»، والرابط بينهما الضمير «هم» العائد على الطلاب.",
+   "a_en": "الطلابُ: mubtada' (first), marfū', ḍammah. المجتهدونَ: na't (ṣifah) to الطلاب, marfū', sign of raf' is the wāw because it is jam' mudhakkar sālim. نجاحُهم: نجاحُ is mubtada' thānin (second inchoative), marfū' by ḍammah, and it is muḍāf; هم is ḍamīr muttaṣil mabnī in maḥall jarr muḍāf ilayh. مؤكَّدٌ: khabar of the second mubtada', marfū', ḍammah. The sentence «نجاحُهم مؤكَّدٌ» is a jumlah ismiyyah occupying maḥall raf' as the khabar of the first mubtada' «الطلاب»; the rābiṭ (link) is the ḍamīr هم referring back to الطلاب.",
+   "answer": "الطلابُ: مبتدأ أول مرفوع. المجتهدونَ: نعت مرفوع بالواو. نجاحُ: مبتدأ ثانٍ مرفوع، (هـ)م: مضاف إليه في محل جر. مؤكَّدٌ: خبر المبتدأ الثاني مرفوع. وجملة «نجاحهم مؤكد» في محل رفع خبر المبتدأ الأول.",
+   "keywords": [
+    "مبتدأ ثانٍ",
+    "الجملة الاسمية خبرًا",
+    "الرابط",
+    "جمع مذكر سالم",
+    "nested predicate",
+    "الضمير الرابط",
+    "khabar jumlah"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أعرب إعرابًا كاملًا جملة الشرط: «مَنْ يزرعِ الخيرَ يحصدْ ثمارَه». أعرب كل كلمة، وحدّد فعل الشرط وجوابه وعلامتَي جزمهما، وعلّل كسر «يزرعِ».",
+   "q_en": "Give the full i'rab of the conditional sentence: «مَنْ يزرعِ الخيرَ يحصدْ ثمارَه» (Whoever sows good will reap its fruits). Parse every word, identify the fi'l al-sharṭ and jawāb al-sharṭ with their jazm signs, and explain why يزرعِ ends in kasr.",
+   "a_ar": "مَنْ: اسم شرط جازم مبنيّ على السكون في محلّ رفع مبتدأ. يزرعِ: فعل الشرط، مضارع مجزوم وعلامة جزمه السكون، وحُرّك بالكسر (يزرعِ) للتخلّص من التقاء الساكنين (سكون الجزم ولام «الخير»)، وفاعله ضمير مستتر تقديره «هو». الخيرَ: مفعول به منصوب بالفتحة. يحصدْ: جواب الشرط، مضارع مجزوم وعلامة جزمه السكون، وفاعله ضمير مستتر تقديره «هو». ثمارَه: «ثمارَ» مفعول به منصوب بالفتحة وهو مضاف، و«الهاء» ضمير متصل مبنيّ في محلّ جرّ مضاف إليه. وجملتا الشرط والجواب معًا في محلّ رفع خبر المبتدأ «مَنْ».",
+   "a_en": "مَنْ: ism sharṭ jāzim, mabnī 'alā as-sukūn in maḥall raf' mubtada'. يزرعِ: fi'l al-sharṭ, muḍāri' majzūm, sign of jazm is the sukūn, but it is broken to kasr (يزرعِ) to avoid the meeting of two sākins (the jazm sukūn and the lām of الخير); its fā'il is a ḍamīr mustatir taqdīruhu «هو». الخيرَ: maf'ūl bihi manṣūb, fatḥah. يحصدْ: jawāb al-sharṭ, muḍāri' majzūm, sign of jazm is the sukūn; fā'il is a ḍamīr mustatir «هو». ثمارَه: ثمارَ is maf'ūl bihi manṣūb (fatḥah) and muḍāf, and the هـ is ḍamīr muttaṣil mabnī in maḥall jarr muḍāf ilayh. The two jumlahs of sharṭ and jawāb together form the khabar of the mubtada' مَنْ, in maḥall raf'.",
+   "answer": "مَنْ: اسم شرط جازم مبتدأ في محل رفع. يزرعِ: فعل الشرط مجزوم بالسكون، كُسر لالتقاء الساكنين. الخيرَ: مفعول به منصوب. يحصدْ: جواب الشرط مجزوم بالسكون. ثمارَ: مفعول به منصوب مضاف، (ـه): مضاف إليه في محل جر.",
+   "keywords": [
+    "اسم الشرط الجازم",
+    "فعل الشرط وجوابه",
+    "التقاء الساكنين",
+    "conditional jazm",
+    "من الشرطية",
+    "jawāb al-sharṭ",
+    "مضاف إليه ضمير"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أعرب ما تحته خط في قوله تعالى: \"وَإِنْ كَادُوا لَيَفْتِنُونَكَ عَنِ الَّذِي أَوْحَيْنَا إِلَيْكَ\"، مع بيان نوع \"إنْ\" ونوع اللام في \"لَيَفْتِنُونَكَ\" والعلة في ذلك.",
+   "q_en": "Parse the underlined parts in the verse: \"wa-in kādū la-yaftinūnaka ʿani lladhī awḥaynā ilayka\" (And indeed they were about to tempt you away from that which We revealed to you), explaining the type of \"in\" and the type of the lām in \"la-yaftinūnaka,\" with justification.",
+   "a_ar": "\"إنْ\" هنا هي المخففة من الثقيلة (إنَّ)، وليست النافية ولا الشرطية، والدليل عليها اللام الفارقة الداخلة على خبرها (\"لَيَفْتِنُونَكَ\") التي تميّزها من \"إنْ\" النافية. واسمها ضمير الشأن محذوف تقديره \"إنه\". و\"كادُوا\": فعل ماضٍ ناقص من أفعال المقاربة مبني على الضم، والواو اسمها، والجملة من \"كاد\" واسمها وخبرها في محل رفع خبر \"إنْ\" المخففة. واللام في \"لَيَفْتِنُونَكَ\" هي اللام الفارقة، لازمة للتفريق بين المخففة والنافية، لا محل لها من الإعراب. وجملة \"يَفْتِنُونَكَ\" في محل نصب خبر \"كاد\".",
+   "a_en": "Here \"in\" is the lightened form of the heavy \"inna\" (al-mukhaffafa min al-thaqīla), not the negative or conditional \"in.\" The proof is the distinguishing lām (al-lām al-fāriqa) attached to its predicate (\"la-yaftinūnaka\"), which separates it from the negative \"in.\" Its noun is an omitted pronoun of the matter (ḍamīr al-shaʾn), understood as \"innahu.\" \"Kādū\" is a defective past verb of approximation (min afʿāl al-muqāraba), built on ḍamma, with the wāw as its subject; the whole \"kāda + subject + predicate\" clause is in the nominative position as the predicate of the lightened \"in.\" The lām in \"la-yaftinūnaka\" is the distinguishing lām, obligatory to separate the lightened from the negative, with no grammatical position. The clause \"yaftinūnaka\" is in the accusative position as the predicate of \"kāda.\"",
+   "answer": "إنْ: مخففة من الثقيلة، واسمها ضمير الشأن محذوف؛ جملة (كادوا لَيَفْتِنُونَكَ) خبرها. كادوا: فعل ماضٍ ناقص، الواو اسمها. اللام: فارقة، لا محل لها. جملة (يفتنونك) في محل نصب خبر كاد.",
+   "keywords": [
+    "إنْ المخففة",
+    "اللام الفارقة",
+    "ضمير الشأن",
+    "أفعال المقاربة",
+    "kāda",
+    "al-lām al-fāriqa",
+    "in mukhaffafa",
+    "irab"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أعرب كلمة \"غيرَ\" في قول الشاعر: \"لا يَبْعَدَنْ قومي الذينَ همُ سمُّ العُداةِ وآفةُ الجُزْرِ\" ... بل أعرب \"غيرَ\" في: \"جاء القومُ غيرَ زيدٍ\"، ثم بيّن الفرق في إعرابها بين حالتي الاستثناء التام الموجب وبين وقوعها صفة في \"جاءني رجلٌ غيرُ عاقلٍ\".",
+   "q_en": "Parse the word \"ghayra\" in \"jāʾa al-qawmu ghayra Zaydin\" (The people came, except Zayd), then explain the difference in its i'rab between the case of complete affirmative exception and the case where it functions as an adjective in \"jāʾanī rajulun ghayru ʿāqilin\" (A man who is not sensible came to me).",
+   "a_ar": "في \"جاء القومُ غيرَ زيدٍ\": \"غيرَ\" مستثنى منصوب بالفتحة، وهي أخذت حكم الاسم الواقع بعد \"إلا\" في الاستثناء التام الموجب (وجوب النصب)، و\"زيدٍ\" مضاف إليه مجرور. أما في \"جاءني رجلٌ غيرُ عاقلٍ\": فـ\"غيرُ\" صفة لـ\"رجلٌ\" مرفوعة بالضمة تبعاً للموصوف، و\"عاقلٍ\" مضاف إليه مجرور. فالعلة أنّ \"غير\" اسم ملازم للإضافة، وإعرابها تابع لموقعها في الجملة: تُعرب إعراب الاسم الواقع بعد \"إلا\" إن كانت للاستثناء، وتُعرب صفةً إذا وقعت بعد نكرة وأفادت معنى الوصف والمغايرة.",
+   "a_en": "In \"jāʾa al-qawmu ghayra Zaydin\": \"ghayra\" is an exception (mustathnā) in the accusative with fatḥa, since it takes the ruling of the noun after \"illā\" in a complete affirmative exception (obligatory accusative); \"Zaydin\" is a genitive muḍāf ilayh. In \"jāʾanī rajulun ghayru ʿāqilin\": \"ghayru\" is an adjective (ṣifa) of \"rajulun,\" nominative with ḍamma following its described noun; \"ʿāqilin\" is a genitive muḍāf ilayh. The reason: \"ghayr\" is a noun permanently in construct (muḍāf); its i'rab follows its position — it takes the i'rab of the post-\"illā\" noun when used for exception, but is parsed as an adjective when it follows an indefinite noun and conveys description and difference.",
+   "answer": "في الاستثناء: غيرَ = مستثنى منصوب بالفتحة (حكم الاسم بعد إلا في التام الموجب). في الصفة: غيرُ = نعت مرفوع تبعاً للموصوف. وفي الحالتين ما بعدها مضاف إليه مجرور.",
+   "keywords": [
+    "غير",
+    "الاستثناء التام الموجب",
+    "المستثنى",
+    "النعت",
+    "ghayr",
+    "exception",
+    "mustathnā",
+    "ṣifa"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أعرب جملة: \"ما جاءني إلا زيدٌ\"، ثم أعرب \"زيداً\" في \"ما ضربتُ إلا زيداً\"، مبيّناً سبب رفع الأول ونصب الثاني رغم تقدّم \"إلا\" النافية عليهما في استثناء مفرّغ.",
+   "q_en": "Parse the sentence \"mā jāʾanī illā Zaydun\" (No one came to me except Zayd), then parse \"Zaydan\" in \"mā ḍarabtu illā Zaydan\" (I struck none but Zayd), explaining why the first is nominative and the second accusative, though \"illā\" precedes both in an emptied (mufarragh) exception.",
+   "a_ar": "هذا استثناء مفرّغ (لأن الكلام قبل \"إلا\" منفيّ غير تام، فُرِّغ العامل لما بعدها)، وحكمه أن يُعرب الاسم بعد \"إلا\" حسب موقعه من الجملة كأنّ \"إلا\" غير موجودة. ففي \"ما جاءني إلا زيدٌ\": \"زيدٌ\" فاعل لـ\"جاء\" مرفوع بالضمة، لأنّ الفعل يطلب فاعلاً ولم يأخذه قبل \"إلا\". وفي \"ما ضربتُ إلا زيداً\": \"زيداً\" مفعول به منصوب بالفتحة، لأنّ الفاعل هو تاء المتكلم، والفعل متعدٍّ يطلب مفعولاً به لم يستوفه قبل \"إلا\". و\"إلا\" في الحالتين أداة حصر لا عمل لها، لا محل لها من الإعراب.",
+   "a_en": "This is an emptied (mufarragh) exception, because the speech before \"illā\" is negated and incomplete, so the governing verb is \"emptied\" onto what follows it; the ruling is that the noun after \"illā\" takes the i'rab dictated by its position, as if \"illā\" were absent. In \"mā jāʾanī illā Zaydun,\" \"Zaydun\" is the subject (fāʿil) of \"jāʾa,\" nominative with ḍamma, since the verb needs a subject it had not yet taken before \"illā.\" In \"mā ḍarabtu illā Zaydan,\" \"Zaydan\" is the direct object (mafʿūl bihi), accusative with fatḥa, because the subject is the speaker's tāʾ and the transitive verb needs an object it had not received before \"illā.\" In both, \"illā\" is a particle of restriction with no governing effect and no grammatical position.",
+   "answer": "زيدٌ: فاعل مرفوع (الفعل لازم لم يأخذ فاعله). زيداً: مفعول به منصوب (الفعل متعدٍّ استوفى فاعله وهو التاء). إلا: أداة حصر ملغاة لا عمل لها. النوع: استثناء مفرّغ.",
+   "keywords": [
+    "الاستثناء المفرّغ",
+    "إلا",
+    "الحصر",
+    "فاعل",
+    "مفعول به",
+    "mufarragh",
+    "exception",
+    "illā"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أعرب ما تحته خط في: \"كلُّ امرئٍ بما كسبَ رهينٌ\"، ثم أعرب جملة \"سواءٌ عليهم أأنذرتَهم أم لم تنذرْهم\" مبيّناً موقع \"سواءٌ\" والجملة الاستفهامية بعدها.",
+   "q_en": "Parse the underlined words in \"kullu imriʾin bimā kasaba rahīnun\" (Every man is pledged for what he earned), then parse \"sawāʾun ʿalayhim a-andhartahum am lam tundhirhum\" (It is the same to them whether you warn them or do not warn them), clarifying the position of \"sawāʾun\" and the interrogative clause after it.",
+   "a_ar": "في \"كلُّ امرئٍ بما كسبَ رهينٌ\": \"كلُّ\" مبتدأ مرفوع بالضمة وهو مضاف، \"امرئٍ\" مضاف إليه مجرور، والجار والمجرور \"بما\" متعلّقان بـ\"رهين\"، و\"رهينٌ\" خبر المبتدأ مرفوع بالضمة. أما \"سواءٌ عليهم أأنذرتَهم أم لم تنذرْهم\": فـ\"سواءٌ\" خبر مقدَّم مرفوع بالضمة، والجملة الاستفهامية \"أأنذرتَهم أم لم تنذرهم\" في تأويل مصدر مبتدأ مؤخَّر، والتقدير: \"إنذارُك وعدمُه سواءٌ عليهم\". فالهمزة للتسوية لا للاستفهام الحقيقي، والجملة بعدها في محل رفع مبتدأ مؤخَّر، و\"عليهم\" جار ومجرور متعلّق بـ\"سواء\".",
+   "a_en": "In \"kullu imriʾin bimā kasaba rahīnun\": \"kullu\" is the subject (mubtadaʾ), nominative with ḍamma and in construct; \"imriʾin\" is the genitive muḍāf ilayh; the prepositional phrase \"bimā\" is attached to \"rahīn\"; and \"rahīnun\" is the predicate (khabar), nominative with ḍamma. In \"sawāʾun ʿalayhim a-andhartahum am lam tundhirhum\": \"sawāʾun\" is a fronted predicate (khabar muqaddam), nominative with ḍamma, and the interrogative clause \"a-andhartahum am lam tundhirhum\" is interpreted as a maṣdar functioning as a delayed subject (mubtadaʾ muʾakhkhar), the meaning being \"your warning them and your not warning them are the same to them.\" The hamza here is the hamza of equalization (li-l-taswiya), not a real question; the clause after it is in the nominative position as the delayed subject, and \"ʿalayhim\" is a prepositional phrase attached to \"sawāʾ.\"",
+   "answer": "كلُّ: مبتدأ مرفوع (مضاف)، امرئٍ: مضاف إليه، رهينٌ: خبر مرفوع. سواءٌ: خبر مقدَّم مرفوع، والجملة الاستفهامية (أأنذرتهم...) مؤوَّلة بمصدر في محل رفع مبتدأ مؤخَّر؛ والهمزة همزة تسوية.",
+   "keywords": [
+    "مبتدأ وخبر",
+    "خبر مقدم",
+    "همزة التسوية",
+    "المصدر المؤول",
+    "sawāʾun",
+    "mubtadaʾ",
+    "taswiya",
+    "irab"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أعرب \"يوماً\" و\"لا تجزي\" في قوله تعالى: \"وَاتَّقُوا يَوْماً لَا تَجْزِي نَفْسٌ عَنْ نَفْسٍ شَيْئاً\"، مبيّناً محل الجملة \"لا تجزي\" والعائد إلى الموصوف، وإعراب \"شيئاً\".",
+   "q_en": "Parse \"yawman\" and \"lā tajzī\" in the verse: \"wa-ttaqū yawman lā tajzī nafsun ʿan nafsin shayʾan\" (And fear a day when no soul shall avail another in anything), clarifying the grammatical position of the clause \"lā tajzī,\" the returning pronoun to the described noun, and the i'rab of \"shayʾan.\"",
+   "a_ar": "\"يوماً\": مفعول به لـ\"اتَّقوا\" منصوب بالفتحة (وليس ظرفاً هنا، لأنّ المعنى: اتّقوا هول يومٍ). وجملة \"لا تجزي نفسٌ عن نفسٍ شيئاً\" في محل نصب صفة (نعت) لـ\"يوماً\"، والرابط بين الصفة والموصوف عائدٌ محذوف تقديره: \"لا تجزي فيه\"، أي الظرف العائد المقدَّر. و\"لا\" نافية لا عمل لها، \"تجزي\" فعل مضارع مرفوع بالضمة المقدَّرة على الياء للثقل، \"نفسٌ\" فاعل مرفوع، \"عن نفسٍ\" جار ومجرور متعلّق بـ\"تجزي\"، و\"شيئاً\" مفعول به منصوب بالفتحة (أو نائب مفعول مطلق: شيئاً من الجزاء)، والوجه الأرجح أنه مفعول به لـ\"تجزي\".",
+   "a_en": "\"Yawman\" is the direct object (mafʿūl bihi) of \"ittaqū,\" accusative with fatḥa (not an adverb of time here, since the meaning is \"fear the terror of a day\"). The clause \"lā tajzī nafsun ʿan nafsin shayʾan\" is in the accusative position as an adjective (ṣifa/naʿt) of \"yawman,\" and the link (rābiṭ) between adjective and described noun is an omitted returning adverb, understood as \"lā tajzī fīhi\" (in which). \"Lā\" is a non-governing negative particle; \"tajzī\" is an imperfect verb, nominative with an estimated ḍamma on the yāʾ (withheld for heaviness); \"nafsun\" is the nominative subject; \"ʿan nafsin\" is a prepositional phrase attached to \"tajzī\"; and \"shayʾan\" is a direct object, accusative with fatḥa (or a substitute absolute object, \"any recompense\"), the preferred view being that it is the object of \"tajzī.\"",
+   "answer": "يوماً: مفعول به لـ(اتقوا) منصوب. جملة (لا تجزي...): في محل نصب نعت لـ(يوماً)، والعائد ظرف محذوف تقديره (فيه). تجزي: مضارع مرفوع بضمة مقدّرة على الياء. شيئاً: مفعول به منصوب.",
+   "keywords": [
+    "مفعول به",
+    "الجملة الوصفية",
+    "العائد المحذوف",
+    "الضمة المقدرة",
+    "yawman",
+    "naʿt",
+    "rābiṭ",
+    "irab"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

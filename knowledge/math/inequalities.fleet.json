@@ -1,0 +1,131 @@
+{
+ "subject": "math",
+ "topic": "inequalities",
+ "title": "inequalities — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "لتكن $a,b,c$ أعداداً حقيقية موجبة. أثبت أن $$\\frac{a}{\\sqrt{a^2+8bc}}+\\frac{b}{\\sqrt{b^2+8ca}}+\\frac{c}{\\sqrt{c^2+8ab}}\\ge 1,$$ وحدّد القيمة الصغرى للطرف الأيسر وحالة المساواة.",
+   "q_en": "Let $a,b,c$ be positive reals. Prove that $$\\frac{a}{\\sqrt{a^2+8bc}}+\\frac{b}{\\sqrt{b^2+8ca}}+\\frac{c}{\\sqrt{c^2+8ab}}\\ge 1,$$ and determine the minimum value of the left-hand side and the equality case.",
+   "a_ar": "نطبّق متباينة الأس (نتيجة لهولدر): $\\left(\\sum \\frac{a}{\\sqrt{a^2+8bc}}\\right)^2\\cdot\\left(\\sum a(a^2+8bc)\\right)\\ge (a+b+c)^3$. إذن يكفي أن نثبت $(a+b+c)^3\\ge \\sum a(a^2+8bc)=a^3+b^3+c^3+24abc$. وبفكّ $(a+b+c)^3$ نجد أن هذا يكافئ $3(a^2b+b^2c+c^2a+ab^2+bc^2+ca^2)\\ge 18abc$، أي $\\sum_{sym}a^2b\\ge 6abc$، وهذا صحيح بمتباينة المتوسطين الحسابي والهندسي على الحدود الستة. القيمة الصغرى هي $1$ وتتحقق عند $a=b=c$.",
+   "a_en": "Apply Hölder's inequality: $\\left(\\sum \\frac{a}{\\sqrt{a^2+8bc}}\\right)^2\\cdot\\left(\\sum a(a^2+8bc)\\right)\\ge (a+b+c)^3$. So it suffices to prove $(a+b+c)^3\\ge \\sum a(a^2+8bc)=a^3+b^3+c^3+24abc$. Expanding $(a+b+c)^3$ reduces this to $3(a^2b+b^2c+c^2a+ab^2+bc^2+ca^2)\\ge 18abc$, i.e. $\\sum_{sym}a^2b\\ge 6abc$, which holds by AM-GM on the six terms. The minimum value is $1$, attained when $a=b=c$.",
+   "answer": "Minimum value $=1$, attained iff $a=b=c$.",
+   "keywords": [
+    "Hölder",
+    "هولدر",
+    "AM-GM",
+    "المتوسط الحسابي والهندسي",
+    "IMO 2001",
+    "متباينة أولمبياد",
+    "square root inequality"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لتكن $a,b,c$ أعداداً حقيقية موجبة تحقّق $abc=1$. أثبت أن $$\\frac{1}{a^3(b+c)}+\\frac{1}{b^3(c+a)}+\\frac{1}{c^3(a+b)}\\ge \\frac{3}{2},$$ وحدّد القيمة الصغرى وحالة المساواة.",
+   "q_en": "Let $a,b,c$ be positive reals with $abc=1$. Prove that $$\\frac{1}{a^3(b+c)}+\\frac{1}{b^3(c+a)}+\\frac{1}{c^3(a+b)}\\ge \\frac{3}{2},$$ and determine the minimum value and the equality case.",
+   "a_ar": "نضع $x=1/a,\\ y=1/b,\\ z=1/c$، فيصبح $xyz=1$ والحد الأول $\\frac{1}{a^3(b+c)}=\\frac{x^3}{\\frac{1}{y}+\\frac{1}{z}}=\\frac{x^3 yz}{y+z}=\\frac{x^2}{y+z}$ (باستعمال $xyz=1$). فالمقدار يساوي $\\frac{x^2}{y+z}+\\frac{y^2}{z+x}+\\frac{z^2}{x+y}$. وبمتباينة كوشي-شفارتز (صيغة إنجل) هذا $\\ge \\frac{(x+y+z)^2}{2(x+y+z)}=\\frac{x+y+z}{2}\\ge \\frac{3\\sqrt[3]{xyz}}{2}=\\frac{3}{2}$. القيمة الصغرى $\\frac{3}{2}$ وتتحقق عند $a=b=c=1$.",
+   "a_en": "Substitute $x=1/a,\\ y=1/b,\\ z=1/c$, so $xyz=1$ and the first term is $\\frac{1}{a^3(b+c)}=\\frac{x^3}{\\frac1y+\\frac1z}=\\frac{x^3 yz}{y+z}=\\frac{x^2}{y+z}$ (using $xyz=1$). Thus the sum equals $\\frac{x^2}{y+z}+\\frac{y^2}{z+x}+\\frac{z^2}{x+y}$. By Cauchy-Schwarz (Engel/Titu form) this is $\\ge \\frac{(x+y+z)^2}{2(x+y+z)}=\\frac{x+y+z}{2}\\ge \\frac{3\\sqrt[3]{xyz}}{2}=\\frac{3}{2}$. The minimum is $\\frac{3}{2}$, attained at $a=b=c=1$.",
+   "answer": "Minimum value $=\\dfrac{3}{2}$, attained iff $a=b=c=1$.",
+   "keywords": [
+    "Cauchy-Schwarz",
+    "كوشي شفارتز",
+    "Titu",
+    "IMO 1995",
+    "abc=1",
+    "متباينة إنجل",
+    "AM-GM"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لتكن $a,b,c$ أعداداً حقيقية موجبة تحقّق $a+b+c=1$. أوجد القيمة العظمى للمقدار $$\\sqrt{4a+1}+\\sqrt{4b+1}+\\sqrt{4c+1}.$$",
+   "q_en": "Let $a,b,c$ be positive reals with $a+b+c=1$. Find the maximum value of $$\\sqrt{4a+1}+\\sqrt{4b+1}+\\sqrt{4c+1}.$$",
+   "a_ar": "الدالة $t\\mapsto\\sqrt{4t+1}$ مقعّرة (تقعّر لأن مشتقتها الثانية سالبة). بمتباينة ينسن (أو كوشي-شفارتز): $\\sum\\sqrt{4a+1}\\le 3\\sqrt{4\\cdot\\frac{a+b+c}{3}+1}=3\\sqrt{\\frac{4}{3}+1}=3\\sqrt{\\frac{7}{3}}=\\sqrt{21}$. القيمة العظمى هي $\\sqrt{21}$ وتتحقق عند $a=b=c=\\frac13$. (بديلاً بكوشي-شفارتز: $\\left(\\sum\\sqrt{4a+1}\\right)^2\\le 3\\sum(4a+1)=3(4\\cdot1+3)=21$.)",
+   "a_en": "The function $t\\mapsto\\sqrt{4t+1}$ is concave (negative second derivative). By Jensen (or Cauchy-Schwarz): $\\sum\\sqrt{4a+1}\\le 3\\sqrt{4\\cdot\\frac{a+b+c}{3}+1}=3\\sqrt{\\frac43+1}=3\\sqrt{\\frac73}=\\sqrt{21}$. The maximum is $\\sqrt{21}$, attained at $a=b=c=\\frac13$. (Equivalently by Cauchy-Schwarz: $\\left(\\sum\\sqrt{4a+1}\\right)^2\\le 3\\sum(4a+1)=3(4+3)=21$.)",
+   "answer": "Maximum value $=\\sqrt{21}$, attained at $a=b=c=\\tfrac13$.",
+   "keywords": [
+    "Jensen",
+    "ينسن",
+    "Cauchy-Schwarz",
+    "كوشي شفارتز",
+    "concavity",
+    "تقعّر",
+    "maximization",
+    "قيمة عظمى"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لتكن $a,b,c$ أعداداً حقيقية موجبة. أثبت أنّ $\\dfrac{a}{\\sqrt{a^2+8bc}}+\\dfrac{b}{\\sqrt{b^2+8ca}}+\\dfrac{c}{\\sqrt{c^2+8ab}}\\ge 1$ (أولمبياد الرياضيات الدولي 2001)، وحدّد أصغر قيمة للطرف الأيسر.",
+   "q_en": "Let $a,b,c$ be positive real numbers. Prove that $\\dfrac{a}{\\sqrt{a^2+8bc}}+\\dfrac{b}{\\sqrt{b^2+8ca}}+\\dfrac{c}{\\sqrt{c^2+8ab}}\\ge 1$ (IMO 2001), and determine the minimum value of the left-hand side.",
+   "a_ar": "بالتجانس نفترض $a+b+c=1$. باستخدام متباينة هولدر: $\\left(\\sum \\frac{a}{\\sqrt{a^2+8bc}}\\right)^2\\left(\\sum a(a^2+8bc)\\right)\\ge (a+b+c)^3$. الآن $\\sum a(a^2+8bc)=a^3+b^3+c^3+24abc$، ونثبت أنّه $\\le (a+b+c)^3$ لأنّ ذلك يكافئ $27abc\\le 3(a+b+c)(ab+bc+ca)$ وهو صحيح بمتباينة المتوسطات (AM-GM). إذن $\\left(\\sum \\frac{a}{\\sqrt{a^2+8bc}}\\right)^2\\ge \\frac{(a+b+c)^3}{(a+b+c)^3}=1$، فيكون المجموع $\\ge 1$ مع تحقق المساواة إذا وفقط إذا $a=b=c$. أصغر قيمة هي $1$.",
+   "a_en": "By homogeneity assume $a+b+c=1$. Set $f(a)=\\frac{a}{\\sqrt{a^2+8bc}}$. Using the tangent-line / power-mean trick, one shows $\\frac{a}{\\sqrt{a^2+8bc}}\\ge \\frac{a^{4/3}}{a^{4/3}+b^{4/3}+c^{4/3}}$: this follows because $a^{4/3}+b^{4/3}+c^{4/3}$-based Hölder gives $\\left(\\sum \\frac{a}{\\sqrt{a^2+8bc}}\\right)^2\\left(\\sum a(a^2+8bc)\\right)\\ge (a+b+c)^3$. Since $\\sum a(a^2+8bc)=a^3+b^3+c^3+24abc\\le (a+b+c)^3$ (equivalent to $a^3+b^3+c^3+24abc\\le a^3+b^3+c^3+3(a+b+c)(ab+bc+ca)-3abc$, i.e. $27abc\\le 3(a+b+c)(ab+bc+ca)$, true by AM-GM), we get $\\left(\\sum \\frac{a}{\\sqrt{a^2+8bc}}\\right)^2\\ge \\frac{(a+b+c)^3}{(a+b+c)^3}=1$. Hence the sum is $\\ge 1$, with equality iff $a=b=c$. The minimum value is $1$.",
+   "answer": "Minimum value $=1$, attained iff $a=b=c$.",
+   "keywords": [
+    "IMO 2001",
+    "Hölder",
+    "متباينة هولدر",
+    "AM-GM",
+    "متوسط حسابي هندسي",
+    "olympiad inequality",
+    "متباينة أولمبياد",
+    "tangent line"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "لتكن $a,b,c>0$ حيث $a+b+c=1$. جد أصغر قيمة للمقدار $\\dfrac{a^2}{b+c}+\\dfrac{b^2}{c+a}+\\dfrac{c^2}{a+b}$ مع البرهان.",
+   "q_en": "Let $a,b,c>0$ with $a+b+c=1$. Find the minimum value of $\\dfrac{a^2}{b+c}+\\dfrac{b^2}{c+a}+\\dfrac{c^2}{a+b}$, and prove it.",
+   "a_ar": "بمتباينة كوشي–شفارتز بصيغة إنجل (مبرهنة تيتو): $\\dfrac{a^2}{b+c}+\\dfrac{b^2}{c+a}+\\dfrac{c^2}{a+b}\\ge \\dfrac{(a+b+c)^2}{2(a+b+c)}=\\dfrac{a+b+c}{2}=\\dfrac{1}{2}.$ وتتحقق المساواة عندما $\\frac{a}{b+c}=\\frac{b}{c+a}=\\frac{c}{a+b}$ أي $a=b=c=\\tfrac13$. إذن أصغر قيمة هي $\\dfrac{1}{2}$.",
+   "a_en": "By the Cauchy–Schwarz inequality in Engel form (Titu's lemma), $\\dfrac{a^2}{b+c}+\\dfrac{b^2}{c+a}+\\dfrac{c^2}{a+b}\\ge \\dfrac{(a+b+c)^2}{(b+c)+(c+a)+(a+b)}=\\dfrac{(a+b+c)^2}{2(a+b+c)}=\\dfrac{a+b+c}{2}=\\dfrac{1}{2}.$ Equality holds when $\\frac{a}{b+c}=\\frac{b}{c+a}=\\frac{c}{a+b}$, i.e. $a=b=c=\\tfrac13$. Hence the minimum value is $\\dfrac{1}{2}$.",
+   "answer": "Minimum $=\\dfrac{1}{2}$, attained at $a=b=c=\\tfrac13$.",
+   "keywords": [
+    "Cauchy-Schwarz",
+    "كوشي شفارتز",
+    "Titu lemma",
+    "مبرهنة تيتو",
+    "Engel form",
+    "متباينة",
+    "minimum",
+    "قيمة صغرى"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "لتكن $a,b,c$ أعداداً حقيقية حيث $a^2+b^2+c^2=1$. جد أكبر قيمة للمقدار $a+2b+3c$، والنقطة التي تتحقّق عندها.",
+   "q_en": "Let $a,b,c$ be real numbers with $a^2+b^2+c^2=1$. Find the maximum value of $a+2b+3c$, and the point where it is attained.",
+   "a_ar": "بمتباينة كوشي–شفارتز: $(a+2b+3c)^2\\le (a^2+b^2+c^2)(1^2+2^2+3^2)=1\\cdot 14=14$، إذن $a+2b+3c\\le \\sqrt{14}$. وتتحقّق المساواة عندما يكون $(a,b,c)$ موازياً للمتّجه $(1,2,3)$، أي $(a,b,c)=\\frac{1}{\\sqrt{14}}(1,2,3)$، وهو يحقّق $a^2+b^2+c^2=1$. إذن أكبر قيمة هي $\\sqrt{14}$.",
+   "a_en": "By the Cauchy–Schwarz inequality, $(a+2b+3c)^2\\le (a^2+b^2+c^2)(1^2+2^2+3^2)=1\\cdot 14=14$, so $a+2b+3c\\le \\sqrt{14}$. Equality holds when $(a,b,c)$ is parallel to $(1,2,3)$, i.e. $(a,b,c)=\\frac{1}{\\sqrt{14}}(1,2,3)$, which indeed satisfies $a^2+b^2+c^2=1$. Hence the maximum value is $\\sqrt{14}$.",
+   "answer": "Maximum $=\\sqrt{14}$, attained at $(a,b,c)=\\tfrac{1}{\\sqrt{14}}(1,2,3)$.",
+   "keywords": [
+    "Cauchy-Schwarz",
+    "كوشي شفارتز",
+    "maximum",
+    "قيمة عظمى",
+    "unit sphere",
+    "dot product",
+    "الضرب القياسي",
+    "optimization"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "لتكن $a,b,c>0$. أثبت أنّ $\\dfrac{(a+b+c)(ab+bc+ca)}{abc}\\ge 9$، وحدّد أصغر قيمة.",
+   "q_en": "Let $a,b,c>0$. Prove that $\\dfrac{(a+b+c)(ab+bc+ca)}{abc}\\ge 9$, and determine the minimum value.",
+   "a_ar": "بمتباينة المتوسطات (AM–GM): $a+b+c\\ge 3\\sqrt[3]{abc}$ و$ab+bc+ca\\ge 3\\sqrt[3]{(abc)^2}$. بضرب المتباينتين (والطرفان موجبان) نحصل على $(a+b+c)(ab+bc+ca)\\ge 9\\sqrt[3]{abc}\\cdot\\sqrt[3]{(abc)^2}=9\\,abc$. وبالقسمة على $abc>0$ نجد $\\dfrac{(a+b+c)(ab+bc+ca)}{abc}\\ge 9$. وتتحقّق المساواة إذا وفقط إذا $a=b=c$. إذن أصغر قيمة هي $9$.",
+   "a_en": "By the AM–GM inequality, $a+b+c\\ge 3\\sqrt[3]{abc}$ and $ab+bc+ca\\ge 3\\sqrt[3]{(abc)^2}$. Multiplying (both sides positive) gives $(a+b+c)(ab+bc+ca)\\ge 9\\sqrt[3]{abc}\\cdot\\sqrt[3]{(abc)^2}=9\\cdot abc$. Dividing by $abc>0$ yields $\\dfrac{(a+b+c)(ab+bc+ca)}{abc}\\ge 9$. Equality holds iff $a=b=c$. Hence the minimum value is $9$.",
+   "answer": "Minimum $=9$, attained iff $a=b=c$.",
+   "keywords": [
+    "AM-GM",
+    "متوسط حسابي هندسي",
+    "symmetric sums",
+    "المتباينات المتماثلة",
+    "minimum",
+    "قيمة صغرى",
+    "abc",
+    "factorization"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

@@ -1,0 +1,177 @@
+{
+ "subject": "science",
+ "topic": "phys-thermodynamics",
+ "title": "phys-thermodynamics — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "غاز مثالي أحادي الذرّة ($\\gamma = 5/3$) عند درجة حرارة ابتدائية $T_1 = 300\\,\\text{K}$، يُضغط ضغطاً أدياباتيكياً (كظوماً) وعكوسياً إلى ثُمن حجمه الأصلي. (أ) أوجد درجة الحرارة النهائية. (ب) إذا كان عدد المولات $n = 2\\,\\text{mol}$، أوجد الشغل المبذول على الغاز. استخدم $R = 8.314\\,\\text{J/(mol·K)}$.",
+   "q_en": "A monatomic ideal gas ($\\gamma = 5/3$) initially at $T_1 = 300\\,\\text{K}$ is compressed adiabatically and reversibly to one-eighth of its original volume. (a) Find the final temperature. (b) If there are $n = 2\\,\\text{mol}$, find the work done ON the gas. Use $R = 8.314\\,\\text{J/(mol·K)}$.",
+   "a_ar": "في العملية الأدياباتيكية العكوسية يكون $TV^{\\gamma-1} = \\text{ثابت}$، إذن $T_2 = T_1 (V_1/V_2)^{\\gamma-1} = 300 \\cdot 8^{2/3} = 300 \\cdot 4 = 1200\\,\\text{K}$. وبما أنّ $Q=0$ فإنّ الشغل المبذول على الغاز يساوي زيادة طاقته الداخلية: $W_{on} = \\Delta U = n C_V \\Delta T = 2 \\cdot \\tfrac{3}{2}R \\cdot (1200-300) = 2700R \\approx 2.24\\times10^4\\,\\text{J}$. إذن $T_2 = 1200\\,\\text{K}$ و $W_{on} \\approx 22450\\,\\text{J}$.",
+   "a_en": "For a reversible adiabatic process $TV^{\\gamma-1} = \\text{const}$, so $T_2 = T_1 (V_1/V_2)^{\\gamma-1} = 300 \\cdot 8^{2/3} = 300 \\cdot 4 = 1200\\,\\text{K}$. Since $Q=0$, the work done ON the gas equals its internal-energy increase: $W_{on} = \\Delta U = n C_V \\Delta T = 2 \\cdot \\tfrac{3}{2}R \\cdot (1200-300) = 3R \\cdot 900 = 2700R \\approx 2.24\\times10^4\\,\\text{J}$. So $T_2 = 1200\\,\\text{K}$ and $W_{on} \\approx 22{,}450\\,\\text{J}$.",
+   "answer": "$T_2 = 1200\\,\\text{K}$; $W_{on} = 2700R \\approx 2.24\\times10^4\\,\\text{J}$",
+   "keywords": [
+    "adiabatic",
+    "أدياباتيكي",
+    "monatomic gas",
+    "غاز أحادي الذرة",
+    "gamma",
+    "الطاقة الداخلية",
+    "work",
+    "ضغط كظوم"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "دورة أوتو مثالية (محرّك بشرارة إشعال) تعمل بنسبة انضغاط $r = 8$ باستخدام الهواء حيث $\\gamma = 1.4$. (أ) اشتق واحسب المردود الحراري. (ب) اشرح لماذا يكون هذا المردود أقل تماماً من مردود كارنو العامل بين نفس درجتَي الحرارة القصوى.",
+   "q_en": "An ideal Otto cycle (spark-ignition engine) operates with a compression ratio $r = 8$ using air with $\\gamma = 1.4$. (a) Derive and compute the thermal efficiency. (b) Explain why this is strictly less than the Carnot efficiency operating between the same extreme temperatures.",
+   "a_ar": "مردود دورة أوتو هو $\\eta = 1 - r^{1-\\gamma} = 1 - 8^{-0.4}$. وبما أنّ $8^{0.4} = e^{0.4\\ln 8} \\approx 2.297$، نحصل على $\\eta = 1 - 1/2.297 = 0.5647$، أي نحو $56.5\\%$. وهو أقل من مردود كارنو لأنّ دورة أوتو تكتسب وتطرح الحرارة على مدى من درجات الحرارة (عمليتان ثابتتا الحجم) وليس كلّها عند أعلى وأدنى درجة حرارة فقط؛ أمّا دورة كارنو المكافئة بين $T_{max}$ و $T_{min}$ فتنقل كل الحرارة عند هاتين الدرجتين القصويين ولذا تكون أكفأ.",
+   "a_en": "The Otto efficiency is $\\eta = 1 - r^{1-\\gamma} = 1 - 8^{-0.4}$. Since $8^{0.4} = e^{0.4\\ln 8} = e^{0.832} \\approx 2.297$, we get $\\eta = 1 - 1/2.297 = 1 - 0.4353 = 0.5647$, i.e. about $56.5\\%$. It is below Carnot because the Otto cycle adds/rejects heat over a range of temperatures (isochoric processes), not entirely at the single highest and lowest temperatures; the equivalent Carnot cycle between $T_{max}$ and $T_{min}$ transfers all heat at those extremes and is therefore more efficient.",
+   "answer": "$\\eta = 1 - 8^{-0.4} \\approx 0.565$ (56.5%)",
+   "keywords": [
+    "Otto cycle",
+    "دورة أوتو",
+    "compression ratio",
+    "نسبة الانضغاط",
+    "thermal efficiency",
+    "المردود الحراري",
+    "Carnot",
+    "كارنو"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "كتلتان متماثلتان لكلٍّ منهما سعة حرارية $C$ (ثابتة)، إحداهما عند $T_h = 400\\,\\text{K}$ والأخرى عند $T_c = 300\\,\\text{K}$، تُوضعان في تماسّ حراري مباشر حتى تصلا إلى الاتزان. (أ) أوجد درجة الحرارة النهائية. (ب) أوجد التغيّر الكلّي في إنتروبيا الكون (بوحدات $C$) وأكّد أنّ العملية لا عكوسية.",
+   "q_en": "Two identical blocks each of heat capacity $C$ (constant), one at $T_h = 400\\,\\text{K}$ and one at $T_c = 300\\,\\text{K}$, are placed in direct thermal contact and allowed to reach equilibrium. (a) Find the final temperature. (b) Find the total entropy change of the universe (in units of $C$) and confirm the process is irreversible.",
+   "a_ar": "بتساوي السعتين الحراريتين وعدم وجود شغل أو فقد حراري، يعطي حفظ الطاقة $T_f = (T_h + T_c)/2 = 350\\,\\text{K}$. والتغيّر الكلّي في الإنتروبيا هو $\\Delta S = C\\ln(T_f/T_h) + C\\ln(T_f/T_c) = C\\ln\\!\\left(\\frac{350^2}{400\\cdot300}\\right) = C\\ln(1.02083) \\approx +0.0206\\,C$. وبما أنّ $\\Delta S_{univ} > 0$ فإنّ انتقال الحرارة التلقائي لا عكوسي، بما يتوافق مع القانون الثاني.",
+   "a_en": "With equal heat capacities and no work/heat loss, energy balance gives $T_f = (T_h + T_c)/2 = 350\\,\\text{K}$. The total entropy change is $\\Delta S = C\\ln(T_f/T_h) + C\\ln(T_f/T_c) = C\\ln\\!\\left(\\frac{350^2}{400\\cdot300}\\right) = C\\ln\\!\\left(\\frac{122500}{120000}\\right) = C\\ln(1.02083) \\approx +0.0206\\,C$. Since $\\Delta S_{univ} > 0$, the spontaneous heat flow is irreversible, consistent with the second law.",
+   "answer": "$T_f = 350\\,\\text{K}$; $\\Delta S_{univ} = C\\ln(350^2/120000) \\approx +0.0206\\,C > 0$",
+   "keywords": [
+    "entropy",
+    "إنتروبيا",
+    "irreversible",
+    "لا عكوسية",
+    "thermal contact",
+    "تماس حراري",
+    "second law",
+    "القانون الثاني"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "كمية $n = 2\\,\\text{mol}$ من غاز مثالي عند $T = 300\\,\\text{K}$ يتضاعف حجمها عبر مسارين مختلفين: (i) تمدّد آيزوثيرمي (ثابت الحرارة) عكوسي، و(ii) تمدّد حرّ لا عكوسي (أدياباتيكي) في الفراغ. لكلّ مسار أوجد تغيّر الإنتروبيا للغاز، والشغل المبذول، والحرارة الممتصّة. استخدم $R = 8.314\\,\\text{J/(mol·K)}$.",
+   "q_en": "$n = 2\\,\\text{mol}$ of an ideal gas at $T = 300\\,\\text{K}$ doubles its volume by two different paths: (i) a reversible isothermal expansion, and (ii) an irreversible free (adiabatic) expansion into vacuum. For each path find the entropy change of the gas, the work done, and the heat absorbed. Use $R = 8.314\\,\\text{J/(mol·K)}$.",
+   "a_ar": "الإنتروبيا دالّة حالة، لذا يعطي المساران نفس تغيّر إنتروبيا الغاز: $\\Delta S = nR\\ln(V_2/V_1) = 2R\\ln 2 = 11.53\\,\\text{J/K}$. المسار (i) آيزوثيرمي عكوسي: $\\Delta U = 0$، إذن $W = Q = nRT\\ln 2 = 2(8.314)(300)(0.6931) = 3458\\,\\text{J}$ (الحرارة الممتصّة = الشغل المبذول). المسار (ii) تمدّد حرّ: $W = 0$ و $Q = 0$ (لا ضغط خارجي ومعزول)، و $\\Delta U = 0$ فتبقى $T$ ثابتة. إذن تغيّر إنتروبيا الغاز $+11.53\\,\\text{J/K}$ في الحالتين، لكن في (ii) لا تُتبادل حرارة فتبقى إنتروبيا المحيط ثابتة ويكون $\\Delta S_{univ} = +11.53\\,\\text{J/K} > 0$ (لا عكوسي).",
+   "a_en": "Entropy is a state function, so both paths give the same gas entropy change: $\\Delta S = nR\\ln(V_2/V_1) = 2R\\ln 2 = 2(8.314)(0.6931) = 11.53\\,\\text{J/K}$. Path (i) isothermal reversible: $\\Delta U = 0$, so $W = Q = nRT\\ln 2 = 2(8.314)(300)(0.6931) = 3458\\,\\text{J}$ (heat absorbed = work done). Path (ii) free expansion: $W = 0$ and $Q = 0$ (no external pressure, insulated), and $\\Delta U = 0$ so $T$ is unchanged. Thus the gas $\\Delta S = +11.53\\,\\text{J/K}$ in both cases, but in (ii) no heat is exchanged, so the surroundings entropy is unchanged and $\\Delta S_{univ} = +11.53\\,\\text{J/K} > 0$ (irreversible).",
+   "answer": "Both paths: $\\Delta S_{gas} = 2R\\ln 2 = 11.53\\,\\text{J/K}$. (i) $W=Q=nRT\\ln 2=3458\\,\\text{J}$; (ii) $W=Q=0$",
+   "keywords": [
+    "free expansion",
+    "تمدد حر",
+    "isothermal",
+    "آيزوثيرمي",
+    "entropy state function",
+    "دالة حالة",
+    "irreversible",
+    "إنتروبيا"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "جسمان متماثلان لكلٍّ منهما سعة حرارية ثابتة $C$، يبدآن عند درجتَي حرارة $T_h = 400\\,\\text{K}$ و $T_c = 300\\,\\text{K}$. يعمل محرّك حراري عكوسي بينهما إلى أن يصلا إلى درجة حرارة نهائية مشتركة. (أ) بيّن أنّ درجة الحرارة النهائية هي $T_f = \\sqrt{T_h T_c}$. (ب) أوجد الشغل الأقصى الممكن استخلاصه (بوحدات $C$).",
+   "q_en": "Two identical bodies each of constant heat capacity $C$ start at temperatures $T_h = 400\\,\\text{K}$ and $T_c = 300\\,\\text{K}$. A reversible heat engine operates between them until they reach a common final temperature. (a) Show the final temperature is $T_f = \\sqrt{T_h T_c}$. (b) Find the maximum work extractable (in units of $C$).",
+   "a_ar": "لأجل الشغل الأقصى تكون العملية عكوسية، فيكون التغيّر الكلّي في الإنتروبيا صفراً: $\\Delta S = C\\ln(T_f/T_h) + C\\ln(T_f/T_c) = 0 \\Rightarrow T_f^2 = T_h T_c \\Rightarrow T_f = \\sqrt{T_h T_c} = \\sqrt{120000} \\approx 346.4\\,\\text{K}$. وبحفظ الطاقة يكون الشغل مساوياً لنقص الطاقة الداخلية الكلّية: $W = C(T_h - T_f) - C(T_f - T_c) = C(T_h + T_c - 2T_f) = C(700 - 692.8) = 7.18\\,C$. (لاحظ أنّ $T_f$ هو الوسط الهندسي، وهو أدنى من الوسط الحسابي $350\\,\\text{K}$ في الحالة اللاعكوسية، ما يؤكّد استخلاص شغل.)",
+   "a_en": "For maximum work the process is reversible, so the total entropy change is zero: $\\Delta S = C\\ln(T_f/T_h) + C\\ln(T_f/T_c) = 0 \\Rightarrow T_f^2 = T_h T_c \\Rightarrow T_f = \\sqrt{T_h T_c} = \\sqrt{400\\cdot300} = \\sqrt{120000} \\approx 346.4\\,\\text{K}$. By energy conservation the work is the drop in total internal energy minus zero net heat left: $W = C(T_h - T_f) - C(T_f - T_c) = C(T_h + T_c - 2T_f) = C(400 + 300 - 2\\cdot346.4) = C(700 - 692.8) = 7.18\\,C$. (Note $T_f$ is the geometric mean, below the $350\\,\\text{K}$ arithmetic mean of the irreversible case, confirming work was extracted.)",
+   "answer": "$T_f = \\sqrt{T_h T_c} \\approx 346.4\\,\\text{K}$; $W_{max} = C(T_h + T_c - 2\\sqrt{T_h T_c}) \\approx 7.18\\,C$",
+   "keywords": [
+    "maximum work",
+    "الشغل الأقصى",
+    "geometric mean",
+    "الوسط الهندسي",
+    "reversible engine",
+    "محرك عكوسي",
+    "finite reservoirs",
+    "إنتروبيا"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "جسمان متماثلان لكل منهما سعة حرارية ثابتة $C = 1000\\ \\mathrm{J/K}$، درجتاهما الابتدائيتان $T_1 = 400\\ \\mathrm{K}$ و $T_2 = 300\\ \\mathrm{K}$. يعمل محرك حراري عكوس بينهما حتى يصلا إلى درجة حرارة نهائية مشتركة. أوجد هذه الدرجة النهائية وأقصى شغل يمكن استخلاصه.",
+   "q_en": "Two identical bodies each of constant heat capacity $C = 1000\\ \\mathrm{J/K}$ are initially at temperatures $T_1 = 400\\ \\mathrm{K}$ and $T_2 = 300\\ \\mathrm{K}$. A reversible heat engine operates between them until they reach a common final temperature. Find that final temperature and the maximum work extractable.",
+   "a_ar": "لأقصى شغل يجب أن تكون العملية عكوسة، فيكون تغيّر الإنتروبيا الكلي صفراً: $\\Delta S = C\\ln(T_f/T_1) + C\\ln(T_f/T_2) = 0$، ومنه $T_f = \\sqrt{T_1 T_2} = \\sqrt{400\\cdot300} \\approx 346.4\\ \\mathrm{K}$. وبحفظ الطاقة يكون الشغل هو الفرق بين الحرارة التي يفقدها الجسم الساخن وتلك التي يكتسبها الجسم البارد: $W = C(T_1 + T_2 - 2T_f) = 1000(700 - 2(346.41)) \\approx 7.18\\times10^{3}\\ \\mathrm{J}$.",
+   "a_en": "For maximum work the process must be reversible, so total entropy change is zero: $\\Delta S = C\\ln(T_f/T_1) + C\\ln(T_f/T_2) = 0$, giving $T_f = \\sqrt{T_1 T_2} = \\sqrt{400\\cdot300} \\approx 346.4\\ \\mathrm{K}$. Energy conservation gives the work as the difference between heat lost by the hot body and heat gained by the cold body: $W = C(T_1 + T_2 - 2T_f) = 1000(700 - 2(346.41)) \\approx 7.18\\times10^{3}\\ \\mathrm{J}$.",
+   "answer": "$T_f=\\sqrt{T_1T_2}\\approx346.4\\ \\mathrm{K}$, $W_{\\max}=C(T_1+T_2-2\\sqrt{T_1T_2})\\approx7.18\\times10^{3}\\ \\mathrm{J}$",
+   "keywords": [
+    "أقصى شغل",
+    "reversible engine",
+    "finite bodies",
+    "إنتروبيا صفرية",
+    "geometric mean temperature",
+    "carnot"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "تُخلط كتلتان متساويتان مقدار كل منهما $1\\ \\mathrm{kg}$ من الماء عند $80^{\\circ}\\mathrm{C}$ و $10^{\\circ}\\mathrm{C}$ خلطاً كظومًا (معزولاً حرارياً). خذ الحرارة النوعية $c = 4186\\ \\mathrm{J\\,kg^{-1}K^{-1}}$. أوجد درجة الحرارة النهائية والإنتروبيا الكلية المتولّدة، وبيّن هل العملية عكوسة.",
+   "q_en": "Equal masses of $1\\ \\mathrm{kg}$ of water at $80^{\\circ}\\mathrm{C}$ and $10^{\\circ}\\mathrm{C}$ are mixed adiabatically. Take specific heat $c = 4186\\ \\mathrm{J\\,kg^{-1}K^{-1}}$. Find the final temperature and the total entropy generated, and state whether the process is reversible.",
+   "a_ar": "موازنة الطاقة لكتلتين متساويتين تعطي المتوسط الحسابي: $T_f = (353.15 + 283.15)/2 = 318.15\\ \\mathrm{K}$ (أي $45^{\\circ}\\mathrm{C}$). والإنتروبيا المتولّدة $\\Delta S = mc\\ln(T_f/T_1) + mc\\ln(T_f/T_2) = mc\\ln\\!\\frac{T_f^2}{T_1 T_2} = 4186\\ln\\!\\frac{318.15^2}{353.15\\cdot283.15} \\approx +51.0\\ \\mathrm{J/K}$. وبما أن $\\Delta S > 0$ فإن الخلط عملية غير عكوسة.",
+   "a_en": "Energy balance for equal masses gives the arithmetic mean: $T_f = (353.15 + 283.15)/2 = 318.15\\ \\mathrm{K}$ ($45^{\\circ}\\mathrm{C}$). The entropy generated is $\\Delta S = mc\\ln(T_f/T_1) + mc\\ln(T_f/T_2) = mc\\ln\\!\\frac{T_f^2}{T_1 T_2} = 4186\\ln\\!\\frac{318.15^2}{353.15\\cdot283.15} \\approx +51.0\\ \\mathrm{J/K}$. Since $\\Delta S > 0$ the mixing is irreversible.",
+   "answer": "$T_f=45^{\\circ}\\mathrm{C}=318.15\\ \\mathrm{K}$, $\\Delta S_{\\text{univ}}\\approx+51.0\\ \\mathrm{J/K}$ (irreversible)",
+   "keywords": [
+    "خلط الماء",
+    "entropy generation",
+    "إنتروبيا متولّدة",
+    "irreversible mixing",
+    "القانون الثاني",
+    "المتوسط الحسابي"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "دورة أوتّو لغاز مثالي تستخدم الهواء ($\\gamma = 1.4$) بنسبة انضغاط $r = V_1/V_2 = 8$. اشتقّ كفاءتها الحرارية واحسبها. وإذا عملت الدورة بين درجة حرارة صغرى $300\\ \\mathrm{K}$ وعظمى $1800\\ \\mathrm{K}$، قارنها بكفاءة كارنو لنفس الحدّين الحراريين.",
+   "q_en": "An ideal-gas Otto cycle uses air ($\\gamma = 1.4$) with compression ratio $r = V_1/V_2 = 8$. Derive its thermal efficiency and evaluate it. If the cycle operates between minimum temperature $300\\ \\mathrm{K}$ and maximum temperature $1800\\ \\mathrm{K}$, compare with the Carnot efficiency for the same temperature extremes.",
+   "a_ar": "في دورة أوتّو يعطي الخطّان الكظومان $T_2/T_1 = T_3/T_4 = r^{\\gamma-1}$، فتكون الكفاءة $\\eta = 1 - r^{1-\\gamma} = 1 - 8^{-0.4} \\approx 0.565$ (أي $56.5\\%$). وكفاءة كارنو بين الحدّين $\\eta_C = 1 - 300/1800 = 0.833$ (أي $83.3\\%$). كفاءة أوتّو أقل لأن الحرارة تُضاف وتُطرح على مدى درجات حرارة وليس عند الحدّين بشكل متساوي الحرارة.",
+   "a_en": "For the Otto cycle the two adiabats give $T_2/T_1 = T_3/T_4 = r^{\\gamma-1}$, so the efficiency is $\\eta = 1 - r^{1-\\gamma} = 1 - 8^{-0.4} \\approx 0.565$ ($56.5\\%$). The Carnot efficiency for the extremes is $\\eta_C = 1 - 300/1800 = 0.833$ ($83.3\\%$). The Otto efficiency is lower because heat is added/rejected over ranges of temperature rather than isothermally at the two extremes.",
+   "answer": "$\\eta_{\\text{Otto}} = 1 - r^{1-\\gamma} = 1-8^{-0.4} \\approx 56.5\\%$; $\\eta_C = 1-300/1800 \\approx 83.3\\%$",
+   "keywords": [
+    "دورة أوتّو",
+    "Otto cycle",
+    "نسبة الانضغاط",
+    "thermal efficiency",
+    "كفاءة كارنو",
+    "adiabatic"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يتمدّد مول واحد من غاز مثالي تمدّداً حراً (تمدّد جول) في الفراغ فيتضاعف حجمه داخل وعاء صلب معزول. أوجد التغيّر في درجة الحرارة، وتغيّر إنتروبيا الغاز، والإنتروبيا المتولّدة في الكون. وفسّر المفارقة الظاهرية في أن $\\Delta S > 0$ رغم أن $Q = 0$.",
+   "q_en": "One mole of an ideal gas undergoes a free (Joule) expansion into vacuum, doubling its volume inside a rigid insulated container. Find the change in temperature, the entropy change of the gas, and the entropy generated in the universe. Explain the apparent paradox that $\\Delta S > 0$ although $Q = 0$.",
+   "a_ar": "في التمدّد الحر $Q=0$ و $W=0$، إذن $\\Delta U = 0$؛ وبما أن طاقة الغاز المثالي تعتمد على $T$ فقط فإن $\\Delta T = 0$ (لا تتغيّر درجة الحرارة). والإنتروبيا دالة حالة، فباستخدام مسار عكوس متساوي الحرارة بين الحالتين نفسيهما: $\\Delta S = nR\\ln(V_f/V_i) = R\\ln 2 \\approx +5.76\\ \\mathrm{J/K}$. وبما أنه لا تخرج إنتروبيا إلى المحيط ($Q=0$) فكلها متولّدة: $\\Delta S_{\\text{univ}} = +5.76\\ \\mathrm{J/K}$. ولا مفارقة: فالعلاقة $dS = \\delta Q_{\\text{rev}}/T$ تستخدم الحرارة العكوسة لا الحرارة الفعلية (الصفرية) للعملية غير العكوسة.",
+   "a_en": "In free expansion $Q=0$, $W=0$, so $\\Delta U = 0$; for an ideal gas $U$ depends only on $T$, hence $\\Delta T = 0$ (temperature unchanged). Entropy is a state function; using a reversible isothermal path between the same states, $\\Delta S = nR\\ln(V_f/V_i) = R\\ln 2 \\approx +5.76\\ \\mathrm{J/K}$. Since no entropy leaves to the surroundings ($Q=0$), all of it is generated: $\\Delta S_{\\text{univ}} = +5.76\\ \\mathrm{J/K}$. There is no paradox: $\\oint dS = \\int \\delta Q_{\\text{rev}}/T$ uses the reversible heat, not the actual (zero) heat of the irreversible process.",
+   "answer": "$\\Delta T = 0$; $\\Delta S_{\\text{gas}} = \\Delta S_{\\text{univ}} = R\\ln 2 \\approx +5.76\\ \\mathrm{J/K}$",
+   "keywords": [
+    "تمدّد جول",
+    "free expansion",
+    "التمدّد الحر",
+    "entropy state function",
+    "دالة حالة",
+    "irreversible"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "ثلّاجة تجمّد $1\\ \\mathrm{kg}$ من الماء الموجود أصلاً عند $0^{\\circ}\\mathrm{C}$ ليصبح جليداً عند $0^{\\circ}\\mathrm{C}$، وتطرح الحرارة إلى الوسط المحيط عند $25^{\\circ}\\mathrm{C}$. الحرارة الكامنة للانصهار $L = 334\\ \\mathrm{kJ/kg}$. أوجد أقل شغل مطلوب، وفسّر لماذا تحتاج الثلّاجة الحقيقية إلى أكثر منه.",
+   "q_en": "A refrigerator freezes $1\\ \\mathrm{kg}$ of water already at $0^{\\circ}\\mathrm{C}$ into ice at $0^{\\circ}\\mathrm{C}$, rejecting heat to the surroundings at $25^{\\circ}\\mathrm{C}$. The latent heat of fusion is $L = 334\\ \\mathrm{kJ/kg}$. Find the minimum work required, and explain why a real refrigerator needs more.",
+   "a_ar": "الحرارة المطلوب سحبها $Q_c = mL = 334\\ \\mathrm{kJ}$ عند الخزّان البارد $T_c = 273.15\\ \\mathrm{K}$، وتُطرح عند $T_0 = 298.15\\ \\mathrm{K}$. أقل شغل تحدّده ثلّاجة عكوسة (كارنو): $W_{\\min} = Q_c\\left(\\frac{T_0}{T_c} - 1\\right) = 334000\\left(\\frac{298.15}{273.15} - 1\\right) \\approx 3.06\\times10^{4}\\ \\mathrm{J} \\approx 30.6\\ \\mathrm{kJ}$. أما الثلّاجة الحقيقية ففيها لاعكوسية (فروق حرارة منتهية، احتكاك، دورة غير مثالية) تولّد إنتروبيا، فتحتاج شغلاً أكبر من هذا الحدّ الأدنى الكارنوّي.",
+   "a_en": "Heat to remove is $Q_c = mL = 334\\ \\mathrm{kJ}$ at the cold reservoir $T_c = 273.15\\ \\mathrm{K}$, rejecting to $T_0 = 298.15\\ \\mathrm{K}$. The minimum work is set by a reversible (Carnot) refrigerator: $W_{\\min} = Q_c\\left(\\frac{T_0}{T_c} - 1\\right) = 334000\\left(\\frac{298.15}{273.15} - 1\\right) \\approx 3.06\\times10^{4}\\ \\mathrm{J} \\approx 30.6\\ \\mathrm{kJ}$. A real refrigerator has irreversibilities (finite temperature differences, friction, non-ideal cycle) that generate entropy, so it must supply more work than this Carnot lower bound.",
+   "answer": "$W_{\\min} = mL\\left(\\frac{T_0}{T_c}-1\\right) \\approx 3.06\\times10^{4}\\ \\mathrm{J} \\approx 30.6\\ \\mathrm{kJ}$",
+   "keywords": [
+    "أقل شغل",
+    "minimum work",
+    "تجميد الماء",
+    "Carnot refrigerator",
+    "معامل الأداء",
+    "latent heat"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

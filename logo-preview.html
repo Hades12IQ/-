@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#262624" />
+<title>شعار Firas AI — الجيل الثالث، بالأخضر</title>
+<!-- TEMPORARY preview page. Not linked from the app; nothing here is applied to the product.
+     Every mark is defined ONCE as a <symbol> and placed with <use>, so no size or ground can
+     drift from another. The two grounds SELECT a paint through --mk / --mk2 (inherited custom
+     properties reach the <use> shadow tree); the gradients themselves are separate nodes,
+     because a gradient resolves its stops from its own position in the tree, not the caller's. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@400;600&family=Noto+Sans+Arabic:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#262624; --surface:#30302E; --hair:#3A3A36;
+    --ink:#ECEAE3; --ink2:#A6A39A; --ink3:#9A978E;
+    --paper:#FAF9F5; --paper-ink:#1A1A18; --paper-ink2:#6B6A63;
+    --green:#57AE9C;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:"Noto Sans Arabic","Archivo",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.75;
+    padding:clamp(16px,4vw,40px) clamp(14px,4vw,30px) 70px;
+  }
+  h1{font-family:"Reem Kufi",sans-serif;font-size:clamp(21px,5.6vw,32px);font-weight:600;word-spacing:.16em;margin-bottom:8px}
+  .lede{color:var(--ink2);font-size:clamp(13px,3.4vw,15px);max-width:62ch}
+  .note{color:var(--ink3);font-size:clamp(12px,3.2vw,13px);max-width:62ch;margin:8px 0 28px}
+
+  .grid{display:grid;gap:20px;grid-template-columns:1fr}
+  @media (min-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}
+  @media (min-width:1200px){.grid{grid-template-columns:repeat(3,1fr)}}
+
+  .card{border:1px solid var(--hair);border-radius:12px;overflow:hidden;background:var(--surface)}
+  .card__head{padding:14px 16px 15px;border-bottom:1px solid var(--hair)}
+  .num{
+    display:inline-flex;align-items:center;justify-content:center;
+    inline-size:28px;block-size:28px;border-radius:50%;
+    background:var(--green);color:#1F1E1D;
+    font-family:"Archivo",sans-serif;font-size:14px;font-weight:700;
+    margin-inline-end:10px;vertical-align:middle;
+  }
+  .name{font-size:clamp(15px,4vw,17px);font-weight:700;vertical-align:middle}
+  .latin{color:var(--ink3);font-size:11.5px;letter-spacing:.10em;font-family:"Archivo",sans-serif;margin-top:5px}
+  .desc{color:var(--ink2);font-size:clamp(12.5px,3.3vw,13.5px);margin-top:9px}
+
+  .ground{padding:26px 16px 20px;display:flex;flex-direction:column;align-items:center;gap:18px}
+  .ground--dark{
+    background:var(--bg);
+    --mk:#57AE9C;      /* primary green on dark */
+    --mk2:#2F6F62;     /* the deeper facet / second tone */
+    --on:#1F1E1D;      /* reversed-out ink sitting ON the green */
+  }
+  .ground--light{
+    background:var(--paper);border-top:1px solid var(--hair);
+    --mk:#237A68;      /* primary green on light — the original identity value */
+    --mk2:#14544A;     /* the deeper facet, one step down from the primary */
+    --on:#FFFFFF;
+  }
+  .glabel{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-family:"Archivo",sans-serif}
+  .ground--dark .glabel{color:var(--ink3)}
+  .ground--light .glabel{color:var(--paper-ink2)}
+
+  .sizes{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;justify-content:center}
+  .sz{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .sz span{font-size:10px;font-family:"Archivo",sans-serif}
+  .ground--dark .sz span{color:var(--ink3)}
+  .ground--light .sz span{color:var(--paper-ink2)}
+
+  .lock{display:flex;align-items:center;gap:10px;direction:ltr}
+  .lock b{font-family:"Archivo",sans-serif;font-weight:600;font-size:18px;letter-spacing:-.012em}
+  .ground--dark .lock b{color:var(--ink)}
+  .ground--light .lock b{color:var(--paper-ink)}
+
+  .verdict{margin-top:32px;border:1px solid var(--hair);border-radius:12px;padding:18px 20px;background:var(--surface);max-width:74ch}
+  .verdict h2{font-size:15px;font-weight:700;margin-bottom:10px}
+  .verdict p{color:var(--ink2);font-size:13.5px;margin-bottom:9px}
+  .verdict p:last-child{margin-bottom:0}
+  .verdict b{color:var(--green)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+
+  <!-- ١ — الفاء الصلبة: the Arabic letter with real weight, not a hairline -->
+  <symbol id="m1" viewBox="0 0 64 64">
+    <g fill="none" stroke="var(--mk)" stroke-width="9.5" stroke-linecap="round">
+      <circle cx="39" cy="32" r="13"/>
+      <path d="M26 32 H13"/>
+    </g>
+    <circle cx="39" cy="8" r="4.6" fill="var(--mk)"/>
+  </symbol>
+
+  <!-- ٢ — الموشور: a solid tile, the F cut clean out of it, split into two tones for depth -->
+  <symbol id="m2" viewBox="0 0 64 64">
+    <rect width="64" height="64" rx="17" fill="var(--mk)"/>
+    <path d="M0 64 L64 0 V64 Z" fill="var(--mk2)" opacity=".55"/>
+    <path d="M22 48 V20 a2 2 0 0 1 2-2 h18 v8 H30 v8 h10 v8 H30 v6 Z" fill="var(--on)"/>
+  </symbol>
+
+  <!-- ٣ — الشعاع: the F built from tapered wedges — mass that narrows, like light -->
+  <symbol id="m3" viewBox="0 0 64 64">
+    <path d="M18 10 h6.5 v44 h-6.5 Z" fill="var(--mk)"/>
+    <path d="M24.5 10 H50 l-5 8.5 H24.5 Z" fill="var(--mk)"/>
+    <path d="M24.5 27 H42 l-4.5 8.5 H24.5 Z" fill="var(--mk2)"/>
+  </symbol>
+
+  <!-- ٤ — التداخل: Latin F and Arabic fā' as two solid forms, the overlap a third tone -->
+  <symbol id="m4" viewBox="0 0 64 64">
+    <g fill="var(--mk)">
+      <path d="M12 14 h26 v8.5 H20.5 v9 H35 v8.5 H20.5 V54 H12 Z"/>
+    </g>
+    <circle cx="44" cy="26" r="12.5" fill="none" stroke="var(--mk2)" stroke-width="8" opacity=".92"/>
+    <circle cx="44" cy="7.5" r="3.8" fill="var(--mk2)"/>
+  </symbol>
+
+  <!-- ٥ — الدرع: a crest. Solid silhouette, letterform reversed out. -->
+  <symbol id="m5" viewBox="0 0 64 64">
+    <path d="M32 2 L58 11 v22 c0 14-11 24-26 29 C17 57 6 47 6 33 V11 Z" fill="var(--mk)"/>
+    <path d="M32 2 L58 11 v22 c0 14-11 24-26 29 Z" fill="var(--mk2)" opacity=".45"/>
+    <path d="M23 46 V22 a2 2 0 0 1 2-2 h17 v7.5 H30.5 v7 h10 v7.5 h-10 V46 Z" fill="var(--on)"/>
+  </symbol>
+
+  <!-- ٦ — الحلقة المزدوجة: weight contrast — a heavy F inside a light ring -->
+  <symbol id="m6" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="28.5" fill="none" stroke="var(--mk2)" stroke-width="3"/>
+    <path d="M23 46 V22 a1.5 1.5 0 0 1 1.5-1.5 H42 v7.5 H30.5 v6 h9.5 v7.5 h-9.5 V46 Z" fill="var(--mk)"/>
+  </symbol>
+</defs></svg>
+
+
+<h1>الجيل الثالث — بالأخضر</h1>
+<p class="lede">اللون رجع إلى الأصلي: <b style="color:var(--green)">#57AE9C</b> على الغامق و<b style="color:var(--green)">#237A68</b> على الفاتح — نفس القيم اللي كانت قبل إعادة التصميم بالضبط.</p>
+<p class="note">والفرق الجوهري عن المجموعتين السابقتين: هذي <strong>مصمتة وثقيلة</strong>. السابقتان كانتا خطوطًا رفيعة، وهذا يُقرأ «أيقونة» لا «شعار». الكتلة هي اللي تعطي الإحساس بالثقة والفخامة. قارن حجم ٢٠ أولًا.</p>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="card__head"><span class="num">١</span><span class="name">الفاء الصلبة</span>
+      <div class="latin">THE SOLID FĀ'</div>
+      <p class="desc">الحرف العربي بوزن حقيقي — حلقة سميكة وضربة وواحدة ونقطة.</p></div>
+    <div class="ground ground--dark"><span class="glabel">dark</span>
+      <svg width="150" height="150" role="img" aria-label="١ الفاء الصلبة"><use href="#m1"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="56" height="56"><use href="#m1"/></svg><span>56</span></div>
+        <div class="sz"><svg width="32" height="32"><use href="#m1"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m1"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m1"/></svg><b>Firas AI</b></div></div>
+    <div class="ground ground--light"><span class="glabel">light</span>
+      <svg width="96" height="96"><use href="#m1"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="32" height="32"><use href="#m1"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m1"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m1"/></svg><b>Firas AI</b></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><span class="num">٢</span><span class="name">الموشور</span>
+      <div class="latin">THE PRISM</div>
+      <p class="desc">بلاطة مصمتة والحرف مقطوع منها، بوجهين أخضرين يعطيان عمقًا.</p></div>
+    <div class="ground ground--dark"><span class="glabel">dark</span>
+      <svg width="150" height="150" role="img" aria-label="٢ الموشور"><use href="#m2"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="56" height="56"><use href="#m2"/></svg><span>56</span></div>
+        <div class="sz"><svg width="32" height="32"><use href="#m2"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m2"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m2"/></svg><b>Firas AI</b></div></div>
+    <div class="ground ground--light"><span class="glabel">light</span>
+      <svg width="96" height="96"><use href="#m2"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="32" height="32"><use href="#m2"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m2"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m2"/></svg><b>Firas AI</b></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><span class="num">٣</span><span class="name">الشعاع</span>
+      <div class="latin">THE BEAM</div>
+      <p class="desc">F مبني من أوتاد تضيق — كتلة تتحرك، إحساس بالسرعة والاتجاه.</p></div>
+    <div class="ground ground--dark"><span class="glabel">dark</span>
+      <svg width="150" height="150" role="img" aria-label="٣ الشعاع"><use href="#m3"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="56" height="56"><use href="#m3"/></svg><span>56</span></div>
+        <div class="sz"><svg width="32" height="32"><use href="#m3"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m3"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m3"/></svg><b>Firas AI</b></div></div>
+    <div class="ground ground--light"><span class="glabel">light</span>
+      <svg width="96" height="96"><use href="#m3"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="32" height="32"><use href="#m3"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m3"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m3"/></svg><b>Firas AI</b></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><span class="num">٤</span><span class="name">التداخل</span>
+      <div class="latin">THE OVERLAP</div>
+      <p class="desc">F مصمت و«ف» عربية يتقاطعان — اللغتان في علامة واحدة.</p></div>
+    <div class="ground ground--dark"><span class="glabel">dark</span>
+      <svg width="150" height="150" role="img" aria-label="٤ التداخل"><use href="#m4"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="56" height="56"><use href="#m4"/></svg><span>56</span></div>
+        <div class="sz"><svg width="32" height="32"><use href="#m4"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m4"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m4"/></svg><b>Firas AI</b></div></div>
+    <div class="ground ground--light"><span class="glabel">light</span>
+      <svg width="96" height="96"><use href="#m4"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="32" height="32"><use href="#m4"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m4"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m4"/></svg><b>Firas AI</b></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><span class="num">٥</span><span class="name">الدرع</span>
+      <div class="latin">THE CREST</div>
+      <p class="desc">شارة مصمتة بصورة ظلية قوية والحرف محفور فيها — الأثقل حضورًا.</p></div>
+    <div class="ground ground--dark"><span class="glabel">dark</span>
+      <svg width="150" height="150" role="img" aria-label="٥ الدرع"><use href="#m5"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="56" height="56"><use href="#m5"/></svg><span>56</span></div>
+        <div class="sz"><svg width="32" height="32"><use href="#m5"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m5"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m5"/></svg><b>Firas AI</b></div></div>
+    <div class="ground ground--light"><span class="glabel">light</span>
+      <svg width="96" height="96"><use href="#m5"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="32" height="32"><use href="#m5"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m5"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m5"/></svg><b>Firas AI</b></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><span class="num">٦</span><span class="name">الحلقة المزدوجة</span>
+      <div class="latin">THE DOUBLE RING</div>
+      <p class="desc">تباين وزن: حرف ثقيل مصمت داخل حلقة رفيعة. هدوء وثقة.</p></div>
+    <div class="ground ground--dark"><span class="glabel">dark</span>
+      <svg width="150" height="150" role="img" aria-label="٦ الحلقة المزدوجة"><use href="#m6"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="56" height="56"><use href="#m6"/></svg><span>56</span></div>
+        <div class="sz"><svg width="32" height="32"><use href="#m6"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m6"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m6"/></svg><b>Firas AI</b></div></div>
+    <div class="ground ground--light"><span class="glabel">light</span>
+      <svg width="96" height="96"><use href="#m6"/></svg>
+      <div class="sizes">
+        <div class="sz"><svg width="32" height="32"><use href="#m6"/></svg><span>32</span></div>
+        <div class="sz"><svg width="20" height="20"><use href="#m6"/></svg><span>20</span></div>
+      </div>
+      <div class="lock"><svg width="27" height="27"><use href="#m6"/></svg><b>Firas AI</b></div></div>
+  </div>
+
+</div>
+
+<div class="verdict">
+  <h2>رأيي</h2>
+  <p><b>٢ — الموشور</b> هو الأقوى عمليًا: بلاطة مصمتة تبقى واضحة عند ٢٠ بكسل مهما صغرت، والحرف مقطوع بنظافة، والوجهان يعطيان عمقًا بدون أي زخرفة. هذا شكل الشعار اللي تستعمله كل التطبيقات الكبيرة لأنه ينجح على أيقونة الجوال وعلى شريط التبويبات معًا.</p>
+  <p><b>٥ — الدرع</b> الأفخم إحساسًا وأقوى صورة ظلية. <b>٤ — التداخل</b> الأذكى فكرة لأنه يجمع اللغتين فعلًا.</p>
+  <p><b>١ — الفاء الصلبة</b> الأنقى عربيًا الآن بعد ما صار له وزن. <b>٣ — الشعاع</b> الأكثر حركة، و<b>٦</b> الأهدأ.</p>
+  <p style="margin-top:12px;color:var(--ink3);font-size:12.5px">لو ما عجبه ولا واحد مرة ثالثة — لا نبدأ من الصفر. قل لي: أي رقم كان الأقرب، وشنو بالضبط اللي ما عجبه فيه (ثقيل؟ خفيف؟ حاد؟ دائري؟ عربي أكثر؟ عالمي أكثر؟) وأبني الجيل الرابع حول تلك النقطة.</p>
+</div>
+
+</body>
+</html>

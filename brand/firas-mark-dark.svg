@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 10 32 44" width="32" height="44" role="img" aria-label="Firas AI">
+  <title>Firas AI</title>
+  <!-- For DARK grounds. The dark theme lifts both tones so the mark keeps its weight against
+       near-black: --color-accent #57AE9C, --color-accent-deep #2F6F62. -->
+  <path d="M18 10h6.5v44H18Z" fill="#57AE9C"/>
+  <path d="M24.5 10H50l-5 8.5H24.5Z" fill="#57AE9C"/>
+  <path d="M24.5 27H42l-4.5 8.5H24.5Z" fill="#2F6F62"/>
+</svg>

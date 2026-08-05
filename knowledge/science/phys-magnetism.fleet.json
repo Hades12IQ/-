@@ -1,0 +1,169 @@
+{
+ "subject": "science",
+ "topic": "phys-magnetism",
+ "title": "phys-magnetism — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "قضيب موصل مستقيم طوله $L=0.5\\,\\text{m}$ يدور في مستوٍ أفقي حول محور رأسي يمرّ بأحد طرفيه، بتردد $f=10\\,\\text{Hz}$. يوجد مجال مغناطيسي منتظم $B=0.2\\,\\text{T}$ متجه رأسياً (عمودياً على مستوى الدوران). أوجد مقدار القوة الدافعة الكهربائية المتحرّضة بين طرفي القضيب، وبيّن أيّ طرف يكون عند جهد أعلى إذا كان $B$ خارجاً من المستوى والدوران عكس عقارب الساعة (الشحنات الموجبة هي الحاملات).",
+   "q_en": "A straight conducting rod of length $L=0.5\\,\\text{m}$ rotates in a horizontal plane about a vertical axis through one of its ends, at frequency $f=10\\,\\text{Hz}$. A uniform magnetic field $B=0.2\\,\\text{T}$ is directed vertically (perpendicular to the plane of rotation). Find the magnitude of the emf induced between the two ends of the rod, and state which end is at higher potential if $B$ points out of the plane and rotation is counterclockwise (positive charges are positive carriers).",
+   "a_ar": "لقضيب يدور حول أحد طرفيه، القوة الدافعة الحركية $\\varepsilon=\\tfrac12 B\\omega L^2$ حيث $\\omega=2\\pi f=20\\pi\\,\\text{rad/s}$. إذن $\\varepsilon=\\tfrac12(0.2)(20\\pi)(0.5)^2\\approx1.57\\,\\text{V}$. تدفع القوة $q\\,\\mathbf v\\times\\mathbf B$ الشحنات الموجبة نحو الخارج قطرياً، فيكون الطرف الحرّ الخارجي عند الجهد الأعلى.",
+   "a_en": "For a rod rotating about one end, the motional emf is $\\varepsilon=\\tfrac12 B\\omega L^2$ with $\\omega=2\\pi f=20\\pi\\,\\text{rad/s}$. Thus $\\varepsilon=\\tfrac12(0.2)(20\\pi)(0.5)^2=\\tfrac12(0.2)(62.83)(0.25)\\approx1.57\\,\\text{V}$. The magnetic force $q\\,\\mathbf v\\times\\mathbf B$ on positive carriers pushes them radially outward, so the outer (free) end is at the higher potential.",
+   "answer": "$\\varepsilon=\\tfrac12 B\\omega L^2\\approx1.57\\,\\text{V}$; الطرف الخارجي أعلى جهداً",
+   "keywords": [
+    "motional emf",
+    "قضيب دوار",
+    "rotating rod",
+    "القوة الدافعة الحركية",
+    "Faraday",
+    "نصف B omega L^2",
+    "angular frequency",
+    "تحريض"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "إلكترون (كتلته $m=9.11\\times10^{-31}\\,\\text{kg}$، ومقدار شحنته $e=1.6\\times10^{-19}\\,\\text{C}$) يدخل مجالاً مغناطيسياً منتظماً $B=0.01\\,\\text{T}$ بسرعة $v=1.0\\times10^{6}\\,\\text{m/s}$ وبزاوية $30^\\circ$ مع خطوط المجال. صف الحركة واحسب (أ) نصف قطر اللولب، (ب) زمن الدورة، (ج) خطوة اللولب (المسافة المقطوعة على طول $B$ في دورة واحدة).",
+   "q_en": "An electron (mass $m=9.11\\times10^{-31}\\,\\text{kg}$, charge magnitude $e=1.6\\times10^{-19}\\,\\text{C}$) enters a uniform magnetic field $B=0.01\\,\\text{T}$ with speed $v=1.0\\times10^{6}\\,\\text{m/s}$ at an angle of $30^\\circ$ to the field lines. Describe the motion and compute (a) the radius of the helix, (b) the period of revolution, and (c) the pitch (advance along $B$ per turn).",
+   "a_ar": "تتحلل السرعة إلى مركّبة موازية $v_\\parallel=v\\cos30^\\circ$ (منتظمة على طول $B$) ومركّبة عمودية $v_\\perp=v\\sin30^\\circ=5\\times10^{5}\\,\\text{m/s}$ (دائرية)، فتكون الحركة لولبية. (أ) $r=\\dfrac{mv_\\perp}{eB}\\approx2.85\\times10^{-4}\\,\\text{m}$. (ب) $T=\\dfrac{2\\pi m}{eB}\\approx3.58\\times10^{-9}\\,\\text{s}$ (مستقل عن السرعة). (ج) الخطوة $=v_\\parallel T\\approx3.10\\times10^{-3}\\,\\text{m}$.",
+   "a_en": "The velocity splits into $v_\\parallel=v\\cos30^\\circ$ (uniform, along $B$) and $v_\\perp=v\\sin30^\\circ=5\\times10^{5}\\,\\text{m/s}$ (circular), giving helical motion. (a) $r=\\dfrac{mv_\\perp}{eB}=\\dfrac{(9.11\\times10^{-31})(5\\times10^{5})}{(1.6\\times10^{-19})(0.01)}\\approx2.85\\times10^{-4}\\,\\text{m}$. (b) $T=\\dfrac{2\\pi m}{eB}\\approx3.58\\times10^{-9}\\,\\text{s}$ (independent of speed). (c) pitch $=v_\\parallel T=(8.66\\times10^{5})(3.58\\times10^{-9})\\approx3.10\\times10^{-3}\\,\\text{m}$.",
+   "answer": "$r\\approx2.85\\times10^{-4}\\,\\text{m}$, $T\\approx3.58\\times10^{-9}\\,\\text{s}$, pitch $\\approx3.10\\times10^{-3}\\,\\text{m}$",
+   "keywords": [
+    "helical motion",
+    "حركة لولبية",
+    "cyclotron period",
+    "نصف قطر المسار",
+    "pitch",
+    "الخطوة",
+    "electron in B field",
+    "قوة لورنتز"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "ملف لولبي طويل ومحكم اللف عدد لفّاته $N=500$ على طول $l=0.25\\,\\text{m}$ ومساحة مقطعه $A=1.0\\times10^{-3}\\,\\text{m}^2$ (قلب هوائي). يمرّ فيه تيار يتزايد بانتظام من $0$ إلى $3.0\\,\\text{A}$ خلال $0.10\\,\\text{s}$. أوجد (أ) معامل الحثّ الذاتي $L$، (ب) مقدار القوة الدافعة الذاتية المتحرّضة أثناء التغيّر، (ج) الطاقة المخزّنة عند $I=3.0\\,\\text{A}$. استخدم $\\mu_0=4\\pi\\times10^{-7}\\,\\text{T·m/A}$.",
+   "q_en": "A long, tightly wound solenoid has $N=500$ turns over a length $l=0.25\\,\\text{m}$ and cross-sectional area $A=1.0\\times10^{-3}\\,\\text{m}^2$ (air core). It carries a current that is increased steadily from $0$ to $3.0\\,\\text{A}$ in $0.10\\,\\text{s}$. Find (a) the self-inductance $L$, (b) the magnitude of the self-induced emf during the change, and (c) the energy stored at $I=3.0\\,\\text{A}$. Use $\\mu_0=4\\pi\\times10^{-7}\\,\\text{T·m/A}$.",
+   "a_ar": "(أ) $L=\\dfrac{\\mu_0 N^2 A}{l}=\\dfrac{(4\\pi\\times10^{-7})(500)^2(1.0\\times10^{-3})}{0.25}\\approx1.26\\times10^{-3}\\,\\text{H}$ (أي $\\approx1.26\\,\\text{mH}$). (ب) $|\\varepsilon|=L\\dfrac{dI}{dt}=(1.26\\times10^{-3})\\dfrac{3.0}{0.10}\\approx3.77\\times10^{-2}\\,\\text{V}$ (أي $\\approx37.7\\,\\text{mV}$). (ج) $U=\\tfrac12 L I^2\\approx5.65\\times10^{-3}\\,\\text{J}$ (أي $\\approx5.65\\,\\text{mJ}$).",
+   "a_en": "(a) $L=\\dfrac{\\mu_0 N^2 A}{l}=\\dfrac{(4\\pi\\times10^{-7})(500)^2(1.0\\times10^{-3})}{0.25}\\approx1.26\\times10^{-3}\\,\\text{H}$ ($\\approx1.26\\,\\text{mH}$). (b) $|\\varepsilon|=L\\dfrac{dI}{dt}=(1.26\\times10^{-3})\\dfrac{3.0}{0.10}\\approx3.77\\times10^{-2}\\,\\text{V}$ ($\\approx37.7\\,\\text{mV}$). (c) $U=\\tfrac12 L I^2=\\tfrac12(1.26\\times10^{-3})(3.0)^2\\approx5.65\\times10^{-3}\\,\\text{J}$ ($\\approx5.65\\,\\text{mJ}$).",
+   "answer": "$L\\approx1.26\\,\\text{mH}$, $|\\varepsilon|\\approx37.7\\,\\text{mV}$, $U\\approx5.65\\,\\text{mJ}$",
+   "keywords": [
+    "self-inductance",
+    "الحثّ الذاتي",
+    "solenoid",
+    "ملف لولبي",
+    "القوة الدافعة الذاتية",
+    "magnetic energy",
+    "الطاقة المخزنة",
+    "mu naught"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "حلقة دائرية مفردة نصف قطرها $r=0.10\\,\\text{m}$ ومقاومتها الكلية $R=5.0\\,\\Omega$ توضع في مجال مغناطيسي منتظم عمودي على مستواها. يتناقص مقدار المجال بانتظام من $B_1=0.80\\,\\text{T}$ إلى $B_2=0$ خلال $\\Delta t=0.20\\,\\text{s}$. أوجد (أ) القوة الدافعة المتحرّضة، (ب) التيار المتحرّض، (ج) اتجاه التيار المتحرّض بالنسبة للمجال الأصلي، (د) الشحنة الكلية المارّة في الحلقة.",
+   "q_en": "A single circular loop of radius $r=0.10\\,\\text{m}$ and total resistance $R=5.0\\,\\Omega$ lies in a uniform magnetic field perpendicular to its plane. The field magnitude decreases steadily from $B_1=0.80\\,\\text{T}$ to $B_2=0$ in $\\Delta t=0.20\\,\\text{s}$. Find (a) the induced emf, (b) the induced current, (c) the direction of the induced current relative to the original field, and (d) the total charge that flows through the loop.",
+   "a_ar": "المساحة $A=\\pi r^2=3.14\\times10^{-2}\\,\\text{m}^2$؛ تغيّر التدفق $|\\Delta\\Phi|=A(B_1-B_2)=0.0251\\,\\text{Wb}$. (أ) $\\varepsilon=\\dfrac{|\\Delta\\Phi|}{\\Delta t}=\\dfrac{0.0251}{0.20}\\approx0.126\\,\\text{V}$. (ب) $I=\\dfrac{\\varepsilon}{R}\\approx0.0251\\,\\text{A}$ (أي $\\approx25.1\\,\\text{mA}$). (ج) وفق قانون لنز يعارض التيار المتحرّض التناقص، فيسري ليدعم المجال الأصلي (بنفس اتجاه $B$ الأصلي). (د) $q=\\dfrac{|\\Delta\\Phi|}{R}=\\dfrac{0.0251}{5.0}\\approx5.03\\times10^{-3}\\,\\text{C}$ (مستقلة عن الزمن المستغرق).",
+   "a_en": "Area $A=\\pi r^2=3.14\\times10^{-2}\\,\\text{m}^2$; flux change $|\\Delta\\Phi|=A(B_1-B_2)=0.0251\\,\\text{Wb}$. (a) $\\varepsilon=\\dfrac{|\\Delta\\Phi|}{\\Delta t}=\\dfrac{0.0251}{0.20}\\approx0.126\\,\\text{V}$. (b) $I=\\dfrac{\\varepsilon}{R}\\approx0.0251\\,\\text{A}$ ($\\approx25.1\\,\\text{mA}$). (c) By Lenz's law the induced current opposes the decrease, so it flows to reinforce the original field (same sense as the original $B$). (d) $q=\\dfrac{|\\Delta\\Phi|}{R}=\\dfrac{0.0251}{5.0}\\approx5.03\\times10^{-3}\\,\\text{C}$ (independent of the time taken).",
+   "answer": "$\\varepsilon\\approx0.126\\,\\text{V}$, $I\\approx25.1\\,\\text{mA}$ (يدعم المجال الأصلي)، $q\\approx5.03\\times10^{-3}\\,\\text{C}$",
+   "keywords": [
+    "Faraday's law",
+    "قانون فارادي",
+    "Lenz's law",
+    "قانون لنز",
+    "induced charge",
+    "الشحنة المتحرضة",
+    "flux change",
+    "التدفق المغناطيسي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يُطلَق بروتون (كتلته $m=1.67\\times10^{-27}\\,\\text{kg}$، شحنته $q=1.6\\times10^{-19}\\,\\text{C}$) من السكون عند نقطة الأصل داخل منطقة يوجد فيها مجال كهربائي منتظم $\\vec E = E\\,\\hat y$ حيث $E=1000\\,\\text{V/m}$ ومجال مغناطيسي منتظم $\\vec B = B\\,\\hat z$ حيث $B=0.10\\,\\text{T}$. أوجد: (أ) أقصى سرعة يبلغها البروتون، (ب) أكبر بُعد له عن المحور السيني (أقصى إزاحة $y$).",
+   "q_en": "A proton (mass $m=1.67\\times10^{-27}\\,\\text{kg}$, charge $q=1.6\\times10^{-19}\\,\\text{C}$) is released from rest at the origin in the region of a uniform electric field $\\vec E = E\\,\\hat y$ with $E=1000\\,\\text{V/m}$ and a uniform magnetic field $\\vec B = B\\,\\hat z$ with $B=0.10\\,\\text{T}$. Find (a) the maximum speed the proton attains, and (b) the maximum distance it ever gets from the x-axis (its maximum $y$-displacement).",
+   "a_ar": "في المجالات المتعامدة تكون الحركة على شكل دُوّارة (cycloid): انجراف منتظم $v_d=E/B$ باتجاه $\\hat x$ يُضاف إليه دوران بالسرعة نفسها. انطلاقاً من السكون تتراوح السرعة بين $0$ و $2v_d$، إذن $v_{\\max}=2E/B=2(1000)/0.10=2.0\\times10^{4}\\,\\text{m/s}$. أما الحركة العرضية ($y$) فسعتها $v_d/\\omega_c$ حول مركز عند $y=v_d/\\omega_c$ (حيث $\\omega_c=qB/m$)، فيبلغ الأقصى $y_{\\max}=2v_d/\\omega_c=2mE/(qB^{2})$. عددياً $y_{\\max}\\approx2.09\\times10^{-3}\\,\\text{m}$.",
+   "a_en": "In crossed fields the motion is a cycloid: a uniform drift $v_d=E/B$ along $\\hat x$ superposed on circular motion of the same speed. Starting from rest, the speed oscillates between $0$ and $2v_d$, so $v_{\\max}=2E/B=2(1000)/0.10=2.0\\times10^{4}\\,\\text{m/s}$. The transverse ($y$) motion has amplitude $v_d/\\omega_c$ about a center at $y=v_d/\\omega_c$ (where $\\omega_c=qB/m$), so it peaks at $y_{\\max}=2v_d/\\omega_c=2mE/(qB^{2})$. Numerically $y_{\\max}=2(1.67\\times10^{-27})(1000)/[(1.6\\times10^{-19})(0.10)^2]\\approx2.09\\times10^{-3}\\,\\text{m}$.",
+   "answer": "$v_{\\max}=2E/B=2.0\\times10^{4}\\,\\text{m/s}$; $y_{\\max}=2mE/(qB^{2})\\approx2.09\\times10^{-3}\\,\\text{m}$ (2.09 mm)",
+   "keywords": [
+    "cycloid motion",
+    "حركة دُوّارة",
+    "crossed fields",
+    "المجالات المتعامدة",
+    "drift velocity",
+    "سرعة الانجراف",
+    "E×B",
+    "أقصى سرعة"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "سِكّتان أفقيتان عديمتا الاحتكاك تفصل بينهما مسافة $L=0.50\\,\\text{m}$ داخل مجال مغناطيسي رأسي منتظم $B=2.0\\,\\text{T}$ (عمودي على مستوى السكتين). قضيب موصل كتلته $m=0.50\\,\\text{kg}$ ينزلق على السكتين، وطرفاه موصولان عبر السكتين بمكثّف غير مشحون ابتداءً سعته $C=0.10\\,\\text{F}$؛ وكل المقاومات مهملة. تُطبَّق قوة أفقية ثابتة $F=1.0\\,\\text{N}$ على القضيب بمحاذاة السكتين. أوجد تسارع القضيب، وبيّن هل هو ثابت.",
+   "q_en": "A frictionless pair of horizontal rails separated by $L=0.50\\,\\text{m}$ sits in a uniform vertical magnetic field $B=2.0\\,\\text{T}$ (perpendicular to the plane of the rails). A conducting rod of mass $m=0.50\\,\\text{kg}$ rides on the rails, and its ends are connected through the rails to an initially uncharged capacitor $C=0.10\\,\\text{F}$; all resistances are negligible. A constant horizontal force $F=1.0\\,\\text{N}$ is applied to the rod along the rails. Determine the acceleration of the rod, and state whether it is constant.",
+   "a_ar": "القوة الدافعة الحركية هي $\\varepsilon=BLv$، فتكون شحنة المكثّف $Q=C\\varepsilon=CBLv$ والتيار $I=\\dot Q=CBL\\,a$. القوة المغناطيسية المعاكِسة للحركة $F_{mag}=BIL=CB^{2}L^{2}a$. من قانون نيوتن الثاني: $F-CB^{2}L^{2}a=ma$، ومنه $a=\\dfrac{F}{m+CB^{2}L^{2}}$. وبما أن $F,m,C,B,L$ ثوابت فإن $a$ ثابت. عددياً $a=\\dfrac{1.0}{0.50+(0.10)(2.0)^2(0.50)^2}=\\dfrac{1.0}{0.60}=1.67\\,\\text{m/s}^2$.",
+   "a_en": "The motional EMF is $\\varepsilon=BLv$, so the capacitor charge is $Q=C\\varepsilon=CBLv$ and the current is $I=\\dot Q=CBL\\,a$. The magnetic force opposing the motion is $F_{mag}=BIL=CB^{2}L^{2}a$. Newton's second law: $F-CB^{2}L^{2}a=ma$, giving $a=\\dfrac{F}{m+CB^{2}L^{2}}$. Since $F,m,C,B,L$ are all constant, $a$ is constant. Numerically $a=\\dfrac{1.0}{0.50+(0.10)(2.0)^2(0.50)^2}=\\dfrac{1.0}{0.60}=1.67\\,\\text{m/s}^2$.",
+   "answer": "$a=\\dfrac{F}{m+CB^{2}L^{2}}=1.67\\,\\text{m/s}^2$, constant",
+   "keywords": [
+    "motional EMF",
+    "قوة دافعة حركية",
+    "capacitor",
+    "مكثّف",
+    "constant acceleration",
+    "تسارع ثابت",
+    "rails rod",
+    "قضيب على سكتين"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "قرص فاراداي (مولّد أحادي القطب) هو قرص موصل نصف قطره $R=0.20\\,\\text{m}$ يدور بسرعة زاوية $\\omega=100\\,\\text{rad/s}$ حول محوره، داخل مجال مغناطيسي منتظم $B=0.50\\,\\text{T}$ موازٍ للمحور. تلامسات منزلقة عند المركز والحافة تُوصَّل بمقاومة خارجية $R_L=0.50\\,\\Omega$؛ ومقاومة القرص نفسه مهملة. أوجد: (أ) القوة الدافعة بين المركز والحافة، (ب) التيار، (ج) العزم الخارجي اللازم لإبقاء دوران القرص عند $\\omega$ ثابتة.",
+   "q_en": "A Faraday disc (homopolar generator) is a conducting disc of radius $R=0.20\\,\\text{m}$ rotating at angular speed $\\omega=100\\,\\text{rad/s}$ about its axis, in a uniform magnetic field $B=0.50\\,\\text{T}$ parallel to the axis. Sliding contacts at the center and rim connect to an external resistor $R_L=0.50\\,\\Omega$; the disc's own resistance is negligible. Find (a) the EMF between center and rim, (b) the current, and (c) the external torque required to keep the disc rotating at constant $\\omega$.",
+   "a_ar": "شحنة على نصف قطر $r$ تشعر بقوة لكل وحدة شحنة مقدارها $\\omega r B$، فتكون القوة الدافعة $\\varepsilon=\\int_0^R B\\omega r\\,dr=\\tfrac12 B\\omega R^{2}=\\tfrac12(0.50)(100)(0.20)^2=1.0\\,\\text{V}$. والتيار $I=\\varepsilon/R_L=1.0/0.50=2.0\\,\\text{A}$. أما العزم المعاكِس فيساوي $\\tau=\\tfrac12 BR^{2}I$ (أو بالمكافئ $\\tau=P/\\omega=\\varepsilon I/\\omega$). إذن $\\tau=\\tfrac12(0.50)(0.20)^2(2.0)=0.020\\,\\text{N·m}$، وهو ما يجب أن يبذله المؤثِّر الخارجي للحفاظ على ثبات $\\omega$.",
+   "a_en": "A charge at radius $r$ sees force per charge $\\omega r B$, so the EMF is $\\varepsilon=\\int_0^R B\\omega r\\,dr=\\tfrac12 B\\omega R^{2}=\\tfrac12(0.50)(100)(0.20)^2=1.0\\,\\text{V}$. The current is $I=\\varepsilon/R_L=1.0/0.50=2.0\\,\\text{A}$. The retarding torque equals $\\tau=\\int_0^R rB\\,(I/? )$ — evaluated directly, $\\tau=\\tfrac12 BR^{2}I$ (equivalently $\\tau=P/\\omega=\\varepsilon I/\\omega$). Thus $\\tau=\\tfrac12(0.50)(0.20)^2(2.0)=0.020\\,\\text{N·m}$, which the external agent must supply to hold $\\omega$ constant.",
+   "answer": "$\\varepsilon=\\tfrac12 B\\omega R^{2}=1.0\\,\\text{V}$; $I=2.0\\,\\text{A}$; $\\tau=\\tfrac12 BR^{2}I=0.020\\,\\text{N·m}$",
+   "keywords": [
+    "Faraday disc",
+    "قرص فاراداي",
+    "homopolar generator",
+    "مولّد أحادي القطب",
+    "motional EMF",
+    "قوة دافعة",
+    "torque",
+    "عزم"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "ملف لولبي طويل نصف قطره $a=2.0\\,\\text{cm}$ عدد لفّاته $n=1000$ لفة لكل متر، ويحمل تياراً يتناقص بانتظام من $I_0=2.0\\,\\text{A}$ إلى الصفر خلال زمن $T=0.010\\,\\text{s}$. حلقة موصلة دائرية واحدة نصف قطرها $b=5.0\\,\\text{cm}$ (محورها نفس المحور، و$b>a$) ومقاومتها الكلية $R=0.10\\,\\Omega$ تُحيط بالملف. أوجد القوة الدافعة المستحثّة في الحلقة والشحنة الكلية التي تمرّ فيها.",
+   "q_en": "A long solenoid of radius $a=2.0\\,\\text{cm}$ has $n=1000$ turns per meter and carries a current that decreases uniformly from $I_0=2.0\\,\\text{A}$ to zero in time $T=0.010\\,\\text{s}$. A single circular conducting ring of radius $b=5.0\\,\\text{cm}$ (coaxial, $b>a$) and total resistance $R=0.10\\,\\Omega$ encircles the solenoid. Find the EMF induced in the ring and the total charge that flows around it.",
+   "a_ar": "المجال موجود داخل الملف فقط، لذا يكون التدفّق عبر الحلقة $\\Phi=\\mu_0 n I\\,(\\pi a^{2})$ — ونصف قطر الحلقة $b$ غير مؤثِّر. القوة الدافعة $\\varepsilon=-\\dfrac{d\\Phi}{dt}=\\mu_0 n \\pi a^{2}\\dfrac{I_0}{T}$. عددياً $\\varepsilon=(4\\pi\\times10^{-7})(1000)\\pi(0.020)^2(2.0/0.010)\\approx3.16\\times10^{-4}\\,\\text{V}$. والشحنة الكلية لا تعتمد على الزمن: $Q=\\dfrac{\\Delta\\Phi}{R}=\\dfrac{\\mu_0 n I_0 \\pi a^{2}}{R}\\approx3.16\\times10^{-5}\\,\\text{C}$ (نحو $31.6\\,\\mu\\text{C}$).",
+   "a_en": "The field exists only inside the solenoid, so the flux through the ring is $\\Phi=\\mu_0 n I\\,(\\pi a^{2})$ — the ring radius $b$ is irrelevant. The EMF is $\\varepsilon=-\\dfrac{d\\Phi}{dt}=\\mu_0 n \\pi a^{2}\\dfrac{I_0}{T}$. Numerically $\\varepsilon=(4\\pi\\times10^{-7})(1000)\\pi(0.020)^2(2.0/0.010)\\approx3.16\\times10^{-4}\\,\\text{V}$. The total charge is independent of the timing: $Q=\\dfrac{\\Delta\\Phi}{R}=\\dfrac{\\mu_0 n I_0 \\pi a^{2}}{R}\\approx3.16\\times10^{-5}\\,\\text{C}$ (about $31.6\\,\\mu\\text{C}$).",
+   "answer": "$\\varepsilon=\\mu_0 n \\pi a^{2} I_0/T\\approx3.16\\times10^{-4}\\,\\text{V}$; $Q=\\mu_0 n I_0 \\pi a^{2}/R\\approx3.16\\times10^{-5}\\,\\text{C}$",
+   "keywords": [
+    "Faraday law",
+    "قانون فاراداي",
+    "solenoid flux",
+    "تدفق الملف",
+    "induced charge",
+    "الشحنة المستحثة",
+    "area trap",
+    "نصف القطر a"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "سكّتان أفقيتان عديمتا الاحتكاك تفصل بينهما مسافة $\\ell=1.0\\,\\text{m}$ داخل مجال رأسي منتظم $B=0.50\\,\\text{T}$. قضيب موصل كتلته $m=0.10\\,\\text{kg}$ ينزلق عليهما، وتُغلَق الدائرة بمحث مثالي $L=0.40\\,\\text{H}$ (المقاومة صفر في كل مكان). أُعطي القضيب سرعة ابتدائية $v_0=2.0\\,\\text{m/s}$. بيّن أن القضيب يتحرك حركة توافقية بسيطة، وأوجد: (أ) تردده الزاوي، (ب) أقصى تيار، (ج) أقصى إزاحة عن نقطة البداية.",
+   "q_en": "Two frictionless horizontal rails separated by $\\ell=1.0\\,\\text{m}$ lie in a uniform vertical field $B=0.50\\,\\text{T}$. A conducting rod of mass $m=0.10\\,\\text{kg}$ slides on them, and the circuit is closed by an ideal inductor $L=0.40\\,\\text{H}$ (zero resistance everywhere). The rod is given an initial speed $v_0=2.0\\,\\text{m/s}$. Show that the rod undergoes simple harmonic motion and find (a) its angular frequency, (b) the maximum current, and (c) the maximum displacement from the start.",
+   "a_ar": "بلا مقاومة يعطي قانون كيرشوف للجهد $B\\ell v=L\\dot I$، ويعطي قانون نيوتن $m\\dot v=-B\\ell I$. باشتقاق الأول والتعويض: $m\\ddot v=-B\\ell\\dot I=-\\dfrac{B^{2}\\ell^{2}}{L}v$، أي حركة توافقية بسيطة تردّدها $\\omega=\\dfrac{B\\ell}{\\sqrt{mL}}=\\dfrac{0.50(1.0)}{\\sqrt{(0.10)(0.40)}}=2.5\\,\\text{rad/s}$. من حفظ الطاقة $\\tfrac12 m v_0^{2}=\\tfrac12 L I_{\\max}^{2}$ نحصل على $I_{\\max}=v_0\\sqrt{m/L}=2.0\\sqrt{0.10/0.40}=1.0\\,\\text{A}$. وبما أن $v=v_0\\cos\\omega t$ فإن الإزاحة $x=(v_0/\\omega)\\sin\\omega t$ تبلغ أقصاها $x_{\\max}=v_0/\\omega=2.0/2.5=0.80\\,\\text{m}$.",
+   "a_en": "With no resistance, KVL gives $B\\ell v=L\\dot I$, and Newton's law gives $m\\dot v=-B\\ell I$. Differentiating the first and substituting: $m\\ddot v=-B\\ell\\dot I=-\\dfrac{B^{2}\\ell^{2}}{L}v$, i.e. SHM with $\\omega=\\dfrac{B\\ell}{\\sqrt{mL}}=\\dfrac{0.50(1.0)}{\\sqrt{(0.10)(0.40)}}=2.5\\,\\text{rad/s}$. Energy conservation $\\tfrac12 m v_0^{2}=\\tfrac12 L I_{\\max}^{2}$ gives $I_{\\max}=v_0\\sqrt{m/L}=2.0\\sqrt{0.10/0.40}=1.0\\,\\text{A}$. With $v=v_0\\cos\\omega t$, displacement $x=(v_0/\\omega)\\sin\\omega t$ peaks at $x_{\\max}=v_0/\\omega=2.0/2.5=0.80\\,\\text{m}$.",
+   "answer": "SHM with $\\omega=B\\ell/\\sqrt{mL}=2.5\\,\\text{rad/s}$; $I_{\\max}=v_0\\sqrt{m/L}=1.0\\,\\text{A}$; $x_{\\max}=v_0/\\omega=0.80\\,\\text{m}$",
+   "keywords": [
+    "LC oscillation",
+    "حركة توافقية",
+    "inductor rod",
+    "قضيب ومحث",
+    "simple harmonic motion",
+    "حركة توافقية بسيطة",
+    "energy conservation",
+    "حفظ الطاقة"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

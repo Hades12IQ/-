@@ -1,0 +1,180 @@
+{
+ "subject": "english",
+ "topic": "grammar",
+ "title": "grammar — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "أعد صياغة الجملة بادئاً بالكلمة المقلوبة دون تغيير المعنى، مع شرح القاعدة: 'If I had realised the risks, I would never have signed the contract.' ابدأ بـ 'Had ...'. وضّح ماذا يحدث لترتيب الفاعل والفعل المساعد ولماذا لا يمكن قلب 'would'.",
+   "q_en": "Rewrite the sentence beginning with the inverted word so the meaning is unchanged, and explain the rule: 'If I had realised the risks, I would never have signed the contract.' Begin: 'Had ...'. State what happens to the subject-auxiliary and why 'would' cannot invert.",
+   "a_ar": "الإجابة: 'Had I realised the risks, I would never have signed the contract.' في الشرط الرسمي تُحذف 'if' ويُقدَّم الفعل المساعد قبل الفاعل (قلب الفاعل والمساعد): 'if I had' تصبح 'Had I'. يُقلب فقط مساعد جملة الشرط (هنا 'had')، أما جملة الجواب فتبقى كما هي، فيبقى 'would never have signed' دون تغيير. الشرط المقلوب لا يأخذ 'if' ولا يُختصر في النفي (نقول 'Had I not realised' لا 'Hadn't I').",
+   "a_en": "Answer: 'Had I realised the risks, I would never have signed the contract.' In formal conditionals the 'if' is dropped and the auxiliary is fronted before the subject (subject-auxiliary inversion): 'if I had' → 'Had I'. Only the auxiliary of the condition clause (here 'had') inverts; the result clause is untouched, so 'would never have signed' stays exactly as it is. Inverted conditionals take no 'if' and are not negated with contraction (one writes 'Had I not realised', never 'Hadn't I').",
+   "answer": "Had I realised the risks, I would never have signed the contract.",
+   "keywords": [
+    "inversion",
+    "conditional",
+    "قلب الشرط",
+    "subject-auxiliary",
+    "Had I",
+    "الجملة الشرطية",
+    "third conditional"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "حدّد الخطأ النحوي وصحّحه وسمِّ التركيب: 'The board demanded that the CEO resigns immediately and that he is present at the hearing.' واشرح صيغة الفعل المطلوبة.",
+   "q_en": "Identify and correct the grammatical error, and name the structure: 'The board demanded that the CEO resigns immediately and that he is present at the hearing.' Explain the required verb form.",
+   "a_ar": "التصحيح: 'The board demanded that the CEO resign immediately and that he be present at the hearing.' أفعال الطلب والإصرار (demand, insist, require, suggest, recommend) تستدعي صيغة المضارع الشرطي (the mandative subjunctive) في جملة that: يُستعمل المصدر المجرّد لكل الضمائر، فتصبح 'resigns' → 'resign' و'is' → 'be'. لا تأخذ هذه الصيغة الـ -s للغائب المفرد ولا تطابق الزمن، ونفيها 'that he not be present' (بدون 'does').",
+   "a_en": "Corrected: 'The board demanded that the CEO resign immediately and that he be present at the hearing.' Verbs of demand/request/insistence (demand, insist, require, suggest, recommend) trigger the present subjunctive (mandative subjunctive) in the that-clause: the base form is used for all persons, so 'resigns' → 'resign' and 'is' → 'be'. The subjunctive shows no third-person -s and no tense agreement, and its negative would be 'that he not be present' (no 'does').",
+   "answer": "The board demanded that the CEO resign immediately and that he be present at the hearing.",
+   "keywords": [
+    "subjunctive",
+    "mandative",
+    "صيغة الشرط",
+    "demand that",
+    "base form",
+    "المصدر",
+    "error analysis"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أكمل بالصيغتين الصحيحتين وبرّر اختيار الزمن في كل جملة: 'If she ___ (take) the earlier flight yesterday, she ___ (be) here with us now.' وسمِّ نوع الشرط.",
+   "q_en": "Complete with the correct verb forms and justify the choice of tense in each clause: 'If she ___ (take) the earlier flight yesterday, she ___ (be) here with us now.' Name the conditional type.",
+   "a_ar": "الإجابة: 'If she had taken the earlier flight yesterday, she would be here with us now.' هذا شرط مختلط (mixed conditional): شرط ماضٍ غير محقق ('yesterday') ونتيجة حاضرة غير محققة ('now'). جملة الشرط تأخذ صيغة النوع الثالث 'had + التصريف الثالث' (had taken) لأنها تشير إلى فعل ماضٍ لم يقع، بينما جملة الجواب تأخذ 'would + المصدر' (would be)، وهي صيغة نتيجة النوع الثاني، لأن النتيجة في الحاضر. المزج ضروري لاختلاف ظرفي الزمن 'yesterday' و'now'.",
+   "a_en": "Answer: 'If she had taken the earlier flight yesterday, she would be here with us now.' This is a mixed conditional: a past unreal condition ('yesterday') combined with a present unreal result ('now'). The if-clause uses the third-conditional form 'had + past participle' (had taken) because it refers to an unfulfilled past action, while the main clause uses 'would + base' (would be), the second-conditional result form, because the consequence is about the present. Mixing the two is required precisely because the time markers 'yesterday' and 'now' differ.",
+   "answer": "had taken … would be",
+   "keywords": [
+    "mixed conditional",
+    "شرط مختلط",
+    "third conditional",
+    "past unreal",
+    "would be",
+    "الزمن",
+    "had taken"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "إحدى الجمل الوصلية مُنقَّطة خطأً. صحّحها واشرح الفرق بين الوصلية المُقيِّدة وغير المُقيِّدة: 'The manuscript, that had survived the fire, was donated to the library which my grandfather founded.'",
+   "q_en": "One relative clause is punctuated wrongly. Correct it and explain the restrictive vs non-restrictive distinction: 'The manuscript, that had survived the fire, was donated to the library which my grandfather founded.'",
+   "a_ar": "التصحيح: 'The manuscript that had survived the fire was donated to the library that my grandfather founded.' (أو إذا كان المقصود مخطوطة واحدة فقط: 'The manuscript, which had survived the fire, was donated ...'.) الفاصلتان مع 'that' خطأ: الجملة غير المُقيِّدة (الاعتراضية) تأخذ فاصلتين و'which' لا 'that'؛ أما المُقيِّدة التي تحدّد أي مخطوطة فلا تأخذ فواصل، و'that' فيها هي القياس. كذلك 'that my grandfather founded' مُقيِّدة (تحدّد أيّ مكتبة) فلا فاصلة قبلها، و'that' هي أداة الوصل المُقيِّدة المفضّلة.",
+   "a_en": "Corrected: 'The manuscript that had survived the fire was donated to the library that my grandfather founded.' (Or, if only one manuscript is meant: 'The manuscript, which had survived the fire, was donated ...'.) The commas plus 'that' are ungrammatical: a non-restrictive (parenthetical) clause takes commas and 'which', never 'that'; a restrictive clause identifying which manuscript takes no commas, where 'that' is standard. Likewise the second clause 'that my grandfather founded' is restrictive (it specifies which library), so it should take no comma, and 'that' is the preferred restrictive relativiser.",
+   "answer": "The manuscript that had survived the fire was donated to the library that my grandfather founded.",
+   "keywords": [
+    "relative clause",
+    "restrictive",
+    "non-restrictive",
+    "الجملة الوصلية",
+    "which vs that",
+    "المقيدة",
+    "commas"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "حوّل إلى الكلام المنقول مع كل التغييرات اللازمة: The witness said: 'I saw the man leave the building an hour ago, and I will testify tomorrow if the court needs me.' ابدأ بـ 'The witness said that ...' واشرح التحوّلات.",
+   "q_en": "Convert to reported speech, applying all necessary changes: The witness said: 'I saw the man leave the building an hour ago, and I will testify tomorrow if the court needs me.' Begin: 'The witness said that ...' and explain the shifts.",
+   "a_ar": "الإجابة: 'The witness said that he had seen the man leave the building an hour before / earlier, and that he would testify the next / following day if the court needed him.' يقتضي التحويل تراجع الأزمنة: الماضي البسيط 'saw' يصبح ماضياً تاماً 'had seen'، و'will' تصبح 'would'، والمضارع 'needs' يصبح ماضياً 'needed' في جملة الشرط المنقولة. الضمير 'I' يصير 'he'، وتتغيّر ظروف الزمان الإشارية: 'an hour ago' → 'an hour before/earlier' و'tomorrow' → 'the next/following day'. أما المصدر المجرّد 'leave' بعد 'saw' فلا يطاله التراجع ويبقى 'leave'.",
+   "a_en": "Answer: 'The witness said that he had seen the man leave the building an hour before / earlier, and that he would testify the next / following day if the court needed him.' Backshift moves the past simple 'saw' to the past perfect 'had seen', 'will' to 'would', and the present 'needs' to the past 'needed' in the reported if-clause. The pronoun 'I' becomes 'he', and deictic time words shift: 'an hour ago' → 'an hour before/earlier' and 'tomorrow' → 'the next/following day'. The bare infinitive 'leave' after 'saw' is unaffected by backshift and stays 'leave'.",
+   "answer": "The witness said that he had seen the man leave the building an hour before/earlier, and that he would testify the next/following day if the court needed him.",
+   "keywords": [
+    "reported speech",
+    "backshift",
+    "الكلام المنقول",
+    "تراجع الأزمنة",
+    "deixis",
+    "would",
+    "had seen"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "حلّل الجملة \"Had he been told the truth, he would not be in prison today.\" حدّد نوع الشرط بدقّة، واشرح لماذا تستخدم الجملتان إشارتين زمنيّتين مختلفتين، وبيّن ما إذا كانت الجملة صحيحة نحويًّا.",
+   "q_en": "Analyze the sentence \"Had he been told the truth, he would not be in prison today.\" Identify the specific type of conditional, explain WHY the two clauses use different time references, and state whether the sentence is grammatically correct.",
+   "a_ar": "هذا شرط مختلط (Mixed conditional). جملة الشرط \"Had he been told\" هي صيغة مقلوبة للنوع الثالث (= \"If he had been told\") وتشير إلى شرط ماضٍ غير واقعي. أمّا الجملة الرئيسة \"he would not be in prison today\" فهي على صيغة النوع الثاني وتشير إلى نتيجة في الحاضر (يدلّ عليها \"today\" واستخدام \"would not be\" لا \"would not have been\"). هذا التباين مقصود وصحيح: سبب في الماضي يُنتج نتيجة في الحاضر، فيقترن شرط الماضي التام مع نتيجة \"would + المصدر\". الجملة صحيحة نحويًّا تمامًا.",
+   "a_en": "This is a MIXED conditional. The if-clause \"Had he been told\" is an inverted third-conditional form (= \"If he had been told\"), referring to a past unreal condition. The main clause \"he would not be in prison today\" is a second-conditional form referring to a present result (signalled by \"today\" and the bare \"would not be\", not \"would not have been\"). The mismatch is deliberate and correct: a past cause produces a present consequence, so the past-perfect condition legitimately pairs with a present \"would + base verb\" result. The sentence is fully grammatical.",
+   "answer": "A grammatically correct MIXED conditional: past-unreal condition (inverted 3rd-conditional \"Had he been told\" = \"If he had been told\") + present result (2nd-conditional \"would not be ... today\").",
+   "keywords": [
+    "mixed conditional",
+    "الشرط المختلط",
+    "inverted conditional",
+    "القلب في الشرط",
+    "third conditional",
+    "النتيجة في الحاضر",
+    "would + base verb"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في الجملة \"The committee, together with its two advisers, was praised،\" اشرح لماذا جاء الفعل مفردًا. ثمّ حدّد الصيغة الصحيحة للفعل (is/are) في: \"Neither the manager nor the employees ___ satisfied،\" واذكر القاعدة الحاكمة.",
+   "q_en": "In the sentence \"The committee, together with its two advisers, was praised,\" explain why the verb is singular. Then determine the correct verb form (is/are) in: \"Neither the manager nor the employees ___ satisfied,\" and state the governing rule.",
+   "a_ar": "الجملة الأولى: عبارة \"together with its two advisers\" هي عبارة مصاحبة اعتراضية وليست فاعلًا مركّبًا معطوفًا بـ \"and\". مثل هذه العبارات (together with, along with, as well as, in addition to) لا تغيّر عدد الفاعل، فيبقى الفاعل الحقيقي هو المفرد \"committee\" ويأخذ \"was\". الجملة الثانية: مع \"neither...nor\" يطابق الفعلُ الفاعلَ الأقرب (قاعدة القرب). والأقرب هو الجمع \"employees\"، لذا الصيغة الصحيحة \"are\": \"Neither the manager nor the employees are satisfied.\"",
+   "a_en": "First sentence: the phrase \"together with its two advisers\" is a parenthetical accompaniment phrase, not a compound subject joined by \"and.\" Such phrases (together with, along with, as well as, in addition to) do NOT change the number of the subject, so the true subject remains the singular \"committee,\" taking \"was.\" Second sentence: with \"neither...nor,\" the verb agrees with the NEARER subject (proximity/proximity-agreement rule). The nearer element is the plural \"employees,\" so the correct form is \"are\": \"Neither the manager nor the employees are satisfied.\"",
+   "answer": "1) \"was\" — \"together with...\" is parenthetical and does not create a compound subject; subject stays singular \"committee.\" 2) \"are\" — with neither/nor the verb agrees with the nearer subject, the plural \"employees.\"",
+   "keywords": [
+    "subject-verb agreement",
+    "مطابقة الفاعل والفعل",
+    "neither nor",
+    "قاعدة القرب",
+    "proximity rule",
+    "together with",
+    "parenthetical phrase"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "حدّد وصحّح الخطأ النحوي في: \"Scarcely had I sat down than the phone rang.\" واشرح القاعدة التي تحكم أداة الربط والقلب المطلوب.",
+   "q_en": "Identify and correct the grammatical error in: \"Scarcely had I sat down than the phone rang.\" Explain the rule governing the correlative and the required inversion.",
+   "a_ar": "الخطأ في أداة الربط المتلازمة: \"scarcely\" تقترن بـ \"WHEN\" لا بـ \"than\" (فقط \"no sooner\" تقترن بـ \"than\"). والصواب: \"Scarcely had I sat down WHEN the phone rang.\" وتعمل قاعدتان: (1) التلازم الثابت scarcely/hardly...when مقابل no sooner...than؛ (2) ولأنّ الظرف المنفيّ \"scarcely\" تصدّر الجملة، يجب قلب الفاعل والفعل المساعد فيصير \"had I sat down\" (وهو صحيح هنا). ويكون الفعل بعد هذه التعابير ماضيًا تامًّا للحدث الأسبق وماضيًا بسيطًا للحدث اللاحق.",
+   "a_en": "The error is the correlative conjunction: \"scarcely\" pairs with \"WHEN,\" not \"than\" (only \"no sooner\" pairs with \"than\"). The correct sentence is \"Scarcely had I sat down WHEN the phone rang.\" Two rules operate: (1) the fixed pairing scarcely/hardly...when vs. no sooner...than; and (2) because the negative adverb \"scarcely\" is fronted, subject-auxiliary inversion is obligatory, giving \"had I sat down\" (correctly present here). The verb after such expressions is the past perfect for the earlier event and simple past for the later event.",
+   "answer": "Replace \"than\" with \"when\": \"Scarcely had I sat down WHEN the phone rang.\" Rule: scarcely/hardly pair with \"when\" (only \"no sooner\" pairs with \"than\"), and fronted negative \"scarcely\" forces subject-auxiliary inversion.",
+   "keywords": [
+    "negative inversion",
+    "القلب بعد النفي",
+    "scarcely when",
+    "no sooner than",
+    "correlative conjunction",
+    "التلازم",
+    "error analysis",
+    "تحليل الأخطاء"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "اشرح الفرق في المعنى بين \"I recommend that he take the exam\" و\"I recommend that he takes the exam\"، وبيّن أيّهما القياسي في الإنجليزية الرسمية ولماذا. ثمّ أعطِ الصيغة الصحيحة للفعل في صيغة الأمر/التمنّي المنفية: \"It is essential that she ___ (not / be) late.\"",
+   "q_en": "Explain the difference in meaning between \"I recommend that he take the exam\" and \"I recommend that he takes the exam,\" and state which is standard in formal English and why. Then give the correct form of the verb in the negative subjunctive: \"It is essential that she ___ (not / be) late.\"",
+   "a_ar": "بعد أفعال/صفات الطلب والاقتراح والضرورة (recommend, insist, essential + جملة that) تستخدم الإنجليزية الرسمية صيغة المضارع الاقتراني (present subjunctive): أي المصدر المجرّد بلا تغيير مهما كان الضمير، فنقول \"that he TAKE\" (بلا -s). أمّا \"that he takes\" فتستعمل صيغة الإخبار، وهي شائعة في الاستعمال غير الرسمي/البريطاني لكنّها ليست الصيغة الاقترانية القياسية، وقد تُقرأ حرفيًّا كإخبار عن واقع لا كتوصية. وتُفضَّل الصيغة الاقترانية في الإنجليزية الرسمية لأنّها تعبّر عن اقتراح لا عن حقيقة. وتُصاغ الصيغة المنفية بوضع \"not\" مباشرة قبل المصدر دون الفعل المساعد \"do\": \"It is essential that she NOT BE late.\"",
+   "a_en": "After verbs/adjectives of demand, suggestion, or necessity (recommend, insist, essential, that-clause), formal English uses the PRESENT SUBJUNCTIVE: the bare base form regardless of person, hence \"that he TAKE\" (no -s). \"That he takes\" uses the indicative and is common in informal/British usage but is not the standard mandative subjunctive; strictly it can also read as a factual statement rather than a recommendation. The mandative subjunctive is preferred in formal English because it expresses a proposal, not a fact. The negative subjunctive is formed by placing \"not\" directly before the base verb (no auxiliary \"do\"): \"It is essential that she NOT BE late.\"",
+   "answer": "\"take\" is the mandative present subjunctive (base form, no -s) — standard in formal English, expressing a proposal not a fact; \"takes\" is indicative (informal/British). Negative: \"that she NOT BE late\" (\"not\" + base form, no \"do\").",
+   "keywords": [
+    "mandative subjunctive",
+    "صيغة التمني",
+    "present subjunctive",
+    "recommend that",
+    "negative subjunctive",
+    "النفي في الاقتران",
+    "base form",
+    "إنجليزية رسمية"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في الجملة \"The man who I thought was my friend betrayed me،\" يزعم بعضهم أنّ \"who\" ينبغي أن تكون \"whom\". فهل \"who\" صحيحة؟ برهن على ذلك بتحديد الدور النحوي للضمير الموصول ووظيفة \"I thought\".",
+   "q_en": "In \"The man who I thought was my friend betrayed me,\" some claim \"who\" should be \"whom.\" Is \"who\" correct? Justify by identifying the grammatical role of the relative pronoun and the function of \"I thought.\"",
+   "a_ar": "\"who\" صحيحة. عبارة \"I thought\" جملة اعتراضية/تعليقية ولا تتحكّم في حالة الضمير الموصول. فلو حذفناها لصار التركيب \"The man who was my friend\"، وهنا الضمير الموصول هو فاعل الفعل \"was\"، وهذا يستلزم حالة الرفع \"who\" لا حالة النصب \"whom\". والاختبار: الضمير يعمل فاعلًا لـ \"was my friend\" لا مفعولًا لـ \"thought\". والخطأ الشائع هو كتابة \"whom\" لمجرّد وقوعها بعد \"I thought\"، وهو تصحيح مفرط يتجاهل الدور النحوي الحقيقي للضمير. إذن \"who\" هي الصواب.",
+   "a_en": "\"Who\" is CORRECT. The phrase \"I thought\" is a parenthetical interpolation (a comment clause) and does not govern the case of the relative pronoun. Remove it and the structure is \"The man who was my friend\" — here the relative pronoun is the SUBJECT of the verb \"was,\" which requires the subjective case \"who,\" never the objective \"whom.\" The test: the pronoun functions as subject of \"was my friend,\" not as object of \"thought.\" A common hypercorrection is to write \"whom\" because it directly follows \"I thought,\" but that ignores the pronoun's true syntactic role. Hence \"who\" is right.",
+   "answer": "\"Who\" is correct. \"I thought\" is a parenthetical comment clause; the relative pronoun is the SUBJECT of \"was my friend,\" requiring subjective \"who.\" \"Whom\" would be a hypercorrection.",
+   "keywords": [
+    "who vs whom",
+    "who أم whom",
+    "relative pronoun case",
+    "حالة الضمير الموصول",
+    "parenthetical clause",
+    "الجملة الاعتراضية",
+    "hypercorrection",
+    "التصحيح المفرط"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

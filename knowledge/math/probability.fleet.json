@@ -1,0 +1,151 @@
+{
+ "subject": "math",
+ "topic": "probability",
+ "title": "probability — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "عملةٌ احتمال ظهور صورتها $p$ مجهول، مع توزيع أولي منتظم $p\\sim\\mathrm{Uniform}(0,1)$. رُميت $10$ مرات فظهرت الصورة $7$ مرات. (أ) أوجد التوزيع البعدي لـ $p$. (ب) أوجد احتمال أن تكون الرمية التالية (الحادية عشرة) صورة.",
+   "q_en": "A coin has unknown heads-probability $p$, given a uniform prior $p\\sim\\mathrm{Uniform}(0,1)$. It is flipped $10$ times and lands heads $7$ times. (a) Find the posterior distribution of $p$. (b) Find the probability that the next (11th) flip is heads.",
+   "a_ar": "(أ) دالة الإمكان $p^7(1-p)^3$؛ ومع التوزيع الأولي المنتظم يكون التوزيع البعدي $\\propto p^7(1-p)^3$، أي $p\\mid\\text{البيانات}\\sim\\mathrm{Beta}(8,4)$. (ب) احتمال الصورة في الرمية التالية هو المتوسط البعدي $E[p\\mid\\text{البيانات}]=\\dfrac{8}{8+4}=\\dfrac{2}{3}$، وهي قاعدة لابلاس للخلافة: $\\dfrac{k+1}{n+2}=\\dfrac{8}{12}$.",
+   "a_en": "(a) The likelihood is $p^7(1-p)^3$; with the uniform prior the posterior is $\\propto p^7(1-p)^3$, i.e. $p\\mid\\text{data}\\sim\\mathrm{Beta}(8,4)$. (b) The posterior predictive probability of heads is the posterior mean $E[p\\mid\\text{data}]=\\dfrac{8}{8+4}=\\dfrac{2}{3}$. This is Laplace's rule of succession: $\\dfrac{k+1}{n+2}=\\dfrac{8}{12}$.",
+   "answer": "Posterior $\\mathrm{Beta}(8,4)$; $P(\\text{next head})=\\dfrac{2}{3}$",
+   "keywords": [
+    "بايز",
+    "Beta posterior",
+    "توزيع بيتا",
+    "rule of succession",
+    "قاعدة الخلافة",
+    "posterior predictive",
+    "Laplace",
+    "توزيع بعدي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "تصل الرسائل إلى صندوق البريد خلال ساعة وفق توزيع بواسون بمتوسط $\\lambda=10$. وبشكل مستقل عن كل شيء، تكون كل رسالة مزعجة (spam) باحتمال $p=0.3$. (أ) ما توزيع عدد الرسائل المزعجة $X$؟ (ب) هل عددا الرسائل المزعجة $X$ وغير المزعجة $Y$ مستقلان؟ (ج) بمعلومية أنه وصلت $4$ رسائل مزعجة بالضبط في تلك الساعة، ما القيمة المتوقعة لعدد الرسائل غير المزعجة؟",
+   "q_en": "Emails arrive at an inbox in one hour according to a Poisson distribution with mean $\\lambda=10$. Independently of everything else, each email is spam with probability $p=0.3$. (a) What is the distribution of the number of spam emails $X$? (b) Are the counts of spam $X$ and non-spam $Y$ independent? (c) Given that exactly $4$ spam emails arrived that hour, what is the expected number of non-spam emails?",
+   "a_ar": "بترقيق بواسون (Poisson thinning): (أ) $X\\sim\\mathrm{Poisson}(\\lambda p)=\\mathrm{Poisson}(3)$، و $Y\\sim\\mathrm{Poisson}(\\lambda(1-p))=\\mathrm{Poisson}(7)$. (ب) نعم — $X$ و $Y$ متغيّران بواسونيان مستقلان (خاصية أساسية لترقيق بواسون). (ج) بحكم الاستقلال، الاشتراط بـ $X=4$ لا يغيّر $Y$، فيكون $E[Y\\mid X=4]=E[Y]=\\lambda(1-p)=7$.",
+   "a_en": "By Poisson thinning: (a) $X\\sim\\mathrm{Poisson}(\\lambda p)=\\mathrm{Poisson}(3)$, and $Y\\sim\\mathrm{Poisson}(\\lambda(1-p))=\\mathrm{Poisson}(7)$. (b) Yes — $X$ and $Y$ are independent Poisson variables (a key property of Poisson thinning). (c) By independence, conditioning on $X=4$ does not change $Y$, so $E[Y\\mid X=4]=E[Y]=\\lambda(1-p)=7$.",
+   "answer": "$X\\sim\\mathrm{Poisson}(3)$, independent of $Y\\sim\\mathrm{Poisson}(7)$; $E[Y\\mid X=4]=7$",
+   "keywords": [
+    "بواسون",
+    "Poisson thinning",
+    "ترقيق بواسون",
+    "independence",
+    "استقلال",
+    "conditional expectation",
+    "توقع شرطي",
+    "spam"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يُرمى حجر نردٍ عادلٍ ذو ستة أوجه مراراً. ليكن $T$ عدد الرميات اللازمة حتى يظهر كلٌّ من الأوجه الستة مرة واحدة على الأقل (زمن جامع الكوبونات). أوجد $E[T]$.",
+   "q_en": "A fair six-sided die is rolled repeatedly. Let $T$ be the number of rolls needed until every one of the six faces has appeared at least once (the coupon-collector time). Find $E[T]$.",
+   "a_ar": "نُجزّئ $T=\\sum_{i=1}^{6}T_i$، حيث $T_i$ عدد الرميات للحصول على الوجه الجديد رقم $i$ بعد جمع $i-1$ وجهاً مختلفاً. كل $T_i$ هندسي باحتمال نجاح $\\frac{6-(i-1)}{6}$، فيكون $E[T_i]=\\frac{6}{7-i}$. إذن $E[T]=6\\sum_{i=1}^{6}\\frac{1}{i}=6H_6=6\\cdot\\frac{49}{20}=\\frac{147}{10}=14.7$.",
+   "a_en": "Split $T=\\sum_{i=1}^{6}T_i$, where $T_i$ is the number of rolls to get the $i$-th new face after $i-1$ distinct faces are collected. Each $T_i$ is geometric with success probability $\\frac{6-(i-1)}{6}$, so $E[T_i]=\\frac{6}{7-i}$. Hence $E[T]=6\\sum_{i=1}^{6}\\frac{1}{i}=6H_6=6\\cdot\\frac{49}{20}=\\frac{147}{10}=14.7$.",
+   "answer": "$E[T]=6H_6=\\dfrac{147}{10}=14.7$",
+   "keywords": [
+    "جامع الكوبونات",
+    "coupon collector",
+    "التوزيع الهندسي",
+    "geometric distribution",
+    "خطية التوقع",
+    "linearity of expectation",
+    "harmonic number",
+    "العدد التوافقي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في شهرٍ واحد يكون عدد مطالبات شركة تأمين $N\\sim\\mathrm{Poisson}(20)$. أحجام المطالبات $X_1,X_2,\\dots$ مستقلة ومتماثلة التوزيع ومستقلة عن $N$، لكلٍّ منها متوسط $\\mu=500$ وانحراف معياري $\\sigma=300$. ليكن $S=\\sum_{i=1}^{N}X_i$ إجمالي المدفوعات الشهرية. أوجد $E[S]$ و $\\operatorname{Var}(S)$.",
+   "q_en": "In one month an insurer's number of claims is $N\\sim\\mathrm{Poisson}(20)$. Claim sizes $X_1,X_2,\\dots$ are i.i.d., independent of $N$, each with mean $\\mu=500$ and standard deviation $\\sigma=300$. Let $S=\\sum_{i=1}^{N}X_i$ be the total monthly payout. Find $E[S]$ and $\\operatorname{Var}(S)$.",
+   "a_ar": "بمتطابقة والد (Wald): $E[S]=E[N]\\,\\mu=20\\cdot500=10000$. ولمجموع بواسون المركّب يتبسّط التباين إلى $\\operatorname{Var}(S)=\\lambda\\,E[X^2]=\\lambda(\\sigma^2+\\mu^2)$ (وبالمثل من قانون التباين الكلي $E[N]\\sigma^2+\\operatorname{Var}(N)\\mu^2$، حيث $E[N]=\\operatorname{Var}(N)=20$). إذن $\\operatorname{Var}(S)=20(300^2+500^2)=20\\cdot340000=6{,}800{,}000$، والانحراف المعياري $\\sqrt{6{,}800{,}000}\\approx 2607.7$.",
+   "a_en": "By Wald's identity $E[S]=E[N]\\,\\mu=20\\cdot500=10000$. For a compound Poisson sum the variance simplifies to $\\operatorname{Var}(S)=\\lambda\\,E[X^2]=\\lambda(\\sigma^2+\\mu^2)$ (equivalently from the law of total variance $E[N]\\sigma^2+\\operatorname{Var}(N)\\mu^2$, using $E[N]=\\operatorname{Var}(N)=20$). Thus $\\operatorname{Var}(S)=20(300^2+500^2)=20\\cdot340000=6{,}800{,}000$, with standard deviation $\\sqrt{6{,}800{,}000}\\approx 2607.7$.",
+   "answer": "$E[S]=10000$, $\\operatorname{Var}(S)=6{,}800{,}000$ (SD $\\approx 2607.7$)",
+   "keywords": [
+    "بواسون المركب",
+    "compound Poisson",
+    "متطابقة والد",
+    "Wald identity",
+    "قانون التباين الكلي",
+    "law of total variance",
+    "random sum",
+    "مجموع عشوائي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "عدد المكالمات الواردة إلى مقسم هاتفي في ساعة واحدة يتبع توزيع بواسون بمعدل مجهول $\\lambda$. قبل رصد أي بيانات نُعطي $\\lambda$ توزيعاً قبلياً $\\mathrm{Gamma}(\\text{الشكل}=2,\\ \\text{المعدل}=1)$، أي دالة كثافة $\\propto \\lambda e^{-\\lambda}$. خلال ساعة واحدة رُصدت $3$ مكالمات بالضبط. أوجد التوزيع البعدي (اللاحق) لـ $\\lambda$، ثم احسب الاحتمال التنبؤي البعدي بأن الساعة التالية تُنتج $0$ مكالمة.",
+   "q_en": "The number of calls arriving at a switchboard in one hour is Poisson-distributed with unknown rate $\\lambda$. Before observing any data, $\\lambda$ is given the prior distribution $\\mathrm{Gamma}(\\text{shape}=2,\\ \\text{rate}=1)$, i.e. density $\\propto \\lambda e^{-\\lambda}$. During one hour exactly $3$ calls are observed. Determine the posterior distribution of $\\lambda$, and compute the posterior predictive probability that the NEXT hour produces $0$ calls.",
+   "a_ar": "بحكم الاقتران المرافق، يكون التوزيع البعدي $\\propto \\lambda^{2-1}e^{-\\lambda}\\cdot \\lambda^{3}e^{-\\lambda} = \\lambda^{4}e^{-2\\lambda}$، أي $\\mathrm{Gamma}(\\text{الشكل}=5,\\ \\text{المعدل}=2)$. والاحتمال التنبؤي لعدم ورود مكالمات هو $\\int_0^\\infty e^{-\\lambda}\\,\\frac{2^{5}}{\\Gamma(5)}\\lambda^{4}e^{-2\\lambda}\\,d\\lambda = \\frac{2^{5}}{3^{5}} = \\left(\\tfrac{2}{3}\\right)^{5}$. إذن $P(0)=\\dfrac{32}{243}\\approx 0.1317$.",
+   "a_en": "By conjugacy, posterior $\\propto \\lambda^{2-1}e^{-\\lambda}\\cdot \\lambda^{3}e^{-\\lambda} = \\lambda^{4}e^{-2\\lambda}$, so the posterior is $\\mathrm{Gamma}(\\text{shape}=5,\\ \\text{rate}=2)$. The predictive probability of $0$ calls is $\\int_0^\\infty e^{-\\lambda}\\,\\frac{2^{5}}{\\Gamma(5)}\\lambda^{4}e^{-2\\lambda}\\,d\\lambda = \\frac{2^{5}}{3^{5}} = \\left(\\tfrac{2}{3}\\right)^{5}$. Thus $P(0\\text{ next hour}) = \\dfrac{32}{243}\\approx 0.1317$.",
+   "answer": "Posterior $\\mathrm{Gamma}(5,2)$; predictive $P(0)=(2/3)^5=32/243\\approx0.1317$",
+   "keywords": [
+    "بواسون",
+    "Poisson",
+    "غاما",
+    "Gamma prior",
+    "توزيع بعدي",
+    "posterior predictive",
+    "conjugate",
+    "احتمال تنبؤي"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يُختار تبديل $\\sigma$ للمجموعة $\\{1,2,\\dots,n\\}$ بشكل منتظم عشوائي. انظر إلى دورة $\\sigma$ التي تحتوي العنصر $1$. أوجد التوزيع الدقيق لطول $L$ لهذه الدورة، ومن ثمّ احسب $\\mathbb{E}[L]$.",
+   "q_en": "A permutation $\\sigma$ of $\\{1,2,\\dots,n\\}$ is chosen uniformly at random. Consider the cycle of $\\sigma$ that contains the element $1$. Find the exact distribution of the length $L$ of this cycle, and hence compute $\\mathbb{E}[L]$.",
+   "a_ar": "نتتبّع الدورة $1\\to\\sigma(1)\\to\\sigma^2(1)\\to\\cdots$. يكون طول الدورة $k$ بالضبط إذا تجنّبت أول $k-1$ صورة العنصر $1$ ثم عادت الصورة $k$ إلى $1$: $P(L=k)=\\prod_{i=1}^{k-1}\\frac{n-i}{n-i+1}\\cdot\\frac{1}{n-k+1}=\\frac1n$. إذن $L$ موزّع بانتظام على $\\{1,\\dots,n\\}$، وبالتالي $\\mathbb{E}[L]=\\frac1n\\sum_{k=1}^{n}k=\\frac{n+1}{2}$.",
+   "a_en": "Trace the cycle $1\\to\\sigma(1)\\to\\sigma^2(1)\\to\\cdots$. The cycle has length exactly $k$ iff the first $k-1$ images avoid $1$ and the $k$-th returns to $1$: $P(L=k)=\\prod_{i=1}^{k-1}\\frac{n-i}{n-i+1}\\cdot\\frac{1}{n-k+1}=\\frac{n-k+1}{n}\\cdot\\frac{1}{n-k+1}=\\frac1n$. So $L$ is UNIFORM on $\\{1,\\dots,n\\}$, and $\\mathbb{E}[L]=\\frac1n\\sum_{k=1}^{n}k=\\frac{n+1}{2}$.",
+   "answer": "$L\\sim\\text{Uniform}\\{1,\\dots,n\\}$, so $P(L=k)=1/n$ and $\\mathbb{E}[L]=\\frac{n+1}{2}$",
+   "keywords": [
+    "تبديل عشوائي",
+    "random permutation",
+    "دورة",
+    "cycle length",
+    "توزيع منتظم",
+    "uniform distribution",
+    "توقع",
+    "expectation"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "تُرمى عملة عادلة (متوازنة) مراراً. ليكن $T$ عدد الرميات حتى يظهر النمط $HTH$ لأول مرة (ثلاث نتائج متتالية). احسب $\\mathbb{E}[T]$، وبيّن لماذا يختلف عن زمن الانتظار المتوقع للنمط $HHH$.",
+   "q_en": "A fair coin is tossed repeatedly. Let $T$ be the number of tosses until the pattern $HTH$ first appears (as three consecutive outcomes). Compute $\\mathbb{E}[T]$, and explain why it differs from the expected wait for $HHH$.",
+   "a_ar": "نستخدم صيغة كونواي للارتباط الذاتي: لنمط $A$ مع عملة عادلة $\\mathbb{E}[T]=\\sum_{k}2^{k}\\,[\\text{البادئة بطول }k=\\text{اللاحقة بطول }k]$. من أجل $HTH$: تتطابق الكلمة كاملة ($k=3,\\ 2^3=8$) وتتطابق البادئة/اللاحقة بطول $1$ ($H=H$، $k=1,\\ 2^1=2$)، بينما $k=2$ ($HT$ مقابل $TH$) لا تتطابق. إذن $\\mathbb{E}[T]=8+2=10$. أما $HHH$ فكل بادئة تساوي اللاحقة المقابلة فيكون $8+4+2=14$. تداخُل $HHH$ الذاتي الأكبر يجعل انتظاره أطول، بينما $HTH$ أقل تداخلاً مع نفسه فيُبلَغ أسرع في المتوسط.",
+   "a_en": "Use Conway's correlation (leading-numbers) formula: for a pattern $A$ over a fair coin, $\\mathbb{E}[T]=\\sum_{k}2^{k}\\,[\\text{prefix of length }k=\\text{suffix of length }k]$. For $HTH$: the whole word matches (k=3, $2^3=8$) and the length-1 prefix/suffix $H=H$ matches (k=1, $2^1=2$), while $k=2$ ($HT$ vs $TH$) does not. So $\\mathbb{E}[T]=8+2=10$. For $HHH$ every prefix equals the corresponding suffix, giving $8+4+2=14$. The self-overlap of $HHH$ (a failed attempt can reuse a longer matched suffix, but a restart wastes more) makes its wait longer; $HTH$ overlaps itself less, so it is reached sooner on average.",
+   "answer": "$\\mathbb{E}[T_{HTH}]=10$ (versus $\\mathbb{E}[T_{HHH}]=14$)",
+   "keywords": [
+    "أنماط العملة",
+    "coin patterns",
+    "زمن الانتظار",
+    "waiting time",
+    "Conway",
+    "سلسلة ماركوف",
+    "Markov chain",
+    "HTH"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "مقامر يبدأ بمبلغ $\\$3$ ويراهن مراراً بمبلغ $\\$1$ في لعبة يربحها باحتمال $p=\\tfrac13$ (ويخسرها باحتمال $\\tfrac23$) بشكل مستقل في كل جولة. يتوقّف عند بلوغه $\\$0$ (الإفلاس) أو $\\$6$ (الهدف). أوجد احتمال بلوغه $\\$6$ قبل إفلاسه.",
+   "q_en": "A gambler starts with $\\$3$ and repeatedly bets $\\$1$ on a game he wins with probability $p=\\tfrac13$ (and loses with probability $\\tfrac23$) independently each round. He stops upon reaching $\\$0$ (ruin) or $\\$6$ (goal). Find the probability that he reaches $\\$6$ before going broke.",
+   "a_ar": "هذه مسألة إفلاس المقامر بنسبة $r=q/p=(2/3)/(1/3)=2\\ne1$. بدءاً من $i$ مع حاجزين ماصّين عند $0$ و$N$، فإن احتمال بلوغ $N$ أولاً هو $P_i=\\dfrac{1-r^{\\,i}}{1-r^{\\,N}}$. وبوضع $i=3$، $N=6$: $P_3=\\dfrac{1-2^{3}}{1-2^{6}}=\\dfrac{-7}{-63}=\\dfrac{1}{9}.$",
+   "a_en": "This is the gambler's ruin problem with ratio $r=q/p=(2/3)/(1/3)=2\\ne1$. Starting from $i$ with absorbing barriers at $0$ and $N$, the probability of reaching $N$ first is $P_i=\\dfrac{1-r^{\\,i}}{1-r^{\\,N}}$. With $i=3$, $N=6$: $P_3=\\dfrac{1-2^{3}}{1-2^{6}}=\\dfrac{1-8}{1-64}=\\dfrac{-7}{-63}=\\dfrac{1}{9}.$",
+   "answer": "$P=\\dfrac{1}{9}\\approx0.1111$",
+   "keywords": [
+    "إفلاس المقامر",
+    "gambler's ruin",
+    "random walk",
+    "سير عشوائي",
+    "حاجز ماص",
+    "absorbing barrier",
+    "biased",
+    "احتمال الوصول"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

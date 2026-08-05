@@ -1,0 +1,177 @@
+{
+ "subject": "math",
+ "topic": "integrals",
+ "title": "integrals — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "احسب التكامل $\\displaystyle\\int_0^{\\pi/2}\\ln(\\sin x)\\,dx$.",
+   "q_en": "Evaluate $\\displaystyle\\int_0^{\\pi/2}\\ln(\\sin x)\\,dx$.",
+   "a_ar": "نسمّي التكامل $I$. بالتعويض $x\\to \\tfrac{\\pi}{2}-x$ نجد أيضاً $\\int_0^{\\pi/2}\\ln(\\cos x)\\,dx=I$. وبالجمع: $2I=\\int_0^{\\pi/2}\\ln(\\sin x\\cos x)\\,dx=\\int_0^{\\pi/2}\\ln\\!\\big(\\tfrac{\\sin 2x}{2}\\big)dx=-\\tfrac{\\pi}{2}\\ln 2+\\int_0^{\\pi/2}\\ln(\\sin 2x)\\,dx$. وبالتعويض $u=2x$ في التكامل الأخير نحصل على $\\tfrac12\\int_0^{\\pi}\\ln(\\sin u)\\,du=\\int_0^{\\pi/2}\\ln(\\sin u)\\,du=I$ (بالتناظر حول $\\pi/2$). إذن $2I=-\\tfrac{\\pi}{2}\\ln 2+I$، ومنه $I=-\\tfrac{\\pi}{2}\\ln 2$.",
+   "a_en": "Call the integral $I$. By the substitution $x\\to \\tfrac{\\pi}{2}-x$, $\\int_0^{\\pi/2}\\ln(\\cos x)\\,dx=I$ as well. Adding, $2I=\\int_0^{\\pi/2}\\ln(\\sin x\\cos x)\\,dx=\\int_0^{\\pi/2}\\ln\\!\\big(\\tfrac{\\sin 2x}{2}\\big)dx=-\\tfrac{\\pi}{2}\\ln 2+\\int_0^{\\pi/2}\\ln(\\sin 2x)\\,dx$. Substituting $u=2x$ in the last integral gives $\\tfrac12\\int_0^{\\pi}\\ln(\\sin u)\\,du=\\int_0^{\\pi/2}\\ln(\\sin u)\\,du=I$ (by symmetry about $\\pi/2$). Hence $2I=-\\tfrac{\\pi}{2}\\ln 2+I$, so $I=-\\tfrac{\\pi}{2}\\ln 2$.",
+   "answer": "$-\\tfrac{\\pi}{2}\\ln 2$",
+   "keywords": [
+    "تكامل لوغاريتمي",
+    "ln sin",
+    "log-sine integral",
+    "symmetry trick",
+    "تعويض",
+    "definite integral",
+    "تناظر"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب التكامل $\\displaystyle\\int_0^{\\pi/4}\\ln(1+\\tan x)\\,dx$.",
+   "q_en": "Evaluate $\\displaystyle\\int_0^{\\pi/4}\\ln(1+\\tan x)\\,dx$.",
+   "a_ar": "لنضع $I=\\int_0^{\\pi/4}\\ln(1+\\tan x)\\,dx$ ونطبّق التعويض $x\\to \\tfrac{\\pi}{4}-x$. بما أنّ $\\tan(\\tfrac{\\pi}{4}-x)=\\tfrac{1-\\tan x}{1+\\tan x}$ فإنّ $1+\\tan(\\tfrac{\\pi}{4}-x)=\\tfrac{2}{1+\\tan x}$. ومنه $I=\\int_0^{\\pi/4}\\big[\\ln 2-\\ln(1+\\tan x)\\big]dx=\\tfrac{\\pi}{4}\\ln 2-I$. إذن $2I=\\tfrac{\\pi}{4}\\ln 2$، فيكون $I=\\tfrac{\\pi}{8}\\ln 2$.",
+   "a_en": "Let $I=\\int_0^{\\pi/4}\\ln(1+\\tan x)\\,dx$ and apply $x\\to \\tfrac{\\pi}{4}-x$. Since $\\tan(\\tfrac{\\pi}{4}-x)=\\tfrac{1-\\tan x}{1+\\tan x}$, we get $1+\\tan(\\tfrac{\\pi}{4}-x)=\\tfrac{2}{1+\\tan x}$. Thus $I=\\int_0^{\\pi/4}\\big[\\ln 2-\\ln(1+\\tan x)\\big]dx=\\tfrac{\\pi}{4}\\ln 2-I$. Therefore $2I=\\tfrac{\\pi}{4}\\ln 2$, giving $I=\\tfrac{\\pi}{8}\\ln 2$.",
+   "answer": "$\\tfrac{\\pi}{8}\\ln 2$",
+   "keywords": [
+    "تكامل بوتنام",
+    "Putnam integral",
+    "1+tan x",
+    "king property",
+    "تعويض تناظري",
+    "reflection substitution",
+    "definite integral"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب التكامل $\\displaystyle\\int_0^{\\pi}\\frac{x\\sin x}{1+\\cos^2 x}\\,dx$.",
+   "q_en": "Evaluate $\\displaystyle\\int_0^{\\pi}\\frac{x\\sin x}{1+\\cos^2 x}\\,dx$.",
+   "a_ar": "لنضع $I=\\int_0^{\\pi}\\frac{x\\sin x}{1+\\cos^2 x}\\,dx$. باستخدام $x\\to \\pi-x$ (حيث يبقى $\\sin x$ و$\\cos^2 x$ دون تغيير) نجد $I=\\int_0^{\\pi}\\frac{(\\pi-x)\\sin x}{1+\\cos^2 x}\\,dx=\\pi\\int_0^{\\pi}\\frac{\\sin x}{1+\\cos^2 x}\\,dx-I$. إذن $2I=\\pi\\int_0^{\\pi}\\frac{\\sin x}{1+\\cos^2 x}\\,dx$. وبالتعويض $u=\\cos x$ نحصل على $\\int_{-1}^{1}\\frac{du}{1+u^2}=[\\arctan u]_{-1}^{1}=\\tfrac{\\pi}{2}$، فيكون $2I=\\pi\\cdot\\tfrac{\\pi}{2}$ ومنه $I=\\tfrac{\\pi^2}{4}$.",
+   "a_en": "Let $I=\\int_0^{\\pi}\\frac{x\\sin x}{1+\\cos^2 x}\\,dx$. Using $x\\to \\pi-x$ (so $\\sin x$ and $\\cos^2 x$ are unchanged), $I=\\int_0^{\\pi}\\frac{(\\pi-x)\\sin x}{1+\\cos^2 x}\\,dx=\\pi\\int_0^{\\pi}\\frac{\\sin x}{1+\\cos^2 x}\\,dx-I$. Hence $2I=\\pi\\int_0^{\\pi}\\frac{\\sin x}{1+\\cos^2 x}\\,dx$. Substituting $u=\\cos x$ gives $\\int_{-1}^{1}\\frac{du}{1+u^2}=[\\arctan u]_{-1}^{1}=\\tfrac{\\pi}{2}$, so $2I=\\pi\\cdot\\tfrac{\\pi}{2}$ and $I=\\tfrac{\\pi^2}{4}$.",
+   "answer": "$\\tfrac{\\pi^2}{4}$",
+   "keywords": [
+    "x sin x",
+    "king property",
+    "خاصية الملك",
+    "arctan",
+    "تعويض",
+    "definite integral",
+    "تناظر حول pi/2"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "المنطقة المحدودة بالمنحنى $y=\\ln x$ ومحور السينات والمستقيم $x=e$ تدور حول محور الصادات. أوجد حجم المجسّم الناتج.",
+   "q_en": "The region bounded by $y=\\ln x$, the $x$-axis, and the line $x=e$ is revolved about the $y$-axis. Find the volume of the resulting solid.",
+   "a_ar": "تمتدّ المنطقة على $1\\le x\\le e$ بارتفاع $y=\\ln x\\ge 0$. باستخدام طريقة القشور الأسطوانية حول محور الصادات: $V=\\int_1^{e} 2\\pi x\\,\\ln x\\,dx$. وبالتكامل بالتجزئة مع $u=\\ln x,\\ dv=x\\,dx$: $\\int x\\ln x\\,dx=\\tfrac{x^2}{2}\\ln x-\\tfrac{x^2}{4}$. وبالتعويض من $1$ إلى $e$: $\\big(\\tfrac{e^2}{2}-\\tfrac{e^2}{4}\\big)-\\big(0-\\tfrac14\\big)=\\tfrac{e^2}{4}+\\tfrac14=\\tfrac{e^2+1}{4}$. إذن $V=2\\pi\\cdot\\tfrac{e^2+1}{4}=\\tfrac{\\pi(e^2+1)}{2}$.",
+   "a_en": "The region runs over $1\\le x\\le e$ with height $y=\\ln x\\ge 0$. Using cylindrical shells about the $y$-axis, $V=\\int_1^{e} 2\\pi x\\,\\ln x\\,dx$. Integrating by parts with $u=\\ln x,\\ dv=x\\,dx$: $\\int x\\ln x\\,dx=\\tfrac{x^2}{2}\\ln x-\\tfrac{x^2}{4}$. Evaluating from $1$ to $e$: $\\big(\\tfrac{e^2}{2}-\\tfrac{e^2}{4}\\big)-\\big(0-\\tfrac14\\big)=\\tfrac{e^2}{4}+\\tfrac14=\\tfrac{e^2+1}{4}$. Thus $V=2\\pi\\cdot\\tfrac{e^2+1}{4}=\\tfrac{\\pi(e^2+1)}{2}$.",
+   "answer": "$\\dfrac{\\pi(e^2+1)}{2}$",
+   "keywords": [
+    "حجم دوران",
+    "cylindrical shells",
+    "القشور الأسطوانية",
+    "x ln x",
+    "integration by parts",
+    "التكامل بالتجزئة",
+    "volume of revolution"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب التكامل $\\displaystyle\\int_0^{\\pi/2}\\frac{dx}{1+(\\tan x)^{\\sqrt{2}}}$.",
+   "q_en": "Evaluate $\\displaystyle\\int_0^{\\pi/2}\\frac{dx}{1+(\\tan x)^{\\sqrt{2}}}$.",
+   "a_ar": "لنضع $I=\\int_0^{\\pi/2}\\frac{dx}{1+(\\tan x)^{a}}$ حيث $a=\\sqrt2$. نطبّق التعويض $x\\to \\tfrac{\\pi}{2}-x$ الذي يحوّل $\\tan x\\to\\cot x=1/\\tan x$: $I=\\int_0^{\\pi/2}\\frac{dx}{1+(\\tan x)^{-a}}=\\int_0^{\\pi/2}\\frac{(\\tan x)^{a}}{1+(\\tan x)^{a}}\\,dx$. وبجمع الصيغتين: $2I=\\int_0^{\\pi/2}\\frac{1+(\\tan x)^{a}}{1+(\\tan x)^{a}}\\,dx=\\int_0^{\\pi/2}dx=\\tfrac{\\pi}{2}$. إذن $I=\\tfrac{\\pi}{4}$، وهي قيمة مستقلة عن الأُسّ $a$.",
+   "a_en": "Let $I=\\int_0^{\\pi/2}\\frac{dx}{1+(\\tan x)^{a}}$ with $a=\\sqrt2$. Apply $x\\to \\tfrac{\\pi}{2}-x$, which sends $\\tan x\\to\\cot x=1/\\tan x$: $I=\\int_0^{\\pi/2}\\frac{dx}{1+(\\tan x)^{-a}}=\\int_0^{\\pi/2}\\frac{(\\tan x)^{a}}{1+(\\tan x)^{a}}\\,dx$. Adding the two forms, $2I=\\int_0^{\\pi/2}\\frac{1+(\\tan x)^{a}}{1+(\\tan x)^{a}}\\,dx=\\int_0^{\\pi/2}dx=\\tfrac{\\pi}{2}$. Hence $I=\\tfrac{\\pi}{4}$, independent of the exponent $a$.",
+   "answer": "$\\tfrac{\\pi}{4}$",
+   "keywords": [
+    "tan^a",
+    "خاصية الملك",
+    "king property",
+    "تعويض تناظري",
+    "reflection substitution",
+    "independent of exponent",
+    "definite integral"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب التكامل $\\displaystyle\\int_0^1 \\frac{\\ln x}{x-1}\\,dx$.",
+   "q_en": "Evaluate $\\displaystyle\\int_0^1 \\frac{\\ln x}{x-1}\\,dx$.",
+   "a_ar": "نكتب $\\frac{1}{x-1}=-\\frac{1}{1-x}=-\\sum_{n\\ge 0}x^n$ عندما $0<x<1$، فيصبح المكامَل $-\\sum_{n\\ge0}x^n\\ln x$. وبتبادل المجموع مع التكامل، ومع $\\int_0^1 x^n\\ln x\\,dx=-\\frac{1}{(n+1)^2}$، يصير التكامل $\\sum_{k\\ge1}\\frac{1}{k^2}$. وهذا هو $\\zeta(2)=\\frac{\\pi^2}{6}$.",
+   "a_en": "Write $\\frac{1}{x-1}=-\\frac{1}{1-x}=-\\sum_{n\\ge 0}x^n$ for $0<x<1$, so the integrand equals $-\\sum_{n\\ge0}x^n\\ln x$. Interchanging sum and integral, $\\int_0^1 x^n\\ln x\\,dx=-\\frac{1}{(n+1)^2}$, hence the integral is $\\sum_{n\\ge0}\\frac{1}{(n+1)^2}=\\sum_{k\\ge1}\\frac{1}{k^2}$. This is $\\zeta(2)=\\frac{\\pi^2}{6}$.",
+   "answer": "$\\dfrac{\\pi^2}{6}$",
+   "keywords": [
+    "تكامل",
+    "zeta function",
+    "دالة زيتا",
+    "series expansion",
+    "dilogarithm",
+    "$\\pi^2/6$",
+    "نشر متسلسلة"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "احسب تكامل أحمد $\\displaystyle\\int_0^1 \\frac{\\arctan\\!\\sqrt{x^2+2}}{(x^2+1)\\sqrt{x^2+2}}\\,dx$.",
+   "q_en": "Evaluate the Ahmed integral $\\displaystyle\\int_0^1 \\frac{\\arctan\\!\\sqrt{x^2+2}}{(x^2+1)\\sqrt{x^2+2}}\\,dx$.",
+   "a_ar": "لنسمِّ التكامل $I$ ونُدخل الوسيط $I(u)=\\int_0^1 \\frac{\\arctan(u\\sqrt{x^2+2})}{(x^2+1)\\sqrt{x^2+2}}\\,dx$ فيكون المطلوب $I(1)$. بالاشتقاق تحت علامة التكامل وتفكيك الكسور، يؤول الفرق $I(\\infty)-I(1)$ إلى تكاملات قوس ظل ابتدائية؛ ومع $I(\\infty)=\\frac{\\pi}{2}\\int_0^1\\frac{dx}{(x^2+1)\\sqrt{x^2+2}}=\\frac{\\pi}{2}\\cdot\\frac{\\pi}{6}=\\frac{\\pi^2}{12}$ نحصل على الصيغة المغلقة الشهيرة. والنتيجة $\\frac{5\\pi^2}{96}$.",
+   "a_en": "Let $I$ be the integral and introduce $I(u)=\\int_0^1 \\frac{\\arctan(u\\sqrt{x^2+2})}{(x^2+1)\\sqrt{x^2+2}}\\,dx$ so the target is $I(1)$. Differentiating under the integral sign and using partial fractions, $I(\\infty)-I(1)$ reduces to elementary arctangent integrals; combined with $I(\\infty)=\\frac{\\pi}{2}\\int_0^1\\frac{dx}{(x^2+1)\\sqrt{x^2+2}}=\\frac{\\pi}{2}\\cdot\\frac{\\pi}{6}=\\frac{\\pi^2}{12}$ one obtains the classical closed form. The result is $\\frac{5\\pi^2}{96}$.",
+   "answer": "$\\dfrac{5\\pi^2}{96}$",
+   "keywords": [
+    "تكامل أحمد",
+    "Ahmed integral",
+    "arctangent",
+    "الاشتقاق تحت التكامل",
+    "Feynman trick",
+    "$\\pi^2$"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "احسب $\\displaystyle\\int_0^{\\pi/2}\\ln(\\sin x)\\,dx$.",
+   "q_en": "Evaluate $\\displaystyle\\int_0^{\\pi/2}\\ln(\\sin x)\\,dx$.",
+   "a_ar": "لنسمِّ التكامل $I$. بالتعويض $x\\mapsto \\tfrac{\\pi}{2}-x$ نجد $\\int_0^{\\pi/2}\\ln(\\cos x)\\,dx=I$ أيضاً، إذن $2I=\\int_0^{\\pi/2}\\ln(\\sin x\\cos x)\\,dx=\\int_0^{\\pi/2}\\ln\\!\\big(\\tfrac{\\sin 2x}{2}\\big)\\,dx=-\\tfrac{\\pi}{2}\\ln 2+\\int_0^{\\pi/2}\\ln(\\sin 2x)\\,dx$. وبالتعويض $t=2x$ يكون $\\int_0^{\\pi/2}\\ln(\\sin 2x)\\,dx=\\tfrac12\\int_0^{\\pi}\\ln(\\sin t)\\,dt=I$ (لتناظر الجيب حول $\\pi/2$). فينتج $2I=-\\tfrac{\\pi}{2}\\ln2+I$ ومنه $I=-\\tfrac{\\pi}{2}\\ln 2$.",
+   "a_en": "Call the integral $I$. By $x\\mapsto \\tfrac{\\pi}{2}-x$, $\\int_0^{\\pi/2}\\ln(\\cos x)\\,dx=I$ too, so $2I=\\int_0^{\\pi/2}\\ln(\\sin x\\cos x)\\,dx=\\int_0^{\\pi/2}\\ln\\!\\big(\\tfrac{\\sin 2x}{2}\\big)\\,dx=-\\tfrac{\\pi}{2}\\ln 2+\\int_0^{\\pi/2}\\ln(\\sin 2x)\\,dx$. Substituting $t=2x$ gives $\\int_0^{\\pi/2}\\ln(\\sin 2x)\\,dx=\\tfrac12\\int_0^{\\pi}\\ln(\\sin t)\\,dt=I$ (by symmetry of $\\sin$ about $\\pi/2$). Thus $2I=-\\tfrac{\\pi}{2}\\ln2+I$, giving $I=-\\tfrac{\\pi}{2}\\ln 2$.",
+   "answer": "$-\\dfrac{\\pi}{2}\\ln 2$",
+   "keywords": [
+    "log-sine integral",
+    "تكامل لوغاريتم الجيب",
+    "symmetry",
+    "تناظر",
+    "$\\ln 2$",
+    "definite integral",
+    "تكامل محدد"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أسطوانتان دائريتان قائمتان نصف قطر كلٍّ منهما $r$، ومحوراهما متعامدان ومتقاطعان. باستخدام التكامل، أوجد الحجم المضبوط للجسم المشترك بينهما (جسم شتاينمتز).",
+   "q_en": "Two right circular cylinders of radius $r$ have perpendicular, intersecting axes. Using integration, find the exact volume of the Steinmetz solid common to both cylinders.",
+   "a_ar": "لنأخذ الأسطوانتين $x^2+z^2\\le r^2$ و $y^2+z^2\\le r^2$. عند ارتفاع ثابت $z$ حيث $|z|\\le r$، يعطي الشرطان $|x|\\le\\sqrt{r^2-z^2}$ و $|y|\\le\\sqrt{r^2-z^2}$، أي مقطعاً مربّعاً طول ضلعه $2\\sqrt{r^2-z^2}$ ومساحته $4(r^2-z^2)$. إذن $V=\\int_{-r}^{r}4(r^2-z^2)\\,dz=4\\big(2r^3-\\tfrac{2r^3}{3}\\big)=\\frac{16}{3}r^3$.",
+   "a_en": "Take the cylinders $x^2+z^2\\le r^2$ and $y^2+z^2\\le r^2$. At a fixed height $z$ with $|z|\\le r$, both conditions give $|x|\\le\\sqrt{r^2-z^2}$ and $|y|\\le\\sqrt{r^2-z^2}$, a square cross-section of side $2\\sqrt{r^2-z^2}$ and area $4(r^2-z^2)$. Hence $V=\\int_{-r}^{r}4(r^2-z^2)\\,dz=4\\big(2r^3-\\tfrac{2r^3}{3}\\big)=\\frac{16}{3}r^3$.",
+   "answer": "$\\dfrac{16}{3}r^3$",
+   "keywords": [
+    "Steinmetz solid",
+    "جسم شتاينمتز",
+    "volume",
+    "حجم",
+    "cross-section",
+    "المقطع العرضي",
+    "cylinders",
+    "أسطوانات"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "احسب تكامل بتنام $\\displaystyle\\int_0^1 \\frac{\\ln(1+x)}{1+x^2}\\,dx$.",
+   "q_en": "Evaluate the Putnam integral $\\displaystyle\\int_0^1 \\frac{\\ln(1+x)}{1+x^2}\\,dx$.",
+   "a_ar": "نعوّض $x=\\tan\\theta$ فيصبح التكامل $J=\\int_0^{\\pi/4}\\ln(1+\\tan\\theta)\\,d\\theta$. وباستعمال التحويل $\\theta\\mapsto \\tfrac{\\pi}{4}-\\theta$ والمتطابقة $1+\\tan(\\tfrac{\\pi}{4}-\\theta)=\\frac{2}{1+\\tan\\theta}$ نحصل على $J=\\int_0^{\\pi/4}\\big[\\ln 2-\\ln(1+\\tan\\theta)\\big]\\,d\\theta=\\tfrac{\\pi}{4}\\ln 2-J$. إذن $2J=\\tfrac{\\pi}{4}\\ln2$ ومنه $J=\\frac{\\pi}{8}\\ln 2$.",
+   "a_en": "Substitute $x=\\tan\\theta$, so the integral becomes $J=\\int_0^{\\pi/4}\\ln(1+\\tan\\theta)\\,d\\theta$. Using $\\theta\\mapsto \\tfrac{\\pi}{4}-\\theta$ and the identity $1+\\tan(\\tfrac{\\pi}{4}-\\theta)=\\frac{2}{1+\\tan\\theta}$, we get $J=\\int_0^{\\pi/4}\\big[\\ln 2-\\ln(1+\\tan\\theta)\\big]\\,d\\theta=\\tfrac{\\pi}{4}\\ln 2-J$. Hence $2J=\\tfrac{\\pi}{4}\\ln2$, giving $J=\\frac{\\pi}{8}\\ln 2$.",
+   "answer": "$\\dfrac{\\pi}{8}\\ln 2$",
+   "keywords": [
+    "Putnam 2005",
+    "تكامل بتنام",
+    "tan substitution",
+    "تعويض الظل",
+    "symmetry trick",
+    "$\\ln 2$",
+    "التناظر"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

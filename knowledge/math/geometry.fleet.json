@@ -1,0 +1,137 @@
+{
+ "subject": "math",
+ "topic": "geometry",
+ "title": "geometry — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "في المثلث $ABC$ حيث أطوال الأضلاع $a=BC=13$ و $b=CA=14$ و $c=AB=15$، أوجد المسافة الدقيقة $OI$ بين مركز الدائرة المحيطة $O$ ومركز الدائرة المحاطة (الداخلية) $I$.",
+   "q_en": "In triangle $ABC$ with side lengths $a=BC=13$, $b=CA=14$, $c=AB=15$, find the exact distance $OI$ between the circumcenter $O$ and the incenter $I$.",
+   "a_ar": "بصيغة هيرون: $s=21$ والمساحة $=\\sqrt{21\\cdot8\\cdot7\\cdot6}=84$. إذن $R=\\dfrac{abc}{4\\cdot\\text{المساحة}}=\\dfrac{2730}{336}=\\dfrac{65}{8}$ و $r=\\dfrac{\\text{المساحة}}{s}=\\dfrac{84}{21}=4$. وبصيغة أويلر: $OI^2=R^2-2Rr=\\dfrac{4225}{64}-65=\\dfrac{65}{64}$، ومنه $OI=\\dfrac{\\sqrt{65}}{8}$.",
+   "a_en": "By Heron's formula, $s=21$ and area $=\\sqrt{21\\cdot8\\cdot7\\cdot6}=84$. Then $R=\\dfrac{abc}{4\\cdot\\text{Area}}=\\dfrac{2730}{336}=\\dfrac{65}{8}$ and $r=\\dfrac{\\text{Area}}{s}=\\dfrac{84}{21}=4$. Euler's formula gives $OI^2=R^2-2Rr=\\dfrac{4225}{64}-65=\\dfrac{65}{64}$, so $OI=\\dfrac{\\sqrt{65}}{8}$.",
+   "answer": "$OI=\\dfrac{\\sqrt{65}}{8}$",
+   "keywords": [
+    "Euler formula",
+    "مركز الدائرة المحيطة",
+    "incenter",
+    "circumcenter",
+    "OI distance",
+    "مثلث 13-14-15",
+    "صيغة هيرون"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لتكن الدائرتان $C_1:\\;x^2+y^2=10$ و $C_2:\\;x^2+y^2-2x-4y=0$. أوجد طول الوتر المشترك بينهما.",
+   "q_en": "Two circles are given by $C_1:\\;x^2+y^2=10$ and $C_2:\\;x^2+y^2-2x-4y=0$. Find the length of their common chord.",
+   "a_ar": "بطرح المعادلتين نحصل على المحور الجذري (خط الوتر المشترك): $-2x-4y+10=0$ أي $x+2y-5=0$. مركز الدائرة $C_1$ هو $O_1=(0,0)$ ونصف قطرها $\\sqrt{10}$. المسافة من $O_1$ إلى الخط $=\\dfrac{|{-5}|}{\\sqrt{1^2+2^2}}=\\dfrac{5}{\\sqrt5}=\\sqrt5$. إذن نصف الوتر $=\\sqrt{10-5}=\\sqrt5$، وطول الوتر المشترك $=2\\sqrt5$.",
+   "a_en": "Subtracting the two equations gives the radical axis (line of the common chord): $-2x-4y+10=0$, i.e. $x+2y-5=0$. Circle $C_1$ has center $O_1=(0,0)$ and radius $\\sqrt{10}$. The distance from $O_1$ to the line is $\\dfrac{|{-5}|}{\\sqrt{1^2+2^2}}=\\dfrac{5}{\\sqrt5}=\\sqrt5$. The half-chord is $\\sqrt{10-5}=\\sqrt5$, so the common chord length is $2\\sqrt5$.",
+   "answer": "$2\\sqrt{5}$",
+   "keywords": [
+    "common chord",
+    "الوتر المشترك",
+    "radical axis",
+    "المحور الجذري",
+    "دائرتان متقاطعتان",
+    "distance point to line"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "النقطتان $A=(1,4)$ و $B=(5,2)$ تقعان فوق المحور $x$. تتحرك نقطة $P$ على المحور $x$. أوجد أصغر قيمة ممكنة للمجموع $PA+PB$ وإحداثيات النقطة $P$ التي تحققها.",
+   "q_en": "Points $A=(1,4)$ and $B=(5,2)$ lie above the $x$-axis. A point $P$ moves on the $x$-axis. Find the minimum possible value of $PA+PB$ and the coordinates of the point $P$ that achieves it.",
+   "a_ar": "نعكس $A$ حول المحور $x$ إلى $A'=(1,-4)$. لأي $P$ على المحور يكون $PA=PA'$، إذن $PA+PB=PA'+PB\\ge A'B$، وتتحقق المساواة عندما تكون $P$ تقاطع القطعة $A'B$ مع المحور. القيمة الصغرى $=A'B=\\sqrt{(5-1)^2+(2-(-4))^2}=\\sqrt{16+36}=\\sqrt{52}=2\\sqrt{13}$. ميل $A'B=\\dfrac{6}{4}=\\dfrac32$، والمعادلة $y+4=\\tfrac32(x-1)$؛ وبوضع $y=0$ نجد $x=\\dfrac{11}{3}$، إذن $P=\\left(\\dfrac{11}{3},0\\right)$.",
+   "a_en": "Reflect $A$ across the $x$-axis to $A'=(1,-4)$. For any $P$ on the axis, $PA=PA'$, so $PA+PB=PA'+PB\\ge A'B$, with equality when $P$ is the intersection of segment $A'B$ with the axis. The minimum is $A'B=\\sqrt{(5-1)^2+(2-(-4))^2}=\\sqrt{16+36}=\\sqrt{52}=2\\sqrt{13}$. Line $A'B$: slope $=\\dfrac{6}{4}=\\dfrac32$, $y+4=\\tfrac32(x-1)$; setting $y=0$ gives $x=\\dfrac{11}{3}$, so $P=\\left(\\dfrac{11}{3},0\\right)$.",
+   "answer": "$PA+PB_{\\min}=2\\sqrt{13}$ at $P=\\left(\\tfrac{11}{3},0\\right)$",
+   "keywords": [
+    "reflection principle",
+    "مبدأ الانعكاس",
+    "minimize distance",
+    "أقصر مسار",
+    "coordinate geometry",
+    "الهندسة التحليلية"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "مستوٍ يمر بمنتصفات ستة أحرف من مكعب طول حرفه $a$، فيقطعه في مسدس منتظم. أوجد المساحة الدقيقة لهذا المقطع المسدسي.",
+   "q_en": "A plane passes through the midpoints of six edges of a cube of edge length $a$, cutting it in a regular hexagon. Find the exact area of this hexagonal cross-section.",
+   "a_ar": "كل ضلع من المسدس يصل بين منتصفَي حرفين متجاورين من وجه، فيكوّن وتر مثلث قائم ساقاه $\\tfrac{a}{2},\\tfrac{a}{2}$، إذن طول الضلع $s=\\dfrac{a}{\\sqrt2}$. المقطع مسدس منتظم مساحته $\\dfrac{3\\sqrt3}{2}s^2=\\dfrac{3\\sqrt3}{2}\\cdot\\dfrac{a^2}{2}=\\dfrac{3\\sqrt3}{4}a^2$.",
+   "a_en": "Each side of the hexagon joins the midpoints of two adjacent edges of a face, forming the hypotenuse of a right triangle with legs $\\tfrac{a}{2},\\tfrac{a}{2}$, so the side length is $s=\\dfrac{a}{\\sqrt2}$. The section is a regular hexagon, whose area is $\\dfrac{3\\sqrt3}{2}s^2=\\dfrac{3\\sqrt3}{2}\\cdot\\dfrac{a^2}{2}=\\dfrac{3\\sqrt3}{4}a^2$.",
+   "answer": "$\\dfrac{3\\sqrt{3}}{4}a^{2}$",
+   "keywords": [
+    "cube cross-section",
+    "مقطع المكعب",
+    "regular hexagon",
+    "مسدس منتظم",
+    "solid geometry",
+    "الهندسة الفراغية"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أوجد الزاوية الزوجية الدقيقة بين وجهين من رباعي أوجه منتظم (الزاوية عند حرف مشترك)، معطياً الصيغة المغلقة وقيمتها بالدرجات مقربة لخانتين عشريتين.",
+   "q_en": "Find the exact dihedral angle between two faces of a regular tetrahedron (the angle along a common edge), giving both a closed form and its value in degrees to two decimals.",
+   "a_ar": "عند حرف مشترك، نرسم في كل من الوجهين المتوسط النازل على ذلك الحرف؛ يلتقي المتوسطان عند منتصف الحرف وطول كل منهما $\\dfrac{\\sqrt3}{2}a$ (ارتفاع مثلث متساوي الأضلاع). وباستخدام النتيجة القياسية فإن جيب تمام الزاوية $\\theta$ بين المتوسطين هو $\\cos\\theta=\\dfrac13$. إذن $\\theta=\\arccos\\tfrac13\\approx70.53^\\circ$.",
+   "a_en": "Take a common edge and drop, in each of the two faces, the median to that edge; both medians meet the edge at its midpoint and each has length $\\dfrac{\\sqrt3}{2}a$ (an equilateral-triangle height). The apex-to-midpoint feet form an isosceles triangle whose base is the opposite... more directly, using the standard result the cosine of the angle $\\theta$ between the two face-normals-based medians is $\\cos\\theta=\\dfrac13$. Hence $\\theta=\\arccos\\tfrac13\\approx70.53^\\circ$.",
+   "answer": "$\\theta=\\arccos\\!\\left(\\tfrac13\\right)\\approx 70.53^\\circ$",
+   "keywords": [
+    "dihedral angle",
+    "الزاوية الزوجية",
+    "regular tetrahedron",
+    "رباعي أوجه منتظم",
+    "arccos(1/3)",
+    "solid geometry"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في المثلث $ABC$ الذي أطوال أضلاعه $a=13$، $b=14$، $c=15$، ليكن $O$ مركز الدائرة المحيطة و$I$ مركز الدائرة الداخلية. أوجد المسافة الدقيقة $OI$.",
+   "q_en": "In triangle $ABC$ with side lengths $a=13$, $b=14$, $c=15$, let $O$ be the circumcenter and $I$ the incenter. Find the exact distance $OI$.",
+   "a_ar": "بنصف المحيط $s=21$، تعطي صيغة هيرون المساحة $K=\\sqrt{21\\cdot8\\cdot7\\cdot6}=84$. إذن نصف قطر الدائرة الداخلية $r=K/s=4$، ونصف قطر الدائرة المحيطة $R=\\frac{abc}{4K}=\\frac{2730}{336}=\\frac{65}{8}$. وبصيغة أويلر $OI^2=R^2-2Rr$ نجد $OI^2=\\frac{4225}{64}-2\\cdot\\frac{65}{8}\\cdot4=\\frac{65}{64}$، ومنه $OI=\\dfrac{\\sqrt{65}}{8}$.",
+   "a_en": "With semiperimeter $s=21$, Heron gives area $K=\\sqrt{21\\cdot8\\cdot7\\cdot6}=84$. Hence the inradius $r=K/s=4$ and circumradius $R=\\frac{abc}{4K}=\\frac{2730}{336}=\\frac{65}{8}$. Euler's formula $OI^2=R^2-2Rr$ gives $OI^2=\\frac{4225}{64}-2\\cdot\\frac{65}{8}\\cdot4=\\frac{4225-4160}{64}=\\frac{65}{64}$. Therefore $OI=\\dfrac{\\sqrt{65}}{8}$.",
+   "answer": "$OI=\\dfrac{\\sqrt{65}}{8}$",
+   "keywords": [
+    "Euler formula",
+    "مركز الدائرة المحيطة",
+    "incenter",
+    "OI distance",
+    "مثلث 13-14-15",
+    "circumradius",
+    "نصف القطر"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "ثلاث دوائر أنصاف أقطارها $1$ و$2$ و$3$ متماسّة خارجيًا مثنى مثنى. أوجد بالضبط نصف قطر الدائرة الصغيرة المماسّة للدوائر الثلاث جميعًا (الواقعة في الفجوة المنحنية بينها).",
+   "q_en": "Three circles with radii $1$, $2$, and $3$ are mutually externally tangent. Find the exact radius of the small circle that is tangent to all three of them (nestled in the curvilinear gap between them).",
+   "a_ar": "بموجب مبرهنة دوائر ديكارت، تحقق الانحناءات $k_i=1/r_i$ العلاقة $k_4=k_1+k_2+k_3\\pm2\\sqrt{k_1k_2+k_2k_3+k_3k_1}$. هنا $k_1=1,k_2=\\tfrac12,k_3=\\tfrac13$، فيكون $k_1+k_2+k_3=\\tfrac{11}{6}$ و$k_1k_2+k_2k_3+k_3k_1=1$. الدائرة الداخلية تأخذ الإشارة $+$: $k_4=\\tfrac{11}{6}+2=\\tfrac{23}{6}$، فنصف قطرها $r_4=\\dfrac{6}{23}$. (الإشارة $-$ تعطي $-\\tfrac16$ أي الدائرة المحيطة نصف قطرها $6$.)",
+   "a_en": "By Descartes' Circle Theorem, curvatures $k_i=1/r_i$ satisfy $k_4=k_1+k_2+k_3\\pm2\\sqrt{k_1k_2+k_2k_3+k_3k_1}$. Here $k_1=1,k_2=\\tfrac12,k_3=\\tfrac13$, so $k_1+k_2+k_3=\\tfrac{11}{6}$ and $k_1k_2+k_2k_3+k_3k_1=\\tfrac12+\\tfrac16+\\tfrac13=1$. The inner circle takes the $+$ sign: $k_4=\\tfrac{11}{6}+2=\\tfrac{23}{6}$, giving radius $r_4=\\dfrac{6}{23}$. (The $-$ sign gives $-\\tfrac16$, the enclosing circle of radius $6$.)",
+   "answer": "$r=\\dfrac{6}{23}$",
+   "keywords": [
+    "Descartes circle theorem",
+    "مبرهنة ديكارت",
+    "انحناء",
+    "curvature",
+    "tangent circles",
+    "دوائر متماسّة"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "مستوٍ يمر بمركز مكعب طول حرفه $1$ ويكون عموديًا على أحد أقطاره الفراغية. أوجد بالضبط مساحة المقطع الناتج.",
+   "q_en": "A plane passes through the center of a cube of edge length $1$ and is perpendicular to one of the cube's space diagonals. Find the exact area of the resulting cross-section.",
+   "a_ar": "نضع المكعب $[0,1]^3$ وقطره باتجاه $(1,1,1)$؛ فيكون المستوى $x+y+z=\\tfrac32$. يقطع أحرف المكعب الستة في منتصفاتها، مثل $(1,\\tfrac12,0)$ و$(\\tfrac12,1,0)$ و$(0,1,\\tfrac12)$، فينتج سداسي منتظم. طول ضلعه $\\sqrt{(\\tfrac12)^2+(\\tfrac12)^2}=\\tfrac{\\sqrt2}{2}$، فمساحته $\\frac{3\\sqrt3}{2}\\left(\\frac{\\sqrt2}{2}\\right)^2=\\dfrac{3\\sqrt3}{4}\\approx1.299$.",
+   "a_en": "Place the cube as $[0,1]^3$ with diagonal direction $(1,1,1)$; the plane is $x+y+z=\\tfrac32$. It cuts the six edges at their midpoints, e.g. $(1,\\tfrac12,0)$, $(\\tfrac12,1,0)$, $(0,1,\\tfrac12)$, giving a regular hexagon. Each side has length $\\sqrt{(\\tfrac12)^2+(\\tfrac12)^2}=\\tfrac{\\sqrt2}{2}$, so the area is $\\frac{3\\sqrt3}{2}\\left(\\frac{\\sqrt2}{2}\\right)^2=\\frac{3\\sqrt3}{2}\\cdot\\frac12=\\dfrac{3\\sqrt3}{4}\\approx1.299$.",
+   "answer": "$\\dfrac{3\\sqrt3}{4}$",
+   "keywords": [
+    "cube cross-section",
+    "مقطع المكعب",
+    "space diagonal",
+    "القطر الفراغي",
+    "regular hexagon",
+    "سداسي منتظم"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

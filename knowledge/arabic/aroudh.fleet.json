@@ -1,0 +1,63 @@
+{
+ "subject": "arabic",
+ "topic": "aroudh",
+ "title": "aroudh — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "في بحرِ الكاملِ، أصلُ التفعيلةِ «مُتَفاعِلُنْ» (///٥//٥). عرِّفِ الزحافَ المسمّى «الإضمار» وبيّن أثرَه، ثم وضّح لماذا يلتبسُ الكاملُ المُضمَرُ ببحرٍ آخرَ، وما الذي يميّزُهما عروضيًّا مع مثال.",
+   "q_en": "In al-Kāmil the base foot is “Mutafā‘ilun.” Define the ziḥāf called al-iḍmār and its effect, then explain why a fully-iḍmār'd al-Kāmil is confused with another meter, and what distinguishes them prosodically, with an example.",
+   "a_ar": "الإضمارُ زحافٌ يقعُ في مُتَفاعِلُنْ بتسكينِ الثاني المتحرِّك (التاء)، فتصيرُ «مُتْفاعِلُنْ» وهي مكافئةٌ نطقًا لـ«مُسْتَفْعِلُنْ» (/٥/٥//٥). فإذا أُضمِرتْ كلُّ تفعيلاتِ الكاملِ صار وزنُه مُسْتَفْعِلُنْ مُسْتَفْعِلُنْ… فيلتبسُ بالرَّجَزِ الذي أصلُه مُسْتَفْعِلُنْ ثلاثًا في كلِّ شطر. الفارقُ الجوهريُّ: أصلُ الكاملِ متحرِّكٌ يقبلُ رجوعَ التاءِ متحرِّكةً (مُتَفاعِلُنْ) في مواضعَ من القصيدة، فوجودُ «مُتَفاعِلُنْ» ولو مرةً يقطعُ بأنه كاملٌ؛ أما الرَّجَزُ فلا تردُ فيه مُتَفاعِلُنْ ألبتة. مثال: «وإذا افتقرتَ فلا تكنْ متخشِّعًا» ورودُ مُتَفاعِلُنْ فيه يثبتُ أنه كامل، لا رجز.",
+   "a_en": "Al-iḍmār is a ziḥāf in Mutafā‘ilun that makes the 2nd (moving) letter quiescent, giving “Mutfā‘ilun,” phonetically equal to “Mustaf‘ilun.” If every foot of al-Kāmil is iḍmār'd, the line reads Mustaf‘ilun Mustaf‘ilun…, confusable with al-Rajaz (base Mustaf‘ilun, three per hemistich). The decisive difference: al-Kāmil's base is Mutafā‘ilun, so the moving “ta” can reappear as Mutafā‘ilun somewhere in the poem; a single genuine Mutafā‘ilun proves the meter is al-Kāmil, whereas al-Rajaz never admits Mutafā‘ilun at all. Example: a line containing Mutafā‘ilun confirms al-Kāmil, not al-Rajaz.",
+   "answer": "الإضمار: تسكين ثاني متفاعلن → مُتْفاعلن (= مستفعلن). الكامل المُضمَر يلتبس بالرجز؛ الفارق: ورود «متفاعلن» غير مضمرة ولو مرة يثبت الكامل، والرجز لا تأتي فيه متفاعلن أبداً.",
+   "keywords": [
+    "الكامل",
+    "al-Kāmil",
+    "الإضمار",
+    "iḍmār",
+    "متفاعلن",
+    "الرجز",
+    "al-Rajaz",
+    "ziḥāf"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "اجتمعَ في تفعيلةٍ من بحرِ البسيطِ (مُسْتَفْعِلُنْ) زحافانِ مفردانِ: الخَبْنُ والطَّيُّ. عرِّفْ كلًّا منهما، بيّنِ الناتجَ من اجتماعِهما (الزحافُ المركَّبُ)، واذكرِ اسمَه والتفعيلةَ الناتجةَ ووزنَها الرمزيَّ.",
+   "q_en": "In a foot of al-Basīṭ (Mustaf‘ilun) two single ziḥāfs combine: al-khabn and al-ṭayy. Define each, give the result of their combination (the compound ziḥāf), and state its name, the resulting foot, and its symbolic pattern.",
+   "a_ar": "الخَبْنُ: حذفُ الثاني الساكن من مُسْتَفْعِلُنْ (السين) فتصير «مُتَفْعِلُنْ» = مَفاعِلُنْ (//٥//٥). الطَّيُّ: حذفُ الرابعِ الساكنِ (الفاء) فتصير «مُسْتَعِلُنْ» = مُفْتَعِلُنْ (/٥///٥). فإذا اجتمعا معًا — حُذِفَ الساكنانِ الثاني والرابعُ — نتجَ الزحافُ المركَّبُ المسمّى «الخَبْل»، والتفعيلةُ الناتجةُ «مُتَعِلُنْ» = فَعِلَتُنْ (////٥). ووزنُها الرمزيُّ: أربعُ متحرِّكاتٍ فساكنٌ ///٥ (فَعِلَتُنْ).",
+   "a_en": "Al-khabn: deletion of the 2nd quiescent letter of Mustaf‘ilun (the “s”), giving “Mutaf‘ilun” = Mafā‘ilun (//5//5). Al-ṭayy: deletion of the 4th quiescent letter (the “f”), giving “Musta‘ilun” = Mufta‘ilun (/5///5). When both act together — the 2nd and 4th quiescents both deleted — the compound ziḥāf is al-khabl, and the resulting foot is “Muta‘ilun” = Fa‘ilatun with pattern ////5 (four moving letters then a quiescent).",
+   "answer": "الزحاف المركب: الخَبْل (خبن + طيّ). الخبن: حذف الثاني الساكن. الطيّ: حذف الرابع الساكن. الناتج: فَعِلَتُن ////٥.",
+   "keywords": [
+    "البسيط",
+    "al-Basīṭ",
+    "الخبن",
+    "khabn",
+    "الطيّ",
+    "ṭayy",
+    "الخبل",
+    "khabl",
+    "مستفعلن",
+    "ziḥāf murakkab"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يشترك الطويلُ والمتقاربُ في تفعيلةِ «فَعُولُنْ». مستعينًا بنظريةِ الدوائرِ العروضيةِ الخمسِ للخليل، بيّنْ من أيِّ دائرةٍ كلٌّ منهما، وكيف يتولّدان، وما التفعيلاتُ المكوِّنةُ لكلِّ بحرٍ في شطرِه التامِّ، مع بيانِ الفارقِ البنيويِّ الذي يمنعُ الالتباسَ.",
+   "q_en": "Al-Ṭawīl and al-Mutaqārib share the foot “Fa‘ūlun.” Using al-Khalīl's five prosodic circles, state which circle each belongs to, how each is generated, the feet of each in its complete hemistich, and the structural difference that prevents confusion.",
+   "a_ar": "الطويلُ من الدائرةِ الأولى «دائرةِ المختلِف» (لاختلافِ تفعيلاتِها: خماسيٌّ وسباعيٌّ)، وتفعيلاتُه في الشطرِ التامِّ: فَعُولُنْ مَفاعِيلُنْ فَعُولُنْ مَفاعِيلُنْ (وعروضُه مقبوضةٌ مَفاعِلُنْ). أما المتقاربُ فمن الدائرةِ الخامسةِ «دائرةِ المتفِّق» (لاتّفاقِ تفعيلاتِها)، وتفعيلاتُه: فَعُولُنْ فَعُولُنْ فَعُولُنْ فَعُولُنْ (أربعًا في كلِّ شطر). فالفارقُ البنيويُّ: الطويلُ يتألّفُ من تعاقبِ وتدٍ خماسيٍّ (فعولن) وتفعيلةٍ سباعيةٍ (مفاعيلن)، بينما المتقاربُ سلسلةٌ متجانسةٌ من فَعُولُنْ فقط. فوجودُ «مَفاعِيلُنْ» السباعيةِ يقطعُ بالطويلِ، وخلوُّ الشطرِ منها وتكرارُ فَعُولُنْ يقطعُ بالمتقارب.",
+   "a_en": "Al-Ṭawīl belongs to Circle I, “Dā'irat al-Mukhtalif” (its feet differ: a 5-letter and a 7-letter foot). Its complete hemistich: Fa‘ūlun Mafā‘īlun Fa‘ūlun Mafā‘īlun (with the ‘arūḍ in qabḍ form Mafā‘ilun). Al-Mutaqārib belongs to Circle V, “Dā'irat al-Muttafiq” (its feet agree). Its hemistich: Fa‘ūlun Fa‘ūlun Fa‘ūlun Fa‘ūlun (four times). Structural difference: al-Ṭawīl alternates a 5-letter watid foot (Fa‘ūlun) with a 7-letter foot (Mafā‘īlun), whereas al-Mutaqārib is a homogeneous chain of Fa‘ūlun only. The presence of the 7-letter Mafā‘īlun proves al-Ṭawīl; its absence with repeated Fa‘ūlun proves al-Mutaqārib.",
+   "answer": "الطويل: الدائرة الأولى (المختلِف)، فعولن مفاعيلن فعولن مفاعيلن. المتقارب: الدائرة الخامسة (المتفِق)، فعولن ×4. الفارق: تعاقب الخماسي/السباعي في الطويل مقابل تجانس فعولن في المتقارب.",
+   "keywords": [
+    "الطويل",
+    "المتقارب",
+    "al-Mutaqārib",
+    "دوائر الخليل",
+    "دائرة المختلف",
+    "دائرة المتفق",
+    "فعولن",
+    "مفاعيلن"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

@@ -1,0 +1,182 @@
+{
+ "subject": "science",
+ "topic": "phys-gravitation",
+ "title": "phys-gravitation — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "نجمان متطابقان، كتلة كلٍّ منهما $M = 2.0\\times10^{30}\\,\\text{kg}$، يدوران حول مركز كتلتهما المشترك في مدارين دائريين، ويفصل بينهما مسافة ثابتة $d = 2.0\\times10^{11}\\,\\text{m}$. اشتقّ عبارةً للدور المداري $T$ ثم احسب قيمته. ($G = 6.674\\times10^{-11}\\,\\text{N·m}^2/\\text{kg}^2$)",
+   "q_en": "Two identical stars, each of mass $M = 2.0\\times10^{30}\\,\\text{kg}$, orbit their common centre of mass in circular orbits, held apart by a constant separation $d = 2.0\\times10^{11}\\,\\text{m}$. Derive an expression for the orbital period $T$ and evaluate it. ($G = 6.674\\times10^{-11}\\,\\text{N·m}^2/\\text{kg}^2$)",
+   "a_ar": "يدور كل نجم في دائرة نصف قطرها $d/2$ حول مركز الكتلة. التجاذب الثقالي يوفّر القوة المركزية: $\\dfrac{GM^2}{d^2} = M\\,\\omega^2\\dfrac{d}{2}$، ومنها $\\omega^2 = \\dfrac{2GM}{d^3}$. إذن $T = \\dfrac{2\\pi}{\\omega} = 2\\pi\\sqrt{\\dfrac{d^3}{2GM}}$. بالتعويض: $T = 2\\pi\\sqrt{\\dfrac{(2.0\\times10^{11})^3}{2(6.674\\times10^{-11})(2.0\\times10^{30})}} \\approx 3.44\\times10^{7}\\,\\text{s} \\approx 1.09\\,\\text{سنة}$.",
+   "a_en": "Each star moves in a circle of radius $d/2$ about the centre of mass. The gravitational attraction supplies the centripetal force: $\\dfrac{GM^2}{d^2} = M\\,\\omega^2\\dfrac{d}{2}$, giving $\\omega^2 = \\dfrac{2GM}{d^3}$. Hence $T = \\dfrac{2\\pi}{\\omega} = 2\\pi\\sqrt{\\dfrac{d^3}{2GM}}$. Substituting: $T = 2\\pi\\sqrt{\\dfrac{(2.0\\times10^{11})^3}{2(6.674\\times10^{-11})(2.0\\times10^{30})}} \\approx 3.44\\times10^{7}\\,\\text{s} \\approx 1.09\\,\\text{yr}$.",
+   "answer": "$T = 2\\pi\\sqrt{\\dfrac{d^3}{2GM}} \\approx 3.44\\times10^{7}\\,\\text{s} \\;(\\approx 1.09\\,\\text{yr})$",
+   "keywords": [
+    "binary star",
+    "نجم ثنائي",
+    "مركز الكتلة",
+    "orbital period",
+    "الدور المداري",
+    "centripetal",
+    "قانون كبلر"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يدور مذنّب حول الشمس ($M_\\odot = 1.989\\times10^{30}\\,\\text{kg}$) في مدار إهليلجي مقيّد، مسافة الحضيض $r_p = 8.9\\times10^{10}\\,\\text{m}$ ومسافة الأوج $r_a = 5.2\\times10^{12}\\,\\text{m}$. باستخدام حفظ الطاقة والزخم الزاوي، أوجد سرعة المذنّب عند الحضيض. ($G = 6.674\\times10^{-11}$ وحدات دولية)",
+   "q_en": "A comet orbits the Sun ($M_\\odot = 1.989\\times10^{30}\\,\\text{kg}$) on a bound elliptical orbit with perihelion distance $r_p = 8.9\\times10^{10}\\,\\text{m}$ and aphelion distance $r_a = 5.2\\times10^{12}\\,\\text{m}$. Using conservation of energy and angular momentum, find the comet's speed at perihelion. ($G = 6.674\\times10^{-11}$ SI)",
+   "a_ar": "الزخم الزاوي: $v_p r_p = v_a r_a$. حفظ الطاقة بين الحضيض والأوج يعطي $v_p^2 = \\dfrac{2GM_\\odot\\, r_a}{r_p(r_a+r_p)}$ (وهو مكافئ لصيغة vis-viva: $v=\\sqrt{GM(2/r-1/a)}$ حيث $a=(r_p+r_a)/2$). بالتعويض: $v_p = \\sqrt{\\dfrac{2(6.674\\times10^{-11})(1.989\\times10^{30})(5.2\\times10^{12})}{(8.9\\times10^{10})(5.2\\times10^{12}+8.9\\times10^{10})}} \\approx 5.42\\times10^{4}\\,\\text{m/s} \\approx 54.2\\,\\text{km/s}$.",
+   "a_en": "Angular momentum: $v_p r_p = v_a r_a$. Energy conservation between perihelion and aphelion yields $v_p^2 = \\dfrac{2GM_\\odot\\, r_a}{r_p(r_a+r_p)}$ (equivalently the vis-viva form $v=\\sqrt{GM(2/r-1/a)}$ with $a=(r_p+r_a)/2$). Substituting: $v_p = \\sqrt{\\dfrac{2(6.674\\times10^{-11})(1.989\\times10^{30})(5.2\\times10^{12})}{(8.9\\times10^{10})(5.2\\times10^{12}+8.9\\times10^{10})}} \\approx 5.42\\times10^{4}\\,\\text{m/s} \\approx 54.2\\,\\text{km/s}$.",
+   "answer": "$v_p = \\sqrt{\\dfrac{2GM_\\odot r_a}{r_p(r_a+r_p)}} \\approx 5.42\\times10^{4}\\,\\text{m/s}\\;(\\approx 54.2\\,\\text{km/s})$",
+   "keywords": [
+    "vis-viva",
+    "comet",
+    "مذنّب",
+    "perihelion",
+    "الحضيض",
+    "angular momentum",
+    "الزخم الزاوي",
+    "conservation of energy"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يتحرك مذنّب حول الشمس في مدار إهليلجي، مسافة الحضيض $r_p = 0.6\\,\\text{AU}$ ومسافة الأوج $r_a = 35\\,\\text{AU}$. باستخدام قانون كبلر الثالث (مع اتخاذ دور الأرض مرجعًا)، أوجد الدور المداري للمذنّب بالسنوات.",
+   "q_en": "A comet moves around the Sun on an ellipse with perihelion $r_p = 0.6\\,\\text{AU}$ and aphelion $r_a = 35\\,\\text{AU}$. Using Kepler's third law (with Earth's period as reference), find the comet's orbital period in years.",
+   "a_ar": "نصف المحور الأكبر هو $a = \\dfrac{r_p+r_a}{2} = \\dfrac{0.6+35}{2} = 17.8\\,\\text{AU}$. قانون كبلر الثالث بالوحدات الشمسية يعطي $T^2 = a^3$ حيث $T$ بالسنوات و$a$ بالوحدات الفلكية، إذن $T = a^{3/2} = (17.8)^{3/2} \\approx 75.1\\,\\text{سنة}$ (وهو مطابق لمذنّبات من نوع مذنّب هالي).",
+   "a_en": "The semi-major axis is $a = \\dfrac{r_p+r_a}{2} = \\dfrac{0.6+35}{2} = 17.8\\,\\text{AU}$. Kepler's third law in solar units gives $T^2 = a^3$ with $T$ in years and $a$ in AU, so $T = a^{3/2} = (17.8)^{3/2} \\approx 75.1\\,\\text{yr}$ (matching Halley-type comets).",
+   "answer": "$T = a^{3/2} = (17.8)^{3/2} \\approx 75.1\\,\\text{yr}$",
+   "keywords": [
+    "Kepler's third law",
+    "قانون كبلر الثالث",
+    "semi-major axis",
+    "نصف المحور الأكبر",
+    "aphelion",
+    "الأوج",
+    "astronomical unit",
+    "الوحدة الفلكية"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يُطلَق مقذوف رأسيًا من سطح كوكب بلا غلاف جوي نصف قطره $R$ (كتلته $M$) بسرعة ابتدائية تساوي $v_{esc}/\\sqrt{2}$، حيث $v_{esc}=\\sqrt{2GM/R}$ هي سرعة الإفلات. بإهمال دوران الكوكب، أوجد أقصى ارتفاع يبلغه المقذوف فوق السطح.",
+   "q_en": "A projectile is launched vertically from the surface of an airless planet of radius $R$ (mass $M$) with an initial speed equal to $v_{esc}/\\sqrt{2}$, where $v_{esc}=\\sqrt{2GM/R}$ is the escape speed. Neglecting the planet's rotation, find the maximum height above the surface that the projectile reaches.",
+   "a_ar": "حفظ الطاقة: $\\dfrac12 m v_0^2 - \\dfrac{GMm}{R} = -\\dfrac{GMm}{r_{max}}$. وبما أن $v_0^2 = \\dfrac{v_{esc}^2}{2} = \\dfrac{GM}{R}$، فإن الطرف الأيسر يساوي $\\dfrac{GMm}{2R} - \\dfrac{GMm}{R} = -\\dfrac{GMm}{2R}$. وبالمساواة: $-\\dfrac{GMm}{2R} = -\\dfrac{GMm}{r_{max}} \\Rightarrow r_{max} = 2R$. إذن أقصى ارتفاع فوق السطح هو $h = r_{max}-R = R$.",
+   "a_en": "Energy conservation: $\\dfrac12 m v_0^2 - \\dfrac{GMm}{R} = -\\dfrac{GMm}{r_{max}}$. With $v_0^2 = \\dfrac{v_{esc}^2}{2} = \\dfrac{GM}{R}$, the left side is $\\dfrac{GMm}{2R} - \\dfrac{GMm}{R} = -\\dfrac{GMm}{2R}$. Equating: $-\\dfrac{GMm}{2R} = -\\dfrac{GMm}{r_{max}} \\Rightarrow r_{max} = 2R$. The maximum height above the surface is $h = r_{max}-R = R$.",
+   "answer": "$r_{max}=2R$, so the maximum height is $h = R$",
+   "keywords": [
+    "escape speed",
+    "سرعة الإفلات",
+    "gravitational potential energy",
+    "طاقة الوضع الثقالية",
+    "maximum height",
+    "أقصى ارتفاع",
+    "energy conservation",
+    "حفظ الطاقة"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "قمر صناعي كتلته $m$ في مدار دائري نصف قطره $r$ حول كوكب كتلته $M$. (أ) بيّن أن طاقته الميكانيكية الكلية هي $E = -\\dfrac{GMm}{2r}$. (ب) أوجد أقل شغل يجب بذله على القمر لنقله إلى مدار دائري جديد نصف قطره $2r$، وبيّن كيف تتغيّر طاقته الحركية.",
+   "q_en": "A satellite of mass $m$ is in a circular orbit of radius $r$ around a planet of mass $M$. (a) Show that its total mechanical energy is $E = -\\dfrac{GMm}{2r}$. (b) Find the minimum work that must be done on the satellite to move it into a new circular orbit of radius $2r$, and state how its kinetic energy changes.",
+   "a_ar": "(أ) للمدار الدائري: $\\dfrac{GMm}{r^2} = \\dfrac{mv^2}{r}$ ومنها الطاقة الحركية $KE = \\dfrac12 mv^2 = \\dfrac{GMm}{2r}$؛ وبإضافة طاقة الوضع $PE = -\\dfrac{GMm}{r}$ نحصل على $E = -\\dfrac{GMm}{2r}$. (ب) الشغل يساوي التغيّر في الطاقة الكلية: $W = E_2 - E_1 = -\\dfrac{GMm}{2(2r)} - \\left(-\\dfrac{GMm}{2r}\\right) = \\dfrac{GMm}{4r}$. ورغم أن الشغل موجب، فإن الطاقة الحركية $\\dfrac{GMm}{2r}$ تتناقص إلى $\\dfrac{GMm}{4r}$ (تنخفض إلى النصف)، لأن الشغل المبذول إضافةً إلى النقص في الطاقة الحركية يذهبان معًا إلى رفع طاقة الوضع.",
+   "a_en": "(a) For a circular orbit $\\dfrac{GMm}{r^2} = \\dfrac{mv^2}{r}$ gives $KE = \\dfrac12 mv^2 = \\dfrac{GMm}{2r}$; adding $PE = -\\dfrac{GMm}{r}$ gives $E = -\\dfrac{GMm}{2r}$. (b) The work equals the change in total energy: $W = E_2 - E_1 = -\\dfrac{GMm}{2(2r)} - \\left(-\\dfrac{GMm}{2r}\\right) = \\dfrac{GMm}{4r}$. Although positive work is done, the kinetic energy $\\dfrac{GMm}{2r}$ decreases to $\\dfrac{GMm}{4r}$ (it halves), since the added energy plus the drop in KE all goes into raising the potential energy.",
+   "answer": "$E = -\\dfrac{GMm}{2r}$; $\\;W = \\dfrac{GMm}{4r}$; kinetic energy halves (from $\\tfrac{GMm}{2r}$ to $\\tfrac{GMm}{4r}$)",
+   "keywords": [
+    "orbital energy",
+    "طاقة المدار",
+    "circular orbit",
+    "مدار دائري",
+    "work-energy",
+    "الشغل والطاقة",
+    "kinetic energy",
+    "الطاقة الحركية",
+    "gravitational potential"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "مذنّب يتحرّك في مدار قطع مكافئ حول الشمس. اعتبر مدار الأرض دائرةً نصف قطرها $R$ ودورتها سنة واحدة. أثبت أن أطول زمن ممكن يقضيه المذنّب داخل مدار الأرض هو $\\frac{2}{3\\pi}$ سنة، وأوجد مسافة الحضيض $q$ التي يتحقق عندها هذا الأعظم.",
+   "q_en": "A comet moves on a parabolic orbit about the Sun. Treat Earth's orbit as a circle of radius $R$ and period $1$ year. Show that the longest possible time the comet can spend inside Earth's orbit is $\\frac{2}{3\\pi}$ year, and find the perihelion distance $q$ at which this maximum occurs.",
+   "a_ar": "باستخدام معادلة باركر للقطع المكافئ ذي الحضيض $q$، يكون الزمن من الحضيض إلى نصف القطر $r=q(1+D^2)$ هو $t=\\sqrt{2q^3/GM}\\,(D+D^3/3)$ حيث $D=\\tan(\\theta/2)$. عند $r=R$ نجد $D=\\sqrt{R/q-1}$، والزمن الكلي داخل المدار $t_{in}=2\\sqrt{2q^3/GM}\\,(D+\\tfrac{D^3}{3})$. بوضع $GM=4\\pi^2R^3/\\text{سنة}^2$ وتعظيمه بالنسبة إلى $q$ نحصل على النهاية العظمى عند $q=R/2$ (أي $D=1$)، فيكون $t_{in}=\\frac{2}{3\\pi}\\approx0.212$ سنة $\\approx77.5$ يوماً.",
+   "a_en": "Using Barker's equation for a parabola with perihelion $q$, the time from perihelion to radius $r=q(1+D^2)$ is $t=\\sqrt{2q^3/GM}\\,(D+D^3/3)$ with $D=\\tan(\\theta/2)$. At $r=R$, $D=\\sqrt{R/q-1}$, and the total time inside is $t_{in}=2\\sqrt{2q^3/GM}\\,(D+\\tfrac{D^3}{3})$. Writing $GM=4\\pi^2R^3/\\text{yr}^2$ and maximizing over $q$ gives $\\frac{d}{dq}=0$ at $q=R/2$ (so $D=1$), yielding $t_{in}=2\\cdot\\frac{1}{3\\pi}=\\frac{2}{3\\pi}\\approx0.212$ yr $\\approx77.5$ days.",
+   "answer": "$t_{\\max}=\\dfrac{2}{3\\pi}\\text{ yr}\\approx77.5$ days, attained at $q=R/2$",
+   "keywords": [
+    "مذنّب",
+    "parabolic orbit",
+    "Kepler",
+    "Barker equation",
+    "حضيض",
+    "time inside orbit",
+    "قطع مكافئ"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "قمر كروي صلب نصف قطره $r$ وكثافته المنتظمة $\\rho_m$ يدور حول كوكب كتلته $M$ ونصف قطره $R_p$ وكثافته $\\rho_p$ على بُعد بين المركزين $d$. بموازنة جاذبية القمر الذاتية عند سطحه مع تسارع المدّ (الفرقي)، اشتقّ حدّ روش الصلب $d_{\\min}$ الذي دونه تُنتزع المادة السطحية الحرّة، معبّراً عنه كمضاعف لـ $R_p(\\rho_p/\\rho_m)^{1/3}$.",
+   "q_en": "A rigid spherical moon of radius $r$ and uniform density $\\rho_m$ orbits a planet of mass $M$, radius $R_p$, and density $\\rho_p$ at center-to-center distance $d$. By balancing self-gravity at the moon's surface against the tidal (differential) acceleration, derive the rigid Roche limit $d_{\\min}$ below which loose surface material is pulled off, expressing it as a multiple of $R_p(\\rho_p/\\rho_m)^{1/3}$.",
+   "a_ar": "كتلة اختبار على سطح القمر (على الخط المواجه للكوكب) تشعر بجاذبية ذاتية للداخل $g_{self}=Gm/r^2$ وتسارع مدّي للخارج $a_{tide}=2GMr/d^3$. بمساواتهما: $Gm/r^2=2GMr/d^3\\Rightarrow d^3=2Mr^3/m$. وبوضع $m=\\tfrac43\\pi r^3\\rho_m$ و $M=\\tfrac43\\pi R_p^3\\rho_p$ نحصل على $d^3=2R_p^3\\rho_p/\\rho_m$، ومنه $d_{\\min}=R_p(2\\rho_p/\\rho_m)^{1/3}=2^{1/3}R_p(\\rho_p/\\rho_m)^{1/3}\\approx1.26\\,R_p(\\rho_p/\\rho_m)^{1/3}$.",
+   "a_en": "A test mass on the moon's surface (on the planet-facing line) feels self-gravity inward $g_{self}=Gm/r^2$ and outward tidal acceleration $a_{tide}=2GMr/d^3$. Setting them equal: $Gm/r^2=2GMr/d^3\\Rightarrow d^3=2Mr^3/m$. With $m=\\tfrac43\\pi r^3\\rho_m$ and $M=\\tfrac43\\pi R_p^3\\rho_p$, this gives $d^3=2R_p^3\\rho_p/\\rho_m$, so $d_{\\min}=R_p\\left(2\\rho_p/\\rho_m\\right)^{1/3}=2^{1/3}R_p(\\rho_p/\\rho_m)^{1/3}\\approx1.26\\,R_p(\\rho_p/\\rho_m)^{1/3}$.",
+   "answer": "$d_{\\min}=2^{1/3}R_p(\\rho_p/\\rho_m)^{1/3}\\approx1.26\\,R_p(\\rho_p/\\rho_m)^{1/3}$",
+   "keywords": [
+    "حدّ روش",
+    "Roche limit",
+    "tidal force",
+    "قوة المدّ",
+    "الكثافة",
+    "self-gravity",
+    "جاذبية ذاتية"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "كوكب كتلته $m$ يدور حول نجم كتلته $M$ تحت قوة جذب معدّلة قليلاً $F(r)=-\\dfrac{GMm}{r^2}\\left(1+\\dfrac{\\alpha}{r}\\right)$، حيث $\\alpha$ طول صغير ($\\alpha\\ll a$). من أجل مدار شبه كبلري نصف محوره الأكبر $a$ وشذوذه المركزي $e$، أوجد تقدّم الحضيض لكل دورة.",
+   "q_en": "A planet of mass $m$ orbits a star of mass $M$ under the slightly modified attractive force $F(r)=-\\dfrac{GMm}{r^2}\\left(1+\\dfrac{\\alpha}{r}\\right)$, where $\\alpha$ is a small length ($\\alpha\\ll a$). For a nearly Keplerian orbit of semi-major axis $a$ and eccentricity $e$, find the perihelion precession per revolution.",
+   "a_ar": "بوضع $u=1/r$ تصبح معادلة المدار $u''+u=-\\tfrac{m}{L^2u^2}F(1/u)=\\tfrac{GMm^2}{L^2}+\\tfrac{GMm^2\\alpha}{L^2}u$، أي $u''+k^2u=\\text{ثابت}$ حيث $k^2=1-\\tfrac{GMm^2\\alpha}{L^2}$. وبما أن $L^2=GMm^2a(1-e^2)$ نجد $k^2=1-\\dfrac{\\alpha}{a(1-e^2)}$. الزاوية بين حضيضين متتاليين $2\\pi/k$، فيكون التقدّم لكل دورة $\\Delta\\varphi=\\dfrac{2\\pi}{\\sqrt{1-\\alpha/[a(1-e^2)]}}-2\\pi\\approx\\dfrac{\\pi\\alpha}{a(1-e^2)}$ (في اتجاه الحركة).",
+   "a_en": "With $u=1/r$, the orbit equation is $u''+u=-\\tfrac{m}{L^2u^2}F(1/u)=\\tfrac{GMm^2}{L^2}+\\tfrac{GMm^2\\alpha}{L^2}u$. Hence $u''+k^2u=\\text{const}$ with $k^2=1-\\tfrac{GMm^2\\alpha}{L^2}$. Since $L^2=GMm^2a(1-e^2)$, we get $k^2=1-\\dfrac{\\alpha}{a(1-e^2)}$. The angle between successive perihelia is $2\\pi/k$, so the precession per revolution is $\\Delta\\varphi=\\dfrac{2\\pi}{\\sqrt{1-\\alpha/[a(1-e^2)]}}-2\\pi\\approx\\dfrac{\\pi\\alpha}{a(1-e^2)}$ (prograde).",
+   "answer": "$\\Delta\\varphi=2\\pi\\!\\left[\\left(1-\\tfrac{\\alpha}{a(1-e^2)}\\right)^{-1/2}-1\\right]\\approx\\dfrac{\\pi\\alpha}{a(1-e^2)}$ per orbit",
+   "keywords": [
+    "تقدّم الحضيض",
+    "perihelion precession",
+    "apsidal angle",
+    "central force",
+    "مدار مضطرب",
+    "الزاوية الحضيضية",
+    "1/r^3"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يُحفر نفق مستقيم عديم الاحتكاك عبر أرض منتظمة الكثافة (الكتلة $M$، نصف القطر $R$، تسارع الجاذبية السطحي $g$)؛ أقرب مسافة له من المركز هي $b<R$. تُطلَق كرة من السكون عند أحد طرفيه. أثبت أن الحركة توافقية بسيطة بدورٍ مستقلٍّ عن $b$، وأعطِ قيمته، وأوجد أقصى سرعة كدالة في $b$.",
+   "q_en": "A straight frictionless tunnel is bored through a uniform-density Earth (mass $M$, radius $R$, surface gravity $g$); its closest approach to the center is a distance $b<R$. A ball is released from rest at one end. Show the motion is simple harmonic with a period independent of $b$, give its value, and find the maximum speed as a function of $b$.",
+   "a_ar": "داخل كرة منتظمة يكون مجال الجاذبية عند نصف القطر $r$ هو $g(r)=gr/R$ نحو المركز. مركّبته على امتداد النفق، حيث $s$ الإزاحة عن نقطة المنتصف، هي $a=-\\tfrac{g}{R}s$ (الإزاحة العمودية $b$ تلغيها جدران النفق). هذه حركة توافقية بسيطة بـ $\\omega=\\sqrt{g/R}$، فيكون $T=2\\pi\\sqrt{R/g}=2\\pi\\sqrt{R^3/GM}\\approx84.4$ دقيقة مستقلاً عن $b$. السعة هي نصف الوتر $\\sqrt{R^2-b^2}$، فتكون $v_{\\max}=\\omega\\sqrt{R^2-b^2}=\\sqrt{g(R^2-b^2)/R}$ (وتساوي السرعة المدارية $\\sqrt{gR}\\approx7.9$ كم/ث عند القطر $b=0$).",
+   "a_en": "Inside a uniform sphere the gravitational field at radius $r$ is $g(r)=gr/R$ pointing to the center. The component along the tunnel, where $s$ is displacement from the midpoint, is $a=-\\tfrac{g}{R}s$ (the perpendicular offset $b$ is cancelled by the tunnel walls). This is SHM with $\\omega=\\sqrt{g/R}$, so $T=2\\pi\\sqrt{R/g}=2\\pi\\sqrt{R^3/GM}\\approx84.4$ min, independent of $b$. The amplitude is the half-chord $\\sqrt{R^2-b^2}$, giving $v_{\\max}=\\omega\\sqrt{R^2-b^2}=\\sqrt{g(R^2-b^2)/R}$ (which equals the orbital speed $\\sqrt{gR}\\approx7.9$ km/s for a diameter, $b=0$).",
+   "answer": "$T=2\\pi\\sqrt{R/g}\\approx84.4$ min (independent of $b$); $v_{\\max}=\\sqrt{g(R^2-b^2)/R}$",
+   "keywords": [
+    "نفق الأرض",
+    "gravity tunnel",
+    "SHM",
+    "حركة توافقية",
+    "uniform sphere",
+    "84 minutes",
+    "chord"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "جسم صغير يقترب من نجم (الكتلة $M$، نصف القطر $R_s$) من بعيد بسرعة $v_\\infty$ ومعامل تصادم $b$. باستخدام حفظ الطاقة والزخم الزاوي، أوجد مسافة الحضيض، واشتقّ أقصى معامل تصادم $b_{\\max}$ يصطدم عنده الجسم بسطح النجم (نصف قطر الأسر بالتبئير الجذبي).",
+   "q_en": "A small body approaches a star (mass $M$, radius $R_s$) from far away with speed $v_\\infty$ and impact parameter $b$. Using conservation of energy and angular momentum, find the perihelion distance, and derive the maximum impact parameter $b_{\\max}$ for which the body strikes the star's surface (the gravitational-focusing capture radius).",
+   "a_ar": "لكل وحدة كتلة: $E=\\tfrac12 v_\\infty^2$ و $L=v_\\infty b$. عند الحضيض تنعدم السرعة القطرية، فيكون $\\tfrac12 v_\\infty^2=\\tfrac{L^2}{2r_p^2}-\\tfrac{GM}{r_p}$، ومنه $r_p=\\dfrac{-GM+\\sqrt{G^2M^2+v_\\infty^4b^2}}{v_\\infty^2}$. يحدث الأسر عندما $r_p\\le R_s$؛ وبوضع $r_p=R_s$ نجد $\\tfrac12 v_\\infty^2 b^2/R_s^2=\\tfrac12 v_\\infty^2+GM/R_s$، فيكون $b_{\\max}^2=R_s^2\\!\\left(1+\\dfrac{2GM}{R_s v_\\infty^2}\\right)=R_s^2\\!\\left(1+\\dfrac{v_{esc}^2}{v_\\infty^2}\\right)$ حيث $v_{esc}=\\sqrt{2GM/R_s}$. إذن $b_{\\max}=R_s\\sqrt{1+v_{esc}^2/v_\\infty^2}$، ومقطع الأسر $\\sigma=\\pi R_s^2(1+v_{esc}^2/v_\\infty^2)$.",
+   "a_en": "Per unit mass, $E=\\tfrac12 v_\\infty^2$ and $L=v_\\infty b$. At perihelion the radial speed is zero, so $\\tfrac12 v_\\infty^2=\\tfrac{L^2}{2r_p^2}-\\tfrac{GM}{r_p}$, giving $r_p=\\dfrac{-GM+\\sqrt{G^2M^2+v_\\infty^4b^2}}{v_\\infty^2}$. Capture occurs when $r_p\\le R_s$; setting $r_p=R_s$ yields $\\tfrac12 v_\\infty^2 b^2/R_s^2=\\tfrac12 v_\\infty^2+GM/R_s$, so $b_{\\max}^2=R_s^2\\!\\left(1+\\dfrac{2GM}{R_s v_\\infty^2}\\right)=R_s^2\\!\\left(1+\\dfrac{v_{esc}^2}{v_\\infty^2}\\right)$, where $v_{esc}=\\sqrt{2GM/R_s}$. Thus $b_{\\max}=R_s\\sqrt{1+v_{esc}^2/v_\\infty^2}$, and the capture cross-section is $\\sigma=\\pi R_s^2(1+v_{esc}^2/v_\\infty^2)$.",
+   "answer": "$b_{\\max}=R_s\\sqrt{1+v_{esc}^2/v_\\infty^2}$ with $v_{esc}=\\sqrt{2GM/R_s}$; $\\sigma=\\pi R_s^2(1+v_{esc}^2/v_\\infty^2)$",
+   "keywords": [
+    "التبئير الجذبي",
+    "gravitational focusing",
+    "impact parameter",
+    "معامل التصادم",
+    "capture cross-section",
+    "الحضيض",
+    "مقطع الأسر"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

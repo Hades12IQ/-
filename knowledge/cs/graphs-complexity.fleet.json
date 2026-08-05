@@ -1,0 +1,185 @@
+{
+ "subject": "cs",
+ "topic": "graphs-complexity",
+ "title": "graphs-complexity — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "لدينا رسم بياني موجّه موزون رؤوسه $\\{s,u,v,t\\}$ وأضلاعه $s\\to u$ بوزن $1$، و$s\\to v$ بوزن $2$، و$v\\to u$ بوزن $-2$، و$u\\to t$ بوزن $1$. نُشغّل خوارزمية ديكسترا من $s$ (نُثبّت في كل خطوة الرأس غير المُثبّت صاحب أصغر تسمية). ما المسافة إلى $t$ التي تُبلّغ عنها ديكسترا، وما المسافة الحقيقية لأقصر مسار إلى $t$، ولماذا بالضبط يحدث الاختلاف؟",
+   "q_en": "Consider the directed weighted graph with vertices $\\{s,u,v,t\\}$ and edges $s\\to u$ (weight $1$), $s\\to v$ (weight $2$), $v\\to u$ (weight $-2$), and $u\\to t$ (weight $1$). Run Dijkstra's algorithm from $s$ (settling the minimum-label unsettled vertex each step). What distance to $t$ does Dijkstra report, what is the true shortest-path distance to $t$, and exactly why does the discrepancy arise?",
+   "a_ar": "تُخرج ديكسترا $s(0)$ فتضع التسميتين $u=1,\\;v=2$، ثم تُثبّت $u$ عند $1$ وتُرخي $t=2$، ثم تُثبّت $t=2$، وبعد ذلك فقط تُخرج $v(2)$ التي كانت ستُخفّض $u$ إلى $0$ — لكن بعد فوات الأوان لأن $u$ (ومن ثمّ $t$) قد ثُبّت بالفعل. لذا تُبلّغ ديكسترا بأن $\\mathrm{dist}(t)=2$. أما أقصر مسار حقيقي فهو $s\\to v\\to u\\to t = 2-2+1 = 1$، فالمسافة الصحيحة $1$. الخطأ جوهري: صحة ديكسترا تعتمد على فرضية أن لا مسار لاحق يُحسّن رأسًا مُثبّتًا، وهي فرضية تنهار عند وجود ضلع سالب ($v\\to u=-2$)، فتُثبّت $u$ قبل أوانه.",
+   "a_en": "Dijkstra pops $s(0)$, labelling $u=1,\\;v=2$; it then settles $u$ at $1$ and relaxes $t=2$; it settles $t=2$, and only afterward pops $v(2)$ which would lower $u$ to $0$ — too late, since $u$ (and hence $t$) is already fixed. So Dijkstra reports $\\mathrm{dist}(t)=2$. The true shortest path is $s\\to v\\to u\\to t = 2-2+1 = 1$, so the correct distance is $1$. The error is intrinsic: Dijkstra's correctness relies on the assumption that no future path can improve a settled vertex, which fails once a negative edge ($v\\to u=-2$) exists, so it settles $u$ prematurely.",
+   "answer": "Dijkstra reports $2$; true shortest distance is $1$ (via $s\\to v\\to u\\to t$). Cause: the negative edge $v\\to u=-2$ violates Dijkstra's monotonicity assumption, so $u$ is settled prematurely.",
+   "keywords": [
+    "Dijkstra",
+    "negative edge",
+    "أضلاع سالبة",
+    "أقصر مسار",
+    "shortest path",
+    "greedy failure",
+    "ديكسترا"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "تُرخي خوارزمية بيلمان-فورد كل ضلع مرة في كل جولة. لِرسمٍ موجّه على شكل مسار $v_0\\to v_1\\to v_2\\to v_3\\to v_4$ (كل الأوزان $1$)، افترض أن الأضلاع في كل جولة تُرخى بالترتيب العكسي (الأسوأ) $ (v_3\\!\\to\\!v_4),(v_2\\!\\to\\!v_3),(v_1\\!\\to\\!v_2),(v_0\\!\\to\\!v_1)$. انطلاقًا من المصدر $v_0$، كم جولة تلزم حتى تستقر كل المسافات، وأي حدٍّ عام لأسوأ حالة على عدد الجولات المُنتِجة لرسمٍ به $V$ رأسًا يوضّحه هذا المثال؟ برهن.",
+   "q_en": "Bellman-Ford relaxes every edge once per pass. For the directed path graph $v_0\\to v_1\\to v_2\\to v_3\\to v_4$ (all weights $1$), suppose in every pass the edges are relaxed in the reverse (adversarial) order $ (v_3\\!\\to\\!v_4),(v_2\\!\\to\\!v_3),(v_1\\!\\to\\!v_2),(v_0\\!\\to\\!v_1)$. Starting from source $v_0$, how many passes are needed before all distances are final, and what general worst-case bound on the number of productive passes for a graph with $V$ vertices does this illustrate? Justify.",
+   "a_ar": "بالترتيب العكسي، تتقدّم جبهة المسافات المنتهية بضلع واحد فقط في كل جولة: الجولة $1$ تُثبّت $v_1=1$، والجولة $2$ تُثبّت $v_2=2$، والجولة $3$ تُثبّت $v_3=3$، والجولة $4$ تُثبّت $v_4=4$. فتلزم $4$ جولات مُنتِجة (وجولة خامسة لا تُحدث تغييرًا وتؤكّد الاستقرار). وهذا هو أسوأ حالة محكم: في رسمٍ به $V$ رأسًا يحوي أقصر مسار على الأكثر $V-1$ ضلعًا، وقد يُمرّر ترتيبٌ عدائي قفزة واحدة لكل جولة، فتلزم $V-1 = 4$ جولات مُنتِجة. إذًا حدّ بيلمان-فورد البالغ $V-1$ جولة محكمٌ (لا يمكن تحسينه).",
+   "a_en": "With reverse relaxation order, each pass advances the finite distance frontier by exactly one edge: pass $1$ fixes $v_1=1$, pass $2$ fixes $v_2=2$, pass $3$ fixes $v_3=3$, pass $4$ fixes $v_4=4$. So $4$ productive passes are needed (a $5$th pass detects no change and confirms convergence). This is the tight worst case: with $V$ vertices a shortest path has at most $V-1$ edges, and an adversarial ordering can propagate only one hop per pass, so $V-1 = 4$ productive passes may be required. Hence Bellman-Ford's bound of $V-1$ passes is tight.",
+   "answer": "$4$ productive passes (with a 5th confirming convergence). It illustrates the tight worst-case bound of $V-1$ productive passes, since a shortest path has $\\le V-1$ edges and an adversarial order propagates one edge per pass.",
+   "keywords": [
+    "Bellman-Ford",
+    "relaxation",
+    "بيلمان فورد",
+    "جولات",
+    "V-1 passes",
+    "worst case",
+    "أقصر مسار"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أعطِ حدًّا مقاربًا محكمًا ($\\Theta$) للعلاقة التراجعية $T(n)=T(n/2)+T(n/3)+T(n/6)+n$ حيث $T(1)=\\Theta(1)$. وضّح أي طريقة تُطبّق، وبرهن على قيمة الأُس.",
+   "q_en": "Give a tight asymptotic ($\\Theta$) bound for the recurrence $T(n)=T(n/2)+T(n/3)+T(n/6)+n$ with $T(1)=\\Theta(1)$. State which method applies and justify the exponent.",
+   "a_ar": "لا تنطبق مبرهنة الأساس القياسية (أحجام المسائل الفرعية غير متساوية)، لذا نستخدم طريقة أكرا-بازي. الأُس الحرج $p$ يحقّق $\\sum a_i b_i^{p} = 1$، أي $(1/2)^p+(1/3)^p+(1/6)^p = 1$؛ وعند $p=1$ نحصل على $\\tfrac12+\\tfrac13+\\tfrac16 = 1$، فيكون $p=1$. وبحدٍّ دافع $g(n)=n=n^{p}$، تُعطي أكرا-بازي $T(n)=\\Theta\\!\\Big(n^{p}\\big(1+\\int_1^n \\tfrac{g(u)}{u^{p+1}}du\\big)\\Big)=\\Theta\\!\\Big(n\\big(1+\\int_1^n \\tfrac{1}{u}\\,du\\big)\\Big)=\\Theta(n\\log n)$. إذًا $T(n)=\\Theta(n\\log n)$.",
+   "a_en": "The standard Master Theorem does not apply (unequal subproblem sizes), so use the Akra-Bazzi method. The critical exponent $p$ solves $\\sum a_i b_i^{p} = 1$, i.e. $(1/2)^p+(1/3)^p+(1/6)^p = 1$; at $p=1$ we get $\\tfrac12+\\tfrac13+\\tfrac16 = 1$, so $p=1$. With driving term $g(n)=n=n^{p}$, Akra-Bazzi gives $T(n)=\\Theta\\!\\Big(n^{p}\\big(1+\\int_1^n \\tfrac{g(u)}{u^{p+1}}du\\big)\\Big)=\\Theta\\!\\Big(n\\big(1+\\int_1^n \\tfrac{1}{u}\\,du\\big)\\Big)=\\Theta(n\\log n)$. Therefore $T(n)=\\Theta(n\\log n)$.",
+   "answer": "$T(n)=\\Theta(n\\log n)$ (Akra-Bazzi, with critical exponent $p=1$ since $\\tfrac12+\\tfrac13+\\tfrac16=1$).",
+   "keywords": [
+    "Akra-Bazzi",
+    "recurrence",
+    "علاقة تراجعية",
+    "أكرا بازي",
+    "Big-O",
+    "n log n",
+    "master theorem",
+    "التعقيد"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "ليكن $G$ الدورة السداسية على الرؤوس $1\\text{-}2\\text{-}3\\text{-}4\\text{-}5\\text{-}6\\text{-}1$ مضافًا إليها الوتر $\\{1,4\\}$. (أ) اذكر المتطابقة البنيوية الدقيقة التي تربط بين أكبر مجموعة مستقلة، وأكبر زُمرة (clique) في الرسم المتمّم $\\bar G$، وأصغر غطاء رؤوس لـ$G$. (ب) احسب المقادير الثلاثة لهذا $G$ وأعطِ مجموعة مستقلة وغطاء رؤوس أمثلين. (ج) ماذا تعني هذه المتطابقة بشأن قابلية الاختزال المتبادلة في زمن كثير الحدود بين INDEPENDENT-SET وCLIQUE وVERTEX-COVER؟",
+   "q_en": "Let $G$ be the $6$-cycle on vertices $1\\text{-}2\\text{-}3\\text{-}4\\text{-}5\\text{-}6\\text{-}1$ plus the chord $\\{1,4\\}$. (a) State the exact structural identity linking a maximum independent set, a maximum clique in the complement graph $\\bar G$, and a minimum vertex cover of $G$. (b) Compute all three quantities for this $G$ and exhibit an optimal independent set and vertex cover. (c) What does this identity imply about the mutual polynomial-time reducibility of INDEPENDENT-SET, CLIQUE, and VERTEX-COVER?",
+   "a_ar": "(أ) لأي رسم على $n$ رأسًا: تكون $S$ مستقلة في $G$ إذا وفقط إذا كانت زُمرة في $\\bar G$، وإذا وفقط إذا كان $V\\setminus S$ غطاء رؤوس لـ$G$؛ ومن ثمّ $\\alpha(G)=\\omega(\\bar G)$ و$\\alpha(G)+\\tau(G)=n$ (متطابقة غالاي)، حيث $\\tau$ حجم أصغر غطاء رؤوس. (ب) هنا $n=6$: أكبر مجموعة مستقلة $\\{1,3,5\\}$ بحيث $\\alpha(G)=3$ (وكذلك $\\{2,4,6\\}$)؛ وأكبر زُمرة في $\\bar G$ هي أيضًا $\\{1,3,5\\}$ بحجم $3$؛ وأصغر غطاء رؤوس حجمه $6-3=3$، مثل $\\{2,4,6\\}$ (يغطّي كل ضلع بما فيه الوتر $\\{1,4\\}$). (ج) لأن كل تحويل ($G\\mapsto\\bar G$ و$S\\mapsto V\\setminus S$) قابل للحساب في زمن كثير الحدود ويحفظ الحلول المثلى، فإن المسائل الثلاث قابلة للاختزال المتبادل في زمن كثير الحدود؛ فهي متكافئة في التعقيد وكلها NP-تامة.",
+   "a_en": "(a) For any graph on $n$ vertices: $S$ is independent in $G$ iff $S$ is a clique in $\\bar G$ iff $V\\setminus S$ is a vertex cover of $G$; hence $\\alpha(G)=\\omega(\\bar G)$ and $\\alpha(G)+\\tau(G)=n$ (Gallai's identity), where $\\tau$ is the min vertex-cover size. (b) Here $n=6$: a maximum independent set is $\\{1,3,5\\}$ with $\\alpha(G)=3$ (also $\\{2,4,6\\}$); the maximum clique in $\\bar G$ is likewise $\\{1,3,5\\}$ of size $3$; and the minimum vertex cover has size $6-3=3$, e.g. $\\{2,4,6\\}$ (it covers every edge, including the chord $\\{1,4\\}$). (c) Because each transformation ($G\\mapsto\\bar G$, $S\\mapsto V\\setminus S$) is computable in polynomial time and preserves optimal solutions, the three problems are polynomial-time reducible to one another; thus they are equivalent in complexity and all NP-complete.",
+   "answer": "$\\alpha(G)=\\omega(\\bar G)=3$ (e.g. $\\{1,3,5\\}$) and min vertex cover $\\tau(G)=n-\\alpha=6-3=3$ (e.g. $\\{2,4,6\\}$), via Gallai's identity $\\alpha+\\tau=n$. The polynomial-time preserving transformations make INDEPENDENT-SET, CLIQUE, VERTEX-COVER mutually reducible and all NP-complete.",
+   "keywords": [
+    "independent set",
+    "vertex cover",
+    "clique",
+    "غطاء رؤوس",
+    "مجموعة مستقلة",
+    "Gallai",
+    "NP-complete",
+    "اختزال"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في الرسم الموجّه الموزون بالأضلاع $s\\to a\\,(1),\\; s\\to b\\,(2),\\; a\\to c\\,(2),\\; b\\to c\\,(1),\\; a\\to d\\,(4),\\; c\\to d\\,(1),\\; b\\to d\\,(5)$ (كل الأوزان موجبة)، أوجد مسافة أقصر مسار من $s$ إلى $d$ وعدد المسارات القصيرة المتمايزة من $s$ إلى $d$. واشرح كيفية حساب العدد في زمن $O(E\\log V)$.",
+   "q_en": "In the directed weighted graph with edges $s\\to a\\,(1),\\; s\\to b\\,(2),\\; a\\to c\\,(2),\\; b\\to c\\,(1),\\; a\\to d\\,(4),\\; c\\to d\\,(1),\\; b\\to d\\,(5)$ (all weights positive), find the shortest-path distance from $s$ to $d$ and the number of distinct shortest paths from $s$ to $d$. Describe how to compute the count in $O(E\\log V)$ time.",
+   "a_ar": "المسافات القصرى: $d(s)=0,\\ d(a)=1,\\ d(b)=2,\\ d(c)=3$ (عبر $s\\to a\\to c=3$ و$s\\to b\\to c=3$، تعادل)، و$d(d)=4$ (عبر $c\\to d$). فمسافة أقصر مسار إلى $d$ هي $4$، ويحقّقها مساران بالضبط: $s\\to a\\to c\\to d$ و$s\\to b\\to c\\to d$ (أما الضلعان المباشران $a\\to d=1+4=5$ و$b\\to d=2+5=7$ فأطول). ولحساب العدد في $O(E\\log V)$: نُشغّل ديكسترا، ونحتفظ بجانب كل مسافة بعدّاد $\\mathrm{cnt}[u]$ مع $\\mathrm{cnt}[s]=1$؛ وعند إرخاء الضلع $(u,v)$، إذا حسّن $d(v)$ تحسينًا صارمًا نضع $\\mathrm{cnt}[v]=\\mathrm{cnt}[u]$، وإذا عادله نضيف $\\mathrm{cnt}[u]$ إلى $\\mathrm{cnt}[v]$. وبما أن الأوزان غير سالبة يُثبَّت كل رأس مرة واحدة، فينتج $\\mathrm{cnt}[d]=2$.",
+   "a_en": "Shortest distances: $d(s)=0,\\ d(a)=1,\\ d(b)=2,\\ d(c)=3$ (via $s\\to a\\to c=3$ and $s\\to b\\to c=3$, tie), $d(d)=4$ (via $c\\to d$). So the shortest-path distance to $d$ is $4$, achieved by exactly $2$ paths: $s\\to a\\to c\\to d$ and $s\\to b\\to c\\to d$ (the direct edges $a\\to d=1+4=5$ and $b\\to d=2+5=7$ are longer). To count in $O(E\\log V)$: run Dijkstra, and alongside each distance maintain a counter $\\mathrm{cnt}[u]$ with $\\mathrm{cnt}[s]=1$; when relaxing edge $(u,v)$, if it strictly improves $d(v)$ set $\\mathrm{cnt}[v]=\\mathrm{cnt}[u]$, and if it ties the current $d(v)$ add $\\mathrm{cnt}[u]$ to $\\mathrm{cnt}[v]$. With non-negative weights each vertex is finalized once, giving $\\mathrm{cnt}[d]=2$.",
+   "answer": "Shortest distance $s\\to d$ is $4$; there are exactly $2$ shortest paths ($s\\to a\\to c\\to d$ and $s\\to b\\to c\\to d$). Counted by augmenting Dijkstra with a path-count array updated on strict-improve (copy) and tie (add).",
+   "keywords": [
+    "shortest path count",
+    "Dijkstra",
+    "عدد المسارات",
+    "أقصر مسار",
+    "path counting",
+    "O(E log V)",
+    "relaxation",
+    "ديكسترا"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في المخطط الموجَّه الموزون ذي الأضلاع (الأوزان بين قوسين) S→A(1)، S→B(2)، A→B(1)، A→C(2)، A→D(3)، B→C(1)، B→D(2)، C→T(3)، D→T(2)، أوجد طول أقصر مسار من S إلى T وعددَ المسارات القصيرة المختلفة التي تحقّق هذا الطول.",
+   "q_en": "In the weighted directed graph with edges (weights in parentheses) S→A(1), S→B(2), A→B(1), A→C(2), A→D(3), B→C(1), B→D(2), C→T(3), D→T(2), find the length of the shortest path from S to T and the number of DISTINCT shortest paths achieving that length.",
+   "a_ar": "يعطي خوارزمُ ديكسترا المسافات $d(S)=0, d(A)=1, d(B)=2, d(C)=3, d(D)=4, d(T)=6$، مع ملاحظة أنّ $d(B)=2$ يتحقّق عبر $S\\to B$ وعبر $S\\to A\\to B$. نعُدّ المسارات القصيرة ببرمجة ديناميكية على مخطّط المسارات القصيرة (الأضلاع $u\\to v$ حيث $d(u)+w=d(v)$): $\\mathrm{cnt}(A)=1,\\ \\mathrm{cnt}(B)=2,\\ \\mathrm{cnt}(C)=3,\\ \\mathrm{cnt}(D)=3,\\ \\mathrm{cnt}(T)=\\mathrm{cnt}(C)+\\mathrm{cnt}(D)=6$. إذًا أقصر طول هو $6$ وعدد المسارات القصيرة المختلفة هو $6$ بالضبط.",
+   "a_en": "Dijkstra gives distances $d(S)=0, d(A)=1, d(B)=2, d(C)=3, d(D)=4, d(T)=6$; note $d(B)=2$ via both $S\\to B$ and $S\\to A\\to B$. Count shortest paths by DP over the shortest-path DAG (edges $u\\to v$ with $d(u)+w=d(v)$): $\\mathrm{cnt}(A)=1,\\ \\mathrm{cnt}(B)=1+1=2,\\ \\mathrm{cnt}(C)=\\mathrm{cnt}(A)+\\mathrm{cnt}(B)=3,\\ \\mathrm{cnt}(D)=\\mathrm{cnt}(A)+\\mathrm{cnt}(B)=3,\\ \\mathrm{cnt}(T)=\\mathrm{cnt}(C)+\\mathrm{cnt}(D)=6$. So the shortest length is $6$ with exactly $6$ distinct shortest paths.",
+   "answer": "Shortest length = 6; number of distinct shortest paths = 6",
+   "keywords": [
+    "أقصر مسار",
+    "shortest path",
+    "Dijkstra",
+    "عدّ المسارات",
+    "counting paths",
+    "DAG",
+    "directed graph",
+    "ديكسترا"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "مخطط غير موجَّه موزون على الرؤوس {A,B,C,D,E} أضلاعه AB(1)، AC(3)، BC(3)، BD(6)، CD(4)، CE(2)، DE(5). احسب وزن الشجرة الممتدّة الصغرى، وحدِّد هل هي وحيدة (وإن لم تكن فاذكر عدد الأشجار الممتدّة الصغرى المختلفة).",
+   "q_en": "An undirected weighted graph on vertices {A,B,C,D,E} has edges AB(1), AC(3), BC(3), BD(6), CD(4), CE(2), DE(5). Compute the weight of a minimum spanning tree, and determine whether the MST is unique (if not, state how many distinct MSTs exist).",
+   "a_ar": "نطبّق خوارزم كروسكال على الأضلاع مرتّبةً: نضيف AB(1) ثم CE(2) ثم AC(3) [تتّحد مركّبتا AB وCE]، والمرشَّح التالي BC(3) يُغلق دورة A-B-C فنتخطّاه، ثم CD(4) يربط D. وزن الشجرة $=1+2+3+4=10$. الوحدانية غير محقّقة: القطع الذي يفصل {A,B} عن {C,E} يعبره ضلعان متساويا الوزن هما AC(3) وBC(3)، واستبدال BC بـ AC يعطي شجرةً ممتدّةً أخرى وزنها $10$. إذًا وزن الشجرة الصغرى $10$ لكنها ليست وحيدة، وعدد الأشجار الصغرى المختلفة $2$ بالضبط.",
+   "a_en": "Run Kruskal on sorted edges: add AB(1), CE(2), then AC(3) [AB and CE components join], next candidate BC(3) would close a cycle A-B-C — skip, then CD(4) connects D. Tree weight $=1+2+3+4=10$. Uniqueness fails: the cut separating {A,B} from {C,E} is crossed by two equal-weight edges AC(3) and BC(3), and swapping AC for BC yields another spanning tree of weight $10$. Hence the MST weight is $10$ but it is NOT unique — there are exactly $2$ distinct MSTs.",
+   "answer": "MST weight = 10; not unique — exactly 2 distinct MSTs",
+   "keywords": [
+    "شجرة ممتدة صغرى",
+    "MST",
+    "Kruskal",
+    "وحدانية",
+    "uniqueness",
+    "cut property",
+    "كروسكال",
+    "spanning tree"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أعطِ حدًّا مقاربًا ضيّقًا من نوع $\\Theta$ للعلاقة التراجعية بالتقسيم والحل $T(n)=T(n/2)+T(n/4)+T(n/8)+n$، حيث $T(O(1))=O(1)$.",
+   "q_en": "Give a tight asymptotic $\\Theta$-bound for the divide-and-conquer recurrence $T(n)=T(n/2)+T(n/4)+T(n/8)+n$, with $T(O(1))=O(1)$.",
+   "a_ar": "نستعمل طريقة أكرا–بازي. نجد $p$ الحاقّ لـ $\\sum a_i b_i^{p}=(1/2)^p+(1/4)^p+(1/8)^p=1$؛ عدديًّا $p\\approx 0.879<1$. عندئذٍ $T(n)=\\Theta\\!\\big(n^{p}\\big(1+\\int_1^{n} \\tfrac{g(u)}{u^{p+1}}du\\big)\\big)$ حيث $g(u)=u$. وبما أنّ $\\int_1^n u^{-p}\\,du=\\Theta\\!\\big(n^{1-p}\\big)$ (لأنّ $p<1$)، نحصل على $T(n)=\\Theta\\!\\big(n^{p}\\cdot n^{1-p}\\big)=\\Theta(n)$. حَدْسيًّا يهيمن الحدّ الخطّي $n$ لأنّ أحجام المسائل الفرعية تتقلّص بسرعة كافية ($\\tfrac12+\\tfrac14+\\tfrac18<1$). الجواب: $\\Theta(n)$.",
+   "a_en": "Use the Akra–Bazzi method. Find $p$ solving $\\sum a_i b_i^{p}=(1/2)^p+(1/4)^p+(1/8)^p=1$; numerically $p\\approx 0.879<1$. Then $T(n)=\\Theta\\!\\big(n^{p}\\big(1+\\int_1^{n} \\tfrac{g(u)}{u^{p+1}}du\\big)\\big)$ with $g(u)=u$. Since $\\int_1^n u^{-p}\\,du=\\Theta\\!\\big(n^{1-p}\\big)$ (as $p<1$), we get $T(n)=\\Theta\\!\\big(n^{p}\\cdot n^{1-p}\\big)=\\Theta(n)$. Intuitively the linear driving term $n$ dominates because the subproblem sizes shrink fast enough ($\\tfrac12+\\tfrac14+\\tfrac18<1$). Answer: $\\Theta(n)$.",
+   "answer": "$T(n)=\\Theta(n)$",
+   "keywords": [
+    "أكرا بازي",
+    "Akra-Bazzi",
+    "علاقة تراجعية",
+    "recurrence",
+    "Big-O",
+    "تعقيد",
+    "divide and conquer",
+    "Theta"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "ما العدد الأدنى المضبوط من المقارنات الثنائية بين العناصر، في أسوأ حالة، اللازم لإيجاد كلٍّ من القيمة العظمى والصغرى معًا من بين $n$ عنصرًا متمايزًا؟ أعطِ الصيغة العامّة واحسبها من أجل $n=100$.",
+   "q_en": "What is the exact minimum number of pairwise element comparisons needed, in the worst case, to find BOTH the maximum and the minimum of $n$ distinct elements? Give the general formula and evaluate it for $n=100$.",
+   "a_ar": "القيمة المثلى المضبوطة هي $\\lceil 3n/2\\rceil-2$. الحدّ الأعلى (قابلية التحقّق): نعالج العناصر أزواجًا؛ نقارن عنصري كلّ زوج ($\\lfloor n/2\\rfloor$ مقارنة)، ثم نقارن عظمى كلّ زوج بالعظمى الجارية وصغرى كلّ زوج بالصغرى الجارية ($2\\lfloor n/2\\rfloor$ مقارنة إضافية، مع توفيرٍ في التهيئة)، فالمجموع $\\lceil 3n/2\\rceil-2$. الحدّ الأدنى: حجّة الخصم تُبيّن أنّ كلّ عنصر عدا العظمى النهائية يجب أن \"يخسر\" مرّة على الأقل وكلّ عنصر عدا الصغرى يجب أن \"يفوز\" مرّة على الأقل، ما يفرض هذا العدد. من أجل $n=100$: $\\lceil 150\\rceil-2=148$ مقارنة.",
+   "a_en": "The exact optimum is $\\lceil 3n/2\\rceil-2$. Upper bound (achievability): process elements in pairs; compare the two within each pair ($\\lfloor n/2\\rfloor$ comparisons), then compare pair-maxima against the running max and pair-minima against the running min ($2\\lfloor n/2\\rfloor$ more, with the initialization saving), totaling $\\lceil 3n/2\\rceil-2$. Lower bound: an adversary argument shows every element except the eventual max/min must \"lose\" at least once and every element except them must \"win\" at least once, forcing this count. For $n=100$: $\\lceil 150\\rceil-2=148$ comparisons.",
+   "answer": "$\\lceil 3n/2\\rceil-2$; for $n=100$ it is $148$",
+   "keywords": [
+    "أدنى عدد مقارنات",
+    "comparisons lower bound",
+    "max and min",
+    "حجة الخصم",
+    "adversary argument",
+    "تعقيد",
+    "optimal",
+    "3n/2"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في تحويل كارب القياسي من 3-SAT إلى مسألة المجموعة المستقلّة، تُنقل صيغةٌ 3-CNF مؤلّفة من $m$ جملة (كلٌّ منها بثلاثة حدود أدبية بالضبط) إلى مخطط $G$. وضِّح كيف يُبنى $G$، وعدد رؤوسه، وحجم المجموعة المستقلّة المستهدَف $k$، وأثبت أنّ $G$ يملك مجموعةً مستقلّةً بحجم $k$ إذا وفقط إذا كانت $\\varphi$ قابلةً للإرضاء.",
+   "q_en": "In the standard Karp reduction from 3-SAT to INDEPENDENT SET, a 3-CNF formula $\\varphi$ with $m$ clauses (each with exactly 3 literals) is mapped to a graph $G$. Specify how $G$ is built, the number of vertices of $G$, the target independent-set size $k$, and prove that $G$ has an independent set of size $k$ iff $\\varphi$ is satisfiable.",
+   "a_ar": "البناء: لكلّ جملة نُنشئ مثلّثًا على رؤوس حدودها الأدبية الثلاثة ($3m$ رأسًا إجمالًا)، ونضيف ضلعًا بين كلّ زوج حدَّين متتامَّين $x_i,\\neg x_i$. ونضع $k=m$. ($\\Rightarrow$) الإسنادُ المُرضِي يجعل حدًّا واحدًا صادقًا على الأقل في كلّ جملة؛ نختار من كلّ جملة رأسَ حدٍّ صادق. ولا يتجاور اثنان منها: فهي في مثلّثات مختلفة (مثلّث لكلّ جملة)، ولا يمكن أن تكون زوجًا متتامًّا لأنّ المتغيّر لا يكون صادقًا وكاذبًا معًا في إسنادٍ واحد؛ فتكون مجموعةً مستقلّةً بحجم $m$. ($\\Leftarrow$) المجموعة المستقلّة بحجم $m$ تأخذ رأسًا واحدًا بالضبط من كلّ مثلّث (المثلّث يقبل واحدًا على الأكثر) ولا يكون حدّان مختاران متتامَّين؛ نُسنِد لكلّ حدٍّ مختار الصدق (وهو متّسق، والمتغيّرات الحرّة اعتباطية) فتُرضى كلّ الجمل. إذًا $|V|=3m$ و$k=m$ والتكافؤ محقَّق.",
+   "a_en": "Construction: for each clause create a triangle on its 3 literal-vertices ($3m$ vertices total), and add an edge between every pair of complementary literals $x_i,\\neg x_i$. Set $k=m$. ($\\Rightarrow$) A satisfying assignment makes at least one literal true per clause; pick one such true literal-vertex from each clause. No two are adjacent: they lie in different triangles (one per clause), and they cannot be a complementary pair since a variable cannot be both true and false under one assignment. This is an independent set of size $m$. ($\\Leftarrow$) An independent set of size $m$ must take exactly one vertex from each triangle (a triangle admits at most one), and no two chosen literals are complementary; assign each chosen literal true (consistent, and free variables arbitrary), satisfying every clause. Thus $|V|=3m$, $k=m$, and the equivalence holds.",
+   "answer": "$G$ has $3m$ vertices (a triangle per clause plus complementary-literal edges), target size $k=m$; independent set of size $m$ exists iff $\\varphi$ is satisfiable",
+   "keywords": [
+    "3-SAT",
+    "مجموعة مستقلة",
+    "independent set",
+    "اختزال كارب",
+    "NP-complete",
+    "reduction",
+    "اكتمال NP",
+    "satisfiability"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

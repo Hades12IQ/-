@@ -1,0 +1,183 @@
+{
+ "subject": "cs",
+ "topic": "algorithms",
+ "title": "algorithms — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "لديك $n$ نشاطاً، لكلٍّ منها وقت بدء $s_i$ ووقت انتهاء $f_i$. يمكنك اختيار مجموعة جزئية من الأنشطة غير المتداخلة فيما بينها. أثبت أن الاستراتيجية الجشعة القائمة على اختيار النشاط المتوافق ذي أبكر وقت انتهاء بشكل متكرر تعطي مجموعة ذات أكبر عدد ممكن من الأنشطة، مستخدماً حجة التبديل (exchange argument). ثم اذكر التعقيد الزمني الناتج بافتراض أن المدخلات غير مرتبة.",
+   "q_en": "You are given $n$ activities, each with a start time $s_i$ and finish time $f_i$. You may select a subset of mutually non-overlapping activities. Prove that the greedy strategy of repeatedly selecting the compatible activity with the earliest finish time yields a maximum-cardinality set, using an exchange argument. State the resulting time complexity assuming the input is unsorted.",
+   "a_ar": "لتكن $A=\\{a_1,\\dots,a_k\\}$ الحل الجشع (مرتّباً بترتيب الاختيار، فيكون $a_1$ صاحب أبكر انتهاء إجمالاً)، ولتكن $O$ أي حل أمثل مرتّباً حسب وقت الانتهاء. الادعاء: لكل $j$ ينتهي النشاط الجشع رقم $j$ في وقت لا يتجاوز النشاط الأمثل رقم $j$، أي $f(a_j)\\le f(o_j)$. بالاستقراء: $a_1$ صاحب أبكر انتهاء عالمياً فـ $f(a_1)\\le f(o_1)$؛ وإذا كان $f(a_{j-1})\\le f(o_{j-1})$ فإن $o_j$ يبدأ بعد $f(o_{j-1})\\ge f(a_{j-1})$، فيكون متوافقاً مع $a_1,\\dots,a_{j-1}$ ومتاحاً للجشع، فيختار الجشع نشاطاً لا ينتهي بعده، أي $f(a_j)\\le f(o_j)$. لو كان $|O|=m>k$ لبدأ $o_{k+1}$ بعد $f(o_k)\\ge f(a_k)$ فيبقى متوافقاً ومتاحاً، وهذا يناقض توقّف الجشع. إذن $k=m$ والجشع أمثل. الفرز حسب الانتهاء يكلّف $O(n\\log n)$ ثم مسح خطي، فالإجمالي $\\Theta(n\\log n)$.",
+   "a_en": "Let $A=\\{a_1,\\dots,a_k\\}$ be the greedy solution (indexed by selection order, so $a_1$ has the earliest finish overall) and let $O$ be any optimal solution sorted by finish time. Claim: for every $j$, the $j$-th greedy activity finishes no later than the $j$-th optimal activity, i.e. $f(a_j)\\le f(o_j)$. Proof by induction: $a_1$ has the globally earliest finish so $f(a_1)\\le f(o_1)$; if $f(a_{j-1})\\le f(o_{j-1})$, then $o_j$ starts after $f(o_{j-1})\\ge f(a_{j-1})$, so $o_j$ is compatible with $a_1,\\dots,a_{j-1}$ and was available to greedy, hence greedy picks some activity finishing no later, giving $f(a_j)\\le f(o_j)$. If $|O|=m>k$, then $o_{k+1}$ starts after $f(o_k)\\ge f(a_k)$, so it would still be compatible and available, contradicting greedy's termination. Thus $k=m$ and greedy is optimal. Sorting by finish time costs $O(n\\log n)$; one linear scan follows, so total time is $\\Theta(n\\log n)$.",
+   "answer": "Greedy (earliest finish time) is optimal by the exchange/staying-ahead argument $f(a_j)\\le f(o_j)$; total time $\\Theta(n\\log n)$ for unsorted input.",
+   "keywords": [
+    "activity selection",
+    "greedy",
+    "exchange argument",
+    "اختيار الأنشطة",
+    "الخوارزمية الجشعة",
+    "حجة التبديل",
+    "earliest finish time",
+    "optimality proof"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "تأمّل العلاقة التراجعية $T(n) = 2\\,T(n/2) + \\Theta(n\\log n)$ مع $T(1)=\\Theta(1)$. لا تنطبق مبرهنة الأساس (Master Theorem) القياسية مباشرةً لأن الحد المُحرِّك $f(n)=n\\log n$ ليس أكبر ولا أصغر كثيرَ حدود من $n^{\\log_b a}=n$. أوجد حداً مقارِباً ضيقاً لـ $T(n)$ موضّحاً طريقتك.",
+   "q_en": "Consider the recurrence $T(n) = 2\\,T(n/2) + \\Theta(n\\log n)$ with $T(1)=\\Theta(1)$. The standard Master Theorem does not directly apply because the driving term $f(n)=n\\log n$ is not polynomially larger or smaller than $n^{\\log_b a}=n$. Determine a tight asymptotic bound for $T(n)$, showing your method.",
+   "a_ar": "هنا $a=2,\\,b=2$ فيكون $n^{\\log_b a}=n$ و $f(n)=n\\log n = n^{\\log_b a}\\cdot \\log n$. هذه بالضبط الحالة الثانية الموسّعة من مبرهنة الأساس بعامل لوغاريتمي إضافي: إذا كان $f(n)=\\Theta(n^{\\log_b a}\\log^{k} n)$ مع $k\\ge 0$ فإن $T(n)=\\Theta(n^{\\log_b a}\\log^{k+1} n)$. وبأخذ $k=1$ نحصل على $T(n)=\\Theta(n\\log^{2} n)$. والتحقق بشجرة التكرار: المستوى $i$ (حيث $i=0,\\dots,\\log_2 n$) فيه $2^i$ عقدة حجم كلٍّ منها $n/2^i$، فيسهم بـ $2^i\\cdot (n/2^i)\\log(n/2^i)=n\\log(n/2^i)$. وجمع المستويات يعطي $\\sum_{i=0}^{\\log_2 n} n\\,(\\log n - i)=\\Theta(n\\log^2 n)$، مؤكّداً الحدّ.",
+   "a_en": "Here $a=2,\\,b=2$, so $n^{\\log_b a}=n$ and $f(n)=n\\log n = n^{\\log_b a}\\cdot \\log n$. This is exactly the extended Master Theorem case 2 with an extra logarithmic factor: if $f(n)=\\Theta(n^{\\log_b a}\\log^{k} n)$ with $k\\ge 0$, then $T(n)=\\Theta(n^{\\log_b a}\\log^{k+1} n)$. With $k=1$ we get $T(n)=\\Theta(n\\log^{2} n)$. Verification by the recursion tree: level $i$ (for $i=0,\\dots,\\log_2 n$) has $2^i$ nodes each of size $n/2^i$, contributing $2^i\\cdot (n/2^i)\\log(n/2^i)=n\\log(n/2^i)$. Summing over levels gives $\\sum_{i=0}^{\\log_2 n} n\\,(\\log n - i) = n\\big((\\log n)(\\log n+1) - \\tfrac{(\\log n)(\\log n+1)}{2}\\big)=\\Theta(n\\log^2 n)$, confirming the bound.",
+   "answer": "$T(n)=\\Theta(n\\log^{2} n)$",
+   "keywords": [
+    "Master Theorem",
+    "recurrence",
+    "divide and conquer",
+    "مبرهنة الأساس",
+    "علاقة تراجعية",
+    "recursion tree",
+    "شجرة التكرار",
+    "asymptotic bound"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "صمّم خوارزمية فرّق-تسُد تحسب عدد الانقلابات (inversions) في مصفوفة من $n$ أعداد صحيحة متمايزة (أزواج $i<j$ حيث $A[i]>A[j]$) في زمن $O(n\\log n)$. اشرح كيف يُجمَع العدّ أثناء خطوة الدمج، واحسب عدد الانقلابات في المصفوفة $[2,4,1,3,5]$.",
+   "q_en": "Design a divide-and-conquer algorithm that counts the number of inversions in an array of $n$ distinct integers (pairs $i<j$ with $A[i]>A[j]$) in $O(n\\log n)$ time. Describe how the count is accumulated during the merge step, and compute the number of inversions in the array $[2,4,1,3,5]$.",
+   "a_ar": "نُكيّف فرز الدمج: نفرز ونعدّ الانقلابات تكرارياً في النصف الأيسر والنصف الأيمن، ثم نعدّ الانقلابات \"المنقسمة\" أثناء الدمج. في الدمج، عندما يكون العنصر التالي المأخوذ من المصفوفة اليمنى وما زال في المصفوفة اليسرى (المرتّبة) $k$ عنصراً، فإن كلّاً من هذه العناصر اليسرى $k$ أكبر من العنصر الأيمن المأخوذ، فنضيف $k$ إلى العدّ. مجموع الانقلابات = عدّ اليسار + عدّ اليمين + عدّ المنقسم. وبما أن كل دمج خطي وعمق التكرار $\\log n$، فإن العلاقة $T(n)=2T(n/2)+O(n)$ تعطي $O(n\\log n)$. وبالنسبة لـ $[2,4,1,3,5]$ الانقلابات هي الأزواج $(2,1),(4,1),(4,3)$، أي المواضع التي تسبق فيها قيمة أكبر قيمةً أصغر؛ وعددها $3$ بالضبط.",
+   "a_en": "Adapt merge sort: recursively sort and count inversions in the left half and right half, then count \"split\" inversions during the merge. In the merge, when the next element taken comes from the right subarray while $k$ elements still remain in the (sorted) left subarray, those $k$ left elements are each greater than the taken right element, so add $k$ to the count. Total inversions = left count + right count + split count. Since each merge is linear and recursion depth is $\\log n$, the recurrence $T(n)=2T(n/2)+O(n)$ gives $O(n\\log n)$. For $[2,4,1,3,5]$ the inversions are the pairs $(2,1),(4,1),(4,3)$, i.e. positions where a larger value precedes a smaller one; there are exactly $3$.",
+   "answer": "$O(n\\log n)$ via modified merge sort (add left-remaining count on each right pick); inversions in $[2,4,1,3,5]$ = $3$.",
+   "keywords": [
+    "inversions",
+    "merge sort",
+    "divide and conquer",
+    "الانقلابات",
+    "فرز الدمج",
+    "فرّق تسد",
+    "count split inversions",
+    "O(n log n)"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "على أمين صندوق أن يعطي فكّة لمبلغ $W$ باستخدام فئات عملات $\\{1, 3, 4\\}$ (كمية غير محدودة)، بأقل عدد من القطع. بيّن بمثال مضاد صريح أن الخوارزمية الجشعة الطبيعية (خذ دائماً أكبر قطعة $\\le$ المبلغ المتبقي) ليست مثلى لهذا النظام، وأعطِ القيمة المثلى الحقيقية لمبلغ مثالك المضاد. ثم اذكر الخوارزمية الصحيحة العامة وتعقيدها الزمني للهدف $W$.",
+   "q_en": "A cashier must give change for an amount $W$ using coin denominations $\\{1, 3, 4\\}$ (unlimited supply), minimizing the number of coins. Show by an explicit counterexample that the natural greedy algorithm (always take the largest coin $\\le$ remaining amount) is not optimal for this system, and give the true optimum for your counterexample amount. Then state the correct general algorithm and its time complexity for target $W$.",
+   "a_ar": "خذ $W=6$. تأخذ الجشعة $4$ ثم عليها تكوين $2$ من $\\{1,3\\}$، وبما أن $\\le 2$ فيُفرَض $1+1$، فتصبح القطع $4+1+1=6$ بثلاث قطع. لكن الأمثل هو $3+3=6$ بقطعتين فقط، فالجشعة ليست مثلى. الطريقة الصحيحة العامة هي البرمجة الديناميكية: ليكن $C(x)$ أقل عدد قطع للمبلغ $x$، حيث $C(0)=0$ و $C(x)=1+\\min_{d\\in\\{1,3,4\\},\\,d\\le x} C(x-d)$. ملء الجدول تصاعدياً من $0$ إلى $W$ يكلّف $O(W\\cdot k)$ حيث $k$ عدد الفئات (هنا $k=3$)، أي $O(W)$، وبفراغ $O(W)$؛ وتُستعاد مجموعة القطع المثلى بتتبّع الاختيارات رجوعاً.",
+   "a_en": "Take $W=6$. Greedy takes $4$, then must make $2$ from $\\{1,3\\}$ as $\\le 2$ forces $1+1$, giving coins $4+1+1=6$ using $3$ coins. But the optimum is $3+3=6$ using only $2$ coins, so greedy is suboptimal. The correct general method is dynamic programming: let $C(x)$ be the minimum coins for amount $x$, with $C(0)=0$ and $C(x)=1+\\min_{d\\in\\{1,3,4\\},\\,d\\le x} C(x-d)$. Filling the table bottom-up from $0$ to $W$ takes $O(W\\cdot k)$ time where $k$ is the number of denominations (here $k=3$), i.e. $O(W)$, and $O(W)$ space; the optimal coin set is recovered by backtracking the choices.",
+   "answer": "Counterexample $W=6$: greedy gives $4+1+1=3$ coins, optimum is $3+3=2$ coins. Correct method: DP $C(x)=1+\\min_{d\\le x}C(x-d)$ in $O(Wk)$ time.",
+   "keywords": [
+    "coin change",
+    "greedy suboptimal",
+    "dynamic programming",
+    "الفكّة",
+    "العملات",
+    "الجشعة ليست مثلى",
+    "البرمجة الديناميكية",
+    "counterexample"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في ترميز هوفمان، تظهر الأحرف $\\{a,b,c,d,e,f\\}$ بترددات $\\{45, 13, 12, 16, 9, 5\\}$ (بالآلاف). ابنِ شجرة هوفمان، وأعطِ طول الكلمة الرمزية لكل حرف، واحسب إجمالي عدد البتّات (بالآلاف) اللازمة لترميز الملف. واذكر مبدأ الحد الأدنى المبني على الإنتروبيا الذي تحترمه عملية الدمج الجشعة في هوفمان.",
+   "q_en": "In Huffman coding, characters $\\{a,b,c,d,e,f\\}$ occur with frequencies $\\{45, 13, 12, 16, 9, 5\\}$ (thousands). Build the Huffman tree, give the codeword length for each character, and compute the total number of bits (in thousands) needed to encode the file. Also state the entropy-based lower-bound principle that Huffman's greedy merge respects.",
+   "a_ar": "ندمج تكراراً أقلّ ترددين: ندمج $f(5)+e(9)=14$؛ ثم $c(12)+b(13)=25$؛ ثم $14+d(16)=30$؛ ثم $25+30=55$؛ ثم $45+55=100$. ينتج أطوال الكلمات الرمزية: $a=1$، والأحرف $b,c,d,e,f$ عند الأعماق $3,3,3,4,4$ على الترتيب. إجمالي البتّات $=45\\cdot1 + 13\\cdot3 + 12\\cdot3 + 16\\cdot3 + 9\\cdot4 + 5\\cdot4 = 45+39+36+48+36+20 = 224$ (ألف بتّة). وهذه نتيجة CLRS الكلاسيكية. وهوفمان أمثل بين الترميزات عديمة البادئة (prefix-free)؛ وتكلفته تحترم الحدّ الأدنى المعلوماتي $H(X)\\le L_{avg}$ حيث $H(X)=-\\sum p_i\\log_2 p_i$ هي الإنتروبيا، ولا يمكن لأي ترميز بادئة أن يتفوّق على الإنتروبيا في المتوسط — وهوفمان يقترب منها بأقل من بتّة واحدة لكل رمز.",
+   "a_en": "Repeatedly merge the two lowest frequencies: merge $f(5)+e(9)=14$; then $c(12)+b(13)=25$; then $14+d(16)=30$; then $25+30=55$; then $45+55=100$. This yields codeword lengths: $a=1$, and $b,c,d,e,f$ at depths $3,3,3,4,4$ respectively. Total bits $=45\\cdot1 + 13\\cdot3 + 12\\cdot3 + 16\\cdot3 + 9\\cdot4 + 5\\cdot4 = 45+39+36+48+36+20 = 224$ (thousand bits). This is the classic CLRS result. Huffman is optimal among prefix-free codes; its cost respects the information-theoretic lower bound $H(X)\\le L_{avg}$, where $H(X)=-\\sum p_i\\log_2 p_i$ is the entropy, and no prefix code can beat the entropy on average — Huffman comes within one bit of it per symbol.",
+   "answer": "Lengths: $a{=}1,\\,b{=}c{=}d{=}3,\\,e{=}f{=}4$; total $=224$ thousand bits. Huffman is optimal prefix code, bounded below by entropy $H(X)$.",
+   "keywords": [
+    "Huffman coding",
+    "prefix code",
+    "greedy",
+    "ترميز هوفمان",
+    "الإنتروبيا",
+    "entropy lower bound",
+    "ترميز عديم البادئة",
+    "optimal encoding"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "بالنظر إلى $n$ عددًا مختلفًا، أثبت أن إيجاد القيمتين العظمى والصغرى معًا يتطلب في أسوأ الحالات بالضبط $\\lceil 3n/2\\rceil - 2$ مقارنة ثنائية، وصِف خوارزمية تحقق هذا الحد.",
+   "q_en": "Given $n$ distinct numbers, prove that finding BOTH the maximum and the minimum simultaneously requires exactly $\\lceil 3n/2\\rceil - 2$ pairwise comparisons in the worst case, and describe an algorithm achieving this bound.",
+   "a_ar": "الخوارزمية (الحد الأعلى): نُقسّم العناصر إلى $\\lfloor n/2\\rfloor$ زوجًا ونقارن كل زوج ($\\lfloor n/2\\rfloor$ مقارنة)، ثم نحدّث العظمى الجارية مقابل الأكبر في كل زوج فقط والصغرى الجارية مقابل الأصغر فقط. لِـ $n$ زوجي تُكلّف $n/2 + 2(n/2-1) = 3n/2-2$، والحالة الفردية تعطي $\\lceil 3n/2\\rceil-2$. الحد الأدنى (حجة الخصم/الأوزان): نُسمّي العنصر 'مبتدئًا' إن لم يُقارَن بعد. لتحديد العظمى يجب أن يخسر كل عنصر عدا واحد مرة على الأقل، ولتحديد الصغرى يجب أن يفوز كل عنصر عدا واحد مرة على الأقل. المقارنة بين مبتدئَين فقط تُنتج معلومتين جديدتين (خسارة + فوز)، وأي مقارنة أخرى تُنتج واحدة على الأكثر. مع $n$ مبتدئًا نحتاج $2n-2$ وحدة معلومات، وعلى الأكثر $\\lfloor n/2\\rfloor$ مقارنة تُنتج وحدتين، مما يفرض $\\lceil 3n/2\\rceil-2$ مقارنة على الأقل.",
+   "a_en": "Algorithm (upper bound): pair the elements into $\\lfloor n/2\\rfloor$ pairs and compare each pair ($\\lfloor n/2\\rfloor$ comparisons); then update the running max only against the larger of each pair and the running min only against the smaller. For even $n$ this costs $n/2 + 2(n/2-1) = 3n/2-2$; the odd case gives $\\lceil 3n/2\\rceil-2$. Lower bound (adversary/weighting): call an element a 'novice' if never compared. To identify the max, every element except one must lose at least once; to identify the min, every element except one must win at least once. Only a comparison between two novices yields two new pieces of information (one loss + one win); every other comparison yields at most one. With $n$ novices we need $2n-2$ units of information, and at most $\\lfloor n/2\\rfloor$ comparisons produce 2 units each, forcing at least $\\lceil 3n/2\\rceil-2$ comparisons.",
+   "answer": "$\\lceil 3n/2\\rceil - 2$",
+   "keywords": [
+    "max-min",
+    "العظمى والصغرى",
+    "adversary argument",
+    "حجة الخصم",
+    "comparison lower bound",
+    "تقسيم إلى أزواج",
+    "3n/2-2"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "حدّد العدد الأدنى الدقيق للمقارنات، في أسوأ الحالات، اللازم لإيجاد ثاني أكبر عنصر بين $n$ عنصرًا مختلفًا، مع تبرير الخوارزمية والأمثلية.",
+   "q_en": "Determine the exact minimum number of comparisons, in the worst case, needed to find the SECOND largest of $n$ distinct elements, and justify both the algorithm and the optimality.",
+   "a_ar": "الجواب: $n + \\lceil \\log_2 n\\rceil - 2$. الخوارزمية: نُجري بطولة إقصائية تجد العظمى بـ $n-1$ مقارنة. لا بدّ أن يكون ثاني أكبر عنصر من بين العناصر التي خسرت مباشرةً أمام العظمى؛ وفي بطولة متوازنة تلعب العظمى $\\lceil \\log_2 n\\rceil$ مباراة، فيكون هناك $\\lceil \\log_2 n\\rceil$ مرشحًا. إيجاد الأكبر بينهم يُكلّف $\\lceil \\log_2 n\\rceil - 1$ مقارنة، فالمجموع $n-1+\\lceil \\log_2 n\\rceil-1 = n+\\lceil \\log_2 n\\rceil-2$. الأمثلية (نظرية كيسليتسين): يستطيع الخصم إجبار العظمى على الفوز في $\\lceil \\log_2 n\\rceil$ مقارنة على الأقل (بجعل صاحب 'الوزن' الأكبر يفوز دائمًا والأوزان تتضاعف)، فلا يمكن التحقق من ثاني أكبر عنصر بأقل من $\\lceil \\log_2 n\\rceil$ عنصرًا هُزم أمام العظمى، وهو ما تحققه الخوارزمية.",
+   "a_en": "Answer: $n + \\lceil \\log_2 n\\rceil - 2$. Algorithm: run a knockout tournament, which finds the maximum in $n-1$ comparisons. The second largest must be one of the elements that lost directly to the maximum; in a balanced tournament the maximum plays exactly $\\lceil \\log_2 n\\rceil$ matches, so there are $\\lceil \\log_2 n\\rceil$ such candidates. Finding the largest among them costs $\\lceil \\log_2 n\\rceil - 1$ comparisons, giving $n-1+\\lceil \\log_2 n\\rceil-1 = n+\\lceil \\log_2 n\\rceil-2$. Optimality (Kislitsyn's theorem): an adversary can force the eventual maximum to win at least $\\lceil \\log_2 n\\rceil$ comparisons (by always ranking the larger 'weight' as winner, weights doubling), so the runner-up cannot be certified with fewer than $\\lceil \\log_2 n\\rceil$ elements beaten by the max, matching the algorithm.",
+   "answer": "$n + \\lceil \\log_2 n\\rceil - 2$",
+   "keywords": [
+    "second largest",
+    "ثاني أكبر",
+    "tournament",
+    "بطولة إقصائية",
+    "Kislitsyn",
+    "نظرية كيسليتسين",
+    "comparison complexity"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "آلة واحدة يجب أن تُعالج $n$ مهمة، للمهمة $i$ زمن معالجة $p_i>0$ ووزن $w_i>0$. إذا انتهت المهمة $i$ عند الزمن $C_i$، صغِّر $\\sum_i w_i C_i$. أثبت الترتيب الأمثل وبرّره بحجة تبادلية.",
+   "q_en": "A single machine must process $n$ jobs, job $i$ having processing time $p_i>0$ and weight $w_i>0$. If job $i$ finishes at time $C_i$, minimize $\\sum_i w_i C_i$. Prove the optimal order and justify with an exchange argument.",
+   "a_ar": "القاعدة المثلى (قاعدة سميث): رتّب المهام تنازليًا حسب النسبة $w_i/p_i$ (أي تصاعديًا حسب $p_i/w_i$) دون فترات خمول. البرهان بالتبادل: خذ جدولًا أمثل ومهمتين متجاورتين $i$ (أولًا) ثم $j$ حيث $w_i/p_i < w_j/p_j$، وليكن $t$ زمن بدء الزوج. تبديلهما يُغيّر الدالة الهدف لهاتين المهمتين فقط، والفرق (الترتيب $i,j$ ناقص $j,i$) يساوي $w_j p_i - w_i p_j$. وبما أن $w_i/p_i < w_j/p_j$ فإن $w_j p_i - w_i p_j > 0$، إذًا الترتيب $j,i$ أفضل قطعًا، وهذا يناقض الأمثلية. لذا كل جدول أمثل مرتّب تنازليًا حسب $w_i/p_i$. زمن التنفيذ $O(n\\log n)$.",
+   "a_en": "Optimal rule (Smith's rule): schedule the jobs in non-increasing order of the ratio $w_i/p_i$ (equivalently non-decreasing $p_i/w_i$), with no idle time. Proof by exchange: consider an optimal schedule and two adjacent jobs $i$ (first) then $j$ with $w_i/p_i < w_j/p_j$. Let $t$ be the start time of the pair. Swapping them changes the objective only for these two jobs; the difference (order $i,j$ minus order $j,i$) equals $w_j p_i - w_i p_j$. Since $w_i/p_i < w_j/p_j \\Rightarrow w_j p_i - w_i p_j > 0$, the order $j,i$ is strictly better, contradicting optimality. Hence any optimal schedule is sorted by non-increasing $w_i/p_i$. Runtime $O(n\\log n)$.",
+   "answer": "Schedule in non-increasing order of $w_i/p_i$ (Smith's rule); optimal, $O(n\\log n)$",
+   "keywords": [
+    "Smith's rule",
+    "قاعدة سميث",
+    "weighted completion time",
+    "exchange argument",
+    "حجة التبادل",
+    "greedy scheduling",
+    "الجدولة الجشعة"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "حُلّ علاقة التكرار للتقسيم-والغَلَبة $T(n) = T(n/3) + T(2n/3) + \\Theta(n)$ (مع $T(O(1))=\\Theta(1)$) وأعطِ حدًا مقاربًا ضيقًا، مع تبرير الطريقة.",
+   "q_en": "Solve the divide-and-conquer recurrence $T(n) = T(n/3) + T(2n/3) + \\Theta(n)$ (with $T(O(1))=\\Theta(1)$) and give a tight asymptotic bound, justifying the method.",
+   "a_ar": "مبرهنة النموذج (Master) لا تنطبق لاختلاف أحجام المسائل الجزئية، لذا نستخدم طريقة أكرا-بازي. نجد $p$ حيث $(1/3)^p + (2/3)^p = 1$، ومن الواضح أن $p=1$ يحقّقها. عندئذ $T(n) = \\Theta\\!\\left(n^p\\left(1 + \\int_1^n \\frac{g(u)}{u^{p+1}}\\,du\\right)\\right)$ مع $g(u)=u$، فيكون $T(n)=\\Theta\\!\\left(n\\left(1+\\int_1^n \\frac{u}{u^2}\\,du\\right)\\right)=\\Theta(n(1+\\ln n)) = \\Theta(n\\log n)$. الحدس: كل مستوى في شجرة التكرار يُنجز عملًا مقداره $\\Theta(n)$ وعدد المستويات على أطول مسار $\\Theta(\\log n)$، فالمجموع $\\Theta(n\\log n)$.",
+   "a_en": "The Master Theorem does not apply (unequal subproblem sizes), so use the Akra-Bazzi method. Find $p$ with $(1/3)^p + (2/3)^p = 1$; clearly $p=1$ works. Then $T(n) = \\Theta\\!\\left(n^p\\left(1 + \\int_1^n \\frac{g(u)}{u^{p+1}}\\,du\\right)\\right)$ with $g(u)=u$, giving $T(n)=\\Theta\\!\\left(n\\left(1+\\int_1^n \\frac{u}{u^2}\\,du\\right)\\right)=\\Theta(n(1+\\ln n)) = \\Theta(n\\log n)$. Intuition: every level of the recursion tree does $\\Theta(n)$ work and the tree has $\\Theta(\\log n)$ levels along its longest path, so the total is $\\Theta(n\\log n)$.",
+   "answer": "$T(n) = \\Theta(n\\log n)$",
+   "keywords": [
+    "Akra-Bazzi",
+    "أكرا-بازي",
+    "recurrence",
+    "علاقة تكرار",
+    "divide and conquer",
+    "التقسيم والغلبة",
+    "n log n"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "على مسار دائري فيه $n$ محطة وقود، المحطة $i$ فيها $\\mathrm{gas}[i]$ وقودًا وتُكلّف القيادة من $i$ إلى $i+1$ مقدار $\\mathrm{cost}[i]$. بدءًا بخزان فارغ، أوجد (وأثبت صحة) خوارزمية بزمن $O(n)$ تُعيد محطة بداية صالحة يمكن منها إكمال الدورة كاملة، أو تُبلّغ بعدم الوجود.",
+   "q_en": "On a circular route with $n$ gas stations, station $i$ has $\\mathrm{gas}[i]$ fuel and it costs $\\mathrm{cost}[i]$ to drive from $i$ to $i+1$. Starting with an empty tank, find (and prove correct) an $O(n)$ algorithm returning a valid starting station from which you can complete the full loop, or report none exists.",
+   "a_ar": "لِيكن $d_i = \\mathrm{gas}[i]-\\mathrm{cost}[i]$. الخوارزمية: إن كان $\\sum_i d_i < 0$ أعِد 'لا يوجد'. وإلا امسح المصفوفة مرة واحدة مع خزان جارٍ؛ كلما هبط الخزان دون الصفر عند المحطة $i$ أعِد ضبط $\\mathrm{start}=i+1$ والخزان $=0$؛ ثم أعِد قيمة $\\mathrm{start}$ النهائية. الإثبات: (1) إن كان $\\sum d_i \\ge 0$ فالحل موجود. (2) نقطة البداية $s$ المُعادة صالحة: بحكم البناء، المجموع الجزئي من $s$ إلى أي محطة قبل النهاية لا يصبح سالبًا أبدًا (وإلا لأُعيد ضبط $s$ لاحقًا). أما الجزء الملتف (المحطات قبل $s$) فبادئاته كانت جميعها ضمن العجز الذي 'سُدِّد' سابقًا، وبما أن المجموع الكلي $\\ge 0$ فإن الفائض المتراكم من $s$ حتى النهاية يغطّيها. لذا لا يفرغ الخزان انطلاقًا من $s$. وكل مرشّح تم تخطّيه غير صالح لأن بلوغ نقطة إعادة الضبط فرض خزانًا سالبًا، فيكون $s$ هو البداية الصحيحة. زمن التنفيذ $O(n)$ بمرور واحد.",
+   "a_en": "Let $d_i = \\mathrm{gas}[i]-\\mathrm{cost}[i]$. Algorithm: if $\\sum_i d_i < 0$ return 'none'. Otherwise sweep once keeping a running tank; whenever the tank drops below 0 at station $i$, reset $\\mathrm{start}=i+1$ and tank $=0$; return the final $\\mathrm{start}$. Correctness: (1) If $\\sum d_i \\ge 0$ a solution exists. (2) The returned $s$ works: by construction the partial sum from $s$ to any station before the end never goes negative (else $s$ would have been reset later). For the wrap-around portion (stations before $s$), those prefixes were all $\\le$ the deficits already 'paid off', and since total $\\ge 0$ the surplus accumulated from $s$ to the end covers them. Hence starting at $s$ never empties the tank. Every candidate skipped is provably invalid because reaching the reset point already forced a negative tank, so $s$ is the correct (and unique feasible-earliest) start. Runtime $O(n)$, one pass.",
+   "answer": "Feasible iff $\\sum(\\mathrm{gas}[i]-\\mathrm{cost}[i])\\ge 0$; the greedy 'reset start to $i+1$ whenever tank<0' returns a valid start in $O(n)$",
+   "keywords": [
+    "gas station",
+    "محطات الوقود",
+    "circular tour",
+    "الجولة الدائرية",
+    "greedy",
+    "خوارزمية جشعة",
+    "prefix sum",
+    "O(n)"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

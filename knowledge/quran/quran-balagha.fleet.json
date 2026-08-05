@@ -1,0 +1,169 @@
+{
+ "subject": "quran",
+ "topic": "quran-balagha",
+ "title": "quran-balagha — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "في قوله تعالى: ﴿وَاشْتَعَلَ الرَّأْسُ شَيْبًا﴾ [مريم: 4]، بيّن نوع الاستعارة ووجه بلاغتها الدقيق، ثم اذكر السرّ في نصب كلمة ﴿شَيْبًا﴾ إعرابيًّا وبلاغيًّا.",
+   "q_en": "In the verse \"And the head has flared up with white hair\" (Maryam: 4), identify the type of metaphor and its precise rhetorical value, then explain the grammatical and rhetorical secret behind the accusative case of the word shayban (\"white hair\").",
+   "a_ar": "هي استعارة تصريحية تبعية: شُبِّه انتشارُ الشيب في الرأس وعمومُه بانتشار اشتعال النار، ثم استُعير لفظ ﴿اشْتَعَلَ﴾ للانتشار. ووجه البلاغة أنّ الاستعارة أفادت شمولَ الشيب للرأس كلّه وسرعةَ استيلائه، وهو ما لا تؤدّيه العبارة الحقيقية (شاب رأسي). أمّا ﴿شَيْبًا﴾ فمنصوب على التمييز (تمييز مُحوَّل عن الفاعل)، إذ الأصل «واشتعل شيبُ الرأس»، فحُوِّل الإسناد إلى الرأس وجُعل الشيب تمييزًا؛ وسرّه البلاغي إفادةُ الشمول والمبالغة، لأنّ إسناد الاشتعال إلى الرأس كلّه أبلغ من إسناده إلى الشيب وحده.",
+   "a_en": "It is an explicit subordinate metaphor (istiʿara tasrihiyya tabaʿiyya): the spread and pervasiveness of white hair over the head is likened to the spreading of fire, then the verb ishtaʿala (\"flared up\") is borrowed for that spreading. Its rhetorical value is conveying that the whiteness engulfed the entire head swiftly and totally, which the literal phrase (\"my head turned grey\") cannot capture. Grammatically, shayban is accusative as tamyiz (a specifier converted from the original subject): the underlying form is \"the white hair of the head flared up,\" but predication was shifted to \"the head\" and \"white hair\" made a specifier; its rhetorical secret is intensification and totality, since ascribing the \"flaring\" to the whole head is more emphatic than ascribing it to the hair alone.",
+   "answer": "استعارة تصريحية تبعية (اشتعل ↔ انتشر)؛ و﴿شَيْبًا﴾ تمييز منصوب محوَّل عن الفاعل، أفاد الشمول والمبالغة. / Explicit subordinate metaphor; shayban is an accusative tamyiz converted from the subject, giving totality and hyperbole.",
+   "keywords": [
+    "استعارة تصريحية تبعية",
+    "اشتعل الرأس شيبا",
+    "تمييز محول",
+    "balagha",
+    "metaphor",
+    "tamyiz",
+    "مريم 4",
+    "الإعجاز اللغوي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "قارن بلاغيًّا بين الفاصلتين في قوله تعالى: ﴿وَاللَّهُ بِمَا تَعْمَلُونَ خَبِيرٌ﴾ وما يماثلها بلفظ ﴿بَصِيرٌ﴾، ثم علِّل دقّة اختيار ﴿خَبِيرٌ﴾ دون ﴿عَلِيمٌ﴾ أو ﴿بَصِيرٌ﴾ في مقام ذكر الأعمال، مبيّنًا الفرق الدلالي بين هذه الأسماء.",
+   "q_en": "Rhetorically compare the verse-endings in \"And Allah is Khabir (All-Aware) of what you do\" with the parallel ending using Basir (All-Seeing), then justify the precise choice of Khabir rather than ʿAlim or Basir in the context of mentioning deeds, clarifying the semantic difference between these names.",
+   "a_ar": "﴿الْعَلِيم﴾ يدلّ على إحاطة العلم مطلقًا بالظاهر والباطن، و﴿الْبَصِير﴾ يخصّ إدراك المُبصَرات والظواهر، و﴿الْخَبِير﴾ يدلّ على العلم بدقائق الأمور وبواطنها وخفاياها (الخُبْر). ولمّا كانت الأعمال تشمل خفايا النيّات ودقائق البواطن، ناسب ذكرُ ﴿خَبِيرٌ﴾ لأنه يفيد الاطّلاع على ما دقّ وخفي من العمل وباعثه، فيكون أدعى للمراقبة. ولو قيل ﴿بَصِيرٌ﴾ لاقتصر ظاهرُ اللفظ على المُبصَر الظاهر، ولو قيل ﴿عَلِيمٌ﴾ لفات معنى العلم بالخفايا الدقيقة الذي هو مربط المقام؛ فمراعاةُ مقتضى الحال هي سرّ الاختيار، وهو من دقيق مناسبة الفواصل.",
+   "a_en": "Al-ʿAlim denotes absolute encompassing knowledge of the manifest and hidden; al-Basir specifically concerns perception of visible things; al-Khabir denotes knowledge of the finest inner details, secrets and subtleties (khubr). Since \"deeds\" include hidden intentions and subtle inner states, Khabir is the fitting ending because it conveys awareness of the minute and concealed dimension of the act and its motive, which more strongly induces vigilance. Basir would, by its apparent sense, be confined to the visible, and ʿAlim would miss the specific nuance of knowledge of fine hidden matters that the context targets; observing the requirement of context (muqtada al-hal) is the secret of the choice, a subtlety of fawasil harmony.",
+   "answer": "﴿خَبِيرٌ﴾ يختصّ بالعلم بدقائق الأمور وخفاياها، فناسب مقامَ الأعمال (ظاهرها وباطنها ونيّاتها) أكثر من ﴿بَصِيرٌ﴾ (الظواهر) و﴿عَلِيمٌ﴾ (مطلق العلم). / Khabir specifies knowledge of subtle hidden matters, best fitting the context of deeds (including intentions), unlike Basir (visibles) or ʿAlim (absolute knowledge).",
+   "keywords": [
+    "مناسبة الفواصل",
+    "خبير بصير عليم",
+    "fawasil",
+    "muqtada al-hal",
+    "الأسماء الحسنى",
+    "semantic nuance",
+    "براعة المقطع",
+    "balagha"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿وَمَكَرُوا وَمَكَرَ اللَّهُ وَاللَّهُ خَيْرُ الْمَاكِرِينَ﴾ [آل عمران: 54]، وقوله: ﴿اللَّهُ يَسْتَهْزِئُ بِهِمْ﴾ [البقرة: 15]، ما النوع البلاغي الذي أُطلق به لفظ ﴿مَكَرَ﴾ و﴿يَسْتَهْزِئُ﴾ على الله تعالى؟ وكيف تُدفَع شبهةُ نسبة صفة نقص إليه سبحانه؟",
+   "q_en": "In \"And they schemed, and Allah schemed, and Allah is the best of schemers\" (Al ʿImran: 54) and \"Allah mocks them\" (Al-Baqara: 15), what rhetorical device governs ascribing makr (scheming) and istihzaʾ (mockery) to Allah? And how is the objection of attributing a deficient trait to Him repelled?",
+   "a_ar": "هذا من باب المُشاكَلة (وتُسمّى المزاوجة أو الازدواج): ذُكر الفعلُ الثاني بلفظ الأول لوقوعه في صحبته، لا لإرادة حقيقةِ المكر والاستهزاء المذمومَين. فالمرادُ بمكر الله واستهزائه: مجازاتُهم على مكرهم واستهزائهم بعقوبةٍ من جنس فعلهم، فسُمّي الجزاءُ باسم الذنب مُشاكَلةً، كما في ﴿وَجَزَاءُ سَيِّئَةٍ سَيِّئَةٌ مِثْلُهَا﴾. وبهذا تُدفع الشبهةُ: إذ الإطلاق ليس على المعنى المذموم (الخديعة القبيحة)، بل على إحكام الجزاء وإنزاله بهم من حيث لا يشعرون؛ فهو استعمالٌ بلاغيٌّ للمشاكلة يفيد كمالَ الانتقام العادل لا نقصًا. وقيل هو من الاستعارة، والأشهر المشاكلة.",
+   "a_en": "This belongs to mushakala (verbal assimilation / muzawaja): the second act is named with the same word as the first because it accompanies it, not to intend the blameworthy realities of scheming and mockery. What is meant by Allah's makr and istihzaʾ is requiting them for their scheming and mockery with a punishment of the same kind, so the recompense is named with the name of the sin by assimilation, as in \"the recompense of an evil deed is an evil like it.\" This repels the objection: the ascription is not of the blameworthy sense (base deception), but of perfectly executed retribution brought upon them whence they perceive not; it is a rhetorical use of mushakala conveying complete just retribution, not deficiency. Some deem it metaphor, but mushakala is the better-known view.",
+   "answer": "مُشاكَلة (تسمية الجزاء باسم الذنب لمصاحبته)؛ فالمراد إحكامُ المجازاة من جنس فعلهم لا حقيقةُ المكر والاستهزاء المذمومين، فلا نقص. / Mushakala (naming the requital by the name of the sin); the meaning is perfectly matched retribution, not the blameworthy scheming/mockery, so no deficiency is implied.",
+   "keywords": [
+    "مشاكلة",
+    "مزاوجة",
+    "مكر الله",
+    "الله يستهزئ بهم",
+    "mushakala",
+    "آل عمران 54",
+    "البقرة 15",
+    "دفع الشبهة"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿يَا أَيُّهَا الَّذِينَ آمَنُوا كُتِبَ عَلَيْكُمُ الصِّيَامُ كَمَا كُتِبَ عَلَى الَّذِينَ مِن قَبْلِكُمْ لَعَلَّكُمْ تَتَّقُونَ﴾ [البقرة: 183]، بيّن السرّ البلاغي في بناء ﴿كُتِبَ﴾ للمجهول، وفي التعبير عن الفرض بلفظ ﴿كُتِبَ﴾ دون ﴿فُرِضَ﴾، ثم وجّه دلالة ﴿لَعَلَّ﴾ مع تنزّهه تعالى عن الترجّي.",
+   "q_en": "In \"O you who believe, fasting is prescribed for you as it was prescribed for those before you, that you may become God-fearing\" (Al-Baqara: 183), explain the rhetorical secret of the passive construction kutiba, the choice of kutiba (\"was written/prescribed\") rather than furida (\"was made obligatory\"), and interpret laʿalla (\"perhaps/that\") given that hope/expectation cannot apply to Allah.",
+   "a_ar": "بُني ﴿كُتِبَ﴾ للمجهول والفاعلُ معلومٌ (وهو الله) للعلم به ولتوجيه العناية إلى الفعل المفروض (الصيام) لا إلى ذكر الفارض، مع ما فيه من تهوين الكلفة بإبراز الحكم مجرَّدًا. واختير ﴿كُتِبَ﴾ دون ﴿فُرِضَ﴾ لإفادة معنى الإثبات والتقدير والحتم كأنّه مسطورٌ ثابت لا محيصَ عنه، ولموافقة الفواصل، وللإشعار بأنّه حقٌّ مكتوبٌ سابق شُرِّع للأمم قبلنا. أمّا ﴿لَعَلَّ﴾ فهي للترجّي، وهو مستحيلٌ في حقّه تعالى، فتُصرَف إلى معنى التعليل أو إلى جعل المخاطَب على رجاءٍ؛ أي: صوموا راجين التقوى، فالترجّي منصرفٌ إلى حال العبد لا إلى الله، وهو من إخراج الكلام على ما يعرفه المخاطَبون.",
+   "a_en": "Kutiba is built in the passive though the agent is known (Allah), because He is already known and to direct attention to the prescribed act (fasting) rather than to naming the One who prescribes, while also lightening the burden by presenting the ruling in the abstract. Kutiba was chosen over furida to convey affirmation, decree and inescapable fixedness — as if it were an established, recorded matter — to match the verse-endings, and to signal that it is a prior \"written\" ordinance legislated for earlier nations. As for laʿalla, its core sense is hope/expectation, impossible for Allah; so it is diverted to a causal sense (taʿlil) or to placing the addressee in a state of hope: \"fast, hoping to attain taqwa,\" the expectation belonging to the servant's state, not to Allah — an instance of framing speech per the addressees' idiom.",
+   "answer": "البناءُ للمجهول لتوجيه العناية إلى الفعل والعلمِ بالفاعل؛ و﴿كُتِبَ﴾ تُفيد الحتمَ والإثباتَ والتسويةَ بالأمم السابقة؛ و﴿لَعَلَّ﴾ للتعليل أو لجعل العبد راجيًا، والترجّي راجعٌ إليه لا إلى الله. / Passive to focus on the act (agent known); kutiba conveys binding fixedness and parity with prior nations; laʿalla means causation / puts the servant in hope, the expectation belonging to him, not to Allah.",
+   "keywords": [
+    "البناء للمجهول",
+    "كتب عليكم الصيام",
+    "لعلكم تتقون",
+    "laʿalla",
+    "passive voice",
+    "البقرة 183",
+    "مناسبة الفواصل",
+    "الترجي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في سورة الفاتحة ينتقل السياق من الغَيبة إلى الخطاب في قوله تعالى: ﴿الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ ... مَالِكِ يَوْمِ الدِّينِ * إِيَّاكَ نَعْبُدُ﴾. سمِّ هذا الأسلوب البلاغي على وجه التحديد، وبيّن موضع الانتقال بدقة، ثم اذكر أدق نكتة بلاغية تُعلَّل بها المفاجأة بالانتقال من ضمير الغائب إلى ضمير المخاطب في هذا الموضع.",
+   "q_en": "In Sūrat al-Fātiḥa the discourse shifts from the third person to direct address in ﴿al-ḥamdu lillāhi rabbi l-ʿālamīn … māliki yawmi d-dīn * iyyāka naʿbud﴾ (\"Praise be to Allah, Lord of the worlds … Master of the Day of Judgment; It is You we worship\"). Name this rhetorical device precisely, locate the exact point of transition, and state the most precise rhetorical purpose (nukta) that explains the sudden move from the absent-referent pronoun to the second-person addressee here.",
+   "a_ar": "الأسلوب هو الالتفات، وهو الانتقال من أسلوب إلى آخر من أساليب التكلم أو الخطاب أو الغَيبة مخالفةً لمقتضى الظاهر. وموضع الالتفات هو الانتقال من الغَيبة (الحمد لله... رب... مالك، بضمير الغائب) إلى الخطاب في ﴿إِيَّاكَ نَعْبُدُ﴾. والنكتة البلاغية: أنّ العبد لمّا أثنى على الله بصفات الجلال والربوبية والملك ترقّى ثناؤه حتى استحضر المعبود حاضرًا مشاهَدًا، فناسب هذا الحضورُ القلبيُّ مقامَ المناجاة والخطاب، فكان الالتفات إيذانًا بارتقاء العبد من مقام الغيبة إلى مقام الحضور والمشاهدة، وهو أبلغ في التعظيم والإخلاص من الإخبار عن غائب.",
+   "a_en": "The device is al-iltifāt: shifting from one mode of pronominal reference (speaker / addressee / absent third person) to another, contrary to what the surface context would lead one to expect. The transition point is precisely from the third-person mode (\"Praise be to Allah… Lord… Master,\" all absent-referent) to direct address in ﴿iyyāka naʿbud﴾. The rhetorical nukta: having praised Allah with attributes of majesty, lordship, and sovereignty, the servant's praise ascends until the Worshipped One is felt as present and witnessed; this inward presence suits the station of intimate supplication and address, so the iltifāt signals the servant's rise from the station of absence (ghayba) to that of presence and witnessing (ḥuḍūr / mushāhada), which is more eloquent in exaltation and sincerity than merely reporting about an absent one.",
+   "answer": "الأسلوب: الالتفات من الغَيبة إلى الخطاب، وموضعه الانتقال من ﴿مَالِكِ يَوْمِ الدِّينِ﴾ (غيبة) إلى ﴿إِيَّاكَ نَعْبُدُ﴾ (خطاب)، ونكتته الترقّي من مقام الغيبة إلى مقام الحضور والمناجاة. (Iltifāt from third person to direct address at ﴿iyyāka naʿbud﴾, signalling ascent from absence to presence in supplication.)",
+   "keywords": [
+    "الالتفات",
+    "iltifāt",
+    "الفاتحة",
+    "الغيبة والخطاب",
+    "إياك نعبد",
+    "مقتضى الظاهر",
+    "al-Fatiha",
+    "rhetorical shift"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ﴾، قُدِّم المفعول ﴿إِيَّاكَ﴾ على عامله ﴿نَعْبُدُ﴾ مع تكراره. حلِّل بلاغيًا: ما الفائدة المعنوية الدقيقة لتقديم المعمول (إياك) على العامل؟ وما دلالة تكرار ﴿إِيَّاكَ﴾ بدل الاكتفاء بـ«إياك نعبد ونستعين»؟",
+   "q_en": "In ﴿iyyāka naʿbudu wa-iyyāka nastaʿīn﴾ (\"It is You we worship, and You we ask for help\") the object ﴿iyyāka﴾ is placed before its governing verb ﴿naʿbud﴾, and is repeated. Give a rhetorical analysis: what is the precise semantic effect of fronting the governed object before its governing verb, and what does repeating ﴿iyyāka﴾ (rather than saying \"iyyāka naʿbudu wa-nastaʿīn\") add?",
+   "a_ar": "تقديم المعمول ﴿إِيَّاكَ﴾ على عامله يفيد القصر (الاختصاص)، أي: قصر العبادة والاستعانة على الله وحده دون سواه؛ فالمعنى: نعبدك لا نعبد غيرك، ونستعين بك لا نستعين بغيرك، إذ القاعدة أنّ تقديم ما حقه التأخير يفيد التخصيص. كما أنّ تقديم اسم المعبود جلّ جلاله فيه تعظيم وتبرّك بالبدء به، وتقديمٌ لحقّه على حظّ العبد. وأمّا تكرار ﴿إِيَّاكَ﴾ فلإفادة قصرٍ مستقلٍّ في كلٍّ من العبادة والاستعانة على حِدة، وللتنصيص على أنّ كليهما مُفرَدٌ لله وحده، وفيه من التلذّذ بذكر المحبوب وتأكيد الإخلاص ما ليس في الاكتفاء بذكره مرة واحدة.",
+   "a_en": "Fronting the object ﴿iyyāka﴾ before its governing verb yields qaṣr (exclusive specification): worship and seeking help are restricted to Allah alone — \"You we worship, none but You; You we ask for help, none but You\" — since the rule is that placing what would ordinarily come later at the front conveys exclusivity. Beginning with the name of the Worshipped One also conveys exaltation and the blessing of opening with Him, giving His right precedence over the servant's need. Repeating ﴿iyyāka﴾ establishes an independent exclusivity for worship and for seeking-help each on its own, affirming that both are devoted to Allah alone; it also carries the delight of naming the Beloved twice and a stronger affirmation of sincerity than a single mention would.",
+   "answer": "تقديم ﴿إِيَّاكَ﴾ يفيد القصر/الاختصاص (نعبدك لا غيرك، نستعين بك لا غيرك) مع تعظيم البدء باسم المعبود؛ وتكرارُه يُفرِد لكلٍّ من العبادة والاستعانة قصرًا مستقلًّا ويؤكّد الإخلاص. (Fronting = exclusivity/qaṣr; repetition = independent exclusivity for each act plus emphatic devotion.)",
+   "keywords": [
+    "التقديم والتأخير",
+    "القصر",
+    "الاختصاص",
+    "إياك نعبد وإياك نستعين",
+    "qaṣr",
+    "fronting object",
+    "الفاتحة",
+    "التكرار"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "عبّر القرآن عن معنى واحد بصيغتين مختلفتين: ﴿وَلَا تَقْتُلُوا أَوْلَادَكُمْ خَشْيَةَ إِمْلَاقٍ ۖ نَّحْنُ نَرْزُقُهُمْ وَإِيَّاكُمْ﴾ (الإسراء ٣١)، و﴿وَلَا تَقْتُلُوا أَوْلَادَكُم مِّنْ إِمْلَاقٍ ۖ نَّحْنُ نَرْزُقُكُمْ وَإِيَّاهُمْ﴾ (الأنعام ١٥١). بيّن بدقة الفرق البلاغي في: (أ) ﴿خَشْيَةَ إِمْلَاقٍ﴾ مقابل ﴿مِنْ إِمْلَاقٍ﴾، (ب) تقديم رزق الأولاد في الإسراء وتقديم رزق الآباء في الأنعام. وعلّل مطابقة كلٍّ لسياقه.",
+   "q_en": "The Qur'an renders one meaning in two different formulations: ﴿and do not kill your children for fear of poverty; We provide for them and for you﴾ (al-Isrāʾ 31), and ﴿and do not kill your children out of poverty; We provide for you and for them﴾ (al-Anʿām 151). Precisely explain the rhetorical difference in: (a) \"khashyata imlāq\" (fear of poverty) vs. \"min imlāq\" (out of poverty), and (b) mentioning the children's provision first in al-Isrāʾ but the parents' provision first in al-Anʿām. Justify how each fits its context.",
+   "a_ar": "(أ) في الإسراء ﴿خَشْيَةَ إِمْلَاقٍ﴾ أي خوفَ فقرٍ مُتوقَّعٍ في المستقبل (الفقر غير واقعٍ بعد)، فناسبها المفعول لأجله بمعنى «مخافةَ أن تفتقروا»؛ وفي الأنعام ﴿مِنْ إِمْلَاقٍ﴾ أي مِن أجل فقرٍ واقعٍ حاصلٍ الآن، فـ«مِن» للتعليل بسببٍ محقّق. (ب) لمّا كان الفقر في الإسراء متوقَّعًا (الآباء أغنياء الآن يخافون فقر المستقبل بسبب كثرة العيال) قُدِّم ما يطمئنهم على أولادهم: ﴿نَحْنُ نَرْزُقُهُمْ وَإِيَّاكُمْ﴾، فبدأ برزق الأولاد الذين هو محلّ الخوف. وأمّا في الأنعام فالفقر واقعٌ بالآباء أنفسهم، فقُدّم رزقهم: ﴿نَحْنُ نَرْزُقُكُمْ وَإِيَّاهُمْ﴾، لأنّ العناية أولًا بمن نزل به الفقر فعلًا. فكانت كلُّ صيغةٍ مطابقةً تمامًا لحال الفقر (متوقَّع/واقع) وترتيبِ من قُدِّم رزقه.",
+   "a_en": "(a) In al-Isrāʾ \"khashyata imlāq\" means fear of a poverty anticipated in the future (not yet realized); hence the causal accusative (mafʿūl li-ajlih) \"out of dread that you become poor.\" In al-Anʿām \"min imlāq\" means because of an actually present poverty, \"min\" giving a realized, existing cause. (b) Since the poverty in al-Isrāʾ is merely feared (parents currently affluent, dreading future want from many mouths), the verse first reassures them about the object of their fear — the children: ﴿We provide for them and for you﴾, beginning with the children's provision. In al-Anʿām, by contrast, the poverty already grips the parents themselves, so their provision is placed first: ﴿We provide for you and for them﴾, since priority goes to whoever is actually stricken. Each formulation matches its context perfectly in both the status of the poverty (anticipated vs. actual) and the ordering of whose provision is mentioned first.",
+   "answer": "الإسراء: ﴿خَشْيَةَ﴾ = فقرٌ متوقَّعٌ فقُدِّم رزق الأولاد (محلّ الخوف). الأنعام: ﴿مِنْ﴾ = فقرٌ واقعٌ بالآباء فقُدِّم رزقهم. فكلٌّ مطابقٌ لسياقه. (Isrāʾ: feared future poverty → children's provision first; Anʿām: present poverty of parents → parents' provision first.)",
+   "keywords": [
+    "الإسراء والأنعام",
+    "خشية إملاق",
+    "من إملاق",
+    "التقديم والتأخير",
+    "مطابقة السياق",
+    "context matching",
+    "balagha comparison",
+    "الرزق"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿وَاشْتَعَلَ الرَّأْسُ شَيْبًا﴾ (مريم ٤)، عدّ العلماء هذه الآية من أبلغ آي القرآن استعارةً. حلّل الصورة البلاغية تحليلًا دقيقًا: ما نوع الاستعارة؟ وما المستعار والمستعار له؟ وبيّن الوجوه البلاغية الإضافية في ﴿اشْتَعَلَ الرَّأْسُ﴾ (لا «اشتعل شيبُ الرأس») وفي نصب ﴿شَيْبًا﴾ على التمييز.",
+   "q_en": "In ﴿wa-shtaʿala r-raʾsu shayban﴾ — \"and the head blazed with grey hair\" (Maryam 4) — scholars rank this among the most eloquent metaphors in the Qur'an. Analyse the image precisely: what type of metaphor is it? What is borrowed and for what? Then explain the additional rhetorical merits in saying ﴿the head blazed﴾ (rather than \"the greyness of the head blazed\") and in putting ﴿shayban﴾ in the accusative as a specifier (tamyīz).",
+   "a_ar": "هي استعارة تصريحية تبعية: شُبِّه انتشارُ الشيبِ في الرأس بانتشار اشتعال النار وتلألؤ ضوئها، بجامع الانتشار السريع الشامل مع البياض اللامع، ثم استُعير لفظ «الاشتعال» للشيب واشتُقّ منه الفعل ﴿اشْتَعَلَ﴾. فالمستعار منه: اشتعال النار، والمستعار له: انتشار الشيب وبياضه، والاستعارة في الفعل فهي تبعية تصريحية. ووجهٌ بلاغيٌّ زائد: أنّه أسند الاشتعال إلى ﴿الرَّأْسُ﴾ كلِّه لا إلى الشيب وحده، فأفاد شمولَ الشيب الرأسَ جميعَه واستيعابَه له، وهو أبلغ من «اشتعل شيبُ الرأس». وأمّا نصب ﴿شَيْبًا﴾ على التمييز فأفاد تفسيرَ نسبةِ الاشتعال المُبهَمة وتعيينَ جهتها (أنّه اشتعالُ شيبٍ لا اشتعالُ نار)، مع ما في تأخيره من التشويق ثمّ البيان، وإفادةِ العموم والمبالغة.",
+   "a_en": "It is an explicit derived metaphor (istiʿāra taṣrīḥiyya tabaʿiyya): the spread of grey through the head is likened to the spreading blaze and gleam of fire — the shared trait being rapid, all-encompassing spread together with luminous whiteness — and the word \"blazing\" is borrowed for greying, the verb ﴿ishtaʿala﴾ being derived from it. Borrowed-from: the blazing of fire; borrowed-for: the spread and whiteness of grey hair; since it lies in a verb, the metaphor is \"derived\" and explicit. An added merit: the blazing is predicated of ﴿the head﴾ as a whole rather than of the greyness alone, conveying that grey has overtaken and pervaded the entire head — more eloquent than \"the greyness of the head blazed.\" And placing ﴿shayban﴾ as an accusative specifier (tamyīz) resolves the otherwise ambiguous relation of \"blazing,\" pinning down its aspect (a blazing of grey, not of fire), while its deferral creates suspense then clarification and conveys comprehensiveness and hyperbole.",
+   "answer": "استعارة تصريحية تبعية: استُعير «الاشتعال» (المستعار منه: النار) لانتشار الشيب وبياضه (المستعار له). وإسناد الاشتعال إلى ﴿الرَّأْسُ﴾ يفيد شمول الشيب للرأس كله، ونصب ﴿شَيْبًا﴾ تمييزٌ مُفسِّرٌ لنسبة الاشتعال مع التشويق والمبالغة. (Explicit derived metaphor; \"head blazed\" = grey pervading the whole head; shayban = clarifying tamyīz.)",
+   "keywords": [
+    "اشتعل الرأس شيبا",
+    "الاستعارة التصريحية",
+    "استعارة تبعية",
+    "مريم",
+    "التمييز",
+    "tamyīz",
+    "metaphor",
+    "بلاغة القرآن"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "قال تعالى في وصف القيامة: ﴿يَوْمَ تَرَوْنَهَا تَذْهَلُ كُلُّ مُرْضِعَةٍ عَمَّا أَرْضَعَتْ﴾ (الحج ٢)، فعبّر بـ﴿مُرْضِعَةٍ﴾ دون «مُرْضِع». وقال في موضع آخر: ﴿وَالْوَالِدَاتُ يُرْضِعْنَ أَوْلَادَهُنَّ﴾ (البقرة ٢٣٣) ولم يقل «المرضعات». بيّن الفرق الصرفي-الدلالي الدقيق بين «مُرضِع» و«مُرضِعة»، وعلّل لماذا اختِيرت ﴿مُرْضِعَةٍ﴾ (بالتاء) في آية الحج على وجه الإعجاز.",
+   "q_en": "Describing the Resurrection, Allah says ﴿yawma tarawnahā tadhhalu kullu murḍiʿatin ʿammā arḍaʿat﴾ — \"the Day you see it, every nursing mother (murḍiʿa) will forget the child she nurses\" (al-Ḥajj 2), using ﴿murḍiʿa﴾ (with tāʾ) rather than \"murḍiʿ.\" Elsewhere He says ﴿and mothers nurse their children﴾ (al-Baqara 233) without \"al-murḍiʿāt.\" Explain the precise morpho-semantic difference between \"murḍiʿ\" and \"murḍiʿa,\" and justify why ﴿murḍiʿa﴾ (with the tāʾ) is the miraculously exact choice in the Ḥajj verse.",
+   "a_ar": "القاعدة الصرفية-الدلالية عند البلاغيين: أنّ «مُرضِع» (بلا تاء) وصفٌ للمرأة باعتبار الشأن والصفة الثابتة، أي التي من شأنها الإرضاع وإن لم تكن مُلابِسةً للفعل حينئذٍ (كالنسب والحرفة)؛ أمّا «مُرضِعة» (بالتاء) فوصفٌ لها حال مباشرتها الفعل فعلًا، أي الملتقِمُ ثديَها الطفلُ في تلك اللحظة. وفي آية الحج أُريد تصويرُ هول القيامة بأنه يُذهِل المرأةَ في أشدّ حالات تعلّقها بولدها، وهي لحظةُ إرضاعِها له فعلًا والتقامِه ثديَها، فجيء بـ﴿مُرْضِعَةٍ﴾ بالتاء لتدلّ على المباشِرة للإرضاع حال الفزع، فتُلقي ولدها من فمه ذهولًا؛ ولو قيل «مُرضِع» لأفاد مجردَ من شأنها الإرضاع لا المباشِرةَ له، فيفوت تصويرُ الهول في أدقّ لحظاته. وأمّا في البقرة فالمقام مقامُ بيان حكمٍ عامٍّ للأمهات من حيث الشأن، فناسبه ﴿الْوَالِدَاتُ﴾ الدالُّ على الجنس والصفة الثابتة لا على لحظة المباشرة.",
+   "a_en": "The morpho-semantic rule of the rhetoricians: \"murḍiʿ\" (without tāʾ) describes a woman by disposition or fixed attribute — one whose role/nature is nursing, even if not actually nursing at that instant (like a trade or kinship); whereas \"murḍiʿa\" (with tāʾ) describes her in the very act, the woman whose breast the infant is suckling at that moment. In the Ḥajj verse the aim is to depict the Resurrection's terror as so overwhelming that it distracts a woman even at the peak of her attachment to her child — the very instant she is actively nursing him with the breast in his mouth. Hence ﴿murḍiʿa﴾ with the tāʾ, denoting the woman engaged in the act amid the panic, so that she casts the child from her breast in sheer distraction; had \"murḍiʿ\" been used it would denote merely one disposed to nurse, not one in the act, and the terror's most acute instant would be lost. In al-Baqara, by contrast, the context states a general ruling about mothers by their standing, so ﴿al-wālidāt﴾ — denoting the class and fixed attribute rather than the moment of the act — is fitting.",
+   "answer": "«مُرضِع» تصف المرأة بالشأن/الصفة الثابتة (من شأنها الإرضاع)، و«مُرضِعة» بالتاء تصفها حال مباشرة الإرضاع فعلًا. فاختِيرت ﴿مُرْضِعَةٍ﴾ في الحج لتصوير الهول لحظةَ الإرضاع الفعلي فتُذهِل الأمَّ عن رضيعها في أشدّ حالات التعلّق. (murḍiʿ = dispositional; murḍiʿa = in-the-act; Ḥajj needs the actual nursing instant for maximal terror.)",
+   "keywords": [
+    "مرضع ومرضعة",
+    "تاء التأنيث",
+    "الحج",
+    "تذهل كل مرضعة",
+    "الوالدات يرضعن",
+    "morpho-semantic",
+    "صرف ودلالة",
+    "إعجاز"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

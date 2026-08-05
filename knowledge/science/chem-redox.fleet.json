@@ -1,0 +1,179 @@
+{
+ "subject": "science",
+ "topic": "chem-redox",
+ "title": "chem-redox — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "وازِن التفاعل التالي في وسط مائي حمضي، وحدِّد عدد الإلكترونات المنتقلة لكل وحدة صيغة من الأكسالات: يؤكسد أيون البرمنغنات أيون الأكسالات، $MnO_4^- + C_2O_4^{2-} \\rightarrow Mn^{2+} + CO_2$.",
+   "q_en": "Balance the following reaction in acidic aqueous solution and state the electrons transferred per formula unit of oxalate: permanganate ion oxidizes oxalate ion, $MnO_4^- + C_2O_4^{2-} \\rightarrow Mn^{2+} + CO_2$.",
+   "a_ar": "نصفا التفاعل: الاختزال $MnO_4^- + 8H^+ + 5e^- \\rightarrow Mn^{2+} + 4H_2O$؛ والأكسدة $C_2O_4^{2-} \\rightarrow 2CO_2 + 2e^-$. تفقد كل أكسالات إلكترونين (الكربون ينتقل من $+3$ إلى $+4$). بموازنة الإلكترونات (المضاعف المشترك 10، بالضرب ×2 و×5) نحصل على $2MnO_4^- + 5C_2O_4^{2-} + 16H^+ \\rightarrow 2Mn^{2+} + 10CO_2 + 8H_2O$. التحقق من الشحنة: اليسار $-2-10+16=+4$، اليمين $+4$. ✓",
+   "a_en": "Half-reactions: reduction $MnO_4^- + 8H^+ + 5e^- \\rightarrow Mn^{2+} + 4H_2O$; oxidation $C_2O_4^{2-} \\rightarrow 2CO_2 + 2e^-$. Each oxalate loses 2 electrons (C goes $+3 \\rightarrow +4$). Balancing electrons with LCM 10 (×2 and ×5) gives $2MnO_4^- + 5C_2O_4^{2-} + 16H^+ \\rightarrow 2Mn^{2+} + 10CO_2 + 8H_2O$. Charge check: left $-2-10+16=+4$, right $+4$. ✓",
+   "answer": "$2MnO_4^- + 5C_2O_4^{2-} + 16H^+ \\rightarrow 2Mn^{2+} + 10CO_2 + 8H_2O$; 2 electrons transferred per oxalate.",
+   "keywords": [
+    "موازنة الأكسدة والاختزال",
+    "permanganate",
+    "oxalate",
+    "acidic medium",
+    "half-reaction",
+    "برمنغنات",
+    "balancing redox"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "للخلية $Zn(s)\\,|\\,Zn^{2+}(0.10\\,M)\\,||\\,Cu^{2+}(1.0\\times10^{-3}\\,M)\\,|\\,Cu(s)$ حيث $E^\\circ_{cell}=+1.10\\,V$ عند $298\\,K$، احسب جهد الخلية باستخدام معادلة نرنست ($\\frac{RT}{F}\\ln = 0.0592\\log$).",
+   "q_en": "For the cell $Zn(s)\\,|\\,Zn^{2+}(0.10\\,M)\\,||\\,Cu^{2+}(1.0\\times10^{-3}\\,M)\\,|\\,Cu(s)$ with $E^\\circ_{cell}=+1.10\\,V$ at $298\\,K$, calculate the cell potential using the Nernst equation ($\\frac{RT}{F}\\ln = 0.0592\\log$).",
+   "a_ar": "تفاعل الخلية: $Zn + Cu^{2+} \\rightarrow Zn^{2+} + Cu$، $n=2$، $Q=\\frac{[Zn^{2+}]}{[Cu^{2+}]}=\\frac{0.10}{1.0\\times10^{-3}}=100$. بمعادلة نرنست: $E=E^\\circ-\\frac{0.0592}{2}\\log Q = 1.10 - 0.0296\\times\\log(100) = 1.10 - 0.0296\\times2 = 1.10 - 0.0592$. إذن $E \\approx 1.041\\,V$.",
+   "a_en": "Cell reaction: $Zn + Cu^{2+} \\rightarrow Zn^{2+} + Cu$, $n=2$, $Q=\\frac{[Zn^{2+}]}{[Cu^{2+}]}=\\frac{0.10}{1.0\\times10^{-3}}=100$. Nernst: $E=E^\\circ-\\frac{0.0592}{2}\\log Q = 1.10 - 0.0296\\times\\log(100) = 1.10 - 0.0296\\times2 = 1.10 - 0.0592$. Thus $E \\approx 1.041\\,V$.",
+   "answer": "$E_{cell} \\approx +1.04\\,V$ (1.041 V)",
+   "keywords": [
+    "معادلة نرنست",
+    "Nernst equation",
+    "cell potential",
+    "خلية جلفانية",
+    "حاصل التفاعل Q",
+    "Daniell cell",
+    "جهد الخلية"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أوجد متوسط حالة أكسدة الكبريت في أيون رباعي الثيونات $S_4O_6^{2-}$، وفسِّر لماذا تكون هذه القيمة غير صحيحة (كسرية).",
+   "q_en": "Determine the average oxidation state of sulfur in the tetrathionate ion $S_4O_6^{2-}$, and explain why this value is non-integer.",
+   "a_ar": "لتكن حالة الأكسدة المتوسطة للكبريت $x$؛ والأكسجين $-2$. المجموع: $4x + 6(-2) = -2 \\Rightarrow 4x = 10 \\Rightarrow x = +2.5$. القيمة كسرية لأنها متوسط: بنيويًّا، ذرّتا الكبريت الطرفيتان المرتبطتان بالأكسجين في الحالة $+5$، بينما ذرّتا الكبريت المركزيتان (في سلسلة S–S–S–S، المرتبطتان بالكبريت فقط) في الحالة $0$، فيكون المتوسط $+2.5$.",
+   "a_en": "Let the average oxidation state of S be $x$; oxygen is $-2$. Sum: $4x + 6(-2) = -2 \\Rightarrow 4x = 10 \\Rightarrow x = +2.5$. The value is non-integer because it is an average: structurally the two terminal S atoms bonded to oxygens are in the $+5$ state, while the two central S atoms (in the S–S–S–S chain, bonded only to sulfur) are in the $0$ state, averaging to $+2.5$.",
+   "answer": "$+2.5$ (average); structurally: two S at $+5$ and two S at $0$.",
+   "keywords": [
+    "حالة الأكسدة",
+    "oxidation state",
+    "tetrathionate",
+    "رباعي الثيونات",
+    "average oxidation number",
+    "الكبريت",
+    "non-integer"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "بمعلومية $E^\\circ(Fe^{3+}/Fe^{2+})=+0.771\\,V$ و $E^\\circ(Fe^{2+}/Fe)=-0.447\\,V$، احسب الجهد القياسي $E^\\circ(Fe^{3+}/Fe)$. (ملاحظة: الجهود القياسية لا تُجمع مباشرةً.)",
+   "q_en": "Given $E^\\circ(Fe^{3+}/Fe^{2+})=+0.771\\,V$ and $E^\\circ(Fe^{2+}/Fe)=-0.447\\,V$, calculate the standard potential $E^\\circ(Fe^{3+}/Fe)$. (Note: standard potentials are not directly additive.)",
+   "a_ar": "لأن $\\Delta G^\\circ = -nFE^\\circ$ قابل للجمع بينما $E^\\circ$ ليس كذلك، ندمج عبر $n E^\\circ$. للزوج $Fe^{3+}/Fe^{2+}$: $n_1=1$؛ وللزوج $Fe^{2+}/Fe$: $n_2=2$؛ وللزوج $Fe^{3+}/Fe$: $n_3=3$. إذن $3E^\\circ_3 = 1(0.771) + 2(-0.447) = 0.771 - 0.894 = -0.123$، ومنه $E^\\circ_3 = -0.123/3 = -0.041\\,V$.",
+   "a_en": "Because $\\Delta G^\\circ = -nFE^\\circ$ is additive but $E^\\circ$ is not, combine via $n E^\\circ$. For $Fe^{3+}/Fe^{2+}$: $n_1=1$; for $Fe^{2+}/Fe$: $n_2=2$; for $Fe^{3+}/Fe$: $n_3=3$. Then $3E^\\circ_3 = 1(0.771) + 2(-0.447) = 0.771 - 0.894 = -0.123$. So $E^\\circ_3 = -0.123/3 = -0.041\\,V$.",
+   "answer": "$E^\\circ(Fe^{3+}/Fe) = -0.041\\,V$",
+   "keywords": [
+    "الجهد القياسي",
+    "standard electrode potential",
+    "free energy additivity",
+    "دورة لاتيمر",
+    "Latimer",
+    "non-additive potentials",
+    "حديد"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لتفاعل خلية دانيال $Zn(s) + Cu^{2+}(aq) \\rightarrow Zn^{2+}(aq) + Cu(s)$ حيث $E^\\circ_{cell}=+1.10\\,V$ و $n=2$ عند $298\\,K$، احسب ثابت الاتزان $K$ باستخدام $\\log K = \\frac{nE^\\circ}{0.0592}$.",
+   "q_en": "For the Daniell cell reaction $Zn(s) + Cu^{2+}(aq) \\rightarrow Zn^{2+}(aq) + Cu(s)$ with $E^\\circ_{cell}=+1.10\\,V$ and $n=2$ at $298\\,K$, calculate the equilibrium constant $K$ using $\\log K = \\frac{nE^\\circ}{0.0592}$.",
+   "a_ar": "عند الاتزان $E=0$، فيكون $E^\\circ = \\frac{0.0592}{n}\\log K$. إذن $\\log K = \\frac{nE^\\circ}{0.0592} = \\frac{2\\times1.10}{0.0592} = \\frac{2.20}{0.0592} = 37.16$. ومنه $K = 10^{37.16} \\approx 1.4\\times10^{37}$، مما يؤكد أن التفاعل يكتمل عمليًّا بالكامل.",
+   "a_en": "At equilibrium $E=0$, so $E^\\circ = \\frac{0.0592}{n}\\log K$. Thus $\\log K = \\frac{nE^\\circ}{0.0592} = \\frac{2\\times1.10}{0.0592} = \\frac{2.20}{0.0592} = 37.16$. Therefore $K = 10^{37.16} \\approx 1.4\\times10^{37}$, confirming the reaction goes essentially to completion.",
+   "answer": "$K \\approx 1.4\\times10^{37}$ (log K ≈ 37.2)",
+   "keywords": [
+    "ثابت الاتزان",
+    "equilibrium constant",
+    "standard cell potential",
+    "خلية دانيال",
+    "log K",
+    "electrochemistry",
+    "الجهد القياسي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لنصف التفاعل $\\mathrm{Cr_2O_7^{2-} + 14H^+ + 6e^- \\rightarrow 2Cr^{3+} + 7H_2O}$ حيث $E^\\circ = +1.33\\ \\text{V}$، احسب جهد الاختزال $E$ عند 25 °م عندما يكون $[\\mathrm{Cr_2O_7^{2-}}] = [\\mathrm{Cr^{3+}}] = 1\\ \\text{M}$ و$\\mathrm{pH} = 2.00$. استخدم $\\frac{RT}{F}\\ln 10 = 0.0592\\ \\text{V}$.",
+   "q_en": "For the half-reaction $\\mathrm{Cr_2O_7^{2-} + 14H^+ + 6e^- \\rightarrow 2Cr^{3+} + 7H_2O}$ with $E^\\circ = +1.33\\ \\text{V}$, calculate the reduction potential $E$ at 25 °C when $[\\mathrm{Cr_2O_7^{2-}}] = [\\mathrm{Cr^{3+}}] = 1\\ \\text{M}$ and $\\mathrm{pH} = 2.00$. Use $\\frac{RT}{F}\\ln 10 = 0.0592\\ \\text{V}$.",
+   "a_ar": "تعطي معادلة نرنست $E = E^\\circ - \\frac{0.0592}{6}\\log\\frac{[\\mathrm{Cr^{3+}}]^2}{[\\mathrm{Cr_2O_7^{2-}}][\\mathrm{H^+}]^{14}}$. وبما أن التراكيز تساوي 1 مول/لتر و$[\\mathrm{H^+}] = 10^{-2}$، فإن حاصل التفاعل $Q = \\frac{1}{(10^{-2})^{14}} = 10^{28}$. إذن $E = 1.33 - \\frac{0.0592}{6}(28) = 1.33 - 0.276 = 1.05\\ \\text{V}$. الاعتماد القوي على الأس الهيدروجيني (14 بروتونًا مقابل 6 إلكترونات) يخفض الجهد بمقدار 0.276 فولت.",
+   "a_en": "The Nernst equation gives $E = E^\\circ - \\frac{0.0592}{6}\\log\\frac{[\\mathrm{Cr^{3+}}]^2}{[\\mathrm{Cr_2O_7^{2-}}][\\mathrm{H^+}]^{14}}$. With the concentrations equal to 1 M and $[\\mathrm{H^+}] = 10^{-2}$, the reaction quotient is $Q = \\frac{1}{(10^{-2})^{14}} = 10^{28}$. Thus $E = 1.33 - \\frac{0.0592}{6}(28) = 1.33 - 0.276 = 1.05\\ \\text{V}$. The strong pH dependence (14 protons over 6 electrons) drops the potential by 0.276 V.",
+   "answer": "$E \\approx 1.05\\ \\text{V}$",
+   "keywords": [
+    "Nernst",
+    "dichromate",
+    "ثنائي كرومات",
+    "pH dependence",
+    "جهد اختزال",
+    "reduction potential",
+    "الأس الهيدروجيني"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "بمعلومية الجهود القياسية $\\mathrm{Cu^{2+} + e^- \\rightarrow Cu^+},\\ E^\\circ = +0.153\\ \\text{V}$ و$\\mathrm{Cu^+ + e^- \\rightarrow Cu},\\ E^\\circ = +0.521\\ \\text{V}$، حدد ما إذا كان $\\mathrm{Cu^+}$ يخضع لعدم التناسب (disproportionation) في المحلول المائي، واحسب ثابت الاتزان $K$ للتفاعل $\\mathrm{2Cu^+ \\rightarrow Cu^{2+} + Cu}$ عند 25 °م.",
+   "q_en": "Given the standard potentials $\\mathrm{Cu^{2+} + e^- \\rightarrow Cu^+},\\ E^\\circ = +0.153\\ \\text{V}$ and $\\mathrm{Cu^+ + e^- \\rightarrow Cu},\\ E^\\circ = +0.521\\ \\text{V}$, determine whether $\\mathrm{Cu^+}$ disproportionates in aqueous solution and calculate the equilibrium constant $K$ for $\\mathrm{2Cu^+ \\rightarrow Cu^{2+} + Cu}$ at 25 °C.",
+   "a_ar": "في تفاعل عدم التناسب، يُختزل $\\mathrm{Cu^+}$ (مصعد الكاثود، $E^\\circ = 0.521$) ويُؤكسد (المصعد الأنود، $\\mathrm{Cu^{2+}/Cu^+}$، $E^\\circ = 0.153$). إذن $E^\\circ_{\\text{cell}} = 0.521 - 0.153 = +0.368\\ \\text{V} > 0$، ما يعني أن التفاعل تلقائي وأن $\\mathrm{Cu^+}$ يخضع فعلًا لعدم التناسب. وبما أن $n = 1$: $\\log K = \\frac{nE^\\circ_{\\text{cell}}}{0.0592} = \\frac{0.368}{0.0592} = 6.22$، ومنه $K \\approx 1.6\\times10^{6}$.",
+   "a_en": "In the disproportionation, $\\mathrm{Cu^+}$ is reduced (cathode, $E^\\circ = 0.521$) and oxidized (anode, $\\mathrm{Cu^{2+}/Cu^+}$, $E^\\circ = 0.153$). So $E^\\circ_{cell} = 0.521 - 0.153 = +0.368\\ \\text{V} > 0$, meaning the reaction is spontaneous and $\\mathrm{Cu^+}$ does disproportionate. With $n = 1$: $\\log K = \\frac{nE^\\circ_{cell}}{0.0592} = \\frac{0.368}{0.0592} = 6.22$, giving $K \\approx 1.6\\times10^{6}$.",
+   "answer": "Yes, it disproportionates; $E^\\circ_{cell}=+0.368\\ \\text{V}$, $K \\approx 1.6\\times10^{6}$",
+   "keywords": [
+    "disproportionation",
+    "عدم التناسب",
+    "copper",
+    "نحاس",
+    "equilibrium constant",
+    "ثابت الاتزان",
+    "standard potential"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يخضع الفسفور الأبيض لعدم التناسب في قاعدة ساخنة مركّزة ليعطي الفوسفين ($\\mathrm{PH_3}$) والهيبوفوسفيت ($\\mathrm{H_2PO_2^-}$). وازن معادلة الأكسدة والاختزال في الوسط القاعدي: $\\mathrm{P_4 + OH^- + H_2O \\rightarrow PH_3 + H_2PO_2^-}$.",
+   "q_en": "White phosphorus disproportionates in hot concentrated base to give phosphine ($\\mathrm{PH_3}$) and hypophosphite ($\\mathrm{H_2PO_2^-}$). Balance the redox equation in basic medium: $\\mathrm{P_4 + OH^- + H_2O \\rightarrow PH_3 + H_2PO_2^-}$.",
+   "a_ar": "يتغير الفسفور من $0$ إلى $-3$ في $\\mathrm{PH_3}$ (اكتساب 3 إلكترونات) ومن $0$ إلى $+1$ في $\\mathrm{H_2PO_2^-}$ (فقدان إلكترون واحد). موازنة الإلكترونات تتطلب أكسدة 3 ذرات مقابل اختزال ذرة واحدة، وهو ما يوافق ذرات $\\mathrm{P_4}$ الأربع (ذرة تُختزل : 3 تُؤكسد). المعادلة الموزونة هي $\\mathrm{P_4 + 3OH^- + 3H_2O \\rightarrow PH_3 + 3H_2PO_2^-}$. التحقق: الفسفور $4=4$، الهيدروجين $3+6=3+6=9$، الأكسجين $3+3=6$، الشحنة $-3=-3$. كل شيء محفوظ.",
+   "a_en": "Phosphorus goes from $0$ to $-3$ in $\\mathrm{PH_3}$ (gain 3 e⁻) and from $0$ to $+1$ in $\\mathrm{H_2PO_2^-}$ (lose 1 e⁻). Balancing electrons requires 3 atoms oxidized per 1 atom reduced, matching the 4 P atoms of $\\mathrm{P_4}$ (1 reduced : 3 oxidized). The balanced equation is $\\mathrm{P_4 + 3OH^- + 3H_2O \\rightarrow PH_3 + 3H_2PO_2^-}$. Check: P $4=4$, H $3+6=3+6=9$, O $3+3=6$, charge $-3=-3$. All conserved.",
+   "answer": "$\\mathrm{P_4 + 3OH^- + 3H_2O \\rightarrow PH_3 + 3H_2PO_2^-}$",
+   "keywords": [
+    "balancing redox",
+    "موازنة",
+    "disproportionation",
+    "عدم التناسب",
+    "phosphine",
+    "فوسفين",
+    "hypophosphite",
+    "basic medium"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "بمعلومية $\\mathrm{Ag^+ + e^- \\rightarrow Ag},\\ E^\\circ = +0.800\\ \\text{V}$ و$\\mathrm{AgCl + e^- \\rightarrow Ag + Cl^-},\\ E^\\circ = +0.222\\ \\text{V}$، أوجد ثابت حاصل الذوبان $K_{sp}$ لكلوريد الفضة $\\mathrm{AgCl}$ عند 25 °م. استخدم $0.0592\\ \\text{V}$ للمقدار $\\frac{RT}{F}\\ln 10$.",
+   "q_en": "Given $\\mathrm{Ag^+ + e^- \\rightarrow Ag},\\ E^\\circ = +0.800\\ \\text{V}$ and $\\mathrm{AgCl + e^- \\rightarrow Ag + Cl^-},\\ E^\\circ = +0.222\\ \\text{V}$, determine the solubility product $K_{sp}$ of $\\mathrm{AgCl}$ at 25 °C. Use $0.0592\\ \\text{V}$ for $\\frac{RT}{F}\\ln 10$.",
+   "a_ar": "يساوي نصف تفاعل $\\mathrm{AgCl/Ag}$ مجموع $\\mathrm{Ag^+ + e^- \\rightarrow Ag}$ و$\\mathrm{AgCl \\rightarrow Ag^+ + Cl^-}$ (الذوبان، بثابت $K_{sp}$). وبجمع طاقات جيبس نحصل على $E^\\circ_{\\mathrm{AgCl/Ag}} = E^\\circ_{\\mathrm{Ag^+/Ag}} + 0.0592\\log K_{sp}$. إذن $\\log K_{sp} = \\frac{0.222 - 0.800}{0.0592} = \\frac{-0.578}{0.0592} = -9.76$، ومنه $K_{sp} = 10^{-9.76} \\approx 1.7\\times10^{-10}$.",
+   "a_en": "The $\\mathrm{AgCl/Ag}$ half-reaction equals the sum of $\\mathrm{Ag^+ + e^- \\rightarrow Ag}$ and $\\mathrm{AgCl \\rightarrow Ag^+ + Cl^-}$ (dissolution, constant $K_{sp}$). Adding free energies gives $E^\\circ_{\\mathrm{AgCl/Ag}} = E^\\circ_{\\mathrm{Ag^+/Ag}} + 0.0592\\log K_{sp}$. Thus $\\log K_{sp} = \\frac{0.222 - 0.800}{0.0592} = \\frac{-0.578}{0.0592} = -9.76$, giving $K_{sp} = 10^{-9.76} \\approx 1.7\\times10^{-10}$.",
+   "answer": "$K_{sp} \\approx 1.7\\times10^{-10}$",
+   "keywords": [
+    "solubility product",
+    "حاصل الذوبان",
+    "AgCl",
+    "كلوريد الفضة",
+    "electrode potential",
+    "Ksp",
+    "جهد قطب"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "مخطط لاتيمر للأكسجين في الوسط الحمضي هو $\\mathrm{O_2}\\ \\xrightarrow{0.695\\,\\text{V}}\\ \\mathrm{H_2O_2}\\ \\xrightarrow{1.763\\,\\text{V}}\\ \\mathrm{H_2O}$. (أ) أوجد $E^\\circ$ للتفاعل $\\mathrm{O_2 + 4H^+ + 4e^- \\rightarrow 2H_2O}$. (ب) حدد ما إذا كان $\\mathrm{H_2O_2}$ يخضع لعدم التناسب واحسب $\\Delta G^\\circ$ للتفاعل $\\mathrm{2H_2O_2 \\rightarrow 2H_2O + O_2}$. ($F = 96485\\ \\text{C·mol}^{-1}$)",
+   "q_en": "The Latimer diagram for oxygen in acid solution is $\\mathrm{O_2}\\ \\xrightarrow{0.695\\,\\text{V}}\\ \\mathrm{H_2O_2}\\ \\xrightarrow{1.763\\,\\text{V}}\\ \\mathrm{H_2O}$. (a) Find $E^\\circ$ for $\\mathrm{O_2 + 4H^+ + 4e^- \\rightarrow 2H_2O}$. (b) Determine whether $\\mathrm{H_2O_2}$ disproportionates and compute $\\Delta G^\\circ$ for $\\mathrm{2H_2O_2 \\rightarrow 2H_2O + O_2}$. ($F = 96485\\ \\text{C·mol}^{-1}$)",
+   "a_ar": "(أ) كل خطوة تتضمن إلكترونين؛ وبالدمج على 4 إلكترونات نحصل على المتوسط المرجّح $E^\\circ = \\frac{2(0.695) + 2(1.763)}{4} = \\frac{4.916}{4} = 1.229\\ \\text{V}$. (ب) بما أن الجهد إلى يمين $\\mathrm{H_2O_2}$ (1.763) أكبر من الجهد إلى يساره (0.695)، فإن $\\mathrm{H_2O_2}$ يخضع لعدم التناسب. وبمعاملته كخلية: الكاثود $\\mathrm{H_2O_2\\rightarrow H_2O}$ (1.763) ناقص الأنود $\\mathrm{O_2/H_2O_2}$ (0.695) يعطي $E^\\circ_{\\text{cell}} = 1.068\\ \\text{V}$، و$n=2$. إذن $\\Delta G^\\circ = -nFE^\\circ = -2(96485)(1.068) \\approx -2.06\\times10^{5}\\ \\text{J} = -206\\ \\text{kJ}$.",
+   "a_en": "(a) Each step involves 2 e⁻; combining over 4 e⁻ gives the weighted average $E^\\circ = \\frac{2(0.695) + 2(1.763)}{4} = \\frac{4.916}{4} = 1.229\\ \\text{V}$. (b) Since the potential to the right of $\\mathrm{H_2O_2}$ (1.763) exceeds that to the left (0.695), $\\mathrm{H_2O_2}$ disproportionates. Treating it as a cell: cathode $\\mathrm{H_2O_2\\rightarrow H_2O}$ (1.763) minus anode $\\mathrm{O_2/H_2O_2}$ (0.695) gives $E^\\circ_{cell} = 1.068\\ \\text{V}$, $n=2$. So $\\Delta G^\\circ = -nFE^\\circ = -2(96485)(1.068) \\approx -2.06\\times10^{5}\\ \\text{J} = -206\\ \\text{kJ}$.",
+   "answer": "(a) $E^\\circ = 1.229\\ \\text{V}$; (b) yes, disproportionates, $\\Delta G^\\circ \\approx -206\\ \\text{kJ}$",
+   "keywords": [
+    "Latimer diagram",
+    "مخطط لاتيمر",
+    "hydrogen peroxide",
+    "فوق أكسيد الهيدروجين",
+    "disproportionation",
+    "عدم التناسب",
+    "Gibbs energy",
+    "طاقة جيبس"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

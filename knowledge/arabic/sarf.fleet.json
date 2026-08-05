@@ -1,0 +1,133 @@
+{
+ "subject": "arabic",
+ "topic": "sarf",
+ "title": "sarf — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "زِن الكلمة «عِدة» (من الفعل وعَدَ يَعِدُ) على الميزان الصرفي، مبيّنًا التغيير الذي طرأ على الميزان وسببه.",
+   "q_en": "Give the morphological measure (mīzān) of the word «ʿida» (from the verb waʿada / yaʿidu), explaining the change that affects the measure and its cause.",
+   "a_ar": "أصل «عِدة» هو «وِعْدة» على وزن «فِعْلة»، فالفاء هي الواو. حُذفت الفاء (الواو) لوقوعها في المضارع «يَعِدُ» بين ياءٍ مكسورٍ ما قبلها وكسرة، فحُملت المصادر والمشتقات على ذلك الحذف، ثم عُوِّض عنها بتاء التأنيث. وبما أنّ المحذوف من الكلمة هو الفاء، يُحذف ما يقابله في الميزان وهو الفاء، فيصير الوزن «عِلَة». فوزن «عِدة» هو $\\text{عِلَة}$.",
+   "a_en": "The origin of «ʿida» is «wiʿda» on the pattern «fiʿla», the fāʾ being the wāw. The fāʾ (wāw) was deleted because in the present tense «yaʿidu» it fell between a preceding kasra-bearing yāʾ and a kasra; the noun/derivatives followed this deletion, and the tāʾ marbūṭa was added as compensation. Since the deleted letter corresponds to the fāʾ of the root, the fāʾ is likewise dropped from the measure, giving «ʿila». Thus the measure of «ʿida» is $\\text{ʿila}$.",
+   "answer": "وزنها: عِلَة (حُذفت الفاء وهي الواو، فحُذف ما يقابلها في الميزان)",
+   "keywords": [
+    "الميزان الصرفي",
+    "mīzān",
+    "عِدة",
+    "حذف الفاء",
+    "المثال الواوي",
+    "waʿada",
+    "إعلال بالحذف",
+    "فِعْلة"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "استخرج التغييرات الإعلالية التي حدثت في صوغ فعل الأمر «قُلْ» من الفعل «قالَ» (الأصل ق و ل)، ثم زِنه على الميزان الصرفي.",
+   "q_en": "Trace the phonological (iʿlāl) changes that produced the imperative «qul» from the verb «qāla» (root q-w-l), then give its morphological measure.",
+   "a_ar": "أصل الأمر «اُقْوُلْ» على وزن «اُفْعُلْ». أولًا: نُقلت حركة العين (ضمة الواو) إلى الساكن الصحيح قبلها فصار «اُقُوْلْ» (إعلال بالنقل). ثانيًا: التقى ساكنان (الواو الساكنة واللام الساكنة للأمر) فحُذفت الواو (إعلال بالحذف) فصار «قُلْ»، ثم استُغني عن همزة الوصل لتحرّك أوّل الكلمة. والمحذوف هو عين الكلمة (الواو)، فيُحذف ما يقابلها في الميزان، فيصير الوزن $\\text{فُلْ}$.",
+   "a_en": "The imperative's origin is «uqwul» on the pattern «ufʿul». First, the vowel of the ʿayn (the ḍamma on the wāw) is transferred to the preceding sound consonant, giving «uquwl» (iʿlāl by transfer). Second, two vowelless letters meet (the vowelless wāw and the vowelless lām of the imperative), so the wāw is deleted (iʿlāl by deletion), giving «qul»; the conjunctive hamza is then dropped since the word now begins with a vowel. Because the deleted letter is the ʿayn (the wāw), the corresponding letter is dropped from the measure, giving $\\text{ful}$.",
+   "answer": "التسلسل: اُقْوُلْ ← اُقُوْلْ (نقل) ← قُلْ (حذف الواو لالتقاء الساكنين). الوزن: فُلْ",
+   "keywords": [
+    "إعلال بالنقل",
+    "إعلال بالحذف",
+    "قُلْ",
+    "الأمر",
+    "الأجوف",
+    "التقاء الساكنين",
+    "mīzān",
+    "فُلْ"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "بيّن نوع الإبدال في كلمة «اصطبر» (من الفعل صبَر على وزن افتعل)، وما القاعدة التي أوجبته؟ ثم زِنها.",
+   "q_en": "Identify the substitution (ibdāl) in the word «iṣṭabara» (from ṣabara on the pattern iftaʿala), state the rule that requires it, and give its measure.",
+   "a_ar": "أصل الكلمة «اصتبر» على وزن «افتعل»، فتاء الافتعال جاءت بعد الصاد. والقاعدة: إذا وقعت تاء الافتعال بعد حرفٍ من حروف الإطباق (الصاد، الضاد، الطاء، الظاء) أُبدلت التاء طاءً لتناسب الإطباق. فأُبدلت التاء طاءً فصارت «اصطبر». وهذا إبدالٌ صرفيٌّ واجب. والوزن يبقى على أصله لأنّ التغيير في حرفٍ زائدٍ (تاء الافتعال) لا في الأصول، فوزنها $\\text{افْطَعَلَ}$ نطقًا وأصلها الميزاني «افْتَعَلَ».",
+   "a_en": "The origin is «iṣtabara» on the pattern «iftaʿala», the tāʾ of iftiʿāl coming after the ṣād. The rule: when the tāʾ of iftiʿāl follows an emphatic (muṭbaq) letter — ṣād, ḍād, ṭāʾ, ẓāʾ — the tāʾ is changed to ṭāʾ to match the emphasis. So the tāʾ became ṭāʾ, yielding «iṣṭabara». This is an obligatory morphological substitution. The measure stays as «iftaʿala» because the change is in an added letter (the tāʾ of iftiʿāl), not in the root, so its pattern is «iftaʿala» (realized phonetically as «iftaʿala» → iṣṭabara).",
+   "answer": "إبدال تاء الافتعال طاءً بعد الصاد (حرف إطباق) وجوبًا؛ الوزن: افْتَعَلَ",
+   "keywords": [
+    "الإبدال",
+    "ibdāl",
+    "تاء الافتعال",
+    "اصطبر",
+    "حروف الإطباق",
+    "افتعل",
+    "إبدال صرفي",
+    "صبر"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "صُغ اسم الفاعل من الفعل «قامَ» (ق و م)، مبيّنًا الإعلال الحاصل، ثم زِنه على الميزان الصرفي.",
+   "q_en": "Form the active participle (ism al-fāʿil) of the verb «qāma» (q-w-m), explaining the iʿlāl involved, then give its measure.",
+   "a_ar": "اسم الفاعل من الثلاثي على وزن «فاعِل»، فأصله «قاوِم». وقعت الواو (وهي عين الكلمة) بعد ألفٍ زائدةٍ وهي متحركةٌ بالكسر، والقاعدة أنّ حرف العلة إذا وقع عينًا لاسم فاعلٍ أجوفَ وكان متحركًا أصلُه أُبدل همزةً، فأُبدلت الواو همزةً فصار «قائِم» (إعلال بالإبدال). والوزن: بما أنّ المُبدَل عينُ الكلمة، تبقى العين في الميزان همزةً معبَّرًا عنها بالعين الأصلية، فوزن «قائِم» هو $\\text{فاعِل}$.",
+   "a_en": "The active participle of a triliteral is on «fāʿil», so the origin is «qāwim». The wāw (the ʿayn of the root) fell after an added alif and carried a kasra; the rule is that a weak letter occurring as the ʿayn of a hollow verb's active participle, when originally moving, is changed to hamza. So the wāw became hamza, giving «qāʾim» (iʿlāl by substitution). As for the measure: since the substituted letter is the ʿayn of the root, it is still represented by the ʿayn of the pattern, so «qāʾim» is on $\\text{fāʿil}$.",
+   "answer": "اسم الفاعل: قائِم (أصله قاوِم، أُبدلت الواو همزةً)؛ الوزن: فاعِل",
+   "keywords": [
+    "اسم الفاعل",
+    "ism al-fāʿil",
+    "قائم",
+    "إعلال بالإبدال",
+    "الأجوف",
+    "فاعِل",
+    "إبدال الواو همزة",
+    "اشتقاق"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "«مَقُول» و«مَبِيع» اسما مفعولٍ من «قال» و«باع». بيّن الإعلال الحاصل في كلٍّ منهما وزِنهما، موضّحًا سبب اختلاف الحركة قبل حرف العلة.",
+   "q_en": "«maqūl» and «mabīʿ» are passive participles (ism al-mafʿūl) from «qāla» and «bāʿa». Explain the iʿlāl in each and give their measures, clarifying why the vowel before the weak letter differs.",
+   "a_ar": "اسم المفعول من الأجوف على وزن «مَفْعُول». أصل الأول «مَقْوُول»، والتقى ساكنان بعد نقل الحركة، فحُذفت واو «مَفْعُول» الزائدة عند الجمهور (مذهب البصريين)، فصار «مَقُول» بضمّ القاف موافقةً لأصل الواو. أمّا الثاني فأصله «مَبْيُوع»، نُقلت حركة الياء ثمّ حُذفت واو مفعول لالتقاء الساكنين، فصار «مَبِيع»، وكُسِرت الباء (بدل الضمّ) لتصحّ الياء وتسلم من الانقلاب واوًا. فالمحذوف واو «مفعول» الزائدة، والوزن في كلٍّ منهما $\\text{مَفْعُول}$ محذوفَ الواو، ويُعبَّر عنه بـ «مَفُعْل» تقديرًا؛ والأدقّ أنّ وزنهما «مَفُول» بحذف عين الميزان لا يصحّ، بل الصواب أنّ المحذوف واو الوزن الزائدة فيبقى الوزن مَفْعُلًا: «مَقُول» على «مَفُعْل» و«مَبِيع» على «مَفِعْل».",
+   "a_en": "The passive participle of a hollow verb is on «mafʿūl». The first, «maqwūl» in origin, after transfer of the vowel had two vowelless letters meet, so the added wāw of «mafʿūl» was deleted (the Basran view), giving «maqūl» with ḍamma on the qāf matching the original wāw. The second, «mabyūʿ» in origin, had the yāʾ's vowel transferred, then the wāw of mafʿūl deleted for the meeting of two vowelless letters, giving «mabīʿ»; the bāʾ took kasra (instead of ḍamma) so the yāʾ would remain sound and not turn into wāw. The deleted letter is the added wāw of «mafʿūl», so «maqūl» is on «mafuʿl» and «mabīʿ» on «mafiʿl» (the wāw of the pattern being deleted).",
+   "answer": "مَقُول: أصله مَقْوُول ← حذف واو مفعول ← وزنه مَفُعْل (ضم الفاء). مَبِيع: أصله مَبْيُوع ← نقل ثم حذف واو مفعول وكسر ما قبل الياء ← وزنه مَفِعْل (كسر الفاء). المحذوف في كليهما واو الزيادة في مفعول.",
+   "keywords": [
+    "اسم المفعول",
+    "ism al-mafʿūl",
+    "مقول",
+    "مبيع",
+    "إعلال بالحذف",
+    "مفعول",
+    "الأجوف",
+    "نقل الحركة"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "الفعل «اتَّصَلَ» أصلُه «اوْتَصَلَ» على وزن «افْتَعَلَ» من الجذر (و ص ل). بيِّن نوعَ التغيير الذي وقع في فاء الكلمة، وهل هو إعلالٌ أم إبدال، ثم زِن «اتَّصَلَ» بالميزان الصرفي.",
+   "q_en": "The verb «ittaṣala» derives from «iwtaṣala» on the pattern «iftaʿala» from the root (w-ṣ-l). Explain the change affecting the first radical (fāʾ), whether it is iʿlāl or ibdāl, then give the morphological measure of «ittaṣala».",
+   "a_ar": "الفاء واوٌ ساكنة وقعت قبل تاء الافتعال. القاعدة أنّ فاءَ «افتعل» إذا كانت واوًا أو ياءً قُلبت تاءً وأُدغمت في تاء الافتعال. فالأصل «اوْتَصَلَ» ← أُبدلت الواو تاءً فصار «اتْتَصَلَ» ← أُدغمت التاءان فصار «اتَّصَلَ». وهذا إبدالٌ لا إعلال؛ لأنّ القلب هنا إلى حرفٍ صحيح (التاء) وليس إلى حرف علة، والإبدالُ جعلُ حرفٍ مكان آخر مطلقًا. ويبقى الوزنُ «افْتَعَلَ» لأنّ التاء الأولى بدلٌ من الفاء والثانية هي تاء الافتعال، فالتاء المشدَّدة تقابل (فاء + تاء الزيادة).",
+   "a_en": "The fāʾ is a silent wāw preceding the tāʾ of iftiʿāl. The rule: when the fāʾ of «iftaʿala» is wāw or yāʾ, it is converted to tāʾ and assimilated into the augmentative tāʾ. So «iwtaṣala» → the wāw becomes tāʾ giving «ittaṣala» (ittaṣala underlying «ittaṣala») → the two tāʾs assimilate to «ittaṣala». This is ibdāl, not iʿlāl, because the substitution is into a sound consonant (tāʾ), not a weak letter; ibdāl is replacing one letter by another absolutely. The measure stays «iftaʿala», since the first tāʾ replaces the fāʾ and the second is the augmentative tāʾ — the doubled tāʾ corresponds to (fāʾ + augmentative tāʾ).",
+   "answer": "إبدالٌ لا إعلال: اوْتَصَلَ ← اتْتَصَلَ (إبدال الواو تاءً) ← اتَّصَلَ (إدغام)؛ الوزن: افْتَعَلَ.",
+   "keywords": [
+    "الإبدال",
+    "اتصل",
+    "افتعل",
+    "ibdāl",
+    "tāʾ al-iftiʿāl",
+    "المثال الواوي",
+    "الإدغام",
+    "اوتصل"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "صُغْ اسمَ المفعول من الفعل الأجوف «صَامَ» ومن الفعل «قَادَ»، مبيِّنًا الإعلالَ الواقع، ثم فرِّق بين اسم المفعول من الأجوف الواوي والأجوف اليائي في وزنه.",
+   "q_en": "Form the passive participle (ism al-mafʿūl) of the hollow verbs «ṣāma» (to fast) and «qāda» (to lead), explaining the iʿlāl, then distinguish the passive participle of a wāw-hollow verb from a yāʾ-hollow verb in its form.",
+   "a_ar": "اسم المفعول على وزن «مَفْعُول»؛ فأصلُ اسم المفعول من «صام» (جذره ص و م) هو «مَصْوُوم»، ومن «قاد» (جذره ق و د) هو «مَقْوُود». وقع إعلالٌ بالنقل والحذف: نُقلت ضمّةُ الواو (عين الكلمة) إلى الساكن قبلها، فالتقى ساكنان (الواوان) فحُذفت واوُ العين، فصار «مَصُوم» و«مَقُود». والنتيجة أنّ الأجوفَ الواويَّ يخرج اسمُ مفعوله على «مَفُول» ظاهرًا بواوٍ واحدة مضموم ما قبلها، وكذا اليائيُّ لكنّ عينَه المحذوفة ياء؛ فمن «باع» (ب ي ع): «مَبْيُوع» ← «مَبِيع» بكسر ما قبل الياء. فالفارق: الواويُّ يُبقي الضمّةَ (مَصُوم/مَقُود)، واليائيُّ تُقلب فيه الضمّةُ كسرةً لمناسبة الياء (مَبِيع/مَكِيل).",
+   "a_en": "The passive participle is on «mafʿūl». For «ṣāma» (root ṣ-w-m) the underlying form is «maṣwūm», and for «qāda» (root q-w-d) it is «maqwūd». Transfer-and-deletion iʿlāl occurs: the ḍamma of the wāw (middle radical) is transferred to the preceding silent letter, producing two adjacent silent wāws, so the radical wāw is deleted, giving «maṣūm» and «maqūd». As a result, a wāw-hollow verb's passive participle surfaces as «mafūl» with a single wāw preceded by ḍamma; a yāʾ-hollow verb behaves likewise but with its deleted middle being yāʾ — e.g. «bāʿa» (b-y-ʿ): «mabyūʿ» → «mabīʿ», with a kasra before the yāʾ. The distinction: the wāw type keeps the ḍamma (maṣūm/maqūd), while the yāʾ type changes the ḍamma to kasra to suit the yāʾ (mabīʿ/makīl).",
+   "answer": "مَصُوم (أصله مَصْوُوم) ومَقُود (أصله مَقْوُود) بإعلال النقل والحذف؛ الأجوف الواوي: مَفُول بضمّ ما قبل الواو (مَصُوم)، واليائي: مَفِيل بكسر ما قبل الياء (مَبِيع).",
+   "keywords": [
+    "اسم المفعول",
+    "الأجوف",
+    "الإعلال بالحذف",
+    "مصوم",
+    "مبيع",
+    "ism al-mafʿūl",
+    "hollow verb",
+    "مفعول"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

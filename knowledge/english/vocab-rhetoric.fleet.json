@@ -1,0 +1,148 @@
+{
+ "subject": "english",
+ "topic": "vocab-rhetoric",
+ "title": "vocab-rhetoric — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "حدّد الصورة البلاغية المحددة في بيت كولريدج \"The western wave was all aflame\" (كانت الموجة الغربية كلها متأججة) وفي عبارة \"the White House announced\" (البيت الأبيض أعلن، بمعنى الرئيس/الإدارة). هل هما الأداة نفسها؟ وإن لم يكونا كذلك، فسمِّ كل واحدة بدقة واذكر الفرق.",
+   "q_en": "Identify the specific figure of speech in Coleridge's line \"The western wave was all aflame\" AND in the phrase \"the White House announced\" (meaning the President/administration). Are they the same device? If not, name each precisely and state the distinction.",
+   "a_ar": "هما ليسا الأداة نفسها. \"The western wave was all aflame\" استعارة (metaphor): يُوصَف احمرار البحر الناري وقت الغروب وكأنه مشتعل حقيقةً — تشبيه ضمني قائم على المشابهة (اللون/التوهّج) دون تجاور واقعي. أما \"The White House announced\" فهي مجاز مرسل بعلاقة المجاورة (metonymy): المبنى يحلّ محل المؤسسة/الأشخاص المرتبطين به بعلاقة واقعية (مجاورة) لا مشابهة. الفرق الجوهري: الاستعارة تستبدل بناءً على التشابه، والكناية/المجاز المرسل تستبدل بناءً على المجاورة والاقتران. (وليست synecdoche لأن المبنى ليس جزءاً من الرئيس.)",
+   "a_en": "They are NOT the same device. \"The western wave was all aflame\" is a metaphor: the sea's fiery red at sunset is described as literally being on fire — an implied comparison based on resemblance (color/brilliance), with no real contiguity. \"The White House announced\" is metonymy: the building stands for the institution/people associated with it by real-world association (contiguity), not resemblance. Key distinction: metaphor substitutes on the basis of similarity; metonymy substitutes on the basis of contiguity/association. (The White House case is often classed as a subtype, but it is metonymy, not synecdoche, since a whole building is not a part of the President.)",
+   "answer": "Metaphor (aflame) vs. metonymy (White House); not the same — similarity vs. contiguity.",
+   "keywords": [
+    "metaphor",
+    "metonymy",
+    "استعارة",
+    "مجاز مرسل",
+    "synecdoche",
+    "figure of speech",
+    "contiguity"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "غالباً ما يُساء استعمال التعبير الاصطلاحي \"to steal someone's thunder\" ليعني مجرد \"التفوق على أحد في الظهور\". اذكر معناه الاصطلاحي الدقيق المستقر وأصله التاريخي الحرفي. ثم اختر الجملة التي استعملته استعمالاً صحيحاً: (أ) \"She stole his thunder by wearing a brighter dress.\" (ب) \"By announcing the results early, the manager stole the committee's thunder.\"",
+   "q_en": "The idiom \"to steal someone's thunder\" is often misused to mean simply \"to upstage.\" Give its precise established meaning and the literal historical origin. Then choose the sentence that uses it correctly: (a) \"She stole his thunder by wearing a brighter dress.\" (b) \"By announcing the results early, the manager stole the committee's thunder.\"",
+   "a_ar": "المعنى الدقيق: أن ينتزع المرء لنفسه الفضل أو الانتباه أو الثناء الذي أعدّه غيره أو كان من حقه — تحديداً باستباقه إلى فكرة الآخر أو طريقته أو إعلانه. الأصل: المسرحي جون دينيس (مطلع القرن الثامن عشر) ابتكر جهازاً لإحداث صوت الرعد لمسرحيته؛ فشلت المسرحية، ثم سمع مؤثّره الصوتي مستخدماً في عرض لمسرحية مكبث، فاحتجّ قائلاً إنهم \"سرقوا رعده\". الجملة الصحيحة: (ب) — المدير استبق إعلان اللجنة نفسه فانتزع الفضل/الأثر الذي أعدّته. أما (أ) فمجرد تفوّق في المظهر لا انتزاع لفكرة أو فضل مُعَدّ، فهو الاستعمال الفضفاض غير الدقيق.",
+   "a_en": "Precise meaning: to take for oneself the credit, attention, or praise that another had prepared or was due to receive — specifically by using their own idea/method/announcement first. Origin: playwright John Dennis (early 1700s) invented a thunder-making device for his play; the play flopped, but he later heard his sound effect used in a production of Macbeth and reportedly protested that they had \"stolen his thunder.\" Correct sentence: (b) — the manager pre-empts the committee's own announcement, taking the credit/impact they had prepared. (a) is mere upstaging by appearance, not taking a prepared idea/credit, so it is the loose/incorrect use.",
+   "answer": "Means: take credit/attention another had prepared, by pre-empting their idea; origin: John Dennis's thunder device used in Macbeth. Correct: (b).",
+   "keywords": [
+    "steal one's thunder",
+    "idiom",
+    "John Dennis",
+    "تعبير اصطلاحي",
+    "سرقة الرعد",
+    "Macbeth",
+    "idiom origin"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "ميّز بين المترادفات المتقاربة \"fortuitous\" و\"fortunate\" و\"felicitous\"، وحدّد أيّها الأكثر تعرّضاً للانزياح الدلالي (يُساء استعماله مرادفاً لغيره). ثم املأ الفراغ بالكلمة الصحيحة تماماً في الاستعمال المدقّق: \"The playwright's ___ choice of words made the dialogue sparkle.\"",
+   "q_en": "Distinguish the near-synonyms \"fortuitous,\" \"fortunate,\" and \"felicitous,\" and identify which one is most commonly the victim of semantic drift (misused as a synonym for another). Then fill the blank with the word that is strictly correct in careful usage: \"The playwright's ___ choice of words made the dialogue sparkle.\"",
+   "a_ar": "\"Fortuitous\" تعني بدقة الحدوث بالمصادفة/العَرَض (محايدة تجاه الخير أو الشر)، من اللاتينية fors أي المصادفة. \"Fortunate\" تعني محظوظ، صاحب حظ حسن. \"Felicitous\" تعني مُحسَن الاختيار، مناسب وبديع الملاءمة (للألفاظ/التعبير)، من اللاتينية felix أي سعيد. أكثرها انزياحاً دلالياً هي \"fortuitous\"، إذ صارت تُستعمل خطأً بمعنى \"محظوظ\" بسبب تشابه الصوت وكون أحداث المصادفة غالباً مُرحَّباً بها. الملء الصحيح تماماً هو \"felicitous\"، لأن الجملة تمدح ملاءمة اختيار الألفاظ وبراعتها لا الحظ أو المصادفة.",
+   "a_en": "\"Fortuitous\" strictly means happening by chance/accident (neutral as to good or bad), from Latin fors 'chance.' \"Fortunate\" means lucky, having good fortune. \"Felicitous\" means well-chosen, apt, and pleasingly appropriate (of words/expression), from Latin felix 'happy.' The most commonly drifted word is \"fortuitous,\" now widely misused to mean \"fortunate/lucky\" through confusion of sound and the frequent overlap of chance events being welcome. The strictly correct fill is \"felicitous,\" because the sentence praises the aptness/appropriateness of the word choice, not luck or chance.",
+   "answer": "felicitous; and \"fortuitous\" is the word most commonly drifted (misused to mean \"fortunate\").",
+   "keywords": [
+    "fortuitous",
+    "felicitous",
+    "fortunate",
+    "semantic drift",
+    "انزياح دلالي",
+    "near-synonyms",
+    "register"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "سمِّ الأسلوب البلاغي (scheme) في قول تشرشل \"We shall fight on the beaches, we shall fight on the landing grounds, we shall fight in the fields...\" — أي تكرار \"we shall fight\" في بداية الجُمل المتتالية. ثم سمِّ الأسلوب المختلف في \"Government of the people, by the people, for the people\" حيث تتكرر \"the people\" في النهاية. اذكر المصطلحين اليونانيَّي الأصل.",
+   "q_en": "Name the rhetorical scheme in Churchill's \"We shall fight on the beaches, we shall fight on the landing grounds, we shall fight in the fields...\" — the repetition of \"we shall fight\" at the START of successive clauses. Then name the DIFFERENT scheme in \"Government of the people, by the people, for the people,\" where \"the people\" repeats at the END. Give both Greek-derived terms.",
+   "a_ar": "مثال تشرشل هو anaphora (التصدير/رد العجز على الصدر بالبدء): تكرار اللفظ نفسه في بداية الجُمل أو العبارات المتتالية (من اليونانية بمعنى الحمل إلى الوراء/الأعلى). مثال لنكولن هو epistrophe (ويُسمى أيضاً epiphora): تكرار اللفظ نفسه في نهاية الجُمل المتتالية (من اليونانية بمعنى الالتفاف/العَود). وهما متقابلان متكاملان؛ والنص الذي يجمعهما معاً (البدء والختام) يُسمى symploce. الجوابان: anaphora (التكرار الابتدائي) وepistrophe/epiphora (التكرار الختامي).",
+   "a_en": "The Churchill example is anaphora: repetition of the same word(s) at the beginning of successive clauses/phrases (Greek 'a carrying back/up'). The Lincoln example is epistrophe (also called epiphora): repetition of the same word(s) at the end of successive clauses (Greek 'a turning about'). They are complementary opposites; a passage using both together (beginning and end) would be symploce. Answers: anaphora (initial repetition) and epistrophe/epiphora (terminal repetition).",
+   "answer": "Anaphora (initial repetition) for Churchill; epistrophe (a.k.a. epiphora) (terminal repetition) for Lincoln.",
+   "keywords": [
+    "anaphora",
+    "epistrophe",
+    "epiphora",
+    "symploce",
+    "rhetorical scheme",
+    "تكرار بلاغي",
+    "Churchill",
+    "Lincoln"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "كثيراً ما تُعامَل كلمة \"enormity\" كمرادف بسيط لـ\"enormousness\" (الحجم الهائل). في المستوى اللغوي المدقّق/الرسمي، ما معناها التقليدي الدقيق، ولماذا تُعدّ عبارة \"the enormity of the stadium\" خطأً استعمالياً عند المدقّقين المتشددين؟ وأعد صياغتها صحيحةً إذا كان المقصود مجرد الحجم.",
+   "q_en": "The word \"enormity\" is frequently treated as a mere synonym for \"enormousness\" (great size). In careful/formal register, what is its precise traditional meaning, and why is \"the enormity of the stadium\" considered a usage error by strict authorities? Rewrite it correctly if the intended meaning is sheer size.",
+   "a_ar": "تقليدياً وفي المستوى المدقّق، تعني \"enormity\" صفة الفظاعة أو الشناعة الأخلاقية البالغة أو الجريمة/الفظيعة الجسيمة (مثل \"the enormity of the atrocities\") — فهي محمَّلة بشحنة أخلاقية لا بقياس حجم. أما \"enormousness\" (أو ببساطة \"size\" و\"immensity\" و\"vastness\") فتدل على الضخامة المجردة. وتُخطَّأ عبارة \"the enormity of the stadium\" لأن الملعب ليس فظاعة أخلاقية؛ فاستعمال \"enormity\" لمجرد الضخامة يخلط بين الجسامة الأخلاقية والمقياس المادي. الصياغة الصحيحة (للحجم): \"the enormousness of the stadium\"، أو أفصح تعبيراً: \"the immense/vast size of the stadium\".",
+   "a_en": "Traditionally and in careful register, \"enormity\" means the quality of being monstrous, extreme moral wickedness, or a grave crime/outrage (e.g., \"the enormity of the atrocities\") — it carries a moral charge, not a size measurement. \"Enormousness\" (or simply \"size,\" \"immensity,\" \"vastness\") denotes sheer magnitude. \"The enormity of the stadium\" is faulted because a stadium is not a moral outrage; using \"enormity\" for neutral bigness confuses moral gravity with physical scale. Correct rewrite (for size): \"the enormousness of the stadium,\" or better idiomatically, \"the immense/vast size of the stadium.\"",
+   "answer": "Enormity = monstrous wickedness/a grave outrage (moral), not size. \"The enormity of the stadium\" wrongly applies a moral term to mere size; correct: \"the enormousness/immense size of the stadium.\"",
+   "keywords": [
+    "enormity",
+    "enormousness",
+    "usage error",
+    "register",
+    "دلالة أخلاقية",
+    "immensity",
+    "strict usage",
+    "semantic distinction"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في الجملة \"أعلن البيت الأبيض عقوبات جديدة، ووافق داونينغ ستريت بسرعة\"، فإن \"البيت الأبيض\" و\"داونينغ ستريت\" كلاهما صورة بلاغية. (أ) سمِّ الصورة البلاغية بدقة. (ب) هي نوع فرعي من مجاز أوسع — سمِّ ذلك المجاز الأوسع واشرح العلاقة الدقيقة (المجاورة مقابل الجزء عن الكل) التي تصنّفها. برّر لماذا ليست مجازاً مرسلاً بعلاقة الجزئية (synecdoche).",
+   "q_en": "In the sentence \"The White House announced new sanctions, and Downing Street quickly agreed,\" both \"The White House\" and \"Downing Street\" are figures of speech. (a) Name the specific figure precisely. (b) It is a subtype of a broader trope — name that broader trope and explain the exact relationship (contiguity vs. part-for-whole) that classifies it. Justify why it is NOT synecdoche.",
+   "a_ar": "(أ) الصورة المحددة هي كناية المكان/المقرّ عن المؤسسة (metonymy) — اسم مبنى يقوم مقام الحكومة التي يؤويها. (ب) المجاز الأوسع هو الكناية (metonymy)، التي تستبدل لفظاً بشيء يرتبط به بعلاقة المجاورة (الاقتران لا المشابهة ولا الاندراج تحت الجنس). العلاقة هنا مكانية اقترانية: المقرّ مقترن بالحكومة لكنه ليس جزءاً منها. وليست synecdoche لأن الأخيرة تتطلب علاقة الجزء بالكل (أو النوع بالجنس)؛ فجدارُ المبنى يكون synecdoche عن المبنى، أما المبنى نفسه فليس \"جزءاً\" مكوّناً للمؤسسة المجرّدة بل مجاورٌ لها. لذا فهي metonymy لا synecdoche.",
+   "a_en": "(a) The specific figure is metonymy of place/seat for institution — a building's name standing for the government housed in it. (b) The broader trope is metonymy, which substitutes a term for something to which it is related by contiguity (association, not resemblance or class-membership). Here the relation is spatial/associative: the residence is associated with, but is not a part of, the government. It is not synecdoche because synecdoche requires a part-whole (or genus-species) relation — a wall of the building would be synecdoche for the building, but the building is not a component 'part' of the abstract institution; it is merely contiguous with it. Hence metonymy, not synecdoche.",
+   "answer": "(a) Metonymy (specifically the seat/building-for-institution type). (b) Broader trope: metonymy, based on contiguity/association; not synecdoche because that requires a part-for-whole (or genus/species) relation, and the building is contiguous with — not a constituent part of — the institution.",
+   "keywords": [
+    "metonymy",
+    "synecdoche",
+    "كناية",
+    "مجاز مرسل",
+    "contiguity",
+    "المجاورة",
+    "trope",
+    "figure of speech"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "كثيراً ما يُخلَط بين كلمتَي \"enervate\" و\"innervate\". (أ) اذكر المعنى الدقيق لكلٍّ منهما. (ب) إحداهما تُساء استعمالها كثيراً بمعنى معاكس لمعناها الحقيقي — حدِّدها واذكر المعنى الشائع الخاطئ والمعنى الصحيح. (ج) اذكر الجذور اللاتينية/اليونانية التي تفسّر المعنيين الحقيقيين.",
+   "q_en": "The words \"enervate\" and \"innervate\" are frequently confused. (a) Give the precise meaning of each. (b) One is very commonly misused to mean the OPPOSITE of its true sense — identify which and state both the erroneous popular sense and the correct sense. (c) Give the Latin/Greek roots that explain the true meanings.",
+   "a_ar": "(أ) \"Enervate\" تعني يُوهِن ويستنزف الطاقة والحيوية؛ و\"innervate\" تعني يُمِدّ (عضواً أو نسيجاً) بالأعصاب أو بالتنبيه العصبي. (ب) الكلمة التي يُساء استعمالها هي \"enervate\": بسبب تشابهها مع \"energize\"/\"nerve\" يظن الناس خطأً أنها تعني \"يُنشِّط ويُفعِم بالحيوية\"، بينما معناها الصحيح هو العكس — يُضعِف ويجرّد من القوة. (ج) \"Enervate\" من اللاتينية enervare، من e-/ex- \"خارج\" + nervus \"عصب/وتر\"، أي حرفياً \"ينزع الوتر\" ومن ثمّ يُضعِف. و\"innervate\" من in- \"إلى الداخل\" + nervus، أي يُمِدّ بالأعصاب.",
+   "a_en": "(a) \"Enervate\" means to weaken, drain of energy or vitality; \"innervate\" means to supply (an organ/tissue) with nerves or nervous stimulation. (b) \"Enervate\" is the commonly misused one: because it resembles \"energize\"/\"nerve,\" people wrongly take it to mean \"to energize or invigorate,\" whereas its correct sense is the opposite — to enfeeble or deprive of strength. (c) \"Enervate\" is from Latin enervare, from e-/ex- \"out of\" + nervus \"sinew, nerve\" — literally \"to remove the sinew,\" hence to weaken. \"Innervate\" is from in- \"into\" + nervus, i.e., to furnish with nerves.",
+   "answer": "enervate = to weaken/drain of vitality (from ex- + nervus, \"remove the sinew\"); innervate = to supply with nerves (from in- + nervus). \"Enervate\" is the one commonly misused to mean the opposite (\"to energize\"); its true sense is \"to weaken.\"",
+   "keywords": [
+    "enervate",
+    "innervate",
+    "نيرفوس nervus",
+    "إضعاف",
+    "تنشيط خاطئ",
+    "etymology",
+    "false meaning",
+    "register"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "حدِّد المصطلح البلاغي الدقيق الواحد لكل أداة: (أ) \"لا تسأل ما الذي يمكن أن يفعله وطنك من أجلك — بل اسأل ما الذي يمكنك فعله من أجل وطنك\" (عكس البنية النحوية في جملتين متتاليتين). (ب) \"الطفلُ أبو الرجل\" (وردزورث) — الصورة التي تعبّر عن حقيقة لافتة تبدو متناقضة مع نفسها. (ج) \"جئتُ، رأيتُ، انتصرتُ\" (Veni, vidi, vici) — حذف أدوات العطف بين العناصر المتعاطفة.",
+   "q_en": "Identify the single precise rhetorical term for each device: (a) \"Ask not what your country can do for you — ask what you can do for your country\" (the inversion of grammatical structure in successive clauses). (b) \"The child is father of the man\" (Wordsworth) — the figure expressing a striking, seemingly self-contradictory truth. (c) \"Veni, vidi, vici\" — the omission of conjunctions between coordinate elements.",
+   "a_ar": "(أ) التصالب (chiasmus)، وعلى وجه الدقة antimetabole: تكرار الكلمات نفسها بترتيب نحوي معكوس (\"ما يفعله وطنك لك\" ↔ \"ما تفعله أنت لوطنك\"). (ب) المفارقة/التناقض الظاهري (paradox): عبارة تبدو متناقضة مع ذاتها لكنها تحمل حقيقة (شخصية الرجل يصوغها الطفلُ الذي كانه، فكأن الطفل \"أبٌ\" له). (ج) حذف حروف العطف (asyndeton): إسقاط أدوات الربط عمداً بين الكلمات/الجمل. أدقّ المصطلحات المفردة: antimetabole وparadox وasyndeton.",
+   "a_en": "(a) Chiasmus — specifically antimetabole, the repetition of words in reversed grammatical order (\"what your country can do for you\" ↔ \"what you can do for your country\"). (b) Paradox — a statement that appears self-contradictory yet expresses a truth (the man's character is shaped by, hence 'fathered' by, the child he was). (c) Asyndeton — the deliberate omission of conjunctions between clauses/words. The most exact single terms: antimetabole, paradox, asyndeton.",
+   "answer": "(a) Antimetabole (a form of chiasmus). (b) Paradox. (c) Asyndeton.",
+   "keywords": [
+    "antimetabole",
+    "chiasmus",
+    "التصالب",
+    "paradox",
+    "المفارقة",
+    "asyndeton",
+    "حذف العطف",
+    "figures of speech"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

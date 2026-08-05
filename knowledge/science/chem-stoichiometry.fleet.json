@@ -1,0 +1,187 @@
+{
+ "subject": "science",
+ "topic": "chem-stoichiometry",
+ "title": "chem-stoichiometry — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "في تفاعل الثرميت $2\\,\\mathrm{Al} + \\mathrm{Fe_2O_3} \\rightarrow \\mathrm{Al_2O_3} + 2\\,\\mathrm{Fe}$، يُشعَل خليط من $54.0\\,\\text{g}$ من الألمنيوم و$180.0\\,\\text{g}$ من $\\mathrm{Fe_2O_3}$. حدِّد الكاشف المحدِّد، واحسب المردود النظري للحديد، وإذا نتج فعليًا $88.0\\,\\text{g}$ من الحديد فأوجد النسبة المئوية للمردود. (الكتل المولية: Al $=26.98$، $\\mathrm{Fe_2O_3}=159.69$، Fe $=55.85\\ \\mathrm{g\\,mol^{-1}}$.)",
+   "q_en": "In the thermite reaction $2\\,\\mathrm{Al} + \\mathrm{Fe_2O_3} \\rightarrow \\mathrm{Al_2O_3} + 2\\,\\mathrm{Fe}$, a mixture of $54.0\\,\\text{g}$ of Al and $180.0\\,\\text{g}$ of $\\mathrm{Fe_2O_3}$ is ignited. Identify the limiting reagent, calculate the theoretical yield of iron, and if $88.0\\,\\text{g}$ of Fe is actually obtained, find the percent yield. (Molar masses: Al $=26.98$, $\\mathrm{Fe_2O_3}=159.69$, Fe $=55.85\\ \\mathrm{g\\,mol^{-1}}$.)",
+   "a_ar": "عدد المولات: $n_{\\mathrm{Al}} = 54.0/26.98 = 2.001\\,\\text{mol}$، $n_{\\mathrm{Fe_2O_3}} = 180.0/159.69 = 1.127\\,\\text{mol}$. لاستهلاك كل $\\mathrm{Fe_2O_3}$ نحتاج $2(1.127)=2.254\\,\\text{mol}$ من Al، لكن المتوفر $2.001\\,\\text{mol}$ فقط، إذن الألمنيوم هو الكاشف المحدِّد. من نسبة $2\\!:\\!2$ يكون $n_{\\mathrm{Fe}} = n_{\\mathrm{Al}} = 2.001\\,\\text{mol}$، فيكون المردود النظري $2.001 \\times 55.85 = 111.8\\,\\text{g}$. والنسبة المئوية للمردود $= 88.0/111.8 \\times 100 = 78.7\\%$.",
+   "a_en": "Moles: $n_{\\mathrm{Al}} = 54.0/26.98 = 2.001\\,\\text{mol}$, $n_{\\mathrm{Fe_2O_3}} = 180.0/159.69 = 1.127\\,\\text{mol}$. To consume all $\\mathrm{Fe_2O_3}$ we need $2(1.127)=2.254\\,\\text{mol}$ Al, but only $2.001\\,\\text{mol}$ is present, so Al is the limiting reagent. From the $2\\!:\\!2$ ratio, $n_{\\mathrm{Fe}} = n_{\\mathrm{Al}} = 2.001\\,\\text{mol}$, giving a theoretical yield $2.001 \\times 55.85 = 111.8\\,\\text{g}$. Percent yield $= 88.0/111.8 \\times 100 = 78.7\\%$.",
+   "answer": "Limiting reagent: Al; theoretical yield $= 111.8\\,\\text{g}$ Fe; percent yield $= 78.7\\%$.",
+   "keywords": [
+    "limiting reagent",
+    "الكاشف المحدد",
+    "percent yield",
+    "المردود المئوي",
+    "thermite",
+    "الثرميت",
+    "theoretical yield",
+    "stoichiometry"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يعطي الاحتراق التام لِـ $2.40\\,\\text{g}$ من مركّب يحتوي على C وH وO فقط $3.52\\,\\text{g}$ من $\\mathrm{CO_2}$ و$1.44\\,\\text{g}$ من $\\mathrm{H_2O}$. الكتلة المولية للمركّب $180\\ \\mathrm{g\\,mol^{-1}}$. أوجد الصيغتين الأوّلية (التجريبية) والجزيئية. (الكتل المولية: C $=12.01$، H $=1.008$، O $=16.00$، $\\mathrm{CO_2}=44.01$، $\\mathrm{H_2O}=18.02$.)",
+   "q_en": "Complete combustion of $2.40\\,\\text{g}$ of a compound containing only C, H, and O gives $3.52\\,\\text{g}$ of $\\mathrm{CO_2}$ and $1.44\\,\\text{g}$ of $\\mathrm{H_2O}$. The molar mass of the compound is $180\\ \\mathrm{g\\,mol^{-1}}$. Determine its empirical and molecular formulas. (Molar masses: C $=12.01$, H $=1.008$, O $=16.00$, $\\mathrm{CO_2}=44.01$, $\\mathrm{H_2O}=18.02$.)",
+   "a_ar": "مولات C $= 3.52/44.01 = 0.0800\\,\\text{mol}$ ($0.960\\,\\text{g}$ من C)؛ مولات H $= 2(1.44/18.02) = 0.1599\\,\\text{mol}$ ($0.161\\,\\text{g}$ من H). كتلة O $= 2.40 - 0.960 - 0.161 = 1.279\\,\\text{g}$، فيكون $n_{\\mathrm{O}} = 1.279/16.00 = 0.0799\\,\\text{mol}$. النسبة $\\mathrm{C\\!:\\!H\\!:\\!O} = 0.0800\\!:\\!0.1599\\!:\\!0.0799 \\approx 1\\!:\\!2\\!:\\!1$، فالصيغة الأوّلية $\\mathrm{CH_2O}$ (كتلتها $30.03$). وبما أن $180/30.03 \\approx 6$ فإن الصيغة الجزيئية هي $\\mathrm{C_6H_{12}O_6}$.",
+   "a_en": "Moles of C $= 3.52/44.01 = 0.0800\\,\\text{mol}$ ($0.960\\,\\text{g}$ C); moles of H $= 2(1.44/18.02) = 0.1599\\,\\text{mol}$ ($0.161\\,\\text{g}$ H). Mass of O $= 2.40 - 0.960 - 0.161 = 1.279\\,\\text{g}$, so $n_{\\mathrm{O}} = 1.279/16.00 = 0.0799\\,\\text{mol}$. Ratio $\\mathrm{C\\!:\\!H\\!:\\!O} = 0.0800\\!:\\!0.1599\\!:\\!0.0799 \\approx 1\\!:\\!2\\!:\\!1$, giving empirical formula $\\mathrm{CH_2O}$ (mass $30.03$). Since $180/30.03 \\approx 6$, the molecular formula is $\\mathrm{C_6H_{12}O_6}$.",
+   "answer": "Empirical formula $\\mathrm{CH_2O}$; molecular formula $\\mathrm{C_6H_{12}O_6}$.",
+   "keywords": [
+    "empirical formula",
+    "الصيغة الأولية",
+    "molecular formula",
+    "الصيغة الجزيئية",
+    "combustion analysis",
+    "تحليل الاحتراق",
+    "glucose",
+    "احتراق"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "يُنتَج معدن الزنك على خطوتين: (1) $2\\,\\mathrm{ZnS} + 3\\,\\mathrm{O_2} \\rightarrow 2\\,\\mathrm{ZnO} + 2\\,\\mathrm{SO_2}$ و(2) $\\mathrm{ZnO} + \\mathrm{C} \\rightarrow \\mathrm{Zn} + \\mathrm{CO}$. انطلاقًا من $97.5\\,\\text{g}$ من ZnS النقي، تجري الخطوة الأولى بمردود $90.0\\%$ والثانية بمردود $85.0\\%$. ما كتلة الزنك الناتجة؟ (الكتل المولية: ZnS $=97.44$، Zn $=65.38\\ \\mathrm{g\\,mol^{-1}}$.)",
+   "q_en": "Zinc metal is produced in two steps: (1) $2\\,\\mathrm{ZnS} + 3\\,\\mathrm{O_2} \\rightarrow 2\\,\\mathrm{ZnO} + 2\\,\\mathrm{SO_2}$ and (2) $\\mathrm{ZnO} + \\mathrm{C} \\rightarrow \\mathrm{Zn} + \\mathrm{CO}$. Starting from $97.5\\,\\text{g}$ of pure ZnS, step 1 proceeds with $90.0\\%$ yield and step 2 with $85.0\\%$ yield. What mass of Zn is obtained? (Molar masses: ZnS $=97.44$, Zn $=65.38\\ \\mathrm{g\\,mol^{-1}}$.)",
+   "a_ar": "المولات الابتدائية $n_{\\mathrm{ZnS}} = 97.5/97.44 = 1.0006\\,\\text{mol}$. كلتا الخطوتين بنسبة مولية $1\\!:\\!1$ (ZnS→ZnO→Zn)، فتتضاعف المردودات مباشرةً. مولات Zn $= 1.0006 \\times 0.900 \\times 0.850 = 0.7655\\,\\text{mol}$. الكتلة $= 0.7655 \\times 65.38 = 50.0\\,\\text{g}$.",
+   "a_en": "Initial moles $n_{\\mathrm{ZnS}} = 97.5/97.44 = 1.0006\\,\\text{mol}$. Both steps have $1\\!:\\!1$ mole ratios (ZnS→ZnO→Zn), so the yields multiply directly. Moles of Zn $= 1.0006 \\times 0.900 \\times 0.850 = 0.7655\\,\\text{mol}$. Mass $= 0.7655 \\times 65.38 = 50.0\\,\\text{g}$.",
+   "answer": "$m_{\\mathrm{Zn}} \\approx 50.0\\,\\text{g}$ (0.766 mol).",
+   "keywords": [
+    "sequential reactions",
+    "تفاعلات متتالية",
+    "overall yield",
+    "المردود الكلي",
+    "roasting",
+    "التحميص",
+    "zinc",
+    "الزنك"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "سُخِّن خليط كتلته $10.00\\,\\text{g}$ من $\\mathrm{CaCO_3}$ و$\\mathrm{MgCO_3}$ حتى تفكّك الكربوناتين تمامًا ($\\mathrm{CaCO_3}\\rightarrow\\mathrm{CaO}+\\mathrm{CO_2}$، $\\mathrm{MgCO_3}\\rightarrow\\mathrm{MgO}+\\mathrm{CO_2}$)، فبقي راسب صلب من الأكاسيد كتلته $5.14\\,\\text{g}$. أوجد النسبة المئوية الكتلية لِـ $\\mathrm{CaCO_3}$ في الخليط الأصلي. (الكتل المولية: $\\mathrm{CaCO_3}=100.09$، $\\mathrm{MgCO_3}=84.31$، $\\mathrm{CO_2}=44.01\\ \\mathrm{g\\,mol^{-1}}$.)",
+   "q_en": "A $10.00\\,\\text{g}$ mixture of $\\mathrm{CaCO_3}$ and $\\mathrm{MgCO_3}$ is heated until both carbonates decompose completely ($\\mathrm{CaCO_3}\\rightarrow\\mathrm{CaO}+\\mathrm{CO_2}$, $\\mathrm{MgCO_3}\\rightarrow\\mathrm{MgO}+\\mathrm{CO_2}$), leaving a $5.14\\,\\text{g}$ solid residue of the oxides. Find the mass percent of $\\mathrm{CaCO_3}$ in the original mixture. (Molar masses: $\\mathrm{CaCO_3}=100.09$, $\\mathrm{MgCO_3}=84.31$, $\\mathrm{CO_2}=44.01\\ \\mathrm{g\\,mol^{-1}}$.)",
+   "a_ar": "لِيكن $x$ كتلة $\\mathrm{CaCO_3}$ بالغرام و$y$ كتلة $\\mathrm{MgCO_3}$، حيث $x + y = 10.00$. الكتلة المفقودة على هيئة $\\mathrm{CO_2}$ هي $10.00 - 5.14 = 4.86\\,\\text{g}$. كل كربونات يفقد مولًا واحدًا من $\\mathrm{CO_2}$ لكل مول، إذن $\\left(\\dfrac{x}{100.09} + \\dfrac{y}{84.31}\\right)\\times 44.01 = 4.86$. بحلّ الجملة نحصل على $x = 4.37\\,\\text{g}$ و$y = 5.63\\,\\text{g}$. النسبة المئوية الكتلية لِـ $\\mathrm{CaCO_3} = 4.37/10.00 \\times 100 = 43.7\\%$.",
+   "a_en": "Let $x$ = grams of $\\mathrm{CaCO_3}$ and $y$ = grams of $\\mathrm{MgCO_3}$, with $x + y = 10.00$. The mass lost as $\\mathrm{CO_2}$ is $10.00 - 5.14 = 4.86\\,\\text{g}$. Each carbonate loses one mole of $\\mathrm{CO_2}$ per mole, so $\\left(\\dfrac{x}{100.09} + \\dfrac{y}{84.31}\\right)\\times 44.01 = 4.86$. Solving the system gives $x = 4.37\\,\\text{g}$ and $y = 5.63\\,\\text{g}$. Mass percent of $\\mathrm{CaCO_3} = 4.37/10.00 \\times 100 = 43.7\\%$.",
+   "answer": "Mass percent $\\mathrm{CaCO_3} \\approx 43.7\\%$ ($4.37\\,\\text{g}$).",
+   "keywords": [
+    "mixture problem",
+    "مسألة خليط",
+    "system of equations",
+    "جملة معادلات",
+    "carbonate decomposition",
+    "تفكك الكربونات",
+    "mass percent",
+    "النسبة الكتلية"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في عملية هابر $\\mathrm{N_2} + 3\\,\\mathrm{H_2} \\rightarrow 2\\,\\mathrm{NH_3}$، خُلِط $50.0\\,\\text{g}$ من $\\mathrm{N_2}$ مع $12.0\\,\\text{g}$ من $\\mathrm{H_2}$ وسار التفاعل حتى التمام. حدِّد الكاشف المحدِّد، وكتلة $\\mathrm{NH_3}$ المتكوّنة، وكتلة الكاشف الفائض المتبقّي. (الكتل المولية: $\\mathrm{N_2}=28.01$، $\\mathrm{H_2}=2.016$، $\\mathrm{NH_3}=17.03\\ \\mathrm{g\\,mol^{-1}}$.)",
+   "q_en": "In the Haber process $\\mathrm{N_2} + 3\\,\\mathrm{H_2} \\rightarrow 2\\,\\mathrm{NH_3}$, $50.0\\,\\text{g}$ of $\\mathrm{N_2}$ is mixed with $12.0\\,\\text{g}$ of $\\mathrm{H_2}$ and the reaction goes to completion. Determine the limiting reagent, the mass of $\\mathrm{NH_3}$ formed, and the mass of the excess reactant remaining. (Molar masses: $\\mathrm{N_2}=28.01$, $\\mathrm{H_2}=2.016$, $\\mathrm{NH_3}=17.03\\ \\mathrm{g\\,mol^{-1}}$.)",
+   "a_ar": "المولات: $n_{\\mathrm{N_2}} = 50.0/28.01 = 1.785\\,\\text{mol}$، $n_{\\mathrm{H_2}} = 12.0/2.016 = 5.952\\,\\text{mol}$. تفاعل كل $\\mathrm{N_2}$ يتطلّب $3(1.785)=5.355\\,\\text{mol}$ من $\\mathrm{H_2}$ وهي متوفّرة ($5.952$)، إذن $\\mathrm{N_2}$ هو الكاشف المحدِّد. كتلة $\\mathrm{NH_3}$ المتكوّنة $= 2(1.785)=3.570\\,\\text{mol} \\Rightarrow 3.570 \\times 17.03 = 60.8\\,\\text{g}$. المستهلَك من $\\mathrm{H_2} = 5.355\\,\\text{mol}$، فالمتبقّي $= 5.952 - 5.355 = 0.598\\,\\text{mol} = 1.21\\,\\text{g}$.",
+   "a_en": "Moles: $n_{\\mathrm{N_2}} = 50.0/28.01 = 1.785\\,\\text{mol}$, $n_{\\mathrm{H_2}} = 12.0/2.016 = 5.952\\,\\text{mol}$. Reacting all $\\mathrm{N_2}$ requires $3(1.785)=5.355\\,\\text{mol}$ $\\mathrm{H_2}$, which is available ($5.952$), so $\\mathrm{N_2}$ is the limiting reagent. $\\mathrm{NH_3}$ formed $= 2(1.785)=3.570\\,\\text{mol} \\Rightarrow 3.570 \\times 17.03 = 60.8\\,\\text{g}$. $\\mathrm{H_2}$ consumed $= 5.355\\,\\text{mol}$, so leftover $\\mathrm{H_2} = 5.952 - 5.355 = 0.598\\,\\text{mol} = 1.21\\,\\text{g}$.",
+   "answer": "Limiting reagent: $\\mathrm{N_2}$; $\\mathrm{NH_3}$ formed $= 60.8\\,\\text{g}$; excess $\\mathrm{H_2}$ left $= 1.21\\,\\text{g}$.",
+   "keywords": [
+    "limiting reagent",
+    "الكاشف المحدد",
+    "excess reactant",
+    "الكاشف الفائض",
+    "Haber process",
+    "عملية هابر",
+    "ammonia synthesis",
+    "الأمونيا"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "مركب نقي يحتوي على C و H و O فقط. أدى الاحتراق التام لـ 3.780 غ منه إلى إنتاج 5.544 غ من CO2 و 2.268 غ من H2O. وأعطى قياس منفصل كتلته المولية بـ 180.2 غ/مول. أوجد الصيغة الأولية (التجريبية) والصيغة الجزيئية.",
+   "q_en": "A pure compound contains only C, H, and O. Complete combustion of 3.780 g of it yields 5.544 g of CO2 and 2.268 g of H2O. A separate determination gives its molar mass as 180.2 g/mol. Determine the empirical formula and the molecular formula.",
+   "a_ar": "الكربون: $\\frac{5.544}{44.01}\\times12.011=1.513$ غ؛ الهيدروجين: $\\frac{2.268}{18.015}\\times2.016=0.2538$ غ؛ الأكسجين بالفرق: $3.780-1.513-0.254=2.013$ غ. عدد المولات: $n_C=0.1260$، $n_H=0.2518$، $n_O=0.1258$، فتكون النسبة $C:H:O=1:2:1$، أي الصيغة الأولية $\\mathrm{CH_2O}$ (كتلتها 30.03 غ/مول). وبما أن $180.2/30.03\\approx6$ فالصيغة الجزيئية هي $\\mathrm{C_6H_{12}O_6}$.",
+   "a_en": "Carbon: $\\frac{5.544}{44.01}\\times12.011=1.513$ g; Hydrogen: $\\frac{2.268}{18.015}\\times2.016=0.2538$ g; Oxygen by difference: $3.780-1.513-0.254=2.013$ g. Moles: $n_C=0.1260$, $n_H=0.2518$, $n_O=0.1258$, giving a ratio $C:H:O=1:2:1$, so the empirical formula is $\\mathrm{CH_2O}$ (mass 30.03 g/mol). Since $180.2/30.03\\approx6$, the molecular formula is $\\mathrm{C_6H_{12}O_6}$.",
+   "answer": "Empirical formula CH2O; molecular formula C6H12O6",
+   "keywords": [
+    "الصيغة الأولية",
+    "empirical formula",
+    "molecular formula",
+    "combustion analysis",
+    "الاحتراق",
+    "CH2O",
+    "C6H12O6",
+    "الكتلة المولية"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في تفاعل الثيرميت $\\mathrm{Fe_2O_3 + 2\\,Al \\rightarrow 2\\,Fe + Al_2O_3}$ خُلط 150.0 غ من Fe2O3 مع 50.0 غ من Al. (أ) عيّن الكاشف المحدِّد. (ب) احسب المردود النظري من الحديد. (ج) إذا نتج فعلياً 85.0 غ من Fe، أوجد النسبة المئوية للمردود. (د) أوجد كتلة الكاشف الزائد المتبقي دون تفاعل.",
+   "q_en": "In the thermite reaction $\\mathrm{Fe_2O_3 + 2\\,Al \\rightarrow 2\\,Fe + Al_2O_3}$, 150.0 g of Fe2O3 is mixed with 50.0 g of Al. (a) Identify the limiting reagent. (b) Calculate the theoretical yield of iron. (c) If 85.0 g of Fe is actually obtained, find the percent yield. (d) Find the mass of the excess reagent left unreacted.",
+   "a_ar": "عدد المولات: $n_{Fe_2O_3}=150.0/159.69=0.9393$، $n_{Al}=50.0/26.982=1.8531$. النسبة اللازمة Al:Fe2O3 هي 2:1؛ الألمنيوم اللازم لاستهلاك كل Fe2O3 هو $1.879$ مول وهو أكبر من المتوفر 1.853، فالألمنيوم هو المحدِّد. الحديد الناتج: $n_{Fe}=n_{Al}=1.8531$ مول $\\Rightarrow 1.8531\\times55.845=103.5$ غ (نظرياً). المردود $=85.0/103.5\\times100=82.1\\%$. المستهلك من Fe2O3 $=n_{Al}/2=0.9265$ مول، فالمتبقي $=(0.9393-0.9265)\\times159.69=2.04$ غ من Fe2O3.",
+   "a_en": "Moles: $n_{Fe_2O_3}=150.0/159.69=0.9393$, $n_{Al}=50.0/26.982=1.8531$. Reaction needs Al:Fe2O3 = 2:1; Al required to consume all Fe2O3 is $1.879$ mol > 1.853 available, so Al is limiting. Iron formed: $n_{Fe}=n_{Al}=1.8531$ mol $\\Rightarrow 1.8531\\times55.845=103.5$ g (theoretical). Percent yield $=85.0/103.5\\times100=82.1\\%$. Fe2O3 consumed $=n_{Al}/2=0.9265$ mol, so remaining $=(0.9393-0.9265)\\times159.69=2.04$ g of Fe2O3.",
+   "answer": "Al is limiting; theoretical Fe = 103.5 g; percent yield = 82.1%; excess Fe2O3 remaining = 2.04 g",
+   "keywords": [
+    "الكاشف المحدد",
+    "limiting reagent",
+    "thermite",
+    "الثيرميت",
+    "percent yield",
+    "المردود المئوي",
+    "excess reagent",
+    "الحديد"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "سُخِّن خليط كتلته 10.000 غ من CaCO3 و MgCO3 تسخيناً شديداً حتى ثبات الكتلة، فتحرّر CO2 وفق $\\mathrm{CaCO_3\\rightarrow CaO+CO_2}$ و $\\mathrm{MgCO_3\\rightarrow MgO+CO_2}$. كتلة الراسب الصلب (CaO + MgO) هي 5.140 غ. احسب النسبة المئوية الكتلية لـ CaCO3 في الخليط الأصلي.",
+   "q_en": "A 10.000 g mixture of CaCO3 and MgCO3 is heated strongly to constant mass, driving off CO2 by $\\mathrm{CaCO_3\\rightarrow CaO+CO_2}$ and $\\mathrm{MgCO_3\\rightarrow MgO+CO_2}$. The solid residue (CaO + MgO) weighs 5.140 g. Calculate the mass percent of CaCO3 in the original mixture.",
+   "a_ar": "لتكن $x$ كتلة CaCO3 و $y$ كتلة MgCO3، إذن $x+y=10.000$. الكتلة المفقودة من CO2 هي $10.000-5.140=4.860$ غ. كل مول من أي كربونات يحرّر مولاً من CO2، إذن $\\frac{44.009}{100.089}x+\\frac{44.009}{84.316}y=4.860$. بحل الجملة: $x=4.371$ غ، $y=5.629$ غ. إذن نسبة CaCO3 هي $\\frac{4.371}{10.000}\\times100=43.7\\%$ كتلياً (و MgCO3 = 56.3%).",
+   "a_en": "Let $x$ = mass of CaCO3 and $y$ = mass of MgCO3, so $x+y=10.000$. The CO2 lost is $10.000-5.140=4.860$ g. Each mole of either carbonate releases one mole of CO2, so $\\frac{44.009}{100.089}x+\\frac{44.009}{84.316}y=4.860$. Solving the system: $x=4.371$ g, $y=5.629$ g. Therefore CaCO3 is $\\frac{4.371}{10.000}\\times100=43.7\\%$ by mass (MgCO3 = 56.3%).",
+   "answer": "CaCO3 = 43.7% by mass (MgCO3 = 56.3%)",
+   "keywords": [
+    "خليط كربونات",
+    "carbonate mixture",
+    "system of equations",
+    "نظام معادلات",
+    "التحلل الحراري",
+    "thermal decomposition",
+    "mass percent",
+    "CaCO3 MgCO3"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "عُومل خليط كتلته 5.000 غ من مسحوقَي الألمنيوم والخارصين (الزنك) بحمض هيدروكلوريك زائد وفق $\\mathrm{2Al+6HCl\\rightarrow 2AlCl_3+3H_2}$ و $\\mathrm{Zn+2HCl\\rightarrow ZnCl_2+H_2}$. شغل الهيدروجين المتحرّر حجماً قدره 3.521 لتر في الشرطين المعياريين STP (الحجم المولي 22.414 ل/مول). أوجد النسبة المئوية الكتلية للألمنيوم في الخليط.",
+   "q_en": "A 5.000 g mixture of aluminium and zinc powders is treated with excess hydrochloric acid: $\\mathrm{2Al+6HCl\\rightarrow 2AlCl_3+3H_2}$ and $\\mathrm{Zn+2HCl\\rightarrow ZnCl_2+H_2}$. The evolved hydrogen occupies 3.521 L measured at STP (molar volume 22.414 L/mol). Determine the mass percent of aluminium in the mixture.",
+   "a_ar": "لتكن $x$ عدد مولات Al و $y$ عدد مولات Zn. الكتلة: $26.982x+65.38y=5.000$. مولات الهيدروجين: $n_{H_2}=3.521/22.414=0.15710$، ومن المعادلات $1.5x+y=0.15710$. بالحل: $x=0.07413$ مول Al، $y=0.04588$ مول Zn. كتلة Al $=0.07413\\times26.982=2.000$ غ، فتكون نسبة الألمنيوم $\\frac{2.000}{5.000}\\times100=40.0\\%$ كتلياً.",
+   "a_en": "Let $x$ = mol Al and $y$ = mol Zn. Mass: $26.982x+65.38y=5.000$. Hydrogen moles: $n_{H_2}=3.521/22.414=0.15710$, and from stoichiometry $1.5x+y=0.15710$. Solving: $x=0.07413$ mol Al, $y=0.04588$ mol Zn. Mass of Al $=0.07413\\times26.982=2.000$ g, so the aluminium content is $\\frac{2.000}{5.000}\\times100=40.0\\%$ by mass.",
+   "answer": "Aluminium = 40.0% by mass",
+   "keywords": [
+    "خليط فلزات",
+    "metal mixture",
+    "hydrogen gas",
+    "غاز الهيدروجين",
+    "STP",
+    "الحجم المولي",
+    "system of equations",
+    "الألمنيوم والزنك"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يُحضَّر حمض الكبريتيك من البيريت في ثلاث خطوات: $\\mathrm{4FeS_2+11O_2\\rightarrow 2Fe_2O_3+8SO_2}$، ثم $\\mathrm{2SO_2+O_2\\rightarrow 2SO_3}$، ثم $\\mathrm{SO_3+H_2O\\rightarrow H_2SO_4}$. انطلاقاً من 1.000 كغ من الخام يحتوي على 75.0% كتلياً من FeS2، وبمردود 90.0% للتحميص، و95.0% لتحويل SO2→SO3، و100% للإماهة، احسب كتلة H2SO4 الناتجة.",
+   "q_en": "Sulfuric acid is made from pyrite by three steps: $\\mathrm{4FeS_2+11O_2\\rightarrow 2Fe_2O_3+8SO_2}$, then $\\mathrm{2SO_2+O_2\\rightarrow 2SO_3}$, then $\\mathrm{SO_3+H_2O\\rightarrow H_2SO_4}$. Starting from 1.000 kg of ore containing 75.0% FeS2 by mass, with yields of 90.0% for roasting, 95.0% for the SO2→SO3 conversion, and 100% for hydration, calculate the mass of H2SO4 produced.",
+   "a_ar": "كتلة FeS2 $=0.750\\times1000=750.0$ غ، إذن $n_{FeS_2}=750.0/119.965=6.252$ مول. كل FeS2 يوفّر ذرتَي كبريت، أي حتى 2 من H2SO4. بتطبيق المردودات على مسار الكبريت: $n_{SO_2}=2\\times6.252\\times0.90=11.253$ مول؛ $n_{SO_3}=11.253\\times0.95=10.691$ مول؛ $n_{H_2SO_4}=10.691\\times1.00=10.691$ مول. الكتلة $=10.691\\times98.076=1048$ غ، أي نحو 1.048 كغ من H2SO4.",
+   "a_en": "FeS2 mass $=0.750\\times1000=750.0$ g, so $n_{FeS_2}=750.0/119.965=6.252$ mol. Each FeS2 provides 2 S atoms, hence potentially 2 H2SO4. Applying yields to the sulfur path: $n_{SO_2}=2\\times6.252\\times0.90=11.253$ mol; $n_{SO_3}=11.253\\times0.95=10.691$ mol; $n_{H_2SO_4}=10.691\\times1.00=10.691$ mol. Mass $=10.691\\times98.076=1048$ g, i.e. about 1.048 kg of H2SO4.",
+   "answer": "≈ 1048 g (1.048 kg) of H2SO4",
+   "keywords": [
+    "البيريت",
+    "pyrite",
+    "حمض الكبريتيك",
+    "sulfuric acid",
+    "multi-step yield",
+    "المردود المتسلسل",
+    "التحميص",
+    "industrial stoichiometry"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

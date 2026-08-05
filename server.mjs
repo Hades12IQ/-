@@ -17,7 +17,7 @@
 import http from "node:http";
 import https from "node:https";
 import crypto from "node:crypto";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { readFile, mkdir, writeFile, readdir, rm, realpath } from "node:fs/promises";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -105,6 +105,14 @@ const OPENROUTER_URL     = "https://openrouter.ai/api/v1/chat/completions";
 // in the Max chain. GEMINI_TEXT_MODEL may be a comma-separated fallback list of ids — the
 // adapter uses the first that actually streams (resilient to Google's model-id churn).
 const GEMINI_TEXT_MODELS = (process.env.GEMINI_TEXT_MODEL || "gemini-2.5-flash,gemini-flash-latest").split(",").map((s) => s.trim()).filter(Boolean);
+/* VISION uses its OWN model chain, separate from text. Page OCR is transcription, not reasoning,
+   so the cheapest capable model wins — and on the free tier the difference is not subtle:
+   gemini-2.5-flash allows 20 requests/DAY per key, while the Flash-Lite line allows 500. With a
+   12-key pool that is 240 page-scans/day for the whole site versus 6,000. Same 250K TPM, so
+   throughput is unaffected. 2.5-flash stays last as the known-good fallback, and any id the
+   account cannot serve simply falls through to the next entry in the loop. */
+const GEMINI_VISION_MODELS = (process.env.GEMINI_VISION_MODEL ||
+  "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash").split(",").map((s) => s.trim()).filter(Boolean);
 const GEMINI_OAI_URL     = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 // Gemini image model (Google AI Studio "Nano Banana") — actual Gemini-level quality.
 // If GEMINI_API_KEY is set, /api/image uses it FIRST, falling back to keyless
@@ -130,16 +138,35 @@ const GEMINI_KEYS = (() => {
 })();
 const GEMINI_API_KEY     = GEMINI_KEYS[0] || "";   // back-compat: `if (GEMINI_API_KEY)` = "any key configured"
 const _gemCooldown = new Map();                    // key → ms timestamp it may be retried
+const _gemStrikes  = new Map();                    // key → CONSECUTIVE 429s, cleared by a success
+let   _gemCursor   = 0;                            // round-robin position
+/** A key answered successfully → it is healthy, so forget its strike history. */
+function geminiMarkOk(key) { if (key) _gemStrikes.delete(key); }
 function geminiMarkLimited(key, status) {
   if (!key) return;
-  // 429 is usually a per-MINUTE RPM cap (rest 65s); other errors rest ~5 min.
-  _gemCooldown.set(key, Date.now() + (status === 429 ? 65_000 : 5 * 60_000));
+  if (status !== 429) { _gemCooldown.set(key, Date.now() + 5 * 60_000); return; }
+  // Google returns 429 for BOTH the per-minute cap and the per-DAY cap, and the body does not
+  // reliably say which. A minute-capped key is healthy again in a minute; a DAY-capped one is
+  // dead until Google's quota window resets, and retrying it every 65s all day is pure waste —
+  // each retry is a round-trip that fails and, on some quotas, still counts. So escalate on
+  // CONSECUTIVE 429s: one is a burst, two is pressure, three means the daily allowance is gone.
+  const n = (_gemStrikes.get(key) || 0) + 1;
+  _gemStrikes.set(key, n);
+  _gemCooldown.set(key, Date.now() + (n <= 1 ? 65_000 : n === 2 ? 5 * 60_000 : 6 * 3_600_000));
 }
-/** First key not on cooldown; if all are cooling, the one recovering soonest (never give up). */
+/** Next healthy key, ROUND-ROBIN; if all are cooling, the one recovering soonest (never give up). */
 function geminiPickKey() {
   if (!GEMINI_KEYS.length) return "";
   const now = Date.now();
-  for (const k of GEMINI_KEYS) { if (now >= (_gemCooldown.get(k) || 0)) return k; }
+  // Round-robin, NOT first-available. Always handing out key #1 while it is healthy burns its
+  // entire daily allowance before key #2 is ever touched, so a 12-key pool delivers the daily
+  // capacity of ONE key at a time instead of twelve. Spreading the load is what makes the pool
+  // worth having — it matters most for Brain, which fires one request per scanned page.
+  for (let i = 0; i < GEMINI_KEYS.length; i++) {
+    const idx = (_gemCursor + i) % GEMINI_KEYS.length;
+    const k = GEMINI_KEYS[idx];
+    if (now >= (_gemCooldown.get(k) || 0)) { _gemCursor = (idx + 1) % GEMINI_KEYS.length; return k; }
+  }
   return GEMINI_KEYS.reduce((a, b) => ((_gemCooldown.get(a) || 0) <= (_gemCooldown.get(b) || 0) ? a : b));
 }
 const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
@@ -314,6 +341,8 @@ const MIME = {
   ".woff": "font/woff",
   ".map":  "application/json",
   ".txt":  "text/plain; charset=utf-8",
+  ".mp4":  "video/mp4",
+  ".webm": "video/webm",
 };
 
 /* ===========================================================================
@@ -410,6 +439,8 @@ function normalizeDb(parsed) {
     announcements: arr(parsed && parsed.announcements),
     // Admin knowledge base (reference books for RAG grounding) — MUST persist across restarts.
     kb: arr(parsed && parsed.kb),
+    // Redeem/activation codes (Gold/Diamond/Unlimited) — admin-managed, MUST persist.
+    codes: arr(parsed && parsed.codes),
     pending: (parsed && parsed.pending && typeof parsed.pending === "object" && !Array.isArray(parsed.pending)) ? parsed.pending : {},
     // Public share snapshots (read-only chat pages at /?share=<id>).
     shares: (parsed && parsed.shares && typeof parsed.shares === "object" && !Array.isArray(parsed.shares)) ? parsed.shares : {},
@@ -506,9 +537,37 @@ function verifyPassword(password, salt, passHash) {
   });
 }
 
-function signUserId(userId) {
-  const mac = crypto.createHmac("sha256", sessionSecret()).update(userId).digest("hex");
-  return userId + "." + mac;
+/* ── REVOCABLE SESSIONS ────────────────────────────────────────────────────────────────
+   The signed value used to be the bare user id, so one cookie string was a PERMANENT
+   bearer credential for that account — valid until SESSION_SECRET itself changed. Every
+   remedy a victim has was a no-op by construction: logout only clears the victim's own
+   browser, changing the password rewrote passHash but left outstanding cookies working,
+   and password RESET re-issued a byte-identical cookie because the HMAC input (the user id)
+   had not changed. There was no "sign out everywhere" that could work.
+
+   The payload now carries a per-user session VERSION. Bumping it invalidates every cookie
+   issued before the bump, which is what makes reset/change-password/sign-out-everywhere
+   mean something.
+
+   BACKWARD COMPATIBLE ON PURPOSE: version 0 signs exactly the old payload, byte for byte,
+   so no existing session is dropped when this ships. The first bump moves a user to the
+   `id|vN` form and every cookie predating it stops verifying — revocation starts working
+   the moment it is first needed, at the cost of logging nobody out today. */
+function sessionPayload(id, ver) {
+  return (ver > 0) ? (id + "|v" + ver) : id;
+}
+/** Split a verified payload back into its parts. */
+function sessionParts(payload) {
+  const i = payload.lastIndexOf("|v");
+  if (i <= 0) return { id: payload, ver: 0 };
+  const v = payload.slice(i + 2);
+  if (!/^\d+$/.test(v)) return { id: payload, ver: 0 };
+  return { id: payload.slice(0, i), ver: parseInt(v, 10) };
+}
+function signUserId(userId, ver) {
+  const payload = sessionPayload(userId, ver || 0);
+  const mac = crypto.createHmac("sha256", sessionSecret()).update(payload).digest("hex");
+  return payload + "." + mac;
 }
 
 // Returns the userId if the cookie value is a valid, untampered signature.
@@ -554,7 +613,10 @@ function isSecureReq(req) {
 }
 
 function setSessionCookie(res, userId, req) {
-  const value = signUserId(userId);
+  // Sign with the account's CURRENT session version, so a cookie minted right after a
+  // revocation is valid while every cookie minted before it is not.
+  const u = DB.users.find((x) => x.id === userId);
+  const value = signUserId(userId, u ? (u.sessVer || 0) : 0);
   const secure = isSecureReq(req) ? "; Secure" : "";
   res.setHeader(
     "Set-Cookie",
@@ -596,14 +658,321 @@ function currentUser(req) {
   const cookies = parseCookies(req);
   const raw = cookies[COOKIE_NAME];
   if (!raw) return null;
-  const userId = verifySessionValue(raw);
-  if (!userId) return null;
-  return DB.users.find((u) => u.id === userId) || null;
+  const payload = verifySessionValue(raw);
+  if (!payload) return null;
+  const { id, ver } = sessionParts(payload);
+  const user = DB.users.find((u) => u.id === id) || null;
+  if (!user) return null;
+  /* The MAC only proves the cookie was issued by us, never that it is still current.
+     A cookie whose version is behind the account's was issued before a logout-everywhere,
+     a password change, or a reset — the three moments at which outstanding sessions must
+     stop working. Without this check those actions could not revoke anything. */
+  if ((user.sessVer || 0) !== ver) return null;
+  return user;
 }
 
-// Strip secrets — NEVER return passHash / salt to the client.
+/** Invalidate every session issued so far for this user. Callers persist. */
+function bumpSessionVersion(user) {
+  if (!user) return 0;
+  user.sessVer = (user.sessVer || 0) + 1;
+  return user.sessVer;
+}
+
+/* ===========================================================================
+   GUEST SESSIONS — "try it without signing up".
+   A guest gets its OWN signed cookie (firas_guest) carrying a random id
+   prefixed "g_". It reuses the same HMAC as the real session, so a guest value
+   pasted into firas_session still resolves to nothing (no DB user has a "g_"
+   id) — the two identities can never be confused.
+   A guest may CHAT (small daily quota, server-authoritative) but may NOT
+   generate images, persist chats server-side, use memory, share, or subscribe.
+   =========================================================================== */
+const GUEST_COOKIE = "firas_guest";
+const GUEST_COOKIE_MAX_AGE = 604_800; // 7 days — long enough to keep a trial going
+const GUEST_LIMITS = {
+  /* Guests are raised for real trial use but stay FAR below members, and that gap is
+     deliberate. A guest identity costs nothing to mint — clear the cookie and you have a new
+     one — so this is the allowance an abuser actually farms, and the network-scoped bucket
+     (guestChargeIp) multiplies it by 4 per address, not per cookie. Members are the ones the
+     site is free for; guests get enough to decide whether to sign up. */
+  ai:    Math.max(0, parseInt(process.env.GUEST_DAILY_AI, 10)    || 60),
+  code:  Math.max(0, parseInt(process.env.GUEST_DAILY_CODE, 10)  || 20),
+  agent: Math.max(0, parseInt(process.env.GUEST_DAILY_AGENT, 10) || 8),
+  brain: Math.max(0, parseInt(process.env.GUEST_DAILY_BRAIN, 10) || 40),
+  /* Budget for nomem=true helper calls. Without an entry here `guestCharge` returns early
+     (`!(limit >= 0)`) and the guest internal channel would stay unlimited — which is the
+     exact hole being closed on the member side. Sized ~8x the guest chat allowance so a
+     normal Code build never trips it. */
+  internal: Math.max(0, parseInt(process.env.GUEST_DAILY_INTERNAL, 10) || 100),
+  voice: Math.max(0, parseInt(process.env.GUEST_DAILY_VOICE, 10) || 40),
+};
+function newGuestId() { return "g_" + crypto.randomBytes(12).toString("hex"); }
+/** The guest identity carried by this request, or null. */
+function currentGuest(req) {
+  const raw = parseCookies(req)[GUEST_COOKIE];
+  if (!raw) return null;
+  const id = verifySessionValue(raw);
+  return id && id.startsWith("g_") ? { id, guest: true } : null;
+}
+function setGuestCookie(res, id, req) {
+  const secure = isSecureReq(req) ? "; Secure" : "";
+  const value = signUserId(id);
+  res.setHeader(
+    "Set-Cookie",
+    `${GUEST_COOKIE}=${encodeURIComponent(value)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${GUEST_COOKIE_MAX_AGE}${secure}`
+  );
+}
+/** Per-guest daily counters, kept in DB.guests. Stale days are pruned so the
+    store can never grow without bound (guest records are ephemeral by design). */
+function guestRecord(id) {
+  if (!DB.guests || typeof DB.guests !== "object") DB.guests = {};
+  const today = serverDay();
+  let g = DB.guests[id];
+  if (!g || g.day !== today) { g = { day: today, ai: 0, code: 0, agent: 0, brain: 0, brainPages: 0, agentCids: [], last: {} }; DB.guests[id] = g; }
+  if (!g.last) g.last = {};
+  if (!Array.isArray(g.agentCids)) g.agentCids = [];
+  const keys = Object.keys(DB.guests);
+  if (keys.length > 5000) for (const k of keys) { if (DB.guests[k] && DB.guests[k].day !== today) delete DB.guests[k]; }
+  return g;
+}
+/** Entitlement view for a guest — same shape as subInfo() so the client can
+    render one meter component for both guests and members. */
+function guestSubInfo(id) {
+  const g = guestRecord(id);
+  const remain = (p) => Math.max(0, GUEST_LIMITS[p] - (g[p] || 0));
+  return {
+    plan: "guest", expiresAt: null, daysLeft: null,
+    limits: { ai: GUEST_LIMITS.ai, code: GUEST_LIMITS.code, agent: GUEST_LIMITS.agent, brain: GUEST_LIMITS.brain },
+    used: { ai: g.ai || 0, code: g.code || 0, agent: g.agent || 0, brain: g.brain || 0 },
+    remaining: { ai: remain("ai"), code: remain("code"), agent: remain("agent"), brain: remain("brain") },
+  };
+}
+/** Charge one guest unit. Returns null when allowed, or a 429 body when the
+    daily guest limit is spent. Idempotent on a repeated cid (same as members). */
+/* IDEMPOTENCY THAT CANNOT BE FARMED.
+   The retry check used to be `bucket.last[product] === cid` — a bare client string with no
+   expiry and no tie to the request. So one charged turn bought the rest of the day: send
+   {"cid":"X"} once, then reuse cid "X" with completely different messages forever. Every
+   later call matched, skipped BOTH the limit test and the increment, and still streamed.
+
+   A retry is now only a retry if it is the SAME REQUEST, sent AGAIN, SOON:
+     · same cid, AND
+     · same last user message (hashed), AND
+     · within RETRY_WINDOW_MS.
+   A genuine network retry satisfies all three. Farming satisfies none — a new question
+   changes the hash, and waiting changes the clock.
+
+   `agent` keeps its longer life on purpose: one mission legitimately spans many calls over
+   several minutes and must count once. It is bounded by MISSION_WINDOW_MS rather than
+   running until midnight. */
+const RETRY_WINDOW_MS = 120_000;      // a real retry happens within seconds
+const MISSION_WINDOW_MS = 45 * 60_000; // one agent mission
+function reqHash(cid, messages) {
+  let lastUser = "";
+  if (Array.isArray(messages)) {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i] && messages[i].role === "user") { lastUser = String(messages[i].content || ""); break; }
+    }
+  }
+  return crypto.createHash("sha256").update(cid + " " + lastUser).digest("hex").slice(0, 32);
+}
+/** True when this is a genuine retry of an already-charged request. Prunes as it goes. */
+function isRepeatCharge(bucket, product, cid, messages) {
+  if (!cid) return false;
+  const now = Date.now();
+  const win = product === "agent" ? MISSION_WINDOW_MS : RETRY_WINDOW_MS;
+  if (!Array.isArray(bucket.seen)) bucket.seen = [];
+  bucket.seen = bucket.seen.filter((e) => e && now - e.t < MISSION_WINDOW_MS);
+  const h = reqHash(cid, messages);
+  // For agent the mission id alone identifies it; for everything else the body must match too.
+  const hit = bucket.seen.find((e) =>
+    e.p === product && e.c === cid && (product === "agent" || e.h === h) && now - e.t < win);
+  if (hit) return true;
+  bucket.seen.push({ p: product, c: cid, h, t: now });
+  if (bucket.seen.length > 400) bucket.seen.shift();
+  return false;
+}
+
+/* ── FREE GUEST RESETS, CLOSED ─────────────────────────────────────────────────────────
+   The guest meter was keyed solely on the cookie id, and a fresh id is one request away:
+   DELETE /api/guest clears the cookie, POST /api/guest mints a new one with a FULL
+   allowance. The only brake was a 20/min per-IP limiter, which still permits ~28,800
+   identities a day from one address — every one of them a fresh trial spending the owner's
+   weekly-capped model pools.
+
+   The fix is to meter the NETWORK identity as well: the cookie bucket stays (so people
+   behind one household NAT are not charged for each other's usage at the individual level),
+   and a second bucket keyed on a HASH of the IP is charged in parallel. Minting a new
+   cookie no longer resets anything, because the IP bucket does not move.
+
+   The IP allowance is deliberately a multiple of the per-cookie one — several genuine
+   people do share an address (a household, a school, a café) and must not lock each other
+   out. It only has to be small enough that farming thousands of identities is pointless. */
+const GUEST_IP_MULTIPLIER = 4;
+function guestIpKey(req) {
+  const ip = clientIp(req);
+  if (!ip) return null;
+  // Hashed with the session secret so raw addresses are never written to db.json.
+  return "ip_" + crypto.createHmac("sha256", sessionSecret()).update(String(ip)).digest("hex").slice(0, 24);
+}
+/** Charge the IP-wide bucket alongside the cookie one. Returns a denial or null. */
+function guestChargeIp(req, product) {
+  const key = guestIpKey(req);
+  if (!key) return null;                       // no address to meter → cookie bucket only
+  const limit = GUEST_LIMITS[product];
+  if (!(limit >= 0)) return null;
+  const cap = limit * GUEST_IP_MULTIPLIER;
+  const g = guestRecord(key);
+  if ((g[product] || 0) >= cap) {
+    return { error: "guest daily limit reached", guest: true,
+             quota: { product, used: g[product] || 0, limit: cap, plan: "guest", scope: "network" } };
+  }
+  g[product] = (g[product] || 0) + 1;
+  return null;
+}
+
+function guestCharge(id, product, cidRaw, messages) {
+  const g = guestRecord(id);
+  const limit = GUEST_LIMITS[product];
+  if (!(limit >= 0)) return null;
+  const cid = String(cidRaw || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+  const already = isRepeatCharge(g, product, cid, messages);
+  if (!already && (g[product] || 0) >= limit) {
+    return { error: "guest daily limit reached", guest: true, quota: { product, used: g[product] || 0, limit, plan: "guest" } };
+  }
+  if (!already) {
+    /* Charge the network bucket FIRST: if it is spent, this identity must not consume one
+       of its own units either, or a farmer would still drain the cookie allowances. */
+    if (guestCharge._req) {
+      const denied = guestChargeIp(guestCharge._req, product);
+      if (denied) { persist(); return denied; }
+    }
+    g[product] = (g[product] || 0) + 1;
+    if (product === "agent") { if (cid) { g.agentCids.push(cid); if (g.agentCids.length > 200) g.agentCids.shift(); } }
+    else if (cid) g.last[product] = cid;
+    persist();
+  }
+  return null;
+}
+/* The request is threaded to guestCharge() through a per-call slot rather than a new
+   parameter on all five call sites — the alternative is five signatures that must stay in
+   sync, and a missed one silently reopens the hole. Set immediately before each charge and
+   cleared after, so it can never leak between requests (Node handles one at a time here). */
+function guestChargeWithReq(req, id, product, cidRaw, messages) {
+  guestCharge._req = req;
+  try { return guestCharge(id, product, cidRaw, messages); }
+  finally { guestCharge._req = null; }
+}
+/** Resolve "who is calling" for endpoints a guest is allowed to reach.
+    Returns { user, id, isGuest:false } for a member, { id, isGuest:true } for a
+    guest, or {} when neither identity is present. */
+function callerOf(req) {
+  const user = currentUser(req);
+  if (user) return { user, id: user.id, isGuest: false };
+  const g = currentGuest(req);
+  if (g) return { id: g.id, isGuest: true };
+  return {};
+}
+
+/* ===========================================================================
+   SUBSCRIPTIONS & DAILY QUOTAS
+   Plans: free (default) · gold · diamond · unlimited. Diamond & unlimited are
+   uncapped; the difference is that unlimited never expires. All limits are
+   per-calendar-day and reset at local midnight (serverDay). Server is the ONLY
+   authority — the client can never set its own plan or bypass a limit.
+   =========================================================================== */
+/* `internal` is the budget for nomem=true helper calls — auto-title, the Code build
+   pipeline, agent sub-steps, OCR. These are sub-steps of an action the user already paid
+   for, so they are NOT charged against the product meters; but they are no longer free
+   either, because `nomem` is a client-supplied boolean and an unbounded free channel is an
+   unbounded free channel. The ceilings are ~8x the product limits: a heavy Code session
+   fires roughly a dozen per build, so real use never approaches them. */
+/* THE SITE IS FREE. Every plan now carries the same generous allowance — the paid tiers
+   remain only so existing records that already hold one keep resolving.
+
+   These are NOT sales limits, they are an ABUSE CEILING, and that is why they are numbers
+   rather than -1. The model pools are shared: one Ollama weekly quota and real Anthropic
+   credit on the Max tier serve every user at once. Uncapped, a single scripted loop drains
+   both and takes the site down for everyone — the cost of "free" would land on the other
+   users, not on the person abusing it.
+
+   The numbers are set where no human reaches them: 2000 chat messages a day is roughly one
+   every 40 seconds for 24 hours without pause. A real user simply never sees a limit.
+   Raise them with env overrides if that ever proves wrong. */
+const PLAN_LIMITS = {
+  free:      { ai: 2000, code: 800, agent: 400, brain: 900, internal: 9000, voice: 4000 },
+  gold:      { ai: 2000, code: 800, agent: 400, brain: 900, internal: 9000, voice: 4000 },
+  diamond:   { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
+  unlimited: { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
+};
+function limitsFor(plan) { return PLAN_LIMITS[plan] || PLAN_LIMITS.free; }
+// Effective plan RIGHT NOW — expired timed plans silently fall back to free
+// (data/chats are untouched, so downgrade is lossless).
+function planOf(user) {
+  const s = user && user.sub;
+  if (!s || !s.plan) return "free";
+  if (s.plan === "unlimited") return "unlimited";
+  if (s.plan !== "gold" && s.plan !== "diamond") return "free";
+  if (s.expiresAt && Date.now() > s.expiresAt) return "free";
+  return s.plan;
+}
+/* Ensure today's usage counters exist (resets on a new local day). Mutates user.quota.
+   PARITY NOTE: the edge backend persists these counters as individual child keys under
+   users/<id>/quota (and keeps agentCids as a MAP, not this array) because two Netlify
+   isolates each doing read-modify-write on the whole user record lose one of the two
+   writes. Here there is exactly one process mutating one shared in-memory DB object and
+   persist() serializes it, so an array and a whole-record write are correct and cheap —
+   this divergence is deliberate, don't "restore parity" by copying the edge shape. */
+function quotaRollDay(user) {
+  const today = serverDay();
+  // brainPages = Firas Brain's daily INGEST budget (pages indexed), separate from `brain`
+  // (answers), because page OCR rides nomem:true calls that quota charging deliberately skips.
+  if (!user.quota || user.quota.day !== today) { user.quota = { day: today, ai: 0, code: 0, agent: 0, brain: 0, brainPages: 0, agentCids: [], last: {} }; return true; }
+  if (!user.quota.last) user.quota.last = {};
+  if (!Array.isArray(user.quota.agentCids)) user.quota.agentCids = [];
+  return false;
+}
+// Read-only entitlement view for the client (no mutation).
+function subInfo(user) {
+  const plan = planOf(user);
+  const s = (user && user.sub) || {};
+  const lim = limitsFor(plan);
+  const today = serverDay();
+  const q = (user && user.quota && user.quota.day === today) ? user.quota : { ai: 0, code: 0, agent: 0, brain: 0 };
+  const expiresAt = plan === "unlimited" ? null : (s.expiresAt || null);
+  const daysLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt - Date.now()) / 86400000)) : null;
+  const remain = (p) => (lim[p] < 0 ? -1 : Math.max(0, lim[p] - (q[p] || 0)));
+  return {
+    plan, expiresAt, daysLeft,
+    limits: { ai: lim.ai, code: lim.code, agent: lim.agent, brain: lim.brain },
+    used: { ai: q.ai || 0, code: q.code || 0, agent: q.agent || 0, brain: q.brain || 0 },
+    remaining: { ai: remain("ai"), code: remain("code"), agent: remain("agent"), brain: remain("brain") },
+  };
+}
+// ---- redeem code helpers ----
+function codesList() { if (!Array.isArray(DB.codes)) DB.codes = []; return DB.codes; }
+function normCode(s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 40); }
+function genCode() {
+  const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no ambiguous 0/O/1/I/L
+  const rnd = crypto.randomBytes(12);
+  let out = "FIRAS";
+  for (let i = 0; i < 12; i++) out += A[rnd[i] % A.length];
+  return out; // FIRAS + 12 chars
+}
+function findCode(codeStr) { const c = normCode(codeStr); return c ? (codesList().find((x) => x.code === c) || null) : null; }
+function codeStatus(c) {
+  if (!c) return "invalid";
+  if (c.disabled) return "disabled";
+  if (c.expiresAt && Date.now() > c.expiresAt) return "expired";
+  if ((c.uses || 0) >= (c.maxUses || 1)) return "used-up";
+  return "active";
+}
+function publicCode(c) { return { ...c, status: codeStatus(c) }; }
+
+// Strip secrets — NEVER return passHash / salt to the client. Includes the live
+// subscription/quota view and the admin flag so the UI can gate features.
 function publicUser(u) {
-  return { id: u.id, name: u.name, email: u.email };
+  return { id: u.id, name: u.name, email: u.email, admin: isAdmin(u), sub: subInfo(u) };
 }
 
 /* ===========================================================================
@@ -888,7 +1257,16 @@ async function handleResendCode(req, res) {
   if (rateLimited("resend:" + clientIp(req), 4, 60_000)) return sendJson(res, 429, { error: "too many requests, wait a minute" });
   const body = await readJson(req, 100_000);
   const email = String((body && body.email) || "").trim().toLowerCase();
-  const p = DB.pending && DB.pending[email];
+  /* PROTOTYPE POLLUTION: DB.pending is a plain object keyed by the CALLER's string, and
+     this was the one lookup that never validated it. `{"email":"__proto__"}` resolved to
+     Object.prototype — truthy, .verified undefined — so the branch below assigned .token
+     and .exp ONTO Object.prototype, and from then on EVERY object in the process
+     inherited an `exp` timestamp and a `token`. (The signup path is safe because
+     EMAIL_RE rejects "__proto__" before the write.) The edge backend can't hit this at
+     all: it keys pending signups by emailKey(), a base64url hash, under a db path.
+     Require a real address AND an own property. */
+  if (!EMAIL_RE.test(email) || email.length > 200) return sendJson(res, 200, { ok: true }); // same reply either way (anti-enumeration)
+  const p = (DB.pending && Object.prototype.hasOwnProperty.call(DB.pending, email)) ? DB.pending[email] : null;
   if (p && !p.verified) {
     p.token = crypto.randomBytes(24).toString("hex"); p.exp = Date.now() + VERIFY_TTL_MS;
     await persist();
@@ -947,6 +1325,26 @@ function handleMe(req, res) {
   const user = currentUser(req);
   if (!user) return sendJson(res, 401, { error: "not authenticated" });
   return sendJson(res, 200, { user: publicUser(user) });
+}
+
+/* ---- Guest session: start (or resume) a no-signup trial. Idempotent — an
+   existing valid guest cookie is reused so a reload keeps the same quota. ---- */
+function handleGuestStart(req, res) {
+  // Already signed in? Don't hand out a guest identity — return the real user so
+  // a stray call from a logged-in tab is harmless.
+  const user = currentUser(req);
+  if (user) return sendJson(res, 200, { guest: false, user: publicUser(user) });
+  if (rateLimited("guest:" + clientIp(req), 20, 60_000)) return sendJson(res, 429, { error: "too many requests" });
+  let g = currentGuest(req);
+  if (!g) { g = { id: newGuestId(), guest: true }; setGuestCookie(res, g.id, req); }
+  return sendJson(res, 200, { guest: true, user: { id: g.id, name: "", email: "", guest: true, admin: false, sub: guestSubInfo(g.id) } });
+}
+
+/* ---- Guest session: end the trial (clears the cookie). ---- */
+function handleGuestEnd(req, res) {
+  const secure = isSecureReq(req) ? "; Secure" : "";
+  res.setHeader("Set-Cookie", `${GUEST_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure}`);
+  return sendJson(res, 200, { ok: true });
 }
 
 /* ---- Password reset: email a time-limited link via Resend (zero-dep HTTP API).
@@ -1089,10 +1487,36 @@ async function sendEmail(to, subject, html, opts) {
   if (RESEND_API_KEY) { if (await sendViaResend(to, subject, html, fromName)) return true; }
   return false;
 }
+/* ACCOUNT-TAKEOVER FIX — never build an outbound link from a request header.
+   This used to return `req.headers.origin` whenever APP_URL was unset, and APP_URL is set
+   nowhere in this project. An attacker POSTs a password-reset for the victim's address with
+   `Origin: https://attacker.example`; the server mails the VICTIM a genuine reset link whose
+   host is the attacker's. The victim clicks a legitimate-looking email from the real service
+   and hands over a valid reset token. Same path for email-verification links.
+
+   Now: an explicit APP_URL wins; otherwise `Host` is accepted ONLY if it matches a known
+   deployment hostname or is plainly local. `Origin` is ignored entirely — it is chosen by
+   whoever sends the request and can never be evidence of where the app lives. */
+const RESET_HOST_ALLOW = [
+  /^localhost(:\d+)?$/i,
+  /^127\.0\.0\.1(:\d+)?$/,
+  /^\[::1\](:\d+)?$/,
+  /^192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,       // the owner's LAN, used for phone testing
+  /^[a-z0-9-]+\.trycloudflare\.com$/i,
+  /^[a-z0-9-]+\.netlify\.app$/i,
+  /^[a-z0-9-]+\.fly\.dev$/i,
+  /^[a-z0-9-]+\.onrender\.com$/i,
+];
 function resetAppBase(req) {
-  if (RESET_APP_URL) return RESET_APP_URL;
-  const o = req.headers.origin; if (o) return String(o).replace(/\/+$/, "");
-  return "http://" + (req.headers.host || ("localhost:" + PORT));
+  if (RESET_APP_URL) return RESET_APP_URL;                 // explicit config always wins
+  const host = String(req.headers.host || "");
+  if (host && RESET_HOST_ALLOW.some((re) => re.test(host))) {
+    const proto = /^(localhost|127\.|\[::1\]|192\.168\.)/.test(host) ? "http" : "https";
+    return proto + "://" + host;
+  }
+  // Unrecognized host → refuse to guess. Set APP_URL for a new deployment domain.
+  console.warn("[auth] refusing to build a reset link for an unknown Host:", host, "— set APP_URL");
+  return "http://localhost:" + PORT;
 }
 function resetEmailHtml(link) {
   return brandedEmail({
@@ -1135,6 +1559,10 @@ async function handleReset(req, res) {
   const { salt, passHash } = await hashPassword(password);
   user.salt = salt; user.passHash = passHash;
   delete user.reset;
+  /* A reset exists to lock out whoever had access. Re-issuing the same cookie value made
+     it decorative: the attacker's stolen copy kept working. Bump first, THEN set the
+     cookie below, so this browser gets the new version and every other copy dies. */
+  bumpSessionVersion(user);
   await persist();
   setSessionCookie(res, user.id, req); // sign them in after a successful reset
   return sendJson(res, 200, { ok: true, user: publicUser(user) });
@@ -1154,7 +1582,11 @@ async function handleChangePassword(req, res) {
   if (!(await verifyPassword(current, user.salt, user.passHash))) return sendJson(res, 403, { error: "كلمة المرور الحالية غير صحيحة" });
   const { salt, passHash } = await hashPassword(next);
   user.salt = salt; user.passHash = passHash;
+  // Same reasoning as the reset path: a password change that leaves old sessions alive
+  // does not actually revoke anything.
+  bumpSessionVersion(user);
   await persist();
+  setSessionCookie(res, user.id, req);   // keep THIS browser signed in
   return sendJson(res, 200, { ok: true });
 }
 async function handleChangeEmail(req, res) {
@@ -1170,6 +1602,28 @@ async function handleChangeEmail(req, res) {
   if (email === user.email) return sendJson(res, 400, { error: "هذا هو بريدك الحالي" });
   if (DB.users.some((u) => u.email === email)) return sendJson(res, 409, { error: "هذا البريد مستخدم بالفعل" });
   user.email = email;
+  /* ── ACCOUNT-TAKEOVER FIX ────────────────────────────────────────────────────────────
+     This endpoint proves the CALLER's password and that the address is unused. It does not
+     — and cannot — prove the caller owns the new address. handleFirebaseAuth then links a
+     Google sign-in into whatever account already holds that email, on the stated assumption
+     that "an email present in the DB is owned by that person". This endpoint is exactly what
+     breaks that assumption, and the chain is short:
+
+       1. attacker signs up as attacker@x.com and verifies it
+       2. attacker POSTs {current:"<own password>", email:"victim@gmail.com"}
+       3. victim later taps "Continue with Google"
+       4. the lookup finds the ATTACKER's record, the token is verified, a session is issued
+          — the victim is now inside an account whose password the attacker knows, and every
+          chat, Brain document and memory they create is readable by simply logging in.
+
+     `emailUnverified` marks an address this server has never seen proven. handleFirebaseAuth
+     refuses to auto-link into such an account, which severs step 4. The flag is absent on
+     every existing record, so nothing about current sign-ins changes.
+
+     NOT reusing `emailVerified` for this: it is set only by the signup-verification path,
+     so Google-created accounts do not carry it, and gating on it would lock those users out. */
+  user.emailUnverified = true;
+  delete user.emailVerified;
   await persist();
   return sendJson(res, 200, { ok: true, user: publicUser(user) });
 }
@@ -1184,6 +1638,7 @@ async function handleDeleteAccount(req, res) {
   }
   DB.chats = (DB.chats || []).filter((c) => c.userId !== user.id);
   DB.users = DB.users.filter((u) => u.id !== user.id);
+  await brainRemoveUser(user.id);   // documents live outside DB, so persist() cannot clear them
   await persist();
   clearSessionCookie(res, req);
   return sendJson(res, 200, { ok: true });
@@ -1232,6 +1687,17 @@ async function handleFirebaseAuth(req, res) {
     if (!verified) {
       return sendJson(res, 409, {
         error: "An account with this email already exists. Please sign in with your password, or verify your email first.",
+      });
+    }
+    /* …and a VERIFIED token is still not enough on its own. The guard above assumes the
+       account holding this email legitimately owns it — /api/auth/change-email lets any
+       user claim any unused address without proving anything, so that assumption fails for
+       exactly those records. Refusing to auto-link into an unproven address is what stops a
+       squatted email from handing the real owner's session to the squatter.
+       Absent on every existing record, so ordinary Google sign-in is unaffected. */
+    if (user.emailUnverified) {
+      return sendJson(res, 409, {
+        error: "An account with this email already exists but the address was never confirmed. Please sign in with your password.",
       });
     }
   } else {
@@ -1294,7 +1760,7 @@ async function handleListChats(req, res) {
   const list = userChats(user.id)
     .slice()
     .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
-    .map((c) => ({ id: c.id, title: c.title, updatedAt: c.updatedAt, pinned: !!c.pinned, agent: !!c.agent, codeProj: !!c.codeProj }));
+    .map((c) => ({ id: c.id, title: c.title, updatedAt: c.updatedAt, pinned: !!c.pinned, agent: !!c.agent, codeProj: !!c.codeProj, brainNb: !!c.brainNb }));
   return sendJson(res, 200, list);
 }
 
@@ -1325,6 +1791,9 @@ async function handleCreateChat(req, res) {
     pinned: !!body.pinned,
     agent: !!body.agent,       // Firas Agent chats live in their OWN sidebar list
     codeProj: !!body.codeProj, // Firas Code workspace projects — their own list too
+    brainNb: !!body.brainNb,   // Firas Brain notebooks — likewise. Set ONLY here: handleUpdateChat
+                               // never writes product flags, so a chat POSTed without its flag can
+                               // never acquire one later and would leak into the Firas AI list.
     createdAt: now,
     updatedAt: now,
   };
@@ -1386,10 +1855,16 @@ function sseInit(res) {
 // byte-identical on any text with no cue. Only runs on the plain-chat product (gated by res._scrubBt);
 // never on code/agent streams (nomem) or reasoning. Verified: 37/37 fixtures incl. random chunkings.
 const _BT_EN = "(?:no,?\\s*)?wait,\\s+(?:that'?s|this is|it'?s|i|no|the)\\b|that'?s (?:wrong|not right|incorrect)|let me (?:redo|re-?do|reconsider|recompute|recalculate|start over|try again|fix that)|i made (?:an?|a) (?:error|mistake)|scratch that|on second thought|my mistake|ignore (?:that|the above)|hold on,\\s+(?:that|this|no|i)\\b|actually,?\\s+(?:that'?s|this is|no)\\b|oops|whoops";
-const _BT_AR = "انتظر|مهلا|مهلًا|لحظة|عذرا|عذرًا|عفوا|عفوًا|هناك خطأ|هذا خطأ|هذا غير صحيح|في الواقع هذا خطأ|دعني (?:أعيد|اعيد|أصحح|اصحح|أعدّل)|أعيد الحساب|اعيد الحساب|خطأ مني";
+const _BT_AR = "(?:انتظر|مهلا|مهلًا|لحظة|عذرا|عذرًا|عفوا|عفوًا)s*[،,]|هناك خطأ|هذا خطأ|هذا غير صحيح|في الواقع هذا خطأ|دعني (?:أعيد|اعيد|أصحح|اصحح|أعدّل)|أعيد الحساب|اعيد الحساب|خطأ مني";
 const BACKTRACK_RE = new RegExp("(?:(?:^|[\\s.!?…])(?:" + _BT_EN + "))|(?:(?:^|[\\s.!?…،؛])(?:" + _BT_AR + ")(?=$|[\\s.!?…،؛]))", "i");
+/* How many characters of the NEXT sentence must arrive before the PREVIOUS one is released.
+   The longest cue in either language is well under 40 characters ("no, wait, that's wrong",
+   "هناك خطأ في الحساب"), so 56 leaves generous headroom while capping how far behind the
+   reader can ever be. Raising it makes streaming laggier; lowering it below the longest cue
+   would let a real self-correction slip through. */
+const BT_WINDOW = 56;
 function makeBacktrackScrubber() {
-  let pending = "", cur = "";
+  let pending = "", cur = "", cleared = false;
   const isEnd = (c) => c === "." || c === "!" || c === "?" || c === "؟" || c === "\n";
   const isWs = (c) => c === undefined || c === " " || c === "\t" || c === "\n" || c === "\r";
   function recover(s) {
@@ -1407,16 +1882,62 @@ function makeBacktrackScrubber() {
       let out = "";
       for (let i = 0; i < tok.length; i++) {
         const ch = tok[i]; cur += ch;
+        /* EARLY RELEASE — this is what makes streaming feel like typing.
+
+           A backtrack cue only ever appears at the START of a sentence, and what it retracts
+           is the sentence BEFORE it. The sentence currently being written is never itself
+           retracted. So once enough of it has arrived to rule out a cue in its opening, two
+           things become safe at once: the held previous sentence can go out, and every
+           further character of this sentence can go out the moment it arrives.
+
+           Without this the buffer held the entire current sentence no matter how long it ran —
+           measured at 213 characters of a 214-character sentence, i.e. the reader saw nothing
+           until the full stop. That is exactly the "arrives in one jump" the owner described.
+
+           `cleared` is per-sentence and resets at each boundary, so every new sentence is
+           re-checked from scratch. */
+        if (!cleared && cur.length >= BT_WINDOW && !BACKTRACK_RE.test(cur)) {
+          cleared = true;
+          out += pending; pending = "";   // nothing can retract it now
+          out += cur; cur = "";           // and this sentence can stream from here on
+          continue;
+        }
+        if (cleared) { out += ch; cur = ""; if (isEnd(ch) && isWs(tok[i + 1])) cleared = false; continue; }
         if (isEnd(ch) && isWs(tok[i + 1])) {
           const s = cur; cur = "";
-          if (BACKTRACK_RE.test(s)) { const rec = recover(s); if (rec) { out += pending; pending = rec; } else { pending = ""; } continue; }
+          /* DATA LOSS FIX. This used to be `else { pending = ""; }` — when a cue matched but
+             recover() could not confidently extract the corrected text, it DELETED the
+             previous sentence and kept nothing in its place.
+
+             That fires on ordinary prose. `لحظة` ("moment") is in the Arabic cue list, so a
+             sentence like "لحظة الغليان مهمة هنا." matched, recover() found no comma to split
+             on, returned "", and the sentence BEFORE it vanished from the answer. Measured:
+             a clean 78-character Arabic paragraph came out at 37 characters. A chained
+             correction ("مهلًا، هذا خطأ، …") recursed into itself and returned the empty
+             string, deleting the whole answer.
+
+             Now an unrecoverable match is treated as ordinary text. The worst case becomes a
+             visible "wait, that's wrong" that should have been trimmed — mildly untidy.
+             The old worst case was silently deleting a correct sentence from a student's
+             answer, which is not a trade this product can make. */
+          if (BACKTRACK_RE.test(s)) {
+            const rec = recover(s);
+            if (rec) { out += pending; pending = rec; }
+            else { out += pending; pending = s; }   // not confident → keep it, never drop it
+            continue;
+          }
           out += pending; pending = s;
         }
       }
       return out;
     },
-    flush() { let rest = pending + cur; pending = ""; cur = ""; if (BACKTRACK_RE.test(rest)) { const rec = recover(rest); return rec || ""; } return rest; },
-    reset() { pending = ""; cur = ""; },
+    /* Same correction as push(): an unrecoverable match must NOT return "". flush() emits the
+       LAST thing the reader ever sees, so `rec || ""` silently truncated the end of an answer
+       whenever the closing sentence happened to contain a cue word like "لحظة". Falling back
+       to `rest` keeps the text; the worst case is an untrimmed self-correction, never a
+       missing conclusion. */
+    flush() { let rest = pending + cur; pending = ""; cur = ""; if (BACKTRACK_RE.test(rest)) { const rec = recover(rest); return rec || rest; } return rest; },
+    reset() { pending = ""; cur = ""; cleared = false; },
   };
 }
 
@@ -1668,11 +2189,20 @@ function parseDuckDuckGo(html) {
 // Per-user daily image-creation cap. Configurable via env; defaults to 5/day.
 const IMAGE_DAILY_LIMIT = Math.max(1, parseInt(process.env.IMAGE_DAILY_LIMIT, 10) || 5);
 
-// Local calendar day as YYYY-MM-DD, so the quota resets at local midnight.
-function serverDay(d = new Date()) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+/* The quota day is the USERS' calendar day, not the host's. This used the machine's
+   local time while the edge used UTC, so the same build reset counters at a different
+   wall-clock instant depending on where it ran — in production (UTC) that was 03:00 in
+   Baghdad, three hours after the app's own 429 notice promises "يتجدّد تلقائيًا بعد
+   منتصف الليل". Both backends now shift the instant by QUOTA_TZ_OFFSET_MINUTES
+   (default 180 = UTC+3, the Arabic user base) and read UTC fields off the shifted value.
+   Must stay byte-for-byte equivalent to serverDay() in netlify/edge-functions/api.js. */
+const QUOTA_TZ_OFFSET_MINUTES = (() => { const n = parseInt(process.env.QUOTA_TZ_OFFSET_MINUTES, 10); return Number.isFinite(n) ? n : 180; })();
+function serverDay(d) {
+  const ms = (d instanceof Date ? d.getTime() : (typeof d === "number" ? d : Date.now())) + QUOTA_TZ_OFFSET_MINUTES * 60000;
+  const x = new Date(ms);
+  const y = x.getUTCFullYear();
+  const m = String(x.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(x.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
@@ -1706,7 +2236,10 @@ async function handleMaxQuota(req, res) {
    reloads of an existing image never re-count). */
 async function handleImageQuota(req, res) {
   const user = currentUser(req);
-  if (!user) return sendJson(res, 401, { ok: false, error: "auth required" });
+  if (!user) {
+    if (currentGuest(req)) return sendJson(res, 403, { ok: false, error: "signin_required", feature: "image" });
+    return sendJson(res, 401, { ok: false, error: "auth required" });
+  }
   if (imgRollDay(user)) await persist();
   const used = user.imgCids.length;
   if (used >= IMAGE_DAILY_LIMIT) {
@@ -1959,7 +2492,16 @@ async function handleImage(req, res) {
   // they keep working. A generous per-user rate cap bounds abuse loops without
   // tripping history reloads (image-heavy chats re-request every saved image).
   const user = currentUser(req);
-  if (!user) { res.writeHead(401); return res.end("auth required"); }
+  if (!user) {
+    // A GUEST reaching image generation is not an error — it's the upsell moment.
+    // Answer with a machine-readable 403 so the client can show "sign up to create
+    // images" instead of a generic auth failure.
+    if (currentGuest(req)) {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ error: "signin_required", feature: "image" }));
+    }
+    res.writeHead(401); return res.end("auth required");
+  }
   if (rateLimited("img:" + user.id, 240, 60_000)) { res.writeHead(429); return res.end("rate limited"); }
   const u = new URL(req.url, "http://localhost");
   const prompt = (u.searchParams.get("prompt") || "").trim().slice(0, 1000);
@@ -1976,17 +2518,28 @@ async function handleImage(req, res) {
     cid = "auto" + (hsh >>> 0).toString(36);
   }
   imgRollDay(user);
-  const isNew = !user.imgCids.includes(cid);
-  if (isNew && user.imgCids.length >= IMAGE_DAILY_LIMIT) { res.writeHead(429); return res.end("daily limit reached"); }
   const w = Math.min(1280, Math.max(256, parseInt(u.searchParams.get("w"), 10) || 1024));
   const h = Math.min(1280, Math.max(256, parseInt(u.searchParams.get("h"), 10) || 1024));
   const seed = (u.searchParams.get("seed") || "").replace(/[^0-9]/g, "").slice(0, 12);
+  /* The daily cap keyed on `cid` ALONE, and only checked when the cid was new. So
+     ?cid=X&prompt=<anything> charged one of the five slots, and every later request reusing
+     cid X with a DIFFERENT prompt skipped the 429 branch entirely and generated a brand-new
+     image — real spend on Puter / Cloudflare / Gemini, with a nominal limit of five a day.
+     The disk cache did not save it either: that is keyed on the prompt, so a fresh prompt
+     always missed.
+
+     The slot is now the IMAGE, not the client's string: same prompt+size+seed is genuinely
+     the same picture and stays free, anything else costs a slot. The check moved below the
+     parameter parsing because it now needs them. */
+  const slot = imgCacheKey(prompt, w, h, seed);
+  const isNew = !user.imgCids.includes(slot);
+  if (isNew && user.imgCids.length >= IMAGE_DAILY_LIMIT) { res.writeHead(429); return res.end("daily limit reached"); }
   // Serve a previously-generated identical image straight from disk: instant, stable
   // (the saved picture never changes), and zero extra Puter/engine spend on reloads.
   const ckey = imgCacheKey(prompt, w, h, seed);
   const cached = imgCacheGet(ckey);
   if (cached) {
-    if (isNew) { user.imgCids.push(cid); persist(); }
+    if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
     res.writeHead(200, { "Content-Type": cached.mime, "Cache-Control": "public, max-age=86400" });
     return res.end(cached.buf);
   }
@@ -1998,7 +2551,7 @@ async function handleImage(req, res) {
     if (cf && cf.buf && cf.buf.length) {
       console.log("[firas] image served by Cloudflare (" + CF_IMAGE_MODEL + ")");
       await imgCacheSet(ckey, cf.buf, cf.mime);
-      if (isNew) { user.imgCids.push(cid); persist(); }
+      if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
       res.writeHead(200, { "Content-Type": cf.mime, "Cache-Control": "public, max-age=86400" });
       return res.end(cf.buf);
     }
@@ -2009,7 +2562,7 @@ async function handleImage(req, res) {
     if (put && put.buf && put.buf.length) {
       console.log("[firas] image served by Puter (" + imgEngineTag() + ")");
       await imgCacheSet(ckey, put.buf, put.mime);
-      if (isNew) { user.imgCids.push(cid); persist(); }
+      if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
       res.writeHead(200, { "Content-Type": put.mime, "Cache-Control": "public, max-age=86400" });
       return res.end(put.buf);
     }
@@ -2021,7 +2574,7 @@ async function handleImage(req, res) {
     if (gem && gem.buf && gem.buf.length) {
       console.log("[firas] image served by Gemini (" + GEMINI_IMAGE_MODEL + ")");
       await imgCacheSet(ckey, gem.buf, gem.mime);
-      if (isNew) { user.imgCids.push(cid); persist(); }
+      if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
       res.writeHead(200, { "Content-Type": gem.mime, "Cache-Control": "public, max-age=86400" });
       return res.end(gem.buf);
     }
@@ -2033,7 +2586,7 @@ async function handleImage(req, res) {
     if (hf && hf.buf && hf.buf.length) {
       console.log("[firas] image served by Hugging Face (" + HF_IMAGE_MODEL + ")");
       await imgCacheSet(ckey, hf.buf, hf.mime);
-      if (isNew) { user.imgCids.push(cid); persist(); }
+      if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
       res.writeHead(200, { "Content-Type": hf.mime, "Cache-Control": "public, max-age=86400" });
       return res.end(hf.buf);
     }
@@ -2048,7 +2601,7 @@ async function handleImage(req, res) {
     const buf = Buffer.from(await r.arrayBuffer());
     const pmime = r.headers.get("content-type") || "image/jpeg";
     await imgCacheSet(ckey, buf, pmime);
-    if (isNew) { user.imgCids.push(cid); persist(); } // charge only now (real bytes)
+    if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string // charge only now (real bytes)
     res.writeHead(200, { "Content-Type": pmime, "Cache-Control": "public, max-age=86400" });
     res.end(buf);
   } catch (_) {
@@ -2319,10 +2872,34 @@ function ttsChunks(text, max) {
   if (cur.trim()) out.push(cur.trim());
   return out.filter(Boolean).slice(0, 14);   // hard cap so one call can't fan out unbounded
 }
+/* VOICE HAD NO DAILY METER AT ALL — only a per-minute rateLimited() bucket, which on the
+   edge is an in-isolate Map and therefore not a per-user cap in the first place. Both
+   endpoints spend the shared GEMINI_KEYS pool, the scarcest resource the app has, so an
+   unmetered caller could exhaust speech for all 55 real users. This charges a real daily
+   unit against the same counters every other product uses. */
+function chargeVoice(caller) {
+  if (caller.isGuest) {
+    const denied = guestChargeWithReq(req, caller.id, "voice", null, null);
+    return denied || null;
+  }
+  const u = caller.user;
+  if (!u) return null;
+  const limit = limitsFor(planOf(u)).voice;
+  if (!(limit >= 0)) return null;
+  quotaRollDay(u);
+  if ((u.quota.voice || 0) >= limit) {
+    return { error: "daily quota reached", quota: { product: "voice", used: u.quota.voice || 0, limit, plan: planOf(u) } };
+  }
+  u.quota.voice = (u.quota.voice || 0) + 1;
+  return null;
+}
+
 async function handleTts(req, res) {
-  const user = currentUser(req);
+  const caller = callerOf(req);
+  const user = caller.user || (caller.id ? { id: caller.id } : null);
   if (!user) return sendJson(res, 401, { error: "authentication required" });
-  if (rateLimited("tts:" + user.id, 90, 60_000)) return sendJson(res, 429, { error: "rate limited" });
+  if (rateLimited("tts:" + user.id, caller.isGuest ? 25 : 90, 60_000)) return sendJson(res, 429, { error: "rate limited" });
+  { const denied = chargeVoice(caller); if (denied) return sendJson(res, 429, denied); }
   const body = await readJson(req, 200_000);
   if (!body) return sendJson(res, 400, { error: "invalid JSON body" });
   const text = String(body.text || "").replace(/\s+/g, " ").trim().slice(0, 1400);
@@ -2378,7 +2955,9 @@ async function handleTts(req, res) {
 async function handleWebSearch(req, res) {
   res.setHeader("Content-Type", "application/json");
   // Auth + rate limit so the DuckDuckGo proxy isn't an open anonymous scraper.
-  const user = currentUser(req);
+  // Guests may search (it's part of answer quality) under a tighter cap.
+  const caller = callerOf(req);
+  const user = caller.user || (caller.id ? { id: caller.id } : null);
   if (!user) { res.writeHead(401); return res.end(JSON.stringify({ results: [], error: "auth" })); }
   if (rateLimited("search:" + user.id, 30, 60_000)) { res.writeHead(429); return res.end(JSON.stringify({ results: [], error: "rate" })); }
   const u = new URL(req.url, "http://localhost");
@@ -2444,14 +3023,18 @@ const STT_INSTRUCTION =
   "exactly as spoken (Arabic dialects stay in Arabic script as pronounced; mixed Arabic/English stays mixed). " +
   "Add natural punctuation. If there is no intelligible speech, output an empty string.";
 async function handleTranscribe(req, res) {
-  const user = currentUser(req);
+  const caller = callerOf(req);
+  const user = caller.user || (caller.id ? { id: caller.id } : null);
   if (!user) return sendJson(res, 401, { error: "authentication required" });
+  // Guests may dictate, but under a tight cap (server STT burns Gemini quota).
+  if (caller.isGuest && rateLimited("stt:" + caller.id, 12, 60_000)) return sendJson(res, 429, { error: "rate limited" });
   const body = await readJson(req, CHAT_BODY_LIMIT);
   if (!body) return sendJson(res, 400, { error: "invalid JSON body" });
   // Capability probe — lets the frontend pick server STT vs live browser dictation.
   if (body.probe) return sendJson(res, 200, { ok: !!GEMINI_API_KEY });
   if (!GEMINI_API_KEY) return sendJson(res, 503, { error: "no stt engine" });
   if (rateLimited("stt:" + user.id, 20, 60_000)) return sendJson(res, 429, { error: "rate limited" });
+  { const denied = chargeVoice(caller); if (denied) return sendJson(res, 429, denied); }
   const mime = body.format === "mp3" ? "audio/mp3" : "audio/wav";
   const audio = String(body.audio || "").replace(/^data:audio\/[a-z0-9.+-]+;base64,/i, "");
   if (!audio || audio.length < 4_000) return sendJson(res, 400, { error: "no audio" });
@@ -2496,7 +3079,8 @@ async function handleTranscribe(req, res) {
     Openverse-hosted thumbnail URLs so generated sites get real, relevant photos. */
 async function handleImageSearch(req, res) {
   res.setHeader("Content-Type", "application/json");
-  const user = currentUser(req);
+  const caller = callerOf(req);
+  const user = caller.user || (caller.id ? { id: caller.id } : null);
   if (!user) { res.writeHead(401); return res.end(JSON.stringify({ results: [], error: "auth" })); }
   if (rateLimited("images:" + user.id, 40, 60_000)) { res.writeHead(429); return res.end(JSON.stringify({ results: [], error: "rate" })); }
   const u = new URL(req.url, "http://localhost");
@@ -2519,8 +3103,50 @@ async function handleImageSearch(req, res) {
 }
 
 /* SSRF guard shared by the proxies: hostname must not be private/loopback/link-local. */
+/** True when an IP literal falls in a range that must never be reachable from the proxy. */
+function privateIp(ip) {
+  const s = String(ip || "");
+  if (/^(::1|::ffff:127\.|fe80:|fc|fd)/i.test(s)) return true;          // v6 loopback/link-local/ULA
+  const m = /^(?:::ffff:)?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(s);
+  if (!m) return false;
+  const [a, b] = [ +m[1], +m[2] ];
+  return a === 0 || a === 127 || a === 10                                // this-host, loopback, private
+    || (a === 169 && b === 254)                                          // link-local + cloud metadata
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || (a === 100 && b >= 64 && b <= 127)                                // CGNAT
+    || a >= 224;                                                         // multicast / reserved
+}
+
+/* SSRF FIX — check the ADDRESS, not the name.
+   The guard below is a hostname string test, so it only ever blocked hosts that LOOK
+   internal. An attacker registers a public name whose A record is 127.0.0.1 (or
+   169.254.169.254, the cloud metadata address) and it passes every pattern here, because
+   "evil.example.com" contains nothing suspicious. The redirect re-validation had the same
+   blind spot: it re-checked each hop's hostname, never where that hostname pointed.
+
+   proxyHostAllowed() below now resolves the name and rejects it if ANY returned address is
+   private. The string test is kept as a cheap first pass. */
 function proxyHostBlocked(host) {
-  return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|::1|\[)/.test(host) || /\.local$/.test(host) || host === "metadata.google.internal";
+  const bare = String(host || "").replace(/^\[|\]$/g, "");
+  return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|::1|\[)/.test(host)
+    || /\.local$/.test(host)
+    || host === "metadata.google.internal"
+    || privateIp(bare);
+}
+
+/** Resolve `host` and reject it when any address it maps to is private. */
+async function proxyHostAllowed(host) {
+  if (proxyHostBlocked(host)) return false;
+  try {
+    const { lookup } = await import("node:dns/promises");
+    const addrs = await lookup(String(host).replace(/^\[|\]$/g, ""), { all: true });
+    if (!addrs || !addrs.length) return false;
+    // EVERY address must be public — one private answer is enough to be a rebinding attempt.
+    return !addrs.some((a) => privateIp(a.address));
+  } catch {
+    return false;   // cannot resolve → cannot vouch for it
+  }
 }
 /* Fetch with MANUAL redirect handling: every hop's hostname is re-validated, so a public host
    can't 302 the proxy into localhost / the cloud metadata service (classic SSRF bypass). */
@@ -2528,7 +3154,9 @@ async function safeProxyFetch(target, headers, maxHops) {
   let cur = target;
   for (let hop = 0; hop <= (maxHops || 3); hop++) {
     const host = new URL(cur).hostname.toLowerCase();
-    if (proxyHostBlocked(host)) throw new Error("blocked host");
+    // Resolve EVERY hop, not just the first: a public host can 302 into a name that
+    // resolves to loopback or the metadata address, and a name-only check never sees it.
+    if (!(await proxyHostAllowed(host))) throw new Error("blocked host");
     const r = await fetch(cur, { headers, redirect: "manual" });
     if (r.status >= 300 && r.status < 400) {
       const loc = r.headers.get("location");
@@ -2545,7 +3173,8 @@ async function safeProxyFetch(target, headers, maxHops) {
 /** Stream an external image through OUR origin so documents can draw it onto the PDF canvas
     without CORS taint. SSRF-guarded, images only, 4MB cap, cached. */
 async function handleImgProxy(req, res) {
-  const user = currentUser(req);
+  const caller = callerOf(req);
+  const user = caller.user || (caller.id ? { id: caller.id } : null);
   if (!user) { res.writeHead(401, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ error: "auth" })); }
   if (rateLimited("imgproxy:" + user.id, 80, 60_000)) { res.writeHead(429); return res.end(); }
   const u = new URL(req.url, "http://localhost");
@@ -2568,7 +3197,8 @@ async function handleImgProxy(req, res) {
     localhost/private hosts), auth + rate limited. Lets the agent work FROM a link. */
 async function handleUrlFetch(req, res) {
   res.setHeader("Content-Type", "application/json");
-  const user = currentUser(req);
+  const caller = callerOf(req);
+  const user = caller.user || (caller.id ? { id: caller.id } : null);
   if (!user) { res.writeHead(401); return res.end(JSON.stringify({ text: "", error: "auth" })); }
   if (rateLimited("fetch:" + user.id, 20, 60_000)) { res.writeHead(429); return res.end(JSON.stringify({ text: "", error: "rate" })); }
   const u = new URL(req.url, "http://localhost");
@@ -2620,8 +3250,8 @@ function b64Mime(b64) {
 }
 // Stream a prebuilt OpenAI-format messages array through the Gemini OpenAI-compat endpoint,
 // trying each candidate model id. Returns true if any bytes streamed. Shared by text + vision.
-async function _geminiStream(res, msgs, signal, label) {
-  for (const model of GEMINI_TEXT_MODELS) {
+async function _geminiStream(res, msgs, signal, label, models) {
+  for (const model of (models && models.length ? models : GEMINI_TEXT_MODELS)) {
     if (res.writableEnded) return true;
     const body = JSON.stringify({ model, messages: msgs, stream: true });
     let upstream;
@@ -2750,7 +3380,7 @@ async function streamGeminiVision(res, messages, signal) {
       return { role: m.role, content: text };
     });
   if (!msgs.length) return false;
-  return _geminiStream(res, msgs, signal, "Vision→Gemini");
+  return _geminiStream(res, msgs, signal, "Vision→Gemini", GEMINI_VISION_MODELS);
 }
 
 // Returns true if it streamed any answer, false if it failed BEFORE any bytes
@@ -3123,13 +3753,164 @@ async function handleMemoryClear(req, res) {
    ========================================================================== */
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "firasnozad@gmail.com").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 function isAdmin(user) { return !!(user && user.email && ADMIN_EMAILS.includes(String(user.email).toLowerCase())); }
-function announcementsList() { if (!Array.isArray(DB.announcements)) DB.announcements = []; return DB.announcements; }
-const ANN_IMG_OK = (s) => typeof s === "string" && /^(data:image\/(png|jpe?g|webp);base64,|https?:\/\/)/.test(s);
-function handleAnnouncementsGet(req, res) {
+
+/* ===========================================================================
+   REDEEM CODES — user activation + admin management. All validation is
+   server-side; the client can never grant itself a plan.
+   =========================================================================== */
+// USER: activate a code → apply the subscription. Brute-force-guarded.
+async function handleRedeem(req, res) {
   const user = currentUser(req);
   if (!user) return sendJson(res, 401, { error: "authentication required" });
-  const list = announcementsList().slice().sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 50);
-  return sendJson(res, 200, { announcements: list, admin: isAdmin(user) });
+  if (rateLimited("redeem:" + user.id, 8, 60_000) || rateLimited("redeemip:" + (clientIp(req) || "?"), 20, 60_000))
+    return sendJson(res, 429, { error: "too many attempts, please wait a minute" });
+  const body = await readJson(req, 4_000);
+  const codeStr = normCode(body && body.code);
+  if (!codeStr || codeStr.length < 5) return sendJson(res, 400, { error: "invalid code" });
+  const c = findCode(codeStr);
+  if (!c) return sendJson(res, 404, { error: "code not found" });
+  const st = codeStatus(c);
+  if (st === "disabled") return sendJson(res, 403, { error: "code disabled" });
+  if (st === "expired") return sendJson(res, 410, { error: "code expired" });
+  if (st === "used-up") return sendJson(res, 409, { error: "code fully used" });
+  if (c.boundUserId && c.boundUserId !== user.id) return sendJson(res, 403, { error: "code not for this account" });
+  if (Array.isArray(c.usedBy) && c.usedBy.some((u) => u.userId === user.id)) return sendJson(res, 409, { error: "you already redeemed this code" });
+
+  const now = Date.now();
+  const type = c.type;
+  let expiresAt = null;
+  if (type === "gold" || type === "diamond") {
+    const days = Number(c.durationDays) > 0 ? Number(c.durationDays) : 30;
+    // Extend from the current expiry if the SAME plan is still active (stacking).
+    const cur = user.sub;
+    const base = (cur && cur.plan === type && cur.expiresAt && cur.expiresAt > now) ? cur.expiresAt : now;
+    expiresAt = base + days * 86400000;
+  }
+  user.sub = { plan: type, expiresAt, since: now, code: c.code };
+  /* PARITY NOTE: the edge reserves codes/<id>/claims/<userId> and re-counts, because two
+     concurrent isolates could both read uses:0 on a maxUses:1 code and both write uses:1.
+     Node is single-threaded and nothing above this line awaits, so this check-then-
+     increment cannot be interleaved — the plain counter stays correct here. Codes written
+     by the edge carry a `claims` map; this backend never reads or writes one. */
+  c.uses = (c.uses || 0) + 1;
+  c.usedBy = Array.isArray(c.usedBy) ? c.usedBy : [];
+  c.usedBy.push({ userId: user.id, email: user.email, at: now });
+  await persist();
+  return sendJson(res, 200, { ok: true, sub: subInfo(user) });
+}
+// ADMIN: list all codes (+ optional search).
+async function handleAdminCodesList(req, res, url) {
+  const user = currentUser(req);
+  if (!user) return sendJson(res, 401, { error: "authentication required" });
+  if (!isAdmin(user)) return sendJson(res, 403, { error: "admins only" });
+  const qraw = ((url && url.searchParams.get("q")) || "").toString().trim().toLowerCase();
+  let list = codesList().slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  if (qraw) list = list.filter((c) => (c.code || "").toLowerCase().includes(qraw) || (c.note || "").toLowerCase().includes(qraw) || (c.type || "").includes(qraw));
+  return sendJson(res, 200, { codes: list.map(publicCode), plans: PLAN_LIMITS });
+}
+// ADMIN: create one custom code OR a batch of random codes.
+async function handleAdminCodesCreate(req, res) {
+  const user = currentUser(req);
+  if (!user) return sendJson(res, 401, { error: "authentication required" });
+  if (!isAdmin(user)) return sendJson(res, 403, { error: "admins only" });
+  const body = await readJson(req, 20_000) || {};
+  const type = ["gold", "diamond", "unlimited"].includes(body.type) ? body.type : "gold";
+  const durationDays = type === "unlimited" ? null : (Number(body.durationDays) > 0 ? Math.min(3650, Math.floor(Number(body.durationDays))) : 30);
+  const maxUses = Math.min(1_000_000, Math.max(1, parseInt(body.maxUses, 10) || 1));
+  const note = String(body.note || "").slice(0, 200);
+  const expiresAt = Number(body.expiresAt) > 0 ? Number(body.expiresAt) : null;
+  let boundUserId = null;
+  if (body.boundUserEmail) { const bu = DB.users.find((u) => u.email === String(body.boundUserEmail).toLowerCase().trim()); if (!bu) return sendJson(res, 404, { error: "bound user not found" }); boundUserId = bu.id; }
+  const custom = normCode(body.customCode);
+  const count = custom ? 1 : Math.min(500, Math.max(1, parseInt(body.count, 10) || 1));
+  const created = [];
+  for (let i = 0; i < count; i++) {
+    let code = custom || genCode();
+    if (findCode(code) || created.some((x) => x.code === code)) {
+      if (custom) return sendJson(res, 409, { error: "code already exists" });
+      do { code = genCode(); } while (findCode(code) || created.some((x) => x.code === code));
+    }
+    created.push({
+      id: "cd" + Date.now().toString(36) + crypto.randomBytes(4).toString("hex") + i,
+      code, type, durationDays, maxUses, uses: 0, usedBy: [],
+      expiresAt, note, disabled: false, boundUserId, createdAt: Date.now(), createdBy: user.email,
+    });
+  }
+  for (const c of created) codesList().push(c);
+  await persist();
+  return sendJson(res, 200, { ok: true, created: created.map(publicCode) });
+}
+// ADMIN: edit / disable / re-enable a code.
+async function handleAdminCodesPatch(req, res) {
+  const user = currentUser(req);
+  if (!user) return sendJson(res, 401, { error: "authentication required" });
+  if (!isAdmin(user)) return sendJson(res, 403, { error: "admins only" });
+  const body = await readJson(req, 8_000) || {};
+  const c = codesList().find((x) => x.id === body.id);
+  if (!c) return sendJson(res, 404, { error: "code not found" });
+  if (typeof body.disabled === "boolean") c.disabled = body.disabled;
+  if (typeof body.note === "string") c.note = body.note.slice(0, 200);
+  if (body.type && ["gold", "diamond", "unlimited"].includes(body.type)) { c.type = body.type; if (c.type === "unlimited") c.durationDays = null; }
+  if (body.durationDays != null && c.type !== "unlimited") c.durationDays = Math.max(1, Math.floor(Number(body.durationDays)) || 30);
+  if (body.maxUses != null) c.maxUses = Math.min(1_000_000, Math.max(1, parseInt(body.maxUses, 10) || 1));
+  if (body.expiresAt !== undefined) c.expiresAt = Number(body.expiresAt) > 0 ? Number(body.expiresAt) : null;
+  await persist();
+  return sendJson(res, 200, { ok: true, code: publicCode(c) });
+}
+// ADMIN: delete a code (?id=).
+async function handleAdminCodesDelete(req, res, url) {
+  const user = currentUser(req);
+  if (!user) return sendJson(res, 401, { error: "authentication required" });
+  if (!isAdmin(user)) return sendJson(res, 403, { error: "admins only" });
+  const id = (url && url.searchParams.get("id")) || "";
+  if (!id) return sendJson(res, 400, { error: "id required" });
+  const before = codesList().length;
+  DB.codes = codesList().filter((c) => c.id !== id);
+  if (DB.codes.length !== before) await persist();
+  return sendJson(res, 200, { ok: true });
+}
+// Charge ONE unit of the Code (per build) or Agent (per mission) daily quota.
+// Server-authoritative; the client calls this at a build/mission's entry point.
+async function handleUsageCharge(req, res) {
+  const caller = callerOf(req);
+  const user = caller.user || null;
+  if (!user && !caller.isGuest) return sendJson(res, 401, { error: "authentication required" });
+  const body = await readJson(req, 2_000) || {};
+  const product = (body.product === "code" || body.product === "agent") ? body.product : null;
+  if (!product) return sendJson(res, 400, { error: "invalid product" });
+  // GUEST: charge the trial allowance so Code builds / Agent missions are gated
+  // for guests too (otherwise the client's gate is the only one, i.e. none).
+  if (caller.isGuest) {
+    const denied = guestChargeWithReq(req, caller.id, product, body.cid);
+    if (denied) return sendJson(res, 429, denied);
+    return sendJson(res, 200, { ok: true, sub: guestSubInfo(caller.id) });
+  }
+  const limit = limitsFor(planOf(user))[product];
+  if (limit < 0) return sendJson(res, 200, { ok: true, sub: subInfo(user) }); // unlimited plan
+  quotaRollDay(user);
+  const q = user.quota;
+  const cid = String(body.cid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+  const already = product === "agent" ? (cid && q.agentCids.includes(cid)) : (cid && q.last[product] === cid);
+  if (!already && (q[product] || 0) >= limit) return sendJson(res, 429, { error: "daily quota reached", quota: { product, used: q[product] || 0, limit, plan: planOf(user) } });
+  if (!already) { q[product] = (q[product] || 0) + 1; if (product === "agent") { if (cid) { q.agentCids.push(cid); if (q.agentCids.length > 500) q.agentCids.shift(); } } else if (cid) q.last[product] = cid; await persist(); }
+  return sendJson(res, 200, { ok: true, sub: subInfo(user) });
+}
+
+function announcementsList() { if (!Array.isArray(DB.announcements)) DB.announcements = []; return DB.announcements; }
+const ANN_IMG_OK = (s) => typeof s === "string" && /^(data:image\/(png|jpe?g|webp);base64,|https?:\/\/)/.test(s);
+/* Mirrors the edge. A video is a URL, never inline data: the trailer is 47 MB and an
+   announcement record is JSON. Only a same-origin /media/ path or an https URL passes, so a
+   stored string can never become a javascript: or data: sink in the client's <video src>. */
+const ANN_VID_OK = (s) => typeof s === "string" &&
+  /^(\/media\/[A-Za-z0-9._-]+\.(mp4|webm)|https:\/\/[^\s"'<>]+\.(mp4|webm))$/.test(s);
+function handleAnnouncementsGet(req, res) {
+  // Guests see site updates too (read-only); only a real admin gets the admin flag.
+  const caller = callerOf(req);
+  if (!caller.user && !caller.isGuest) return sendJson(res, 401, { error: "authentication required" });
+  // Pinned first, then newest — a pinned item must not scroll away as others are posted.
+  const list = announcementsList().slice()
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.ts || 0) - (a.ts || 0)).slice(0, 50);
+  return sendJson(res, 200, { announcements: list, admin: isAdmin(caller.user) });
 }
 async function handleAnnouncementsPost(req, res) {
   const user = currentUser(req);
@@ -3138,11 +3919,17 @@ async function handleAnnouncementsPost(req, res) {
   let p; try { p = JSON.parse((await readBody(req, CHAT_BODY_LIMIT)) || "{}"); } catch { return sendJson(res, 400, { error: "invalid JSON" }); }
   const title = String(p.title || "").slice(0, 200).trim();
   const body = String(p.body || "").slice(0, 4000).trim();
+  // Bilingual by STORAGE, not machine translation — both texts are authored and kept.
+  const titleEn = String(p.titleEn || "").slice(0, 200).trim();
+  const bodyEn = String(p.bodyEn || "").slice(0, 4000).trim();
   let image = String(p.image || "").trim();
   if (image && !ANN_IMG_OK(image)) image = "";
   if (image.length > 600000) return sendJson(res, 413, { error: "image too large" });
-  if (!title && !body && !image) return sendJson(res, 400, { error: "empty announcement" });
-  const item = { id: "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), title, body, image, ts: Date.now(), by: user.name || "Firas" };
+  let video = String(p.video || "").trim();
+  if (video && !ANN_VID_OK(video)) video = "";
+  const pinned = !!p.pinned;
+  if (!title && !body && !image && !video) return sendJson(res, 400, { error: "empty announcement" });
+  const item = { id: "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), title, body, titleEn, bodyEn, image, video, pinned, ts: Date.now(), by: user.name || "Firas" };
   const list = announcementsList();
   list.unshift(item);
   while (list.length > 100) list.pop();
@@ -3153,7 +3940,18 @@ async function handleAnnouncementsDelete(req, res) {
   const user = currentUser(req);
   if (!user) return sendJson(res, 401, { error: "authentication required" });
   if (!isAdmin(user)) return sendJson(res, 403, { error: "admins only" });
-  const id = new URL(req.url, "http://localhost").searchParams.get("id");
+  const q = new URL(req.url, "http://localhost").searchParams;
+  /* CLEAR ALL — ?all=1. Splices by the ids actually present rather than reassigning
+     DB.announcements, so nothing outside this array can be caught by it. This database
+     has no backup, which is exactly why the blast radius is written down here. */
+  if (q.get("all") === "1") {
+    const l = announcementsList();
+    const ids = l.map((a) => a && a.id).filter(Boolean);
+    l.length = 0;
+    await persist();
+    return sendJson(res, 200, { ok: true, removed: ids.length, ids });
+  }
+  const id = q.get("id");
   const list = announcementsList();
   const i = list.findIndex((a) => a.id === id);
   if (i >= 0) { list.splice(i, 1); await persist(); }
@@ -3185,6 +3983,17 @@ async function handleAnnouncementsPatch(req, res) {
    match) and feed them to the model as HIDDEN reference, so answers are grounded
    in the books WITHOUT citing them. Strengthens science, grammar, etc.
    ========================================================================== */
+// Bundled LOCAL knowledge base (math/science/arabic/quran…), compiled by
+// knowledge/build.mjs into an importable ES module. Loaded ONCE at boot and
+// searched alongside the admin KB. Missing/broken file → empty (never crashes).
+let LOCAL_KB = [];
+try {
+  const mod = await import("./knowledge/compiled.mjs");
+  if (Array.isArray(mod.default)) LOCAL_KB = mod.default;
+  console.log("[firas] local knowledge base: " + LOCAL_KB.length + " topics, " +
+    LOCAL_KB.reduce((n, b) => n + (b.chunks ? b.chunks.length : 0), 0) + " entries");
+} catch (e) { console.warn("[firas] local KB not loaded:", (e && e.message) || e); }
+
 function kbList() { if (!Array.isArray(DB.kb)) DB.kb = []; return DB.kb; }
 // Normalize Arabic (+ generic) for robust topic matching: strip harakat/tatweel,
 // unify alef/ya/ta-marbuta, lowercase, keep letters/numbers.
@@ -3198,37 +4007,71 @@ function kbNorm(s) {
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ").trim();
 }
-const KB_STOP = new Set("the a an of to in on for and or is are was were be this that با في من على عن الى إلى ما هو هي و أو ثم عند كل لا ان أن إن هذا هذه ذلك التي الذي مع شنو وش كيف".split(/\s+/));
-function kbTokens(s) { return kbNorm(s).split(" ").filter((t) => t.length > 1 && !KB_STOP.has(t)); }
-function kbChunk(text) {
+const KB_STOP = new Set("the a an of to in on for and or is are was were be this that با في من على عن الى إلى ما هو هي و أو ثم عند كل لا ان أن إن هذا هذه ذلك التي الذي مع شنو وش كيف بين الفرق ايه ماهي".split(/\s+/));
+// Light Arabic stemming: strip the definite article ال (incl. after و/ف/ب/ك/لـ) so
+// "الاحتمال"≈"احتمال" and "بالدستور"≈"دستور". Applied to query AND stored tokens
+// symmetrically, so it only improves recall; never strips a bare consonant off a root.
+function kbStem(t) {
+  t = t.replace(/^(?:[وفبك]ال|لل)/, "");
+  if (t.startsWith("ال") && t.length > 3) t = t.slice(2);
+  return t;
+}
+/* keepDigits: admit single-character NUMERIC tokens ("3", "9"). Off by default so the admin
+   KB / LOCAL_KB keep their exact existing recall; Firas Brain turns it on for both the corpus
+   and the query (symmetric, so it can only add recall) because document questions hinge on
+   bare numbers — "السؤال 3", "ماذا في صفحة 9" — which would otherwise be dropped entirely. */
+function kbTokens(s, keepDigits) {
+  return kbNorm(s).split(" ").map(kbStem).filter((t) => (t.length > 1 || (keepDigits && /^\d$/.test(t))) && !KB_STOP.has(t));
+}
+/* The sentence-packing splitter, parameterized. kbChunk keeps its exact original behavior
+   (700-char budget, drop <25 chars, cap 4000); Firas Brain reuses the same algorithm per
+   PAGE with a lower floor so a sparse scanned page still produces a citable chunk. */
+function kbSplitText(text, maxLen, minLen) {
   const clean = String(text || "").replace(/\r/g, "").replace(/\n{2,}/g, "\n").trim();
   const parts = clean.split(/(?<=[.!?؟\n])\s+/);
   const chunks = []; let buf = "";
   for (const p of parts) {
-    if ((buf + " " + p).length > 700 && buf) { chunks.push(buf.trim()); buf = p; }
+    if ((buf + " " + p).length > maxLen && buf) { chunks.push(buf.trim()); buf = p; }
     else buf = (buf + " " + p).trim();
   }
   if (buf.trim()) chunks.push(buf.trim());
-  return chunks.filter((c) => c.length > 25).slice(0, 4000);
+  return chunks.filter((c) => c.length > minLen);
 }
+function kbChunk(text) { return kbSplitText(text, 700, 25).slice(0, 4000); }
 // Per-book token cache — kbTokens over every chunk of every book on EVERY chat request is
 // O(total library chars) of regex work; with any-size books that blocks the event loop for
 // hundreds of ms. Chunks are immutable after creation, so a WeakMap keyed by the book object
 // needs no invalidation (deleted books get GC'd out).
 const KB_TOK_CACHE = new WeakMap();
-function kbBookTokens(book) {
-  let toks = KB_TOK_CACHE.get(book);
-  if (!toks) { toks = (book.chunks || []).map((ch) => kbTokens(ch)); KB_TOK_CACHE.set(book, toks); }
+const KB_TOK_CACHE_D = new WeakMap();   // the keepDigits variant — MUST NOT share a cache with the
+                                        // default one, or a book tokenized in one mode gets scored
+                                        // against a query tokenized in the other, and the extra
+                                        // tokens silently never match (caught by the unit check).
+function kbBookTokens(book, keepDigits) {
+  const cache = keepDigits ? KB_TOK_CACHE_D : KB_TOK_CACHE;
+  let toks = cache.get(book);
+  if (!toks) { toks = (book.chunks || []).map((ch) => kbTokens(chunkText(ch), keepDigits)); cache.set(book, toks); }
   return toks;
 }
-function kbSearch(query, maxChunks) {
-  const qt = kbTokens(query);
+/* Score a query against an EXPLICIT corpus and return hits WITH provenance.
+   Split out of kbSearch so Firas Brain can search one user's documents instead of the
+   global admin library (kbSearch hardcoded `kbList().concat(LOCAL_KB)`, which for a
+   per-user library would be a cross-tenant leak, not just a scoping bug).
+   Chunks may be plain strings (admin books, LOCAL_KB) or `{ t, p, l }` records (Brain
+   documents, where p = 1-based page/slide/sheet). chunkText() accepts both, so nothing
+   already stored needs migrating.
+   `minScore` filters BEFORE the top-k slice — the original sliced first, which silently
+   shrank the result set instead of backfilling with the next-best passage. */
+function chunkText(c) { return typeof c === "string" ? c : ((c && c.t) || ""); }
+function chunkPage(c) { return (c && typeof c === "object" && Number.isFinite(c.p)) ? c.p : 0; }
+function kbSearchIn(books, query, maxChunks, minScore, keepDigits) {
+  const qt = kbTokens(query, keepDigits);
   if (!qt.length) return [];
   const qset = new Set(qt);
   const scored = [];
-  for (const book of kbList()) {
+  for (const book of books) {
     const chunks = book.chunks || [];
-    const toks = kbBookTokens(book);
+    const toks = book._toks || kbBookTokens(book, keepDigits);
     for (let i = 0; i < chunks.length; i++) {
       const ct = toks[i];
       if (!ct || !ct.length) continue;
@@ -3238,11 +4081,22 @@ function kbSearch(query, maxChunks) {
       // Rank by DISTINCT query-term coverage; raw repeats are only log-dampened so a chunk
       // spamming one common word 20x can no longer outrank a chunk matching several terms.
       const cov = matched.size / qset.size;
-      scored.push({ score: cov * 2 + (matched.size + Math.log(1 + hits)) / Math.sqrt(ct.length + 5), text: chunks[i] });
+      const score = cov * 2 + (matched.size + Math.log(1 + hits)) / Math.sqrt(ct.length + 5);
+      if (score <= (minScore === undefined ? 0.25 : minScore)) continue;
+      scored.push({
+        score, text: chunkText(chunks[i]),
+        docId: book.id || "", title: book.title || "", kind: book.kind || "", unit: book.unit || "page",
+        page: chunkPage(chunks[i]), label: (chunks[i] && chunks[i].l) || "", ci: i,
+      });
     }
   }
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, maxChunks || 4).filter((h) => h.score > 0.25);
+  return scored.slice(0, maxChunks || 4);
+}
+function kbSearch(query, maxChunks) {
+  // Search the admin's uploaded books AND the bundled local knowledge base.
+  const books = LOCAL_KB.length ? kbList().concat(LOCAL_KB) : kbList();
+  return kbSearchIn(books, query, maxChunks || 4, 0.25);
 }
 function kbContext(query) {
   const hits = kbSearch(query, 4);
@@ -3283,14 +4137,586 @@ async function handleKbDelete(req, res) {
   return sendJson(res, 200, { ok: true });
 }
 
+/* ===========================================================================
+   FIRAS BRAIN — the per-user document library (product #4).
+
+   Answers are grounded ONLY in the signed-in user's own uploaded documents and every
+   passage carries an exact page number, so a citation can be clicked and verified.
+   Three deliberate departures from the admin KB above — do not "unify" them:
+
+   1. STORAGE LIVES OUTSIDE `DB`. persist() re-serializes and rewrites the ENTIRE
+      database on every chat message; data/db.json is already ~5MB, and a few 400-page
+      libraries push it past 50MB → ~170ms of blocked event loop per message for every
+      user (and a 50MB PUT per message in Firebase mode). One file/node per document
+      keeps a write O(document) and leaves persist() completely untouched. This is also
+      why nothing here needs registering in normalizeDb.
+   2. CHUNKS ARE `{ t, p }`, CHUNKED PER PAGE. kbChunk on a flat document deletes the
+      \n\n page separator on its first line and then cuts on a 700-char budget, so most
+      chunks straddle two pages and a page number can only ever be a guess. Splitting
+      inside one page makes the number exact by construction.
+   3. THE CORPUS IS SCOPED TO ONE USER. kbSearch hardcodes the global library; reusing
+      it here would make every user's documents readable by every other user.
+   =========================================================================== */
+const BRAIN_DIR = path.join(DATA_DIR, "brain");
+const BRAIN_FB_ROOT = FB_KEY + "_brain";        // sibling of the monolithic DB key, never inside it
+const BRAIN_MAX_DOCS = 20;                      // documents per user
+const BRAIN_MAX_CHUNKS_PER_DOC = 12000;
+const BRAIN_MAX_CHARS_PER_DOC = 8_000_000;
+const BRAIN_MAX_PAGES_PER_REQ = 1200;
+const BRAIN_BODY_LIMIT = 24_000_000;            // same ceiling handleKbAdd uses
+const BRAIN_KINDS = new Set(["pdf", "docx", "pptx", "xlsx", "text", "image"]);
+const BRAIN_UNITS = new Set(["page", "slide", "sheet", "section"]);
+// Daily INGEST budget, in pages. Metered here because page OCR runs through /api/chat with
+// nomem:true, which both backends deliberately exclude from quota charging — so without this
+// a 400-page scan would fire 400 unmetered vision calls.
+const BRAIN_PAGES_DAILY = { free: 400, gold: 4000, diamond: -1, unlimited: -1 };
+
+/* SITE-WIDE vision budget. The per-user budgets above meter fairness between users; this meters
+   the resource they all draw from, which is a far smaller number than it looks.
+
+   Page OCR goes to Gemini, and gemini-2.5-flash on the free tier allows 20 requests per DAY per
+   key. With a 12-key pool that is 240 page-scans for the entire site per day — one 87-page book
+   is 36% of it. Without this guard a single "free" user's 400-page allowance would be 167% of
+   everything the site can serve, and once Gemini 429s the vision chain silently falls back to
+   Ollama, quietly spending the weekly allowance there instead. Better to stop and say so.
+
+   Deliberately in memory, not in DB: it is one small counter, and adding a top-level DB key means
+   registering it in normalizeDb() or watching it vanish on restart. A restart re-grants the day's
+   budget, which only ever over-grants — and Gemini's own 429 plus the escalating key cooldown is
+   the real backstop underneath. */
+const GEMINI_RPD_PER_KEY = Math.max(1, parseInt(process.env.GEMINI_RPD_PER_KEY, 10) || 500);
+const BRAIN_VISION_DAILY = Math.max(0, parseInt(process.env.BRAIN_VISION_DAILY, 10) ||
+                                       (GEMINI_KEYS.length * GEMINI_RPD_PER_KEY));
+let _brainVision = { day: "", used: 0 };
+function brainVisionLeft() {
+  const today = serverDay();
+  if (_brainVision.day !== today) _brainVision = { day: today, used: 0 };
+  return Math.max(0, BRAIN_VISION_DAILY - _brainVision.used);
+}
+function brainVisionCharge(n) {
+  brainVisionLeft();                       // rolls the day
+  _brainVision.used += Math.max(0, Math.floor(Number(n) || 0));
+}
+
+function brainIdOk(s) { return /^[A-Za-z0-9_-]{1,64}$/.test(String(s || "")); }
+function brainNewId() { return "bd" + Date.now().toString(36) + crypto.randomBytes(4).toString("hex"); }
+/* Directory/node name for a user. Hashed rather than used raw so a user id can never
+   escape BRAIN_DIR via path separators or dots, whatever shape ids take later. */
+function brainUserKey(userId) { return crypto.createHash("sha1").update(String(userId)).digest("hex"); }
+
+/* ---- storage: one document per file (disk) or per node (Firebase) ---- */
+async function fbNodeGet(node) {
+  const token = await fbAccessToken();
+  const r = await fetch(FB_DB_URL + "/" + node + ".json", { headers: { Authorization: "Bearer " + token }, signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error("firebase get " + r.status);
+  return await r.json();
+}
+async function fbNodePut(node, value) {
+  const token = await fbAccessToken();
+  const r = await fetch(FB_DB_URL + "/" + node + ".json?print=silent", {
+    method: "PUT",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify(value),
+    signal: AbortSignal.timeout(40_000),
+  });
+  if (!r.ok) throw new Error("firebase put " + r.status + ": " + (await r.text()).slice(0, 160));
+}
+
+function brainMetaOf(doc) {
+  return {
+    id: doc.id, title: doc.title, kind: doc.kind, unit: doc.unit,
+    pages: doc.pages || 0, indexed: doc.indexed || 0, ocr: doc.ocr || 0,
+    chunks: (doc.chunks || []).length, chars: doc.chars || 0, ts: doc.ts || 0,
+  };
+}
+
+async function brainLoadAll(userId) {
+  const uk = brainUserKey(userId);
+  const out = [];
+  if (fbEnabled()) {
+    let node = null;
+    try { node = await fbNodeGet(BRAIN_FB_ROOT + "/" + uk); } catch (_) { node = null; }
+    for (const d of (node ? Object.values(node) : [])) if (d && d.id) out.push(d);
+  } else {
+    const dir = path.join(BRAIN_DIR, uk);
+    let names = [];
+    try { names = await readdir(dir); } catch (_) { names = []; }
+    for (const n of names) {
+      if (!n.endsWith(".json")) continue;
+      try {
+        const d = JSON.parse(await readFile(path.join(dir, n), "utf8") || "null");
+        if (d && d.id) out.push(d);
+      } catch (_) {}
+    }
+  }
+  out.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  return out;
+}
+
+async function brainSaveDoc(userId, doc) {
+  const uk = brainUserKey(userId);
+  if (fbEnabled()) {
+    await fbNodePut(BRAIN_FB_ROOT + "/" + uk + "/" + doc.id, doc);
+  } else {
+    const dir = path.join(BRAIN_DIR, uk);
+    if (!existsSync(dir)) await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, doc.id + ".json"), JSON.stringify(doc));
+  }
+  brainCacheBust(userId);
+}
+
+/* Throws on a storage failure rather than swallowing it: a delete that silently didn't happen
+   is reported to the user as done, and the document reappears on the next load. The edge twin
+   behaves identically (502), so the shared client sees one contract. */
+async function brainRemoveDoc(userId, docId) {
+  const uk = brainUserKey(userId);
+  try {
+    if (fbEnabled()) await fbNodePut(BRAIN_FB_ROOT + "/" + uk + "/" + docId, null);
+    else await rm(path.join(BRAIN_DIR, uk, docId + ".json"), { force: true });
+  } finally { brainCacheBust(userId); }
+}
+
+/** Drop a whole user's library (account deletion). */
+async function brainRemoveUser(userId) {
+  const uk = brainUserKey(userId);
+  if (fbEnabled()) {
+    try { await fbNodePut(BRAIN_FB_ROOT + "/" + uk, null); } catch (_) {}
+  } else {
+    try { await rm(path.join(BRAIN_DIR, uk), { recursive: true, force: true }); } catch (_) {}
+  }
+  brainCacheBust(userId);
+}
+
+/* Per-USER retrieval cache. Deliberately NOT the shared KB cache: that one is module-scope
+   and unkeyed, so reusing it would serve one user's documents to the next caller. Chunks are
+   pre-tokenized once per load, since tokenizing a whole library per query is the expensive part. */
+const _brainCache = new Map();   // userId → { at, docs }
+const BRAIN_CACHE_TTL = 60_000;
+function brainCacheBust(userId) { _brainCache.delete(String(userId)); }
+async function brainCorpus(userId) {
+  const key = String(userId);
+  const hit = _brainCache.get(key);
+  if (hit && Date.now() - hit.at < BRAIN_CACHE_TTL) return hit.docs;
+  const docs = await brainLoadAll(userId);
+  for (const d of docs) d._toks = (d.chunks || []).map((c) => kbTokens(chunkText(c), true));
+  if (_brainCache.size > 40) { for (const k of _brainCache.keys()) { _brainCache.delete(k); if (_brainCache.size <= 20) break; } }
+  _brainCache.set(key, { at: Date.now(), docs });
+  return docs;
+}
+
+/* Representative excerpts spanning the WHOLE selection, for questions that have no keywords to
+   match on ("اشرح لي السلايدات", "summarize this", "وش موضوع الملف"). Lexical retrieval scores
+   these at zero — the words simply are not in the document — so without this the product answers
+   its single most common question with "I couldn't find anything", which reads as "it never read
+   my file". Under the budget the whole document goes in; over it, an even stride keeps the sample
+   spread from first page to last instead of front-loading the opening pages. */
+const BRAIN_OVERVIEW_CHARS = 48_000;
+function brainOverviewHits(docs, budget) {
+  const flat = [];
+  for (const d of docs) {
+    const chunks = d.chunks || [];
+    for (let i = 0; i < chunks.length; i++) {
+      flat.push({
+        score: 0, text: chunkText(chunks[i]),
+        docId: d.id || "", title: d.title || "", kind: d.kind || "", unit: d.unit || "page",
+        page: chunkPage(chunks[i]), label: (chunks[i] && chunks[i].l) || "", ci: i,
+      });
+    }
+  }
+  const total = flat.reduce((n, h) => n + h.text.length, 0);
+  const cap = budget || BRAIN_OVERVIEW_CHARS;
+  if (total <= cap) return flat;
+  // Stride picks the spacing; the running total is what actually enforces the cap. Deriving the
+  // count from the stride alone overshoots by a few chunks on uneven documents, and this budget
+  // is a context-window guard, so it has to be hard rather than approximate.
+  const stride = Math.ceil(total / cap);
+  const out = [];
+  let used = 0;
+  for (let i = 0; i < flat.length; i += stride) {
+    const len = flat[i].text.length;
+    if (used + len > cap) break;
+    out.push(flat[i]); used += len;
+  }
+  return out.length ? out : [flat[0]];
+}
+
+/* Pull in each hit's NEIGHBOURING chunks as hits in their own right.
+
+   Textbooks put the question on one page and its answer on the next: "التمرين الثاني" sits on
+   p.78 while the الجواب table is on p.79, and p.79 contains none of the question's words. Pure
+   chunk-level lexical scoring can therefore never reach the answer — measured on the real
+   document, a query for "حل التمرين الثاني من موضوع التوكيد" scored p.73/50/45 and missed p.79
+   entirely. The same applies to any table split across a page break, or a definition followed by
+   its example.
+
+   Neighbours are returned as SEPARATE hits carrying their OWN page and ci, not merged into the
+   matched chunk's text — otherwise the answer would be cited to the page the question was on. */
+function brainExpandNeighbours(hits, docs, radius, cap) {
+  if (!hits.length) return hits;
+  const byId = new Map(docs.map((d) => [d.id, d]));
+  const seen = new Set(hits.map((h) => h.docId + "#" + h.ci));
+  const out = hits.slice();
+  const limit = cap || 24;
+  // Offsets are applied in PASSES across all hits, nearest first and forward before backward:
+  // +1, -1, +2, -2. Walking each hit's full radius before moving to the next would let the first
+  // hit's distant neighbours consume the cap and starve the later hits entirely. Forward reaches
+  // further than backward because a heading is followed by its answer, not preceded by it —
+  // measured on the real textbook, the "التمرين الثاني" match is on p.78 and the الجواب table is
+  // TWO chunks later, so a symmetric radius of 1 lands one chunk short of it.
+  // ALL forward offsets before any backward one: an answer follows its question, so +2 is worth
+  // more than -1. Interleaving them let the backward pass exhaust the cap before +2 ever ran,
+  // which left the retrieval one chunk short of the الجواب table on the real textbook.
+  const r = Math.max(1, radius || 2);
+  const passes = [];
+  for (let d = 1; d <= r; d++) passes.push(d);
+  for (let d = 1; d <= r; d++) passes.push(-d);
+  for (const d of passes) {
+    for (const h of hits) {
+      const doc = byId.get(h.docId);
+      if (!doc) continue;
+      const chunks = doc.chunks || [];
+      const i = h.ci + d;
+      if (i < 0 || i >= chunks.length) continue;
+      const key = h.docId + "#" + i;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        // Strictly below every genuine match, and decaying with distance.
+        score: h.score * (d > 0 ? 0.30 : 0.22) / Math.abs(d),
+        text: chunkText(chunks[i]),
+        docId: doc.id, title: doc.title || "", kind: doc.kind || "", unit: doc.unit || "page",
+        page: chunkPage(chunks[i]), label: (chunks[i] && chunks[i].l) || "", ci: i, near: true,
+      });
+      if (out.length >= limit) return out;
+    }
+  }
+  return out;
+}
+
+/* Pack a page into ~700-char chunks on LINE boundaries. kbSplitText's `(?<=[.!?؟\n])\s+` only
+   fires when a newline is FOLLOWED by more whitespace, so a bare "\n" between a slide title and
+   its bullets is not a boundary at all: measured, a 13-bullet slide lands as ONE 1115-char chunk,
+   59% over the budget the rest of the pipeline is built around. Slide text is lines, not
+   sentences, so pack lines, and fall back to the sentence splitter for any single line longer
+   than the budget on its own. Used for .pptx ONLY — a PDF or .docx page is prose whose wrapped
+   lines are not semantic boundaries, and those keep the sentence packer untouched. */
+function brainSplitLines(text) {
+  const lines = String(text || "").split("\n").map((s) => s.trim()).filter(Boolean);
+  const out = [];
+  let buf = "";
+  for (const line of lines) {
+    for (const piece of (line.length > 700 ? kbSplitText(line, 700, 12) : [line])) {
+      if (buf && (buf.length + 1 + piece.length) > 700) { out.push(buf); buf = piece; }
+      else buf = buf ? (buf + "\n" + piece) : piece;
+    }
+  }
+  if (buf) out.push(buf);
+  return out.filter((c) => c.length > 12);
+}
+/** Chunk a document PAGE BY PAGE so every chunk's page number is exact by construction. */
+function brainChunkPages(pages, byLine) {
+  const out = [];
+  for (const pg of pages) {
+    const p = Math.max(1, Math.floor(Number(pg && pg.p) || 0));
+    const label = String((pg && pg.l) || "").slice(0, 80);
+    // minLen 12, not kbChunk's 25: a sparse or freshly-OCR'd page can legitimately hold one
+    // short line, and dropping it would punch a hole in the citable page range.
+    const parts = byLine ? brainSplitLines(pg && pg.text) : kbSplitText(pg && pg.text, 700, 12);
+    /* A page whose ENTIRE text is under that floor produced nothing at all, so the page was
+       absent from the index: not searchable, not citable, and invisible to "extract every
+       definition". A slide titled only "Ribosome", a section divider, a figure page with a
+       three-word caption — all silently gone. Whatever the floor is for, it must not be able
+       to delete a page that genuinely has text on it. */
+    const text = String((pg && pg.text) || "").trim();
+    if (!parts.length && text) parts.push(text);
+    for (const t of parts) {
+      const c = { t, p };
+      if (label) c.l = label;
+      out.push(c);
+    }
+  }
+  return out;
+}
+
+/* ---- request plumbing ---- */
+/* Firas Brain is open to GUESTS as well as members. A guest is identified by the same signed
+   firas_guest cookie the rest of the trial uses, and their library is stored server-side under
+   that id exactly like a member's — brainUserKey() hashes whatever id it is given, so the two
+   namespaces cannot collide and a guest id can never escape BRAIN_DIR.
+   Two honest consequences, both bounded below rather than hidden:
+     - the cookie IS the account. Clearing cookies, or switching browser/device, loses the
+       library. There is no way to recover it, because there is nothing else to key it to.
+     - guest libraries are pruned after BRAIN_GUEST_TTL_DAYS of inactivity, otherwise abandoned
+       trials would accumulate documents on disk forever. */
+const BRAIN_GUEST_TTL_DAYS = 14;          // > the 7-day guest cookie, so an active trial is never cut short
+const BRAIN_GUEST_MAX_DOCS = 3;
+const BRAIN_GUEST_PAGES_DAILY = 120;
+function brainCaller(req, res) {
+  const c = callerOf(req);
+  if (!c.id) { sendJson(res, 403, { error: "signin_required", feature: "brain" }); return null; }
+  return c;                                // { user, id, isGuest }
+}
+function brainDocLimit(c) { return c.isGuest ? BRAIN_GUEST_MAX_DOCS : BRAIN_MAX_DOCS; }
+function brainPagesLimit(c) {
+  if (c.isGuest) return BRAIN_GUEST_PAGES_DAILY;
+  const l = BRAIN_PAGES_DAILY[planOf(c.user)];
+  return l === undefined ? BRAIN_PAGES_DAILY.free : l;
+}
+/* Daily counters for a guest live on the same DB.guests record the other trial products use, so
+   they roll over and get pruned by the existing machinery instead of a parallel one. */
+function brainChargePages(c, n) {
+  const limit = brainPagesLimit(c);
+  if (limit < 0) return null;
+  if (c.isGuest) {
+    const g = guestRecord(c.id);
+    if ((g.brainPages || 0) + n > limit) return { used: g.brainPages || 0, max: limit };
+    g.brainPages = (g.brainPages || 0) + n;
+    return null;
+  }
+  quotaRollDay(c.user);
+  const used = c.user.quota.brainPages || 0;
+  if (used + n > limit) return { used, max: limit };
+  c.user.quota.brainPages = used + n;
+  return null;
+}
+/** Drop guest libraries that have gone quiet, so abandoned trials cannot pile up on disk. */
+async function brainSweepGuests() {
+  if (fbEnabled()) return;                 // RTDB listing is a whole-subtree read; not worth it here
+  const cutoff = Date.now() - BRAIN_GUEST_TTL_DAYS * 86400000;
+  let dirs = [];
+  try { dirs = await readdir(BRAIN_DIR); } catch (_) { return; }
+  for (const dir of dirs) {
+    try {
+      const full = path.join(BRAIN_DIR, dir);
+      const names = await readdir(full);
+      let newest = 0, guest = false;
+      for (const n of names) {
+        if (!n.endsWith(".json")) continue;
+        const doc = JSON.parse(await readFile(path.join(full, n), "utf8") || "null");
+        if (!doc) continue;
+        if (doc.guest) guest = true;
+        newest = Math.max(newest, doc.ts || 0);
+      }
+      if (guest && newest && newest < cutoff) await rm(full, { recursive: true, force: true });
+    } catch (_) {}
+  }
+}
+
+async function handleBrainDocs(req, res) {
+  const c = brainCaller(req, res); if (!c) return;
+  const docs = await brainLoadAll(c.id);
+  const today = serverDay();
+  const pagesToday = c.isGuest
+    ? (guestRecord(c.id).brainPages || 0)
+    : (c.user.quota && c.user.quota.day === today ? (c.user.quota.brainPages || 0) : 0);
+  return sendJson(res, 200, {
+    docs: docs.map(brainMetaOf),
+    guest: !!c.isGuest,
+    limits: { docs: brainDocLimit(c), pagesPerDay: brainPagesLimit(c), visionLeft: brainVisionLeft() },
+    used: { docs: docs.length, pagesToday },
+  });
+}
+
+async function handleBrainDocAdd(req, res) {
+  const c = brainCaller(req, res); if (!c) return;
+  if (rateLimited("brain:add:" + c.id, 60, 60_000)) return sendJson(res, 429, { error: "too many requests" });
+  let p;
+  try { p = JSON.parse((await readBody(req, BRAIN_BODY_LIMIT)) || "{}"); }
+  catch { return sendJson(res, 413, { error: "too_large" }); }   // readBody destroys the request past the cap
+
+  const title = String(p.title || "").slice(0, 200).trim() || "Untitled";
+  const kind = BRAIN_KINDS.has(p.kind) ? p.kind : "text";
+  const unit = BRAIN_UNITS.has(p.unit) ? p.unit : "page";
+  const pages = Array.isArray(p.pages) ? p.pages : [];
+  if (!pages.length) return sendJson(res, 400, { error: "no pages" });
+  if (pages.length > BRAIN_MAX_PAGES_PER_REQ) return sendJson(res, 413, { error: "too_large" });
+
+  const existing = await brainLoadAll(c.id);
+  // A continuation part carries the docId minted by part 1; a fresh upload does not.
+  let doc = null;
+  if (p.docId) {
+    if (!brainIdOk(p.docId)) return sendJson(res, 400, { error: "invalid id" });
+    doc = existing.find((d) => d.id === p.docId) || null;
+    if (!doc) return sendJson(res, 404, { error: "not found" });
+  } else if (existing.length >= brainDocLimit(c)) {
+    return sendJson(res, 429, { error: "limit", limit: "docs", max: brainDocLimit(c) });
+  }
+
+  /* Meter the INGEST by DISTINCT PAGE, per day — for guests as well as members.
+
+     This used to charge `pages.length`, the number of RECORDS in the POST. That was the same
+     number for every producer until the spreadsheet reader began emitting one record per row
+     group instead of one per sheet: a 5,000-row sheet went from 1 record to 556, which a guest
+     (120/day) and a free user (400/day) would hit as a hard 429 on a file that used to upload
+     fine. The citable unit is the page/slide/sheet, and that is what is charged.
+
+     For every other producer — PDF, .docx, .pptx, images, text — there is exactly one record
+     per page, so seen.size === pages.length and the charge is unchanged to the unit.
+     BRAIN_MAX_PAGES_PER_REQ above still bounds `pages.length`: that one IS a record ceiling,
+     protecting the request body rather than the quota. */
+  const seen = new Set(pages.map((pg) => Math.max(1, Math.floor(Number(pg && pg.p) || 0))));
+  const denied = brainChargePages(c, seen.size);
+  if (denied) return sendJson(res, 429, { error: "limit", limit: "pages", used: denied.used, max: denied.max, guest: !!c.isGuest });
+  await persist();
+
+  const added = brainChunkPages(pages, kind === "pptx");
+  const addedChars = added.reduce((n, c) => n + c.t.length, 0);
+  const indexedNow = new Set(added.map((c) => c.p)).size;
+
+  if (!doc) {
+    doc = { id: brainNewId(), title, kind, unit, pages: 0, indexed: 0, ocr: 0, chars: 0, ts: Date.now(), chunks: [] };
+    if (c.isGuest) doc.guest = true;   // lets brainSweepGuests() reclaim abandoned trials
+  }
+  if ((doc.chunks.length + added.length) > BRAIN_MAX_CHUNKS_PER_DOC) return sendJson(res, 413, { error: "too_large", limit: "chunks" });
+  if ((doc.chars || 0) + addedChars > BRAIN_MAX_CHARS_PER_DOC) return sendJson(res, 413, { error: "too_large", limit: "chars" });
+
+  doc.chunks = doc.chunks.concat(added);
+  doc.pages = (doc.pages || 0) + seen.size;
+  doc.indexed = (doc.indexed || 0) + indexedNow;
+  doc.chars = (doc.chars || 0) + addedChars;
+  const ocrAdded = Math.max(0, Math.floor(Number(p.ocr) || 0));
+  doc.ocr = (doc.ocr || 0) + ocrAdded;
+  if (ocrAdded) brainVisionCharge(ocrAdded);   // site-wide Gemini budget, not just this user's
+  doc.ts = Date.now();
+  await brainSaveDoc(c.id, doc);
+
+  return sendJson(res, 200, { ok: true, id: doc.id, title: doc.title, chunks: added.length, total: doc.chunks.length, doc: brainMetaOf(doc) });
+}
+
+async function handleBrainDocDelete(req, res) {
+  const c = brainCaller(req, res); if (!c) return;
+  const id = new URL(req.url, "http://localhost").searchParams.get("id") || "";
+  if (!brainIdOk(id)) return sendJson(res, 400, { error: "invalid id" });
+  try { await brainRemoveDoc(c.id, id); } catch (_) { return sendJson(res, 502, { error: "storage failed" }); }
+  return sendJson(res, 200, { ok: true });
+}
+
+async function handleBrainSearch(req, res) {
+  const c = brainCaller(req, res); if (!c) return;
+  if (rateLimited("brain:q:" + c.id, 120, 60_000)) return sendJson(res, 429, { error: "too many requests" });
+  // readBody REJECTS past the cap and readJson does not catch it, so without this an oversize
+  // body would surface as a generic 500 here while the edge answers 413.
+  let p;
+  try { p = (await readJson(req, 200_000)) || {}; } catch (_) { return sendJson(res, 413, { error: "too_large" }); }
+  const q = String(p.q || "").slice(0, 4000);
+  const k = Math.min(Math.max(parseInt(p.k, 10) || 8, 1), 12);
+  const want = Array.isArray(p.docIds) ? p.docIds.filter(brainIdOk) : [];
+
+  // THE per-answer charge for Firas Brain. It has to happen here, not on /api/chat: the answer
+  // itself streams through callAgentText/streamAgentText with nomem:true, which both backends
+  // deliberately exclude from quota charging. Exactly one search precedes each answer, and the
+  // cid makes a retry of the same turn idempotent (same rule as the other products).
+  const cid = String(p.cid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+  if (c.isGuest) {
+    // guestCharge already owns the roll-over, idempotency and 429 shape for trial products.
+    const denied = guestChargeWithReq(req, c.id, "brain", cid);
+    if (denied) return sendJson(res, 429, denied);
+  } else {
+    const blimit = limitsFor(planOf(c.user)).brain;
+    if (blimit >= 0) {
+      quotaRollDay(c.user);
+      const bq = c.user.quota;
+      const already = cid && bq.last.brain === cid;
+      if (!already && (bq.brain || 0) >= blimit) {
+        return sendJson(res, 429, { error: "daily quota reached", quota: { product: "brain", used: bq.brain || 0, limit: blimit, plan: planOf(c.user) } });
+      }
+      if (!already) { bq.brain = (bq.brain || 0) + 1; if (cid) bq.last.brain = cid; await persist(); }
+    }
+  }
+  let docs = await brainCorpus(c.id);
+  if (want.length) { const s = new Set(want); docs = docs.filter((d) => s.has(d.id)); }
+  if (!docs.length) return sendJson(res, 200, { hits: [], docs: 0, mode: "none" });
+  if (p.mode === "all") {
+    // HARVEST: hand back the corpus in document order, paged. "Extract every definition"
+    // cannot be served by top-k retrieval — the answer is not "the 8 best matches", it is
+    // every occurrence in the book — so the client sweeps the whole thing in batches instead.
+    const off = Math.max(0, parseInt(p.offset, 10) || 0);
+    const lim = Math.min(Math.max(parseInt(p.limit, 10) || 400, 1), 1500);
+    const flat = [];
+    for (const d of docs) {
+      const ch = d.chunks || [];
+      for (let i = 0; i < ch.length; i++) {
+        flat.push({
+          score: 0, text: chunkText(ch[i]),
+          docId: d.id || "", title: d.title || "", kind: d.kind || "", unit: d.unit || "page",
+          page: chunkPage(ch[i]), label: (ch[i] && ch[i].l) || "", ci: i,
+        });
+      }
+    }
+    return sendJson(res, 200, { hits: flat.slice(off, off + lim), total: flat.length, offset: off, mode: "all" });
+  }
+  if (p.mode === "overview") {
+    return sendJson(res, 200, { hits: brainOverviewHits(docs), docs: docs.length, mode: "overview" });
+  }
+  // A lower floor than the admin KB's 0.25: this corpus is the user's OWN documents, where a
+  // single strong term match is a legitimate lead rather than noise from an unrelated book.
+  const hits = brainExpandNeighbours(kbSearchIn(docs, q, k, 0.18, true), docs, 2, k + 20);
+  return sendJson(res, 200, { hits, docs: docs.length, mode: "search" });
+}
+
+async function handleBrainPassage(req, res) {
+  const c = brainCaller(req, res); if (!c) return;
+  const url = new URL(req.url, "http://localhost");
+  const docId = url.searchParams.get("doc") || "";
+  const ci = parseInt(url.searchParams.get("i"), 10);
+  const w = Math.min(Math.max(parseInt(url.searchParams.get("w"), 10) || 2, 0), 5);
+  if (!brainIdOk(docId) || !Number.isFinite(ci) || ci < 0) return sendJson(res, 400, { error: "invalid id" });
+  const docs = await brainCorpus(c.id);
+  const doc = docs.find((d) => d.id === docId);
+  if (!doc) return sendJson(res, 404, { error: "not found" });
+  const chunks = doc.chunks || [];
+  const hit = chunks[ci];
+  if (!hit) return sendJson(res, 404, { error: "not found" });
+  const page = chunkPage(hit);
+  // Neighbours are restricted to the SAME page — the point of the reader is to show the cited
+  // passage in its page context, not to bleed into a page the citation never claimed.
+  const near = (from, to, step) => {
+    const out = [];
+    for (let i = from; i !== to && out.length < w; i += step) {
+      if (!chunks[i] || chunkPage(chunks[i]) !== page) break;
+      out.push({ ci: i, t: chunkText(chunks[i]) });
+    }
+    return step < 0 ? out.reverse() : out;
+  };
+  return sendJson(res, 200, {
+    docId: doc.id, title: doc.title, kind: doc.kind, unit: doc.unit,
+    page, label: (hit && hit.l) || "", ci, text: chunkText(hit),
+    before: near(ci - 1, -1, -1), after: near(ci + 1, chunks.length, 1),
+  });
+}
+
 /* ── Public share links: snapshot a chat → read-only page at /?share=<id> ── */
 function sharesMap() { if (!DB.shares || typeof DB.shares !== "object") DB.shares = {}; return DB.shares; }
+/* Shares live in the monolithic db.json, and every write re-serialises the WHOLE database.
+   A snapshot can be 400 messages x 200,000 chars plus 10 thumbnails at 200,000 each, this
+   endpoint had no rate limit and no per-user cap, and nothing ever pruned DB.shares. So a
+   logged-in user could build one large chat and loop POST /api/share: each call appended
+   megabytes AND triggered a full re-serialise, until every ordinary chat message stalled
+   the event loop for seconds and the volume filled. persist() swallows its write error, so
+   the app would keep reporting success while no longer saving anything — and db.json has
+   no backup. Three bounds, cheapest first. */
+const SHARES_PER_USER_MAX = 20;
 async function handleShareCreate(req, res) {
   const user = currentUser(req);
   if (!user) return sendJson(res, 401, { error: "auth required" });
+  if (rateLimited("share:" + user.id, 5, 60_000)) return sendJson(res, 429, { error: "too many requests" });
   let p; try { p = JSON.parse((await readBody(req)) || "{}"); } catch { return sendJson(res, 400, { error: "invalid JSON" }); }
   const chat = DB.chats.find((c) => c.id === String(p.chatId || "") && c.userId === user.id);
   if (!chat) return sendJson(res, 404, { error: "not found" });
+  /* Re-share of the SAME chat reuses its snapshot instead of minting a new one. This is
+     also the common real case — pressing Share twice — so it removes most of the growth
+     before the cap is ever consulted. */
+  const shares = sharesMap();
+  const existing = Object.values(shares).find((s) => s && s.owner === user.id && s.chatId === chat.id);
+  if (existing) {
+    existing.ts = Date.now();
+    await persist();
+    return sendJson(res, 200, { ok: true, id: existing.id });
+  }
+  const mine = Object.values(shares).filter((s) => s && s.owner === user.id);
+  if (mine.length >= SHARES_PER_USER_MAX) {
+    return sendJson(res, 409, { error: "لقد وصلت إلى الحد الأقصى للمشاركات (" + SHARES_PER_USER_MAX + "). احذف مشاركة قديمة أولاً." });
+  }
   const id = "s" + Date.now().toString(36) + crypto.randomBytes(5).toString("hex");
   const msgs = (chat.messages || []).slice(0, 400).map((m) => {
     const o = { role: m.role === "assistant" ? "assistant" : "user", content: String(m.content || "").slice(0, 200000) };
@@ -3299,7 +4725,9 @@ async function handleShareCreate(req, res) {
     if (Array.isArray(m.imageThumbs) && m.imageThumbs.length) o.imageThumbs = m.imageThumbs.slice(0, 10).map((s) => String(s).slice(0, 200000));
     return o;
   });
-  sharesMap()[id] = { id, title: String(chat.title || "").slice(0, 200), messages: msgs, ts: Date.now(), owner: user.id };
+  // chatId is recorded so a repeat share of the same chat reuses this snapshot (above)
+  // rather than minting another multi-megabyte copy.
+  shares[id] = { id, chatId: chat.id, title: String(chat.title || "").slice(0, 200), messages: msgs, ts: Date.now(), owner: user.id };
   await persist();
   return sendJson(res, 200, { ok: true, id });
 }
@@ -3320,17 +4748,20 @@ async function handleShareDelete(req, res) {
 }
 
 async function handleChat(req, res) {
-  // AUTH REQUIRED.
-  const user = currentUser(req);
-  if (!user) {
+  // AUTH REQUIRED — or a valid GUEST trial cookie (smaller daily quota, no memory).
+  const caller = callerOf(req);
+  const user = caller.user || null;
+  const guestId = caller.isGuest ? caller.id : "";
+  if (!user && !guestId) {
     return sendJson(res, 401, { error: "authentication required" });
   }
 
-  // Per-user rate limit: the AI stream is by far the most expensive endpoint (it
+  // Per-caller rate limit: the AI stream is by far the most expensive endpoint (it
   // burns upstream Ollama/Gemini/Claude credits on every call). Auth alone is not
   // enough — one logged-in account could hammer it and drain quota/bills. The cap
-  // is generous so the Firas Agent multi-step pipeline still flows normally.
-  if (rateLimited("chat:" + user.id, 120, 60_000)) {
+  // is generous so the Firas Agent multi-step pipeline still flows normally;
+  // guests get a much tighter cap since the identity is free to mint.
+  if (rateLimited("chat:" + caller.id, guestId ? 30 : 120, 60_000)) {
     return sendJson(res, 429, { error: "too many requests, please slow down" });
   }
 
@@ -3349,9 +4780,32 @@ async function handleChat(req, res) {
     return sendJson(res, 400, { error: 'body must include a non-empty "messages" array' });
   }
 
-  // ADMIN KNOWLEDGE BASE: silently ground the answer in the admin's uploaded books. Find the last
-  // user TEXT question, retrieve relevant passages by topic, and inject them as hidden context.
-  if (kbList().length) {
+  // KNOWLEDGE BASE: silently ground the answer in the bundled local corpus AND the admin's
+  // uploaded books. Find the last user TEXT question, retrieve relevant passages, inject as hidden context.
+  // SKIPPED for (a) internal helper calls — nomem:true, e.g. auto-title, the file pipeline and Brain's
+  // page OCR: injecting unrelated reference passages there poisons a verbatim transcription and burns
+  // tokens on every page (the edge already guards on nomem; this restores parity), and (b) Firas Brain
+  // turns, whose whole contract is "answer from THESE sources and cite them" — kbContext's preamble says
+  // the exact opposite ("NEVER mention, quote, cite, or hint that this material exists") and would both
+  // contradict the citation instruction and smuggle in passages the user never uploaded.
+  /* ── KB INJECTION DISABLED FOR PLAIN CHAT ────────────────────────────────────────────
+     This spliced the bundled knowledge base in as a system message headed "REFERENCE
+     MATERIAL (authoritative — use it to answer accurately and completely)". Retrieval
+     returns whatever four chunks best match the wording, and "authoritative" then made the
+     model treat those four chunks as the BOUNDARY of what it knows.
+
+     Observed: "اعطني 10 تكاملات صعبة" retrieved a few basic-integral entries from the
+     bundled math corpus and the reply was "المادة المرجعية المتوفرة لدي تحتوي على تكاملات
+     أساسية فقط… لا تشتمل على أمثلة لتكاملات صعبة" — the model refusing to use its own
+     knowledge because a snippet told it what its knowledge was. A retrieval corpus is a
+     floor for facts it happens to contain; framed this way it became a ceiling on
+     everything else, and on a general assistant that trade is plainly bad.
+
+     KB_IN_CHAT re-enables it if that judgement ever needs revisiting. The admin library and
+     its routes are untouched, and Firas Brain — whose entire contract IS "answer from these
+     sources and cite them" — was already excluded here and still is. */
+  const KB_IN_CHAT = process.env.KB_IN_CHAT === "1";
+  if (KB_IN_CHAT && !payload.nomem && payload.product !== "brain" && (kbList().length || LOCAL_KB.length)) {
     try {
       let li = -1;
       for (let i = messages.length - 1; i >= 0; i--) if (messages[i] && messages[i].role === "user") { li = i; break; }
@@ -3364,7 +4818,7 @@ async function handleChat(req, res) {
 
   // Capped tier (Max): enforce the per-user daily limit and charge one slot per
   // distinct request id (idempotent on retry of the same cid).
-  if (TIERS[tier] && TIERS[tier].capped) {
+  if (user && TIERS[tier] && TIERS[tier].capped) {
     maxRollDay(user);
     let cid = String(payload.cid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
     const isNew = !cid || !user.maxCids.includes(cid);
@@ -3374,11 +4828,76 @@ async function handleChat(req, res) {
     if (isNew) { user.maxCids.push(cid || ("r" + Date.now())); persist(); }
   }
 
+  // PER-PRODUCT DAILY QUOTA (Firas AI / Code / Agent) by subscription plan.
+  // ai/code count per message; agent counts per MISSION (a stable cid spans the
+  // mission's internal calls). diamond/unlimited (-1) skip the cap entirely.
+  // nomem=true marks INTERNAL helper calls (auto-title, file pipeline, agent steps,
+  // prompt-enhance) — those are never charged; only real user turns count.
+  /* INTERNAL CALLS ARE STILL CALLS.
+     `nomem` is a plain JSON boolean the browser sends, and it used to skip BOTH charging
+     branches outright. So `{"messages":[…],"tier":"max","nomem":true}` from devtools bought
+     unlimited completions on any plan: the free tier's 100/day, the guest's allowance, and
+     every entitlement sold through /api/redeem all evaporated, while the model still streamed
+     a full answer. The only remaining brake was a 120/min rate limit.
+
+     It cannot simply be charged as a normal turn — these really are sub-steps of one user
+     action (auto-title, the Code build pipeline, agent steps, OCR), and a single build fires
+     a dozen of them. Charging each would break legitimate use.
+
+     So they now draw on their OWN generous-but-bounded budget. Real usage sits far under it;
+     abuse hits a ceiling instead of running forever. The proper long-term fix is a
+     server-signed internal token minted by the endpoint that already charged — recorded in
+     SUGGESTIONS.md — but this closes the unlimited hole without touching any working flow. */
+  if (payload.nomem && user) {
+    quotaRollDay(user);
+    const q = user.quota;
+    const cap = limitsFor(planOf(user)).internal;
+    if (cap >= 0) {
+      if ((q.internal || 0) >= cap) {
+        return sendJson(res, 429, { error: "daily quota reached", quota: { product: "internal", used: q.internal || 0, limit: cap, plan: planOf(user) } });
+      }
+      q.internal = (q.internal || 0) + 1;
+      persist();
+    }
+  }
+  if (payload.nomem && guestId) {
+    const denied = guestChargeWithReq(req, guestId, "internal", payload.cid);
+    if (denied) return sendJson(res, 429, denied);
+  }
+  if (!payload.nomem && guestId) {
+    // GUEST trial quota — same idempotency rules, much smaller allowance.
+    const product = (payload.product === "code" || payload.product === "agent") ? payload.product : "ai";
+    const denied = guestChargeWithReq(req, guestId, product, payload.cid, payload.messages);
+    if (denied) return sendJson(res, 429, denied);
+  }
+  if (!payload.nomem && user) {
+    // "brain" is member-only, so it is NOT added to the guest coercion above — a guest sending
+    // product:"brain" correctly falls through to the "ai" bucket.
+    const product = (payload.product === "code" || payload.product === "agent" || payload.product === "brain") ? payload.product : "ai";
+    const qlimit = limitsFor(planOf(user))[product];
+    if (qlimit >= 0) {
+      quotaRollDay(user);
+      const q = user.quota;
+      const qcid = String(payload.cid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+      const already = isRepeatCharge(q, product, qcid, payload.messages);
+      if (!already && (q[product] || 0) >= qlimit) {
+        return sendJson(res, 429, { error: "daily quota reached", quota: { product, used: q[product] || 0, limit: qlimit, plan: planOf(user) } });
+      }
+      if (!already) {
+        q[product] = (q[product] || 0) + 1;
+        if (product === "agent") { if (qcid) { q.agentCids.push(qcid); if (q.agentCids.length > 500) q.agentCids.shift(); } }
+        else if (qcid) { q.last[product] = qcid; }
+        persist();
+      }
+    }
+  }
+
   // PERSISTENT MEMORY: inject what we know about this user as a system message
   // (right after the first system message) so every reply is personalized.
   // nomem=true on internal agent calls (file/PDF generation, prompt-enhance, batches)
   // so personal facts NEVER leak into generated documents — memory is for CHAT only.
-  const memBlk = payload.nomem ? "" : memoryBlock(user);
+  // Guests have no stored memory (nothing is kept for them) → never inject.
+  const memBlk = (payload.nomem || !user) ? "" : memoryBlock(user);
   if (memBlk) {
     // Merge memory INTO the first system message (not a separate one) — some models
     // (e.g. the coder model on Ultra) ignore a second system message.
@@ -3501,23 +5020,123 @@ async function handleChat(req, res) {
 /* ===========================================================================
    Static file serving (path-traversal guard + index fallback + no-cache)
    =========================================================================== */
+/* ALLOWLIST — the only files this server will ever hand out.
+   ===========================================================================
+   This replaces a denylist that lost twice, both verified by exploit:
+
+     GET /DATA/db.json   →  the whole 5.6 MB database. The guard was
+                            `filePath.startsWith(DATA_DIR + path.sep)`, a CASE-SENSITIVE
+                            compare against a lowercase literal — while NTFS and APFS are
+                            case-INSENSITIVE. `/DATA/`, `/Data/`, `/x/../DATA/` and the
+                            percent-encoded form all walked straight past it. The dump
+                            contains `secret`, the session-signing HMAC key, so an attacker
+                            could then forge a cookie for ANY user id including the admin.
+
+     GET /ENV~1          →  .env with every live API key. The guard tested
+                            `segment.startsWith(".")`, but Windows keeps a second DOT-FREE
+                            8.3 short name for every such file and NTFS resolves it to the
+                            same bytes. /GIT~1/config exposed the repository the same way.
+
+   A denylist has to anticipate every alias the filesystem accepts — case folding, 8.3 names,
+   trailing dots and spaces, alternate data streams, unicode normalization. It will keep
+   losing. An allowlist inverts the default: anything not named here is simply not a file
+   this server knows how to serve, whatever the URL spells.
+
+   Note this also closes an exposure nobody had filed: server.mjs, package.json, Dockerfile,
+   local-server.log and cloudflared.exe were all being served on request. */
+const STATIC_ALLOW = new Set([
+  "index.html",
+  "app.js",
+  "styles.css",
+  "firebase-config.js",     // optional, git-ignored; absent on most deploys
+  "logo-preview.html",      // temporary design-review page; safe to delete with this entry
+  "favicon.ico",
+  "robots.txt",
+  "manifest.webmanifest",
+  "sw.js",
+]);
+/* Prefixes that may serve their whole subtree.
+   `media/` holds site assets that are too large to live in the database — the trailer is
+   47 MB, and an announcement record is JSON in RTDB. It is a read-only directory of files
+   the owner puts there deliberately; the containment check below still resolves the real
+   path, so a "../" cannot climb out of it. */
+const STATIC_ALLOW_PREFIX = [".well-known/", "media/"];
+
 async function serveStatic(req, res) {
-  let urlPath = decodeURIComponent(req.url.split("?")[0]);
+  let urlPath;
+  try { urlPath = decodeURIComponent(req.url.split("?")[0]); }
+  catch { urlPath = req.url.split("?")[0]; }          // malformed %-escape → treat as literal
   if (urlPath === "/" || urlPath === "") urlPath = "/index.html";
-  const safe = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, "");
-  let filePath = path.join(__dirname, safe);
-  // Use a path-separator boundary so a sibling dir with the same prefix
-  // (e.g. ..\FirasAI-secrets) can't slip past a bare startsWith check.
-  if (filePath !== __dirname && !filePath.startsWith(__dirname + path.sep)) {
-    res.writeHead(403);
-    return res.end("forbidden");
-  }
-  // Never serve the database or the data dir.
-  if (filePath === DATA_DIR || filePath.startsWith(DATA_DIR + path.sep)) {
-    res.writeHead(403);
-    return res.end("forbidden");
-  }
+
+  // Normalize to a forward-slash relative key, then decide from the ALLOWLIST alone.
+  const rel = path.normalize(urlPath).replace(/^([/\\]|\.\.[/\\])+/, "").replace(/\\/g, "/");
+  const allowed =
+    STATIC_ALLOW.has(rel) ||
+    STATIC_ALLOW_PREFIX.some((p) => rel.startsWith(p) && !rel.includes(".."));
+
+  /* Anything else falls through to index.html — the SPA behaviour this app already had for
+     unknown routes. Serving the shell rather than 403/404 also means the response is
+     identical for "a route that doesn't exist" and "a file you may not have", so probing
+     cannot distinguish them. */
+  let filePath = allowed ? path.join(__dirname, rel) : path.join(__dirname, "index.html");
+
+  // Belt and braces: even an allowlisted name must resolve inside the project and outside
+  // the data directory. realpath defeats symlinks and 8.3/case aliases by resolving to the
+  // canonical path before comparison.
+  try {
+    const real = await realpath(filePath).catch(() => filePath);
+    const root = await realpath(__dirname).catch(() => __dirname);
+    const dataRoot = await realpath(DATA_DIR).catch(() => DATA_DIR);
+    const fold = (p) => (process.platform === "win32" || process.platform === "darwin" ? p.toLowerCase() : p);
+    const inside = (child, parent) => fold(child) === fold(parent) || fold(child).startsWith(fold(parent) + path.sep);
+    if (!inside(real, root) || inside(real, dataRoot)) {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      return res.end("404 Not Found");
+    }
+    filePath = real;
+  } catch { /* resolution failed → fall through to the read, which will 404 */ }
+
   if (!existsSync(filePath)) filePath = path.join(__dirname, "index.html");
+
+  /* ── RANGE REQUESTS ──────────────────────────────────────────────────────────────────
+     Every response below is a whole-file read. For text that is fine; for the 47 MB trailer
+     it is not. A <video> element asks for byte ranges: without a 206 it must download the
+     entire file before the first frame, the progress bar cannot be dragged at all, and
+     Safari refuses to start playback on a 200 that has no Accept-Ranges.
+     Handled only for media, so nothing about how the app's own files are served changes. */
+  {
+    const ext0 = path.extname(filePath).toLowerCase();
+    if (ext0 === ".mp4" || ext0 === ".webm") {
+      const { statSync, createReadStream } = await import("node:fs");
+      const size = statSync(filePath).size;
+      const range = req.headers.range;
+      const base = {
+        "Content-Type": MIME[ext0] || "application/octet-stream",
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=86400",
+        "X-Content-Type-Options": "nosniff",
+      };
+      if (range) {
+        const m = /bytes=(\d*)-(\d*)/.exec(range);
+        let start = m && m[1] ? parseInt(m[1], 10) : 0;
+        let end = m && m[2] ? parseInt(m[2], 10) : size - 1;
+        // A malformed or out-of-bounds range must answer 416, never a truncated 206.
+        if (!isFinite(start) || !isFinite(end) || start > end || start >= size) {
+          res.writeHead(416, { "Content-Range": `bytes */${size}` });
+          return res.end();
+        }
+        if (end >= size) end = size - 1;
+        res.writeHead(206, Object.assign({}, base, {
+          "Content-Range": `bytes ${start}-${end}/${size}`,
+          "Content-Length": end - start + 1,
+        }));
+        return createReadStream(filePath, { start, end }).pipe(res);
+      }
+      res.writeHead(200, Object.assign({}, base, { "Content-Length": size }));
+      return createReadStream(filePath).pipe(res);
+    }
+  }
+
   try {
     const data = await readFile(filePath);
     const ext = path.extname(filePath).toLowerCase();
@@ -3527,6 +5146,17 @@ async function serveStatic(req, res) {
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "X-Frame-Options": "SAMEORIGIN", // clickjacking protection for the login UI
+      /* CSP, deliberately narrow. `script-src`/`img-src`/`connect-src` are NOT set here and
+         that is a decision, not an omission: Firas Code renders every user project inside a
+         srcdoc iframe, and a srcdoc INHERITS the parent's CSP. Any subresource directive
+         would therefore break real user projects — blob: ES-module imports, CDN scripts,
+         inline handlers, images from anywhere. The zero-click image-exfiltration vector this
+         was meant to cover is closed precisely, at the sanitizer (installPurifyHooks).
+         Framing is already handled by X-Frame-Options above — and deliberately NOT by
+         `frame-ancestors`, whose enforcement on inherited-CSP srcdoc documents differs
+         between browsers and could blank a preview. What is left are the two directives no
+         user project can legitimately need: */
+      "Content-Security-Policy": "base-uri 'self'; object-src 'none'",
     });
     res.end(data);
   } catch {
@@ -3611,6 +5241,14 @@ const server = http.createServer(async (req, res) => {
     // ---- Max tier daily quota (read-only pre-check) ----
     if (route === "/api/max/quota" && method === "POST") return await handleMaxQuota(req, res);
 
+    // ---- Subscriptions / redeem codes ----
+    if (route === "/api/redeem" && method === "POST") return await handleRedeem(req, res);
+    if (route === "/api/admin/codes" && method === "GET") return await handleAdminCodesList(req, res, new URL(req.url, "http://localhost"));
+    if (route === "/api/admin/codes" && method === "POST") return await handleAdminCodesCreate(req, res);
+    if (route === "/api/admin/codes" && method === "PATCH") return await handleAdminCodesPatch(req, res);
+    if (route === "/api/admin/codes" && method === "DELETE") return await handleAdminCodesDelete(req, res, new URL(req.url, "http://localhost"));
+    if (route === "/api/usage/charge" && method === "POST") return await handleUsageCharge(req, res);
+
     if (route === "/api/memory" && method === "GET") return handleMemoryGet(req, res);
     if (route === "/api/memory" && method === "DELETE") return await handleMemoryClear(req, res);
     if (route === "/api/memory/learn" && method === "POST") return await handleMemoryLearn(req, res);
@@ -3626,6 +5264,13 @@ const server = http.createServer(async (req, res) => {
     if (route === "/api/kb" && method === "GET") return await handleKbList(req, res);
     if (route === "/api/kb" && method === "POST") return await handleKbAdd(req, res);
     if (route === "/api/kb" && method === "DELETE") return await handleKbDelete(req, res);
+
+    // ---- Firas Brain: the signed-in user's OWN document library (page-cited RAG) ----
+    if (route === "/api/brain/docs" && method === "GET") return await handleBrainDocs(req, res);
+    if (route === "/api/brain/doc" && method === "POST") return await handleBrainDocAdd(req, res);
+    if (route === "/api/brain/doc" && method === "DELETE") return await handleBrainDocDelete(req, res);
+    if (route === "/api/brain/search" && method === "POST") return await handleBrainSearch(req, res);
+    if (route === "/api/brain/passage" && method === "GET") return await handleBrainPassage(req, res);
 
     // ---- Public share links ----
     if (route === "/api/share" && method === "POST") return await handleShareCreate(req, res);
@@ -3650,6 +5295,9 @@ const server = http.createServer(async (req, res) => {
     if (route === "/api/auth/delete-account" && method === "POST") return await handleDeleteAccount(req, res);
     if (route === "/api/auth/logout" && method === "POST") return handleLogout(req, res);
     if (route === "/api/auth/me" && method === "GET") return handleMe(req, res);
+    // ---- Guest trial (no signup) ----
+    if (route === "/api/guest" && method === "POST") return handleGuestStart(req, res);
+    if (route === "/api/guest" && method === "DELETE") return handleGuestEnd(req, res);
 
     // ---- Chats ----
     if (route === "/api/chats") {
@@ -3689,6 +5337,11 @@ process.on("unhandledRejection", (e) => console.error("[firas] rejection:", (e &
 // Boot: ensure DB exists, then listen.
 initDb()
   .then(() => {
+    // Reclaim abandoned GUEST document libraries. Once at boot (so a long-dead process's
+    // leftovers go on the next restart) and daily after that. unref() so it never holds the
+    // process open, and every failure is swallowed — a sweep must not be able to break boot.
+    setTimeout(() => { brainSweepGuests().catch(() => {}); }, 30_000).unref();
+    setInterval(() => { brainSweepGuests().catch(() => {}); }, 86_400_000).unref();
     server.listen(PORT, "0.0.0.0", () => { // bind all interfaces (required by Fly.io/containers)
       console.log(`\n  ✦ Firas AI  →  http://localhost:${PORT}`);
       console.log(`  engine: Ollama (${OLLAMA_HOST})  fallback: keyless pollinations`);

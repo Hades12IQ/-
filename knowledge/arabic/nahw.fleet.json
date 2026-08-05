@@ -1,0 +1,113 @@
+{
+ "subject": "arabic",
+ "topic": "nahw",
+ "title": "nahw — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "في جملة: «مررتُ برجلٍ صالحٍ أبوه، حسنٍ خُلقُه» — بيّن نوع (صالحٍ) و(حسنٍ): هل هما نعتان حقيقيان أم سببيان؟ وأعرب (أبوه) و(خُلقُه)، مع بيان حكم المطابقة في النعت السببي.",
+   "q_en": "In 'marartu bi-rajulin ṣāliḥin abūhu, ḥasanin khuluquhu' — determine whether 'ṣāliḥin' and 'ḥasanin' are real (ḥaqīqī) or causal (sababī) adjectives, parse 'abūhu' and 'khuluquhu', and state the agreement rule for the causal adjective.",
+   "a_ar": "(صالحٍ) و(حسنٍ) نعتان سببيّان، لأنّ كلاً منهما يصف اسماً بعده مرتبطاً بالموصوف بضمير، لا الموصوف نفسه. النعت السببي يُطابق منعوته (رجلٍ) في الإعراب (الجرّ هنا) وفي التعريف والتنكير (النكرة)، لكنّه يبقى مفرداً دائماً في العدد، ويطابق ما بعده (مرفوعه) في التذكير والتأنيث. و(أبوه): فاعل لاسم الفاعل (صالحٍ) مرفوع وعلامة رفعه الواو لأنّه من الأسماء الخمسة، والهاء مضاف إليه. و(خُلقُه): فاعل للصفة المشبهة (حسنٍ) مرفوع بالضمة، والهاء مضاف إليه. وكلا النعتين مجرور تبعاً لـ(رجلٍ) وعلامة جرّه الكسرة.",
+   "a_en": "'Ṣāliḥin' and 'ḥasanin' are causal (sababī) adjectives, since each describes a following noun linked to the qualified word by a pronoun, not the qualified word itself. A sababī adjective agrees with its head noun ('rajulin') in case (genitive here) and in definiteness (indefinite), but stays singular in number, while agreeing with the noun after it (its raised element) in gender. 'Abūhu' is the subject (fāʿil) of the active participle 'ṣāliḥin', nominative marked by wāw (one of the Five Nouns), with 'hu' as muḍāf ilayh. 'Khuluquhu' is the fāʿil of the assimilate adjective 'ḥasanin', nominative with ḍamma, 'hu' being muḍāf ilayh. Both adjectives are genitive following 'rajulin', marked by kasra.",
+   "answer": "نعتان سببيّان؛ يطابقان (رجلٍ) في الجر والتنكير ويبقيان مفردين ويطابقان مرفوعهما في التذكير؛ أبوه = فاعل لصالحٍ مرفوع بالواو والهاء مضاف إليه؛ خُلقُه = فاعل لحسنٍ مرفوع بالضمة والهاء مضاف إليه.",
+   "keywords": [
+    "النعت السببي",
+    "النعت الحقيقي",
+    "الصفة المشبهة",
+    "الأسماء الخمسة",
+    "التوابع",
+    "sababī adjective",
+    "Five Nouns",
+    "fāʿil"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لماذا مُنِعت الأسماء الآتية من الصرف؟ حدّد العلّة (أو العلّتين) لكلٍّ منها: (أحمدُ)، (مصابيحُ)، (صحراءُ)، (عثمانُ)، (سكرانُ)، (أُخَرُ)، ثم أعرب: «سلّمتُ على أحمدَ ومررتُ بمساجدَ كثيرةٍ».",
+   "q_en": "Why is each of the following diptote (mamnūʿ min aṣ-ṣarf)? State the cause(s) for: 'Aḥmadu', 'maṣābīḥu', 'ṣaḥrāʾu', 'ʿUthmānu', 'sakrānu', 'ukharu'. Then parse 'sallamtu ʿalā Aḥmada wa-marartu bi-masājida kathīratin'.",
+   "a_ar": "(أحمدُ): عَلَمٌ على وزن الفعل (أفعل). (مصابيحُ): صيغة منتهى الجموع (بعد ألف تكسيرها حرفان). (صحراءُ): اسمٌ مختومٌ بألف التأنيث الممدودة. (عثمانُ): عَلَمٌ زِيدت في آخره ألفٌ ونونٌ. (سكرانُ): صفةٌ على وزن (فعلان) الذي مؤنثه (فَعْلى) لا (فعلانة). (أُخَرُ): صفةٌ معدولةٌ عن (آخر)، فهي علّة العدل مع الوصفية. أمّا الإعراب: (أحمدَ) اسم مجرور بحرف الجرّ (على) وعلامة جرّه الفتحة نيابةً عن الكسرة لأنّه ممنوع من الصرف. و(مساجدَ) اسم مجرور بالباء وعلامة جرّه الفتحة لأنّه ممنوع من الصرف (صيغة منتهى الجموع)، و(كثيرةٍ) نعتٌ مجرور بالكسرة لأنّه مصروف.",
+   "a_en": "'Aḥmadu': a proper name on the verb-pattern 'afʿal'. 'Maṣābīḥu': ṣīghat muntahā al-jumūʿ (the ultimate plural pattern, with two letters after the plural's alif). 'Ṣaḥrāʾu': ends in the extended feminine alif (alif at-taʾnīth al-mamdūda). 'ʿUthmānu': a proper name with an added alif+nūn. 'Sakrānu': an adjective of pattern 'faʿlān' whose feminine is 'faʿlā' (not 'faʿlāna'). 'Ukharu': an adjective deviated (maʿdūl) from 'ākhar', combining deviation with adjectival status. Parsing: 'Aḥmada' is genitive by 'ʿalā', marked by fatḥa in place of kasra because it is diptote. 'Masājida' is genitive by 'bi-', marked by fatḥa (diptote, muntahā al-jumūʿ). 'Kathīratin' is an adjective, genitive with kasra since it is fully declinable (maṣrūf).",
+   "answer": "أحمدُ: علم على وزن الفعل؛ مصابيحُ: صيغة منتهى الجموع؛ صحراءُ: ألف التأنيث الممدودة؛ عثمانُ: علم زِيد ألف ونون؛ سكرانُ: صفة على فعلان مؤنثها فعلى؛ أُخَرُ: العدل مع الوصفية. وأحمدَ ومساجدَ مجروران بالفتحة نيابة عن الكسرة، وكثيرةٍ نعت مجرور بالكسرة لأنه مصروف.",
+   "keywords": [
+    "الممنوع من الصرف",
+    "صيغة منتهى الجموع",
+    "ألف التأنيث الممدودة",
+    "العدل",
+    "صفة على وزن فعلان",
+    "diptote",
+    "muntahā al-jumūʿ",
+    "العلمية"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: «وإذ ابتلى إبراهيمَ ربُّه بكلماتٍ فأتمَّهُنَّ قال إني جاعلُكَ للناس إماماً قال ومن ذُرِّيّتي» — أعرب (إبراهيمَ) و(ربُّه)، وبيّن سبب تقديم المفعول به على الفاعل هنا، ثم أعرب جملة (إني جاعلُكَ ... إماماً) مبيّناً عمل اسم الفاعل (جاعل).",
+   "q_en": "In Q 2:124 'wa-idh ibtalā Ibrāhīma rabbuhu bi-kalimātin fa-atammahunna...' parse 'Ibrāhīma' and 'rabbuhu', explain why the object precedes the subject, then parse 'innī jāʿiluka li-n-nāsi imāman', showing how the active participle 'jāʿil' governs.",
+   "a_ar": "(ابتلى) فعل ماضٍ. (إبراهيمَ) مفعول به مقدَّم منصوب وعلامة نصبه الفتحة (وهو ممنوع من الصرف للعلمية والعُجمة، لكنه هنا منصوب بالفتحة أصالةً). (ربُّه) فاعل مؤخَّر مرفوع بالضمة، والهاء مضاف إليه. وسبب التقديم: الاهتمام والعناية بإبراهيم عليه السلام مع أمن اللبس، ومراعاة فواصل الآي. أمّا (إني جاعلُكَ): (إنّ) حرف توكيد ونصب، والياء اسمها في محل نصب، و(جاعلُ) خبرها مرفوع بالضمة، وهو اسم فاعل يعمل عمل فعله فنصب مفعولاً؛ والكاف مفعول أوّل لـ(جاعل) في محل نصب مضاف إليه لفظاً منصوب محلاً، و(إماماً) مفعول ثانٍ لـ(جاعل) منصوب بالفتحة (لأنّ جعل هنا بمعنى التصيير)، و(للناسِ) جار ومجرور متعلق بـ(جاعل).",
+   "a_en": "'Ibtalā' is a past verb. 'Ibrāhīma' is a fronted direct object, accusative with fatḥa (diptote for proper-name + foreignness, here accusative anyway). 'Rabbuhu' is the postponed subject, nominative with ḍamma, 'hu' being muḍāf ilayh. The fronting serves to emphasize/honor Ibrāhīm, there being no ambiguity, and it observes Quranic verse-endings. In 'innī jāʿiluka': 'inna' is a particle of emphasis governing accusative; the 'yā' is its noun (accusative position); 'jāʿilu' is its predicate, nominative, an active participle governing like its verb; the 'kāf' is jāʿil's first object (genitive in form as muḍāf ilayh, accusative in position); 'imāman' is its second object, accusative with fatḥa (since jaʿala here means 'to make/render'); 'li-n-nāsi' is a prepositional phrase attached to 'jāʿil'.",
+   "answer": "إبراهيمَ: مفعول به مقدم منصوب بالفتحة؛ ربُّه: فاعل مؤخر مرفوع بالضمة والهاء مضاف إليه؛ التقديم للاهتمام والعناية ومراعاة الفواصل مع أمن اللبس. جاعلُ: خبر إنّ مرفوع، اسم فاعل عامل، الكاف مفعوله الأول (مضاف إليه لفظاً منصوب محلاً)، وإماماً مفعوله الثاني منصوب.",
+   "keywords": [
+    "تقديم المفعول",
+    "اسم الفاعل العامل",
+    "خبر إنّ",
+    "المفعول الأول والثاني",
+    "إبراهيم",
+    "active participle",
+    "fronted object",
+    "إعراب القرآن"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "أعرب ما تحته خط في: «جاء القومُ إلا زيداً، وما قام القومُ إلا زيدٌ، وما جاءني إلا زيدٌ، وقرأتُ الكتابَ إلا صفحةً» — مبيّناً حكم المستثنى بعد (إلا) في كلٍّ من الاستثناء التامّ الموجب، والتامّ المنفي، والناقص المنفي (المفرّغ).",
+   "q_en": "Parse the underlined nouns in: 'jāʾa al-qawmu illā Zaydan; wa-mā qāma al-qawmu illā Zaydun; wa-mā jāʾanī illā Zaydun; wa-qaraʾtu al-kitāba illā ṣafḥatan' — explaining the ruling of the excepted noun after 'illā' in complete-affirmative, complete-negative, and incomplete-negative (mufarragh) exception.",
+   "a_ar": "«جاء القومُ إلا زيداً»: استثناء تامٌّ موجَب، فـ(زيداً) مستثنى منصوبٌ وجوباً على الاستثناء وعلامة نصبه الفتحة. «ما قام القومُ إلا زيدٌ»: استثناء تامٌّ منفيٌّ، فـ(زيدٌ) يجوز فيه النصب على الاستثناء والأرجح الأفصح الإتباع للبدلية من (القومُ) فيكون بدلاً مرفوعاً بالضمة. «ما جاءني إلا زيدٌ»: استثناء ناقصٌ (مفرّغ) منفيّ، فـ(إلا) ملغاةٌ و(زيدٌ) فاعلٌ لـ(جاء) مرفوعٌ بالضمة. «قرأتُ الكتابَ إلا صفحةً»: استثناء تامٌّ موجَب، فـ(صفحةً) مستثنى منصوبٌ وجوباً وعلامة نصبه الفتحة.",
+   "a_en": "'Jāʾa al-qawmu illā Zaydan': complete affirmative exception; 'Zaydan' is the excepted noun, obligatorily accusative (with fatḥa) as mustathnā. 'Mā qāma al-qawmu illā Zaydun': complete negative exception; 'Zaydun' may be accusative as mustathnā, but the more eloquent and preferred option is badal from 'al-qawmu', hence nominative (badal) with ḍamma. 'Mā jāʾanī illā Zaydun': incomplete (mufarragh) negative exception; 'illā' is neutralized, and 'Zaydun' is the fāʿil of 'jāʾa', nominative with ḍamma. 'Qaraʾtu al-kitāba illā ṣafḥatan': complete affirmative exception; 'ṣafḥatan' is the excepted noun, obligatorily accusative with fatḥa.",
+   "answer": "زيداً (الأولى): مستثنى منصوب وجوباً؛ زيدٌ (الثانية): الأفصح بدل مرفوع (ويجوز نصبه على الاستثناء)؛ زيدٌ (الثالثة): فاعل مرفوع لأن الاستثناء مفرّغ وإلا ملغاة؛ صفحةً: مستثنى منصوب وجوباً.",
+   "keywords": [
+    "الاستثناء",
+    "المستثنى",
+    "إلا",
+    "الاستثناء المفرّغ",
+    "البدل",
+    "exception",
+    "mustathnā",
+    "استثناء تام"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿وَجَاءُوا أَبَاهُمْ عِشَاءً يَبْكُونَ﴾ [يوسف: 16]. حدّد الموقع الإعرابي لجملة (يَبْكُونَ)، وبيّن هل يجوز فيها وجهٌ إعرابيٌّ آخر، مع الترجيح والتعليل.",
+   "q_en": "In \"And they came to their father at nightfall, weeping\" [Q 12:16], determine the grammatical position of the clause (yabkūna, \"weeping\"), and state whether another parse is admissible, with the preferred view and justification.",
+   "a_ar": "جملة (يبكون) فعلية، وموقعها الراجح: في محل نصب حال من فاعل (جاءوا) أي: جاءوا باكين. ويجوز إعرابها حالًا ثانية، أو حالًا متداخلة. وأجاز بعضهم أن تكون في محل نصب حال من الضمير في الظرف/أو صفة لو قُدّر منكّر، لكن الأرجح الحال لأن صاحبها (الواو) معرفة والجملة بعد المعرفة حال. ولا تكون خبرًا ولا صفةً هنا. فالوجه الراجح: حال في محل نصب.",
+   "a_en": "(Yabkūna) is a verbal clause whose preferred position is accusative as a ḥāl (circumstantial) from the subject of (jāʾū), i.e. \"they came weeping.\" It may also be read as a second/overlapping ḥāl. Since a clause after a definite noun (here the definite subject-pronoun wāw) functions as a ḥāl, that is the ruling; a clause after an indefinite would instead be a ṣifa, but that condition is absent. It cannot be a predicate or an adjective here. Preferred parse: ḥāl, in the accusative position.",
+   "answer": "جملة (يبكون) في محل نصب حال من فاعل (جاءوا)؛ لأن الجملة بعد المعرفة حال. لا تصلح صفةً ولا خبرًا.",
+   "keywords": [
+    "الجمل التي لها محل من الإعراب",
+    "جملة الحال",
+    "محل نصب",
+    "يوسف 16",
+    "ḥāl clause",
+    "صاحب الحال"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "اجتمع في اسم علمٍ مانعان للصرف. اذكر الحكم الإعرابي لكلمة (أَحْمَد) و(مَعْدِيكَرِب) و(حَضْرَمَوْت)، مبيّنًا موانع الصرف في كلٍّ، ومتى يُصرف الممنوع من الصرف اضطرارًا أو لعارض.",
+   "q_en": "Several proper nouns carry two ṣarf-preventers at once. State the inflectional ruling for (Aḥmad), (Maʿdīkarib), and (Ḥaḍramawt), specifying the cause(s) preventing full inflection in each, and when a diptote may exceptionally take tanwīn.",
+   "a_ar": "(أَحْمَد) ممنوع من الصرف للعلمية ووزن الفعل (أفعل)، فيُجرّ بالفتحة نيابةً عن الكسرة بلا تنوين ما لم يُضَف أو يُعرَّف بأل. (مَعْدِيكَرِب) علمٌ مركّب تركيبًا مزجيًّا، وحكمه المنع من الصرف للعلمية والتركيب المزجي (ويجوز فيه البناء على الفتح، وأن يُعرب إعراب الممنوع من الصرف). (حَضْرَمَوْت) علم مركّب مزجي كذلك، ممنوع من الصرف للعلمية والتركيب المزجي، ويُعرب صدره بحسب موقعه أو يُبنى الجزءان على الفتح على لغة. ويُصرف الممنوع من الصرف: (1) للضرورة الشعرية بالتنوين، (2) إذا أُضيف أو دخلته (أل) عاد جرّه بالكسرة (وهذا ليس صرفًا حقيقيًا بل ظهور كسرة). فالخلاصة: أحمد وحضرموت ومعديكرب كلها تُجرّ بالفتحة بلا تنوين إلا عند الإضافة أو (أل) فبالكسرة.",
+   "a_en": "(Aḥmad) is diptote for proper-name status plus the verb-pattern (afʿal); it takes fatḥa in the genitive (no tanwīn) unless made construct or prefixed with (al), when the kasra returns. (Maʿdīkarib) is a compound proper name of the mazjī (blended) type; its ruling is diptote for proper-name status plus mazjī compounding (an alternative allows building the whole on fatḥa). (Ḥaḍramawt) is likewise a mazjī compound proper noun, diptote for proper-name status plus mazjī compounding; in one usage its first part inflects by position, in another both parts are built on fatḥa. A diptote takes tanwīn exceptionally: (1) by poetic necessity (ḍarūra), and (2) when it becomes construct or takes (al) the kasra reappears — this is the return of the genitive vowel, not true ṣarf. In sum, all three take fatḥa in the genitive with no tanwīn, reverting to kasra only under iḍāfa or (al).",
+   "answer": "أحمد: ممنوع من الصرف للعلمية ووزن الفعل، يُجر بالفتحة بلا تنوين. معديكرب وحضرموت: ممنوعان للعلمية والتركيب المزجي (ويجوز فيهما البناء على الفتح). ويُصرف الممنوع اضطرارًا للضرورة الشعرية، وتعود الكسرة عند الإضافة أو دخول (أل).",
+   "keywords": [
+    "الممنوع من الصرف",
+    "العلمية ووزن الفعل",
+    "التركيب المزجي",
+    "أحمد",
+    "معديكرب",
+    "حضرموت",
+    "diptote",
+    "الضرورة الشعرية"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

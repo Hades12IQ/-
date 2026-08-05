@@ -1,0 +1,169 @@
+{
+ "subject": "cs",
+ "topic": "data-structures-dp",
+ "title": "data-structures-dp — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "ما هو أقل عدد من العُقَد في شجرة AVL ارتفاعها 5؟ (باعتماد أن العُقدة المفردة ارتفاعها 0.) اشتق العلاقة التكرارية وأعطِ العدد الدقيق.",
+   "q_en": "What is the minimum number of nodes in an AVL tree of height 5? (Use the convention that a single node has height 0.) Derive the recurrence and give the exact count.",
+   "a_ar": "ليكن $N(h)$ أقل عدد عُقَد في شجرة AVL ارتفاعها $h$. الشجرة الأصغرية ذات الارتفاع $h$ لها جذر شجرتاه الفرعيتان أصغريتان بارتفاعَي $h-1$ و $h-2$ (قيد التوازن يسمح بفارق ارتفاع لا يتجاوز 1، ولتقليل العُقَد نأخذ الحد الأقصى للفارق)، فينتج $N(h)=N(h-1)+N(h-2)+1$ حيث $N(0)=1,\\ N(1)=2$. إذن $N(2)=4,\\ N(3)=7,\\ N(4)=12,\\ N(5)=20$. فالأقل هو $\\mathbf{20}$ عُقدة.",
+   "a_en": "Let $N(h)$ be the minimum number of nodes in an AVL tree of height $h$. A minimal tree of height $h$ has a root whose two subtrees are minimal AVL trees of heights $h-1$ and $h-2$ (the balance-factor limit forces heights differing by at most 1, and to minimize nodes we take the extreme), giving $N(h)=N(h-1)+N(h-2)+1$ with $N(0)=1,\\ N(1)=2$. Then $N(2)=4,\\ N(3)=7,\\ N(4)=12,\\ N(5)=20$. So the minimum is $\\mathbf{20}$ nodes.",
+   "answer": "20 nodes; recurrence N(h)=N(h-1)+N(h-2)+1, N(0)=1, N(1)=2",
+   "keywords": [
+    "AVL tree",
+    "شجرة AVL",
+    "minimum nodes",
+    "أقل عدد عُقَد",
+    "balance factor",
+    "recurrence",
+    "علاقة تكرارية",
+    "height ارتفاع"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "كم عدد أكوام (heaps) الحد الأقصى الثنائية المختلفة التي يمكن بناؤها من المفاتيح المتمايزة الخمسة {1,2,3,4,5}؟ يُخزَّن الكوم الثنائي في شجرة ثنائية كاملة، ويُستعمل كل مفتاح مرة واحدة بالضبط. أعطِ العدد الدقيق مع طريقة العد.",
+   "q_en": "How many distinct binary max-heaps can be built from the 5 distinct keys {1,2,3,4,5}? A binary heap is stored in a complete binary tree, and each key is used exactly once. Give the exact count with the counting method.",
+   "a_ar": "الشجرة الثنائية الكاملة على $n=5$ عُقَد لها شكل ثابت: جذر، وشجرة فرعية يسرى حجمها $L=3$ وشجرة فرعية يمنى حجمها $R=1$. المفتاح الأكبر (5) يجب أن يكون الجذر؛ ثم نختار أيّ $L=3$ من المفاتيح الأربعة المتبقية توضع في الشجرة اليسرى، ونعدّ الأكوام تعاوديًا في كل جانب. إذن $f(n)=\\binom{n-1}{L}f(L)f(R)$ مع $f(1)=1$. هنا $f(3)=\\binom{2}{1}f(1)f(1)=2$ و $f(1)=1$، فيكون $f(5)=\\binom{4}{3}\\cdot f(3)\\cdot f(1)=4\\cdot 2\\cdot 1=\\mathbf{8}$.",
+   "a_en": "The complete binary tree on $n=5$ nodes has a fixed shape: root, a left subtree of size $L=3$ and a right subtree of size $R=1$. The maximum key (5) must be the root; then we choose which $L=3$ of the remaining 4 keys go to the left subtree, and recursively count heaps on each side. Thus $f(n)=\\binom{n-1}{L}f(L)f(R)$ with $f(1)=1$. Here $f(3)=\\binom{2}{1}f(1)f(1)=2$ and $f(1)=1$, so $f(5)=\\binom{4}{3}\\cdot f(3)\\cdot f(1)=4\\cdot 2\\cdot 1=\\mathbf{8}$.",
+   "answer": "8 distinct max-heaps",
+   "keywords": [
+    "binary heap",
+    "كوم ثنائي",
+    "max-heap",
+    "عدد الأكوام",
+    "complete binary tree",
+    "شجرة كاملة",
+    "counting العد",
+    "binomial"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "نُجزّئ (hash) عدد $n=10$ عناصر في جدول به $m=10$ خانات باستعمال تجزئة منتظمة بسيطة (كل عنصر يقع مستقلًا في خانة عشوائية منتظمة، والتصادمات تُحلّ بالتسلسل). ما القيمة المتوقعة الدقيقة لعدد الخانات الفارغة؟ أعطِ الصيغة المغلقة وقيمة عشرية بثلاث منازل.",
+   "q_en": "We hash $n=10$ items into a table of $m=10$ slots using simple uniform hashing (each item independently lands in a uniformly random slot, chaining resolves collisions). What is the exact expected number of empty slots? Give the closed form and a decimal to 3 places.",
+   "a_ar": "لخانة ثابتة، احتمال أن تكون فارغة هو $(1-1/m)^n$ لأن كل عنصر يُخطئها مستقلًا باحتمال $1-1/m$. وبخطّية التوقع على الخانات $m$، يكون العدد المتوقع للخانات الفارغة $E=m\\,(1-1/m)^n$. وبوضع $m=n=10$: $E=10\\,(9/10)^{10}=10\\cdot 0.9^{10}$. وبما أن $0.9^{10}=0.3486784401$ نحصل على $E=3.486784401\\approx \\mathbf{3.487}$ خانة فارغة.",
+   "a_en": "For a fixed slot, the probability it is empty is $(1-1/m)^n$ since every item independently misses it with probability $1-1/m$. By linearity of expectation over the $m$ slots, the expected number of empty slots is $E=m\\,(1-1/m)^n$. With $m=n=10$: $E=10\\,(9/10)^{10}=10\\cdot 0.9^{10}$. Since $0.9^{10}=0.3486784401$, we get $E=3.486784401\\approx \\mathbf{3.487}$ empty slots.",
+   "answer": "E = m(1-1/m)^n = 10·(0.9)^10 = 3.486784401 ≈ 3.487",
+   "keywords": [
+    "hashing",
+    "تجزئة",
+    "expected empty slots",
+    "خانات فارغة",
+    "linearity of expectation",
+    "خطية التوقع",
+    "chaining",
+    "load factor عامل التحميل"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "بمعطى المتتالية A = [3, 1, 4, 1, 5, 9, 2, 6]، أوجد طول أطول متتالية جزئية متزايدة تمامًا (LIS)، واذكر علاقة البرمجة الديناميكية الدقيقة التي تستعملها.",
+   "q_en": "Given the sequence A = [3, 1, 4, 1, 5, 9, 2, 6], find the length of the longest strictly increasing subsequence (LIS), and state the exact DP recurrence you use.",
+   "a_ar": "ليكن $L[i]$ طول أطول متتالية جزئية متزايدة تمامًا تنتهي عند الدليل $i$: $L[i]=1+\\max\\{L[j]: j<i,\\ A[j]<A[i]\\}$ (و $1$ إن لم يوجد مثل هذا $j$). بالحساب على $A=[3,1,4,1,5,9,2,6]$ نحصل على $L=[1,1,2,1,3,4,2,4]$. فالجواب $\\max_i L[i]=\\mathbf{4}$، ويتحقق مثلًا بالمتتالية $1,4,5,9$ (أو $1,4,5,6$ / $3,4,5,9$).",
+   "a_en": "Let $L[i]$ be the length of the longest strictly increasing subsequence ending at index $i$: $L[i]=1+\\max\\{L[j]: j<i,\\ A[j]<A[i]\\}$ (and $1$ if no such $j$). Computing over $A=[3,1,4,1,5,9,2,6]$ gives $L=[1,1,2,1,3,4,2,4]$. The answer is $\\max_i L[i]=\\mathbf{4}$, achieved e.g. by the subsequence $1,4,5,9$ (or $1,4,5,6$ / $3,4,5,9$).",
+   "answer": "LIS length = 4 (e.g. 1,4,5,9)",
+   "keywords": [
+    "LIS",
+    "أطول متتالية متزايدة",
+    "dynamic programming",
+    "برمجة ديناميكية",
+    "subsequence متتالية جزئية",
+    "recurrence علاقة تكرارية",
+    "increasing متزايدة"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "حل مسألة حقيبة 0/1 بسعة W = 10 وأربعة أغراض (الوزن، القيمة): (2,3) و (3,4) و (4,5) و (5,6). يمكن أخذ كل غرض مرة واحدة على الأكثر. أعطِ أقصى قيمة يمكن تحقيقها وعلاقة البرمجة الديناميكية.",
+   "q_en": "Solve the 0/1 knapsack problem with capacity W = 10 and four items (weight, value): (2,3), (3,4), (4,5), (5,6). Each item may be taken at most once. Give the maximum achievable value and the DP recurrence.",
+   "a_ar": "ليكن $dp[i][w]$ أفضل قيمة باستعمال أول $i$ غرض ضمن السعة $w$: $dp[i][w]=\\max\\big(dp[i-1][w],\\ dp[i-1][w-w_i]+v_i\\big)$ إذا كان $w\\ge w_i$، وإلا $dp[i-1][w]$. مجموع أوزان كل الأغراض $2+3+4+5=14>10$، فلا يمكن أخذها جميعًا. الأفضل هو الأغراض $(2,3),(3,4),(5,6)$ بوزن $2+3+5=10$ وقيمة $3+4+6=13$؛ وأي مجموعة تضم الغرض $(4,5)$ مع غرضين آخرين تسع وزنًا $2+3+4=9$ فقط بقيمة $12$، أو أقل من $13$. إذن أقصى قيمة هي $\\mathbf{13}$.",
+   "a_en": "Let $dp[i][w]$ be the best value using the first $i$ items within capacity $w$: $dp[i][w]=\\max\\big(dp[i-1][w],\\ dp[i-1][w-w_i]+v_i\\big)$ for $w\\ge w_i$, else $dp[i-1][w]$. The total weight of all items is $2+3+4+5=14>10$, so we cannot take all. The best is items $(2,3),(3,4),(5,6)$ with weight $2+3+5=10$ and value $3+4+6=13$; any set including the $(4,5)$ item with two others fits at most weight $2+3+4=9$ giving value $12$, or $3+4+... $ still below $13$. Hence the maximum value is $\\mathbf{13}$.",
+   "answer": "Maximum value = 13 (items (2,3),(3,4),(5,6), total weight 10)",
+   "keywords": [
+    "knapsack",
+    "حقيبة الظهر",
+    "0/1 knapsack",
+    "برمجة ديناميكية",
+    "dynamic programming",
+    "capacity سعة",
+    "optimal value القيمة المثلى",
+    "DP table"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "كم عددُ أكوام الحد الأدنى (min-heaps) المختلفة (كمصفوفات تحقّق شكلَ الشجرة الثنائية الكاملة وخاصيةَ ترتيب كومة الأدنى) التي يمكن بناؤها من المفاتيح السبعة المتمايزة $\\{1,2,3,4,5,6,7\\}$؟ أعطِ العددَ الدقيق والطريقةَ العامة.",
+   "q_en": "How many distinct binary min-heaps (as arrays satisfying the complete-binary-tree shape and the min-heap order property) can be built from the 7 distinct keys $\\{1,2,3,4,5,6,7\\}$? Give the exact count and the general method.",
+   "a_ar": "شكلُ الكومة على $n$ عقدة ثابت (شجرة ثنائية كاملة). عددُ الإسنادات الصحيحة للمفاتيح يساوي $\\dfrac{n!}{\\prod_v s_v}$، حيث $s_v$ حجمُ الشجرة الجزئية الجذرها $v$ — لأنّ الجذر يجب أن يحمل القيمة الصغرى، ثم تتوزّع المفاتيح الـ$n-1$ الباقية على الشجرتين الجزئيتين بـ$\\binom{n-1}{L}$ طريقة، مما يعطي العلاقة التراجعية $H_n=\\binom{n-1}{L}H_LH_R$ وصيغتَها المغلقة كحاصل ضرب أحجام الأشجار الجزئية. عند $n=7$ الشجرة كاملة تمامًا: الأحجام $7,3,3,1,1,1,1$ وحاصل ضربها $63$، فيكون $H_7=\\dfrac{7!}{63}=\\dfrac{5040}{63}=80$.",
+   "a_en": "The shape of a heap on $n$ nodes is fixed (a complete binary tree). The number of valid key-assignments equals $\\dfrac{n!}{\\prod_v s_v}$, where $s_v$ is the size of the subtree rooted at $v$ — because the root must hold the minimum, then the remaining $n-1$ keys split among the two subtrees in $\\binom{n-1}{L}$ ways, giving the recurrence $H_n=\\binom{n-1}{L}H_LH_R$, whose closed form is the subtree-size product formula. For $n=7$ the tree is perfect: subtree sizes are $7,3,3,1,1,1,1$, product $=63$, so $H_7=\\dfrac{7!}{63}=\\dfrac{5040}{63}=80$.",
+   "answer": "80",
+   "keywords": [
+    "min-heap",
+    "أكوام",
+    "complete binary tree",
+    "شجرة ثنائية كاملة",
+    "subtree size product",
+    "عدّ التوافيق",
+    "heap counting",
+    "factorial"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "يُشغَّل الترتيب السريع العشوائي (randomized quicksort) على 10 عناصر متمايزة، مع اختيار كلّ محور (pivot) بانتظام وعشوائيًا. أوجد القيمةَ المتوقّعة الدقيقة لعدد مقارنات العناصر (ككسر نسبي).",
+   "q_en": "Randomized quicksort is run on 10 distinct elements, choosing each pivot uniformly at random. Find the EXACT expected number of element comparisons (as a rational number).",
+   "a_ar": "لتكن رُتَب العناصر $z_1<\\dots<z_n$. تُقارَن الرتبتان $z_i,z_j$ إذا وفقط إذا كانت إحداهما أولَ محور يُختار من بين الـ$j-i+1$ عنصرًا ذات الرتب $[i,j]$، وذلك باحتمال $\\tfrac{2}{j-i+1}$. إذن $E[\\text{المقارنات}]=\\sum_{i<j}\\tfrac{2}{j-i+1}=2(n+1)H_n-4n$، حيث $H_n=\\sum_{k=1}^n 1/k$. عند $n=10$ يكون $H_{10}=\\tfrac{7381}{2520}$، فينتج $2\\cdot11\\cdot\\tfrac{7381}{2520}-40=\\tfrac{30791}{1260}\\approx24.44$.",
+   "a_en": "Let element ranks be $z_1<\\dots<z_n$. Ranks $z_i,z_j$ are compared iff one of them is the first chosen pivot among the $j-i+1$ elements of ranks $[i,j]$, which happens with probability $\\tfrac{2}{j-i+1}$. So $E[\\text{comparisons}]=\\sum_{i<j}\\tfrac{2}{j-i+1}=2(n+1)H_n-4n$, where $H_n=\\sum_{k=1}^n 1/k$. For $n=10$, $H_{10}=\\tfrac{7381}{2520}$, giving $2\\cdot11\\cdot\\tfrac{7381}{2520}-40=\\tfrac{30791}{1260}\\approx24.44$.",
+   "answer": "$\\dfrac{30791}{1260}\\approx 24.44$",
+   "keywords": [
+    "quicksort",
+    "الترتيب السريع",
+    "expected comparisons",
+    "القيمة المتوقعة",
+    "indicator variables",
+    "harmonic number",
+    "العدد التوافقي",
+    "randomized"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "لسلسلةِ مصفوفاتٍ ذات متتالية الأبعاد $\\langle 30,35,15,5,10,20,25\\rangle$ (أي $A_1$ بحجم $30\\times35$، و$A_2$ بحجم $35\\times15$، …، و$A_6$ بحجم $20\\times25$)، أوجد أقلَّ عددٍ ممكن من عمليات الضرب السُّلَّمي (scalar multiplications) لحساب الجداء $A_1A_2\\cdots A_6$ باستخدام التقويس الأمثل.",
+   "q_en": "For a chain of matrices with dimension sequence $\\langle 30,35,15,5,10,20,25\\rangle$ (i.e. $A_1$ is $30\\times35$, $A_2$ is $35\\times15$, …, $A_6$ is $20\\times25$), find the minimum possible number of scalar multiplications to compute the product $A_1A_2\\cdots A_6$ using optimal parenthesization.",
+   "a_ar": "نستخدم البرمجة الديناميكية على الفترات $m[i,j]=\\min_{i\\le k<j}\\{m[i,k]+m[k{+}1,j]+p_{i-1}p_kp_j\\}$ مع $m[i,i]=0$ على $p=\\langle30,35,15,5,10,20,25\\rangle$. بالملء تصاعديًا حسب طول السلسلة، يعطي التقسيمُ الأمثل $m[1,6]=15125$. والتقويس الأمثل هو $\\big((A_1(A_2A_3))\\,\\big((A_4A_5)A_6)\\big)$.",
+   "a_en": "Use the interval DP $m[i,j]=\\min_{i\\le k<j}\\{m[i,k]+m[k{+}1,j]+p_{i-1}p_kp_j\\}$ with $m[i,i]=0$ on $p=\\langle30,35,15,5,10,20,25\\rangle$. Filling by increasing chain length, the optimal split gives $m[1,6]=15125$. The optimal parenthesization is $\\big((A_1(A_2A_3))\\,\\big((A_4A_5)A_6)\\big)$.",
+   "answer": "15125",
+   "keywords": [
+    "matrix chain",
+    "سلسلة المصفوفات",
+    "dynamic programming",
+    "برمجة ديناميكية",
+    "optimal parenthesization",
+    "التقويس الأمثل",
+    "interval DP",
+    "scalar multiplications"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أدخِل $n$ مفتاحًا متمايزًا في جدول تجزئة (hash table) به $n$ خانة، بحيث يُجزَّأ كلُّ مفتاح باستقلال وانتظام. أثبت أنّ العددَ المتوقّع للخانات الفارغة يساوي العددَ المتوقّع لـ«المفاتيح المتصادمة» (المفاتيح التي تقع في خانة يشاركها مفتاحٌ آخر، أي إجمالي المفاتيح ناقص عدد الخانات المشغولة)، واحسب هذه القيمة المشتركة بدقّة عند $n=5$.",
+   "q_en": "Insert $n$ distinct keys into a hash table with $n$ slots, each key hashed independently and uniformly. Prove that the expected number of empty slots equals the expected number of 'colliding keys' (keys that land in a slot already or later shared by another key, i.e. total keys minus number of occupied slots), and compute this common value exactly for $n=5$.",
+   "a_ar": "ليكن $O$ عددَ الخانات المشغولة (غير الفارغة). الخانات الفارغة $=n-O$، والمفاتيح المتصادمة $=(\\text{المفاتيح})-O=n-O$ لأنّ عدد المفاتيح $n$ — فالكمّيّتان متساويتان تطابقًا في كلّ نتيجة، ومن ثمّ تتساوى قيمتاهما المتوقّعتان. أمّا القيمة: خانةٌ معيّنة تكون فارغة باحتمال $(1-1/n)^n$، فيكون $E[\\text{الفارغة}]=n(1-1/n)^n$. عند $n=5$: $5\\cdot(4/5)^5=5\\cdot\\tfrac{1024}{3125}=\\tfrac{1024}{625}=1.6384$.",
+   "a_en": "Let $O$ be the number of occupied (nonempty) slots. Empty slots $=n-O$, and colliding keys $=(\\text{keys})-O=n-O$ since there are $n$ keys — so the two counts are identically equal for every outcome, hence their expectations coincide. Their value: a fixed slot is empty with probability $(1-1/n)^n$, so $E[\\text{empty}]=n(1-1/n)^n$. For $n=5$: $5\\cdot(4/5)^5=5\\cdot\\tfrac{1024}{3125}=\\tfrac{1024}{625}=1.6384$.",
+   "answer": "$\\dfrac{1024}{625}=1.6384$",
+   "keywords": [
+    "hashing",
+    "جدول تجزئة",
+    "empty slots",
+    "خانات فارغة",
+    "collisions",
+    "تصادمات",
+    "balls in bins",
+    "expected value",
+    "linearity of expectation"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

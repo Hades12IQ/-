@@ -1,0 +1,162 @@
+{
+ "subject": "math",
+ "topic": "complex-numbers",
+ "title": "complex-numbers — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "لتكن $\\omega = e^{2\\pi i/7}$ جذرًا أوّليًّا من الدرجة السابعة للوحدة. احسب المجموع $\\displaystyle S=\\sum_{k=1}^{6}\\frac{1}{1-\\omega^{k}}$.",
+   "q_en": "Let $\\omega = e^{2\\pi i/7}$ be a primitive 7th root of unity. Evaluate the sum $\\displaystyle S=\\sum_{k=1}^{6}\\frac{1}{1-\\omega^{k}}$.",
+   "a_ar": "القيم $\\omega^k$ من أجل $k=1,\\dots,6$ هي بالضبط جذور $P(z)=\\frac{z^7-1}{z-1}=1+z+\\cdots+z^6$. ووفق متطابقة معروفة يكون $\\sum_{k}\\frac{1}{1-\\omega^k}=\\frac{P'(1)}{P(1)}$. هنا $P(1)=7$، ولأن $z^7-1=(z-1)P(z)$ فإن الاشتقاق مرتين عند $z=1$ يعطي $P'(1)=\\frac{7\\cdot 6}{2}=21$. إذن $S=\\frac{21}{7}=3$. وبشكل عام يساوي المجموع $\\frac{n-1}{2}$، أي $3$ عندما $n=7$.",
+   "a_en": "The $\\omega^k$ for $k=1,\\dots,6$ are exactly the roots of $P(z)=\\frac{z^7-1}{z-1}=1+z+\\cdots+z^6$. A standard identity gives $\\sum_{k}\\frac{1}{1-\\omega^k}=\\frac{P'(1)}{P(1)}$. Here $P(1)=7$ and, since $z^7-1=(z-1)P(z)$, differentiating twice at $z=1$ yields $P'(1)=\\frac{7\\cdot 6}{2}=21$. Hence $S=\\frac{21}{7}=3$. In general the sum equals $\\frac{n-1}{2}$, giving $3$ for $n=7$.",
+   "answer": "$S=3$",
+   "keywords": [
+    "roots of unity",
+    "جذور الوحدة",
+    "primitive root",
+    "$\\frac{n-1}{2}$",
+    "cyclotomic",
+    "logarithmic derivative",
+    "جذر أولي"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "احسب $\\left(\\dfrac{1+i\\sqrt{3}}{2}\\right)^{2025}$، معطيًا القيمة الدقيقة على الصورة $a+bi$.",
+   "q_en": "Compute $\\left(\\dfrac{1+i\\sqrt{3}}{2}\\right)^{2025}$, giving the exact value in the form $a+bi$.",
+   "a_ar": "نكتب $z=\\frac{1+i\\sqrt3}{2}$ بالصورة القطبية: $|z|=\\sqrt{\\frac14+\\frac34}=1$ و $\\arg z=\\arctan(\\sqrt3)=\\frac{\\pi}{3}$، إذن $z=e^{i\\pi/3}$. وبنظرية دي موافر: $z^{2025}=e^{i\\,2025\\pi/3}=e^{i\\,675\\pi}$. وبما أن $675$ فردي فإن $e^{i\\,675\\pi}=e^{i\\pi}=-1$. وبطريقة مكافئة، $z$ جذر أوّلي من الدرجة السادسة للوحدة و $2025\\equiv 3\\pmod 6$، فيكون $z^{3}=-1$.",
+   "a_en": "Write $z=\\frac{1+i\\sqrt3}{2}$ in polar form: $|z|=\\sqrt{\\frac14+\\frac34}=1$ and $\\arg z=\\arctan(\\sqrt3)=\\frac{\\pi}{3}$, so $z=e^{i\\pi/3}$. By De Moivre, $z^{2025}=e^{i\\,2025\\pi/3}=e^{i\\,675\\pi}$. Since $675$ is odd, $e^{i\\,675\\pi}=e^{i\\pi}=-1$. Equivalently $z$ is a primitive 6th root of unity and $2025\\equiv 3\\pmod 6$, giving $z^{3}=-1$.",
+   "answer": "$-1$",
+   "keywords": [
+    "De Moivre",
+    "دي موافر",
+    "polar form",
+    "الصورة القطبية",
+    "$e^{i\\pi/3}$",
+    "6th root of unity",
+    "modulo"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لتكن $\\omega=e^{2\\pi i/5}$. احسب الجداء $\\displaystyle \\prod_{k=1}^{4}\\bigl(2-\\omega^{k}\\bigr)$.",
+   "q_en": "Let $\\omega=e^{2\\pi i/5}$. Evaluate the product $\\displaystyle \\prod_{k=1}^{4}\\bigl(2-\\omega^{k}\\bigr)$.",
+   "a_ar": "بما أن $x^5-1=\\prod_{k=0}^{4}(x-\\omega^{k})$، فبقسمة العامل الموافق لـ $k=0$ نحصل على $\\frac{x^5-1}{x-1}=\\prod_{k=1}^{4}(x-\\omega^{k})=1+x+x^2+x^3+x^4$. وبالتعويض $x=2$ ينتج $\\prod_{k=1}^{4}(2-\\omega^k)=\\frac{2^5-1}{2-1}=1+2+4+8+16=31$. (وبشكل عام $\\prod_{k=1}^{n-1}(x-\\omega^k)=\\frac{x^n-1}{x-1}$.)",
+   "a_en": "Since $x^5-1=\\prod_{k=0}^{4}(x-\\omega^{k})$, dividing out the $k=0$ factor gives $\\frac{x^5-1}{x-1}=\\prod_{k=1}^{4}(x-\\omega^{k})=1+x+x^2+x^3+x^4$. Substituting $x=2$ yields $\\prod_{k=1}^{4}(2-\\omega^k)=\\frac{2^5-1}{2-1}=1+2+4+8+16=31$. (In general $\\prod_{k=1}^{n-1}(x-\\omega^k)=\\frac{x^n-1}{x-1}$.)",
+   "answer": "$31$",
+   "keywords": [
+    "roots of unity",
+    "جذور الوحدة",
+    "factorization",
+    "تحليل",
+    "cyclotomic",
+    "geometric sum",
+    "$\\frac{x^n-1}{x-1}$"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "باستعمال الأُسّيّات العقدية (جذور الوحدة)، أثبت أن $\\displaystyle \\sin\\frac{\\pi}{7}\\,\\sin\\frac{2\\pi}{7}\\,\\sin\\frac{3\\pi}{7}=\\frac{\\sqrt{7}}{8}$.",
+   "q_en": "Using complex exponentials (roots of unity), prove that $\\displaystyle \\sin\\frac{\\pi}{7}\\,\\sin\\frac{2\\pi}{7}\\,\\sin\\frac{3\\pi}{7}=\\frac{\\sqrt{7}}{8}$.",
+   "a_ar": "المتطابقة العامة $\\prod_{k=1}^{n-1}\\sin\\frac{k\\pi}{n}=\\frac{n}{2^{\\,n-1}}$ تنتج من $\\prod_{k=1}^{n-1}(1-\\omega^k)=n$ (حيث $\\omega=e^{2\\pi i/n}$) ومن $|1-e^{i\\theta}|=2\\sin\\frac{\\theta}{2}$. ومن أجل $n=7$: $\\prod_{k=1}^{6}\\sin\\frac{k\\pi}{7}=\\frac{7}{2^{6}}=\\frac{7}{64}$. وبفضل التماثل $\\sin\\frac{(7-k)\\pi}{7}=\\sin\\frac{k\\pi}{7}$ يكون هذا الجداء مربّعًا للمقدار $P=\\sin\\frac{\\pi}{7}\\sin\\frac{2\\pi}{7}\\sin\\frac{3\\pi}{7}$، أي $P^2=\\frac{7}{64}$. وبما أن جميع العوامل موجبة فإن $P=\\frac{\\sqrt7}{8}$.",
+   "a_en": "The general identity $\\prod_{k=1}^{n-1}\\sin\\frac{k\\pi}{n}=\\frac{n}{2^{\\,n-1}}$ follows from $\\prod_{k=1}^{n-1}(1-\\omega^k)=n$ (with $\\omega=e^{2\\pi i/n}$) together with $|1-e^{i\\theta}|=2\\sin\\frac{\\theta}{2}$. For $n=7$: $\\prod_{k=1}^{6}\\sin\\frac{k\\pi}{7}=\\frac{7}{2^{6}}=\\frac{7}{64}$. By the symmetry $\\sin\\frac{(7-k)\\pi}{7}=\\sin\\frac{k\\pi}{7}$, this product is the square of $P=\\sin\\frac{\\pi}{7}\\sin\\frac{2\\pi}{7}\\sin\\frac{3\\pi}{7}$, so $P^2=\\frac{7}{64}$. Since all factors are positive, $P=\\frac{\\sqrt7}{8}$.",
+   "answer": "$\\dfrac{\\sqrt{7}}{8}$",
+   "keywords": [
+    "product of sines",
+    "جداء الجيوب",
+    "roots of unity",
+    "جذور الوحدة",
+    "$\\prod\\sin\\frac{k\\pi}{n}=\\frac{n}{2^{n-1}}$",
+    "De Moivre",
+    "$\\sqrt7/8$"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "جد جميع الأعداد العقدية $z$ التي تحقق $\\overline{z}=z^{2}$، حيث $\\overline{z}$ هو المرافق العقدي.",
+   "q_en": "Find all complex numbers $z$ satisfying $\\overline{z}=z^{2}$, where $\\overline{z}$ denotes the complex conjugate.",
+   "a_ar": "بأخذ الطويلة نحصل على $|z|=|z|^2$، إذن $|z|\\in\\{0,1\\}$. إذا كان $|z|=0$ فإن $z=0$ (وهو حل). وإذا كان $|z|=1$ نكتب $z=e^{i\\theta}$، فيكون $\\overline z=e^{-i\\theta}$ و $z^2=e^{2i\\theta}$، أي $e^{-i\\theta}=e^{2i\\theta}$، ومنه $3\\theta\\equiv 0\\pmod{2\\pi}$، فتكون $\\theta=0,\\tfrac{2\\pi}{3},\\tfrac{4\\pi}{3}$. إذن الحلول هي $z=0$ إضافةً إلى جذور الوحدة التكعيبية الثلاثة $1,\\;e^{2\\pi i/3}=-\\tfrac12+\\tfrac{\\sqrt3}{2}i,\\;e^{4\\pi i/3}=-\\tfrac12-\\tfrac{\\sqrt3}{2}i$ — أربعة حلول في المجموع.",
+   "a_en": "Taking moduli gives $|z|=|z|^2$, so $|z|\\in\\{0,1\\}$. If $|z|=0$ then $z=0$ (which works). If $|z|=1$, write $z=e^{i\\theta}$; then $\\overline z=e^{-i\\theta}$ and $z^2=e^{2i\\theta}$, so $e^{-i\\theta}=e^{2i\\theta}$, i.e. $3\\theta\\equiv 0\\pmod{2\\pi}$, giving $\\theta=0,\\tfrac{2\\pi}{3},\\tfrac{4\\pi}{3}$. Thus the solutions are $z=0$ together with the three cube roots of unity $1,\\;e^{2\\pi i/3}=-\\tfrac12+\\tfrac{\\sqrt3}{2}i,\\;e^{4\\pi i/3}=-\\tfrac12-\\tfrac{\\sqrt3}{2}i$ — four solutions in all.",
+   "answer": "$z\\in\\left\\{0,\\;1,\\;-\\tfrac12+\\tfrac{\\sqrt3}{2}i,\\;-\\tfrac12-\\tfrac{\\sqrt3}{2}i\\right\\}$",
+   "keywords": [
+    "conjugate",
+    "المرافق",
+    "modulus",
+    "الطويلة",
+    "cube roots of unity",
+    "جذور الوحدة التكعيبية",
+    "polar form",
+    "$\\overline{z}=z^2$"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "لِيَكُن $n \\ge 2$ عدداً صحيحاً. باستخدام جذور الوحدة من الرتبة $n$، أوجد صيغة مغلقة للمجموع $\\displaystyle\\sum_{k=1}^{n-1}\\csc^2\\frac{k\\pi}{n}$، ثم احسب قيمته عند $n=7$.",
+   "q_en": "Let $n \\ge 2$ be an integer. Using $n$th roots of unity, find a closed form for $\\displaystyle\\sum_{k=1}^{n-1}\\csc^2\\frac{k\\pi}{n}$, and evaluate it for $n=7$.",
+   "a_ar": "بوضع $\\omega=e^{2\\pi i/n}$ نجد $|1-\\omega^k|^2=(1-\\omega^k)(1-\\omega^{-k})=2-2\\cos\\frac{2k\\pi}{n}=4\\sin^2\\frac{k\\pi}{n}$، إذن $\\csc^2\\frac{k\\pi}{n}=\\frac{4}{|1-\\omega^k|^2}$. ومن $\\prod_{k=1}^{n-1}(x-\\omega^k)=\\frac{x^n-1}{x-1}=1+x+\\cdots+x^{n-1}$، يعطي الاشتقاق اللوغاريتمي قرب $x=1$ أنّ $\\sum_{k=1}^{n-1}\\frac{1}{1-\\omega^k}=\\frac{n-1}{2}$ ومن الحدّ التالي $\\sum_{k=1}^{n-1}\\frac{1}{|1-\\omega^k|^2}=\\frac{n^2-1}{12}$. وبالضرب في $4$: $\\sum_{k=1}^{n-1}\\csc^2\\frac{k\\pi}{n}=\\frac{n^2-1}{3}$. وعند $n=7$ تساوي $\\frac{48}{3}=16$.",
+   "a_en": "With $\\omega=e^{2\\pi i/n}$, $|1-\\omega^k|^2=(1-\\omega^k)(1-\\omega^{-k})=2-2\\cos\\frac{2k\\pi}{n}=4\\sin^2\\frac{k\\pi}{n}$, so $\\csc^2\\frac{k\\pi}{n}=\\frac{4}{|1-\\omega^k|^2}$. From $\\prod_{k=1}^{n-1}(x-\\omega^k)=\\frac{x^n-1}{x-1}=1+x+\\cdots+x^{n-1}$, taking the logarithmic derivative and evaluating near $x=1$ gives $\\sum_{k=1}^{n-1}\\frac{1}{1-\\omega^k}=\\frac{n-1}{2}$ and (second-order term) $\\sum_{k=1}^{n-1}\\frac{1}{|1-\\omega^k|^2}=\\frac{n^2-1}{12}$. Multiplying by $4$: $\\sum_{k=1}^{n-1}\\csc^2\\frac{k\\pi}{n}=\\frac{n^2-1}{3}$. For $n=7$ this is $\\frac{48}{3}=16$.",
+   "answer": "$\\sum_{k=1}^{n-1}\\csc^2\\frac{k\\pi}{n}=\\dfrac{n^2-1}{3}$; for $n=7$ it equals $16$.",
+   "keywords": [
+    "جذور الوحدة",
+    "roots of unity",
+    "csc squared",
+    "قاطع التمام",
+    "cyclotomic",
+    "De Moivre",
+    "مجموع مثلثي"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "لِيَكُن $\\omega=e^{2\\pi i/n}$ جذراً بدائياً للوحدة من الرتبة $n$ (حيث $n\\ge 2$). أثبت أنّ $\\displaystyle\\sum_{k=1}^{n-1}\\frac{1}{1-\\omega^k}=\\frac{n-1}{2}$.",
+   "q_en": "Let $\\omega=e^{2\\pi i/n}$ be a primitive $n$th root of unity ($n\\ge 2$). Prove that $\\displaystyle\\sum_{k=1}^{n-1}\\frac{1}{1-\\omega^k}=\\frac{n-1}{2}$.",
+   "a_ar": "الأعداد $\\omega^k$ حيث $k=1,\\dots,n-1$ هي جذور كثير الحدود $P(x)=\\frac{x^n-1}{x-1}=1+x+\\cdots+x^{n-1}$. وباستخدام المطابقة $\\frac{P'(x)}{P(x)}=\\sum\\frac{1}{x-\\omega^k}$ عند $x=1$ نحصل على $\\sum_{k=1}^{n-1}\\frac{1}{1-\\omega^k}=\\frac{P'(1)}{P(1)}$. وبما أنّ $P(1)=n$ و $P'(1)=\\sum_{j=1}^{n-1} j=\\frac{(n-1)n}{2}$، يكون المجموع $\\frac{(n-1)n/2}{n}=\\frac{n-1}{2}$. (وبطريقة أخرى: إقران $k$ بـ $n-k$ يعطي مجموع كل زوج يساوي $1$، وعدد الأزواج $\\frac{n-1}{2}$.)",
+   "a_en": "The $\\omega^k$ ($k=1,\\dots,n-1$) are the roots of $P(x)=\\frac{x^n-1}{x-1}=1+x+\\cdots+x^{n-1}$. Then $\\sum_{k=1}^{n-1}\\frac{1}{1-\\omega^k}=\\frac{P'(1)}{P(1)}$ by the identity $\\frac{P'(x)}{P(x)}=\\sum\\frac{1}{x-\\omega^k}$ evaluated at $x=1$. Here $P(1)=n$ and $P'(x)=\\sum_{j=1}^{n-1} j\\,x^{j-1}$, so $P'(1)=\\sum_{j=1}^{n-1} j=\\frac{(n-1)n}{2}$. Hence the sum equals $\\frac{P'(1)}{P(1)}=\\frac{(n-1)n/2}{n}=\\frac{n-1}{2}$. (Equivalently, pairing $k$ with $n-k$ gives each pair sum $1$, and there are $\\frac{n-1}{2}$ pairs.)",
+   "answer": "$\\dfrac{n-1}{2}$",
+   "keywords": [
+    "جذور الوحدة",
+    "roots of unity",
+    "logarithmic derivative",
+    "الاشتقاق اللوغاريتمي",
+    "1/(1-ω^k)",
+    "cyclotomic",
+    "إقران الجذور"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "احسب مجموع كل ثالث معامل ثنائي $\\displaystyle\\sum_{k\\ge 0}\\binom{2024}{3k}=\\binom{2024}{0}+\\binom{2024}{3}+\\binom{2024}{6}+\\cdots$ في صيغة مغلقة.",
+   "q_en": "Evaluate the sum of every third binomial coefficient $\\displaystyle\\sum_{k\\ge 0}\\binom{2024}{3k}=\\binom{2024}{0}+\\binom{2024}{3}+\\binom{2024}{6}+\\cdots$ in closed form.",
+   "a_ar": "نستخدم مرشّح جذور الوحدة مع الجذور التكعيبية $1,\\omega,\\omega^2$ حيث $\\omega=e^{2\\pi i/3}$: $\\sum_{k}\\binom{n}{3k}=\\frac13\\big((1+1)^n+(1+\\omega)^n+(1+\\omega^2)^n\\big)$. وبما أنّ $1+\\omega=e^{i\\pi/3}$ و $1+\\omega^2=e^{-i\\pi/3}$ (وكلاهما ذو مقياس $1$)، فإنّ $(1+\\omega)^n+(1+\\omega^2)^n=2\\cos\\frac{n\\pi}{3}$. إذن $\\sum_k\\binom{n}{3k}=\\frac{2^n+2\\cos(n\\pi/3)}{3}$. وعند $n=2024$ لدينا $2024\\equiv 2\\pmod 6$ فيكون $\\cos\\frac{2024\\pi}{3}=\\cos\\frac{2\\pi}{3}=-\\frac12$، ونحصل على $\\frac{2^{2024}-1}{3}$.",
+   "a_en": "Use the roots-of-unity filter with the cube roots $1,\\omega,\\omega^2$ ($\\omega=e^{2\\pi i/3}$): $\\sum_{k}\\binom{n}{3k}=\\frac13\\big((1+1)^n+(1+\\omega)^n+(1+\\omega^2)^n\\big)$. Since $1+\\omega=e^{i\\pi/3}$ and $1+\\omega^2=e^{-i\\pi/3}$ (both modulus $1$), $(1+\\omega)^n+(1+\\omega^2)^n=2\\cos\\frac{n\\pi}{3}$. Thus $\\sum_k\\binom{n}{3k}=\\frac{2^n+2\\cos(n\\pi/3)}{3}$. For $n=2024$: $2024\\equiv 2\\pmod 6$, so $\\cos\\frac{2024\\pi}{3}=\\cos\\frac{2\\pi}{3}=-\\frac12$, giving $\\frac{2^{2024}+2(-\\frac12)}{3}=\\frac{2^{2024}-1}{3}$.",
+   "answer": "$\\dfrac{2^{2024}-1}{3}$",
+   "keywords": [
+    "مرشح جذور الوحدة",
+    "roots of unity filter",
+    "binomial",
+    "معاملات ثنائية",
+    "cube roots",
+    "De Moivre",
+    "قواسم 3"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "أوجد عدد الحلول العقدية $z$ للمعادلة $z^{2024}=\\overline{z}$ (حيث $\\overline{z}$ هو المرافق العقدي).",
+   "q_en": "Find the number of complex solutions $z$ of the equation $z^{2024}=\\overline{z}$ (where $\\overline{z}$ is the complex conjugate).",
+   "a_ar": "بأخذ المقياس: $|z|^{2024}=|z|$، إذن $|z|=0$ أو $|z|=1$. الحل $z=0$ محقِّق. وعند $|z|=1$ يكون $\\overline{z}=1/z$، فتصبح المعادلة $z^{2024}=1/z$ أي $z^{2025}=1$، ولها بالضبط $2025$ جذراً مختلفاً كلها على دائرة الوحدة (وهو متوافق مع $|z|=1$) وليس فيها الصفر. بإضافة $z=0$ يصبح مجموع الحلول $2025+1=2026$. وعموماً فإنّ $z^n=\\overline z$ لها $n+2$ حلاً.",
+   "a_en": "Take moduli: $|z|^{2024}=|z|$, so $|z|=0$ or $|z|=1$. The solution $z=0$ works. For $|z|=1$ we have $\\overline{z}=1/z$, so the equation becomes $z^{2024}=1/z$, i.e. $z^{2025}=1$. This gives exactly $2025$ distinct roots, all on the unit circle (consistent with $|z|=1$), and none of them is $0$. Adding $z=0$, the total number of solutions is $2025+1=2026$. In general $z^n=\\overline z$ has $n+2$ solutions.",
+   "answer": "$2026$ solutions",
+   "keywords": [
+    "المرافق",
+    "conjugate",
+    "z^n = conjugate",
+    "roots of unity",
+    "دائرة الوحدة",
+    "عدد الحلول",
+    "modulus",
+    "المقياس"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}

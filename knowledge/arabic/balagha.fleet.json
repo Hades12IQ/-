@@ -1,0 +1,149 @@
+{
+ "subject": "arabic",
+ "topic": "balagha",
+ "title": "balagha — fleet (advanced + olympiad)",
+ "entries": [
+  {
+   "q_ar": "في قوله تعالى: ﴿وَمَا مُحَمَّدٌ إِلَّا رَسُولٌ قَدْ خَلَتْ مِنْ قَبْلِهِ الرُّسُلُ﴾ [آل عمران: 144]، بيّن أسلوب القصر ووسيلته، وحدّد المقصور والمقصور عليه، ونوعَه (قصر موصوف على صفة أم صفة على موصوف)، وهل هو حقيقيٌّ أم إضافي، مع تعيين نوع القصر الإضافي والنكتة البلاغية.",
+   "q_en": "In the verse \"And Muhammad is but a messenger; messengers have passed away before him\" (Aal 'Imran: 144), identify the mode of qasr (restriction) and its device, specify the maqsur and the maqsur 'alayh, determine its type (restricting a described-thing to an attribute or vice versa), whether it is haqiqi (real) or idafi (relative), and if idafi its subtype and its rhetorical purpose.",
+   "a_ar": "أسلوب القصر هنا بوسيلة النفي والاستثناء (\"ما ... إلا\"). المقصور هو الموصوف (محمد ﷺ)، والمقصور عليه هو الصفة (الرسالة)؛ فهو قصر موصوف على صفة: أي قُصِر محمدٌ على وصف الرسالة. وهو قصرٌ إضافيٌّ لا حقيقي، لأنه لم يُقصَد نفيُ كل صفةٍ عنه سوى الرسالة، بل نفيُ ما توهّمه بعضُهم من أنه فوق الرسالة فلا يموت ولا يُقتل. ونوعه قصر قلب، إذ رُدَّ به اعتقادٌ خاطئ، والنكتة تثبيتُ أنه بشرٌ رسولٌ تجري عليه سُنّة سابقيه من الموت، ردًّا على مَن اضطرب يوم أُشيع قتلُه في أُحُد.",
+   "a_en": "The restriction operates through negation-and-exception (\"ma ... illa\"). The maqsur is the described-thing (Muhammad, peace be upon him) and the maqsur 'alayh is the attribute (messengership); hence it is restricting a described-thing to an attribute: Muhammad is confined to the description of being a messenger. It is idafi (relative), not haqiqi, since it does not deny him every attribute except messengership, but rather denies the false notion that he was above messengership and so would not die or be killed. Its subtype is qasr qalb (rebuttal), correcting a mistaken belief; the purpose is to affirm that he is a human messenger subject to the same fate of death as those before him, answering those shaken when his death was rumored at Uhud.",
+   "answer": "قصر بالنفي والاستثناء؛ قصر موصوف (محمد) على صفة (الرسالة)؛ قصر إضافي من نوع القلب؛ النكتة: تأكيد بشريته وأنه يموت كسائر الرسل ردًّا على المتوهّمين.",
+   "keywords": [
+    "قصر",
+    "القصر الإضافي",
+    "قصر قلب",
+    "النفي والاستثناء",
+    "qasr",
+    "restriction",
+    "maqsur",
+    "آل عمران 144"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "حلّل التشبيه في قوله تعالى: ﴿مَثَلُ الَّذِينَ حُمِّلُوا التَّوْرَاةَ ثُمَّ لَمْ يَحْمِلُوهَا كَمَثَلِ الْحِمَارِ يَحْمِلُ أَسْفَارًا﴾ [الجمعة: 5]، مبيّنًا أركانه، ونوعه بدقة، ومصدر وجه الشبه، والسبب الذي يمنع عدَّه تشبيهًا مفردًا.",
+   "q_en": "Analyze the simile in \"The likeness of those charged with the Torah then who did not uphold it is as the likeness of a donkey carrying volumes of books\" (al-Jumu'a: 5): state its pillars, its precise type, the source of the point of resemblance (wajh al-shabah), and why it cannot be classified as a simple (single-item) simile.",
+   "a_ar": "المشبه: اليهودُ الذين كُلِّفوا العملَ بالتوراة فلم يعملوا بها. المشبه به: الحمارُ يحمل كتبًا ضخمة. الأداة: كاف التشبيه (\"كمثل\"). ووجه الشبه: هيئةُ مَن يحمل شيئًا نفيسًا عظيم القدر دون أن ينتفع بما فيه ولا يعي قيمته. ونوعه تشبيهٌ تمثيلي، لأن وجه الشبه صورةٌ منتزَعةٌ من متعدِّد (الحمل + النفاسة + انتفاء الانتفاع)، لا وصفٌ مفرد؛ ولهذا لا يصح عدُّه تشبيهًا مفردًا، إذ التمثيل يقوم على تشبيه هيئةٍ بهيئة مركّبة من عدة أمور مجتمعة.",
+   "a_en": "The mushabbah: the Jews charged with acting on the Torah who failed to act on it. The mushabbah bih: a donkey carrying huge books. The particle: the kaf of comparison (\"kamathal\"). The wajh al-shabah: the state of one who carries something precious and weighty yet gains no benefit from its contents and grasps none of its worth. Its type is tashbih tamthili (analogical/compound simile), because the point of resemblance is a composite image drawn from multiple elements (carrying + preciousness + absence of benefit), not a single attribute; hence it cannot be a simple simile, since tamthil rests on likening one composite state to another.",
+   "answer": "تشبيه تمثيلي؛ المشبه: من حُمّلوا التوراة ولم يعملوا بها، المشبه به: الحمار يحمل أسفارًا، الأداة: الكاف، وجه الشبه صورة منتزعة من متعدد (حمل النفيس دون انتفاع)؛ لذا ليس تشبيهًا مفردًا.",
+   "keywords": [
+    "تشبيه تمثيلي",
+    "وجه الشبه",
+    "منتزع من متعدد",
+    "tashbih tamthili",
+    "simile",
+    "الجمعة 5",
+    "المشبه به",
+    "الأداة"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿يَجْعَلُونَ أَصَابِعَهُمْ فِي آذَانِهِمْ مِنَ الصَّوَاعِقِ﴾ [البقرة: 19]، وقع مجازٌ مرسل في لفظ \"أصابعهم\". بيّن المراد الحقيقي، وحدّد العلاقة، واذكر القرينة المانعة من إرادة المعنى الأصلي، مع التعليل.",
+   "q_en": "In \"they put their fingers in their ears against the thunderclaps\" (al-Baqara: 19) there is a mursal (non-metaphorical) figure in the word \"their fingers.\" State the intended literal meaning, identify the 'alaqa (relation), and give the qarina that bars the original sense, with justification.",
+   "a_ar": "المراد بـ\"أصابعهم\" حقيقةً: أناملُها (أطرافُها)، إذ لا يُدخَل في الأذن إلا رأسُ الأصبع لا الأصبعُ كلُّه. فأُطلِق الكلُّ (الأصبع) وأُريد الجزء (الأنملة)، والعلاقة هي الكلّية (ذكر الكل وإرادة الجزء). والقرينة مانعةٌ عقلية: استحالةُ إدخال الأصبع بتمامه في صِماخ الأذن، فتعيَّن حملُ اللفظ على بعضه. وهذا مجازٌ مرسل لا استعارة، لأن العلاقة غير المشابهة.",
+   "a_en": "\"Their fingers\" literally intends their fingertips, since only the tip of a finger is inserted in the ear, not the whole finger. The whole (the finger) is stated while the part (the fingertip) is meant; the relation is kulliyya (naming the whole, intending the part). The qarina is rational and prohibitive: it is impossible to insert an entire finger into the ear canal, so the word must be read as denoting a part of it. This is majaz mursal, not isti'ara, because the governing relation is other than resemblance.",
+   "answer": "مجاز مرسل؛ المراد: الأنامل (أطراف الأصابع)؛ العلاقة: الكلّية (ذكر الكل وإرادة الجزء)؛ القرينة عقلية مانعة: استحالة إدخال الأصبع كله في الأذن.",
+   "keywords": [
+    "مجاز مرسل",
+    "علاقة الكلية",
+    "القرينة",
+    "majaz mursal",
+    "البقرة 19",
+    "أصابعهم",
+    "الأنملة",
+    "الكل والجزء"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿وَيَوْمَ تَقُومُ السَّاعَةُ يُقْسِمُ الْمُجْرِمُونَ مَا لَبِثُوا غَيْرَ سَاعَةٍ﴾ [الروم: 55]، حدّد المحسّن البديعي في لفظتَي \"الساعة\"، وسمِّ نوعه بدقة، وعلِّل التسمية بذكر الشروط التي تحقّقت.",
+   "q_en": "In \"And on the Day the Hour arises the criminals will swear they had lingered not but an hour\" (al-Rum: 55), identify the badi' embellishment in the two occurrences of \"sa'a,\" name its precise type, and justify the naming by the conditions that are met.",
+   "a_ar": "المحسّن هو الجناس، وهو من نوع الجناس التام. فلفظة \"الساعة\" الأولى معناها يومُ القيامة، والثانية معناها المدةُ الزمنية القصيرة المعروفة؛ فاتفق اللفظان في أربعة أمور: نوع الحروف، وعددها، وهيئتها (ضبطها/حركاتها)، وترتيبها، واختلفا في المعنى فقط، وهذه هي شروط الجناس التام مجتمعةً. والنكتة إبرازُ التقابل بين ساعة الخلود الكبرى واستقصارهم مدة لبثهم في الدنيا أو القبور، مما يحدث وقعًا موسيقيًا وتنبيهًا للذهن.",
+   "a_en": "The embellishment is jinas (paronomasia), of the complete type (jinas tamm). The first \"sa'a\" means the Day of Resurrection, the second means the familiar short span of time; the two words agree in four respects: the kind of letters, their number, their form (vocalization), and their order, differing only in meaning — exactly the combined conditions of jinas tamm. Its purpose is to sharpen the contrast between the momentous eternal Hour and their belittling of the time they lingered in the world or graves, producing a musical resonance and alerting the mind.",
+   "answer": "جناس تام بين \"الساعة\" (القيامة) و\"ساعة\" (المدة الزمنية)؛ تحقّق اتفاق اللفظين في نوع الحروف وعددها وهيئتها وترتيبها، مع اختلاف المعنى.",
+   "keywords": [
+    "جناس تام",
+    "الجناس",
+    "بديع",
+    "jinas tamm",
+    "paronomasia",
+    "الروم 55",
+    "الساعة",
+    "محسنات لفظية"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿حَتَّى إِذَا كُنْتُمْ فِي الْفُلْكِ وَجَرَيْنَ بِهِمْ بِرِيحٍ طَيِّبَةٍ﴾ [يونس: 22]، بيّن أسلوب الالتفات: من أي أسلوب إلى أي أسلوب وقع؟ وما موضع الانتقال؟ وما النكتة البلاغية له؟",
+   "q_en": "In \"until, when you are in the ships and they sail with them on a fair wind\" (Yunus: 22), explain the iltifat (grammatical shift): from which mode to which, at what point does it occur, and what is its rhetorical purpose?",
+   "a_ar": "وقع الالتفاتُ من أسلوب الخطاب إلى أسلوب الغيبة: بدأ بضمير الخطاب في \"كنتم\" (أنتم المخاطبون)، ثم انتقل إلى ضمير الغيبة في \"بهم\" (جرت السفن بهم) بدل أن يقول \"بكم\". وموضع الانتقال هو الانصرافُ من كاف/تاء الخطاب إلى هاء الغيبة عند فعل \"جرين\". والنكتة: تصويرُ حالهم العجيبة في نكرانهم النعمة عند النجاة، وكأنه أعرض عنهم والتفت يعرض قصتهم على السامعين ليتعجّبوا من كفرهم بعد الإنجاء، فهو أبلغ في الذمّ من مواجهتهم.",
+   "a_en": "The shift is from address (khitab) to absence (ghayba): it begins with the second-person pronoun in \"kuntum\" (you, the addressed), then turns to the third-person in \"bihim\" (the ships sailed with them) instead of \"bikum.\" The point of transition is the move from the second-person marker to the third-person \"hum\" at the verb \"jarayna.\" The purpose: to depict their astonishing state of ingratitude upon deliverance, as though the speaker turns away from them and presents their story to the listeners so they may marvel at their disbelief after rescue — more eloquent in censure than addressing them directly.",
+   "answer": "التفات من الخطاب (\"كنتم\") إلى الغيبة (\"بهم\") عند فعل \"جرين\"؛ النكتة: عرض حالهم العجيبة على السامعين للتعجيب من كفرهم بعد النجاة والمبالغة في ذمّهم.",
+   "keywords": [
+    "الالتفات",
+    "من الخطاب إلى الغيبة",
+    "iltifat",
+    "علم المعاني",
+    "يونس 22",
+    "النكتة البلاغية",
+    "التعجيب"
+   ],
+   "difficulty": "advanced"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿حَتَّىٰ إِذَا كُنتُمْ فِي الْفُلْكِ وَجَرَيْنَ بِهِم بِرِيحٍ طَيِّبَةٍ﴾ [يونس: ٢٢]، انتقل الخطاب من الخطاب (كُنتُم) إلى الغَيبة (بِهِم). حدِّد اسم هذا الأسلوب البلاغي بدقة، وبيّن السرّ البلاغي الدقيق في هذا الانتقال في هذا الموضع بالذات.",
+   "q_en": "In the verse ﴿ḥattā idhā kuntum fī l-fulki wa-jarayna bihim bi-rīḥin ṭayyibatin﴾ [Yūnus: 22], the address shifts from second person (kuntum, 'you were') to third person (bihim, 'with them'). Name this rhetorical device precisely and explain the exact rhetorical secret behind this particular shift in this specific place.",
+   "a_ar": "الأسلوب هو الالتفات، وهو هنا التفات من الخطاب إلى الغيبة. السرّ البلاغي أنّ الله خاطبهم أوّلاً على سبيل الامتنان والإقبال عليهم بالنعمة (كنتم في الفلك)، فلمّا وصف حالهم من الطغيان والفرح ثم بغيهم عند اشتداد الريح، أعرض عن خطابهم والتفت عنهم إلى الغَيبة إشعاراً بأنّهم صاروا في حال لا تليق بمواجهتهم بالخطاب، فكأنّه يذكر حالهم القبيحة لغيرهم تعجيباً منها وتنزيهاً لمقام الخطاب عن ذكرها في وجوههم. فالالتفات هنا قرينة على انتقال الحال من الرضا إلى الإنكار.",
+   "a_en": "The device is iltifāt (rhetorical shift of person), specifically a shift from address to absence (third person). Its secret: God first addresses them by way of bestowing favor and turning toward them with blessing ('you were in the ship'); but once their arrogance and reckless joy—then their insolence when the wind grew violent—is described, the discourse turns away from addressing them to speaking of them in the third person, signaling that they have fallen into a state unworthy of direct address. It is as if their disgraceful conduct is recounted to others in wonder and reproach, keeping the dignity of direct address above naming such conduct to their faces. The iltifāt thus marks the shift from approval to censure.",
+   "answer": "الالتفات (من الخطاب إلى الغيبة)؛ لإظهار الإعراض والإنكار على حالهم بعد أن كان الخطاب على سبيل الامتنان. / Iltifāt from second- to third-person, marking a turn from favor/address to censure and turning-away.",
+   "keywords": [
+    "الالتفات",
+    "iltifāt",
+    "من الخطاب إلى الغيبة",
+    "علم المعاني",
+    "يونس ٢٢",
+    "person shift",
+    "بلاغة القرآن"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "في قوله تعالى: ﴿وَاسْأَلِ الْقَرْيَةَ الَّتِي كُنَّا فِيهَا﴾ [يوسف: ٨٢]، بيّن نوع المجاز، وحدِّد علاقته بدقّة، واذكر القرينة المانعة من إرادة المعنى الحقيقيّ، ثم بيّن لماذا لا يصحّ عدّه استعارةً.",
+   "q_en": "In ﴿wa-sʾali l-qaryata llatī kunnā fīhā﴾ ('and ask the town in which we were') [Yūsuf: 82], identify the type of majāz, specify its precise ʿalāqa (relation), state the qarīna preventing the literal sense, and explain why it cannot be classified as an istiʿāra (metaphor).",
+   "a_ar": "هو مجاز مرسل، لا استعارة. والعلاقة هي المحلّية: أُطلقت «القرية» (المحلّ) وأُريد «أهلها» (الحالّون فيها)، إذ المراد: اسأل أهل القرية. والقرينة المانعة من إرادة الحقيقة عقليّة: القرية جمادٌ لا تُسأل ولا تُجيب، فتعيّن أنّ المراد أهلها. ولا يصحّ عدّه استعارةً لأنّ العلاقة ليست المشابهة؛ فليس بين القرية وأهلها وجهُ شبهٍ ادُّعِي، بل علاقةُ محلٍّ بحالٍّ، والاستعارة إنما تُبنى على علاقة المشابهة وحدها.",
+   "a_en": "This is majāz mursal (non-metaphorical trope), not istiʿāra. The relation (ʿalāqa) is maḥalliyya (locative): 'the town' (the container/place) is used while 'its people' (those dwelling in it) is meant—i.e., 'ask the people of the town.' The qarīna barring the literal sense is rational (ʿaqliyya): a town is an inanimate place that can be neither questioned nor answer, so its inhabitants must be intended. It cannot be an istiʿāra because the relation is not resemblance (mushābaha); there is no claimed likeness between the town and its people, only the relation of place to occupant, whereas istiʿāra is built solely on the relation of resemblance.",
+   "answer": "مجاز مرسل، علاقته المحلّية (المحلّ وأُريد الحالّ)؛ القرينة عقليّة؛ وليس استعارة لانتفاء علاقة المشابهة. / Majāz mursal, relation = maḥalliyya (place for occupants); rational qarīna; not istiʿāra because the relation is not resemblance.",
+   "keywords": [
+    "المجاز المرسل",
+    "majāz mursal",
+    "علاقة المحلّية",
+    "القرينة العقلية",
+    "يوسف ٨٢",
+    "استعارة",
+    "علم البيان",
+    "maḥalliyya"
+   ],
+   "difficulty": "olympiad"
+  },
+  {
+   "q_ar": "قال أبو تمام: «لا تُنكِري عَطَلَ الكَريمِ مِنَ الغِنى / فالسَّيلُ حَربٌ لِلمَكانِ العالي». حلِّل الشطر الثاني «فالسيل حربٌ للمكان العالي» بلاغياً تحليلاً دقيقاً: هل هو تشبيه تمثيليٌّ أم استعارة تمثيليّة؟ علّل تعليلاً فاصلاً، وبيّن الطرف المذكور والطرف المحذوف والجامع.",
+   "q_en": "Abū Tammām said: 'lā tunkirī ʿaṭala l-karīmi mina l-ghinā / fa-l-saylu ḥarbun li-l-makāni l-ʿālī' ('Do not wonder that the noble man is bare of wealth—for the flood is at war with high ground'). Give a precise rhetorical analysis of the second hemistich 'the flood is at war with high ground': is it a tashbīh tamthīlī (analogical simile) or an istiʿāra tamthīliyya (allegorical metaphor)? Justify decisively, and identify the stated term, the omitted term, and the ground (jāmiʿ).",
+   "a_ar": "الشطر الثاني تشبيه تمثيليٌّ لا استعارة تمثيليّة؛ لأنّ التشبيه التمثيليّ ما وُجِّه فيه الشبه إلى صورةٍ منتزَعةٍ من متعدّد، وهنا ذُكِر المشبّه به (حال السيل يتجنّب المرتفعات ويترك العالي جافّاً) صريحاً، والمشبّه (حرمان الكريم من الغنى لعلوّ همّته) مفهومٌ من صدر البيت. ولمّا كان أحد الطرفين مذكوراً والآخر مفهوماً على جهة عقد التشبيه لا الادّعاء، كان تشبيهاً لا استعارة؛ إذ الاستعارة التمثيليّة تقتضي حذف المشبَّه وطيَّه بالكلّيّة وادّعاءَ أنّ المذكور هو عين المراد. الجامع: الصورة المنتزَعة من هيئة المُحرَم من الخير مع علوّ منزلته، منتزعةٌ من متعدّد (السيل + الارتفاع + التجنّب).",
+   "a_en": "The second hemistich is a tashbīh tamthīlī (analogical simile), not an istiʿāra tamthīliyya. A tamthīlī likeness is one whose ground is a composite image abstracted from multiple elements. Here the vehicle (mushabbah bih)—the flood's habit of shunning heights and leaving high ground dry—is stated explicitly, while the tenor (mushabbah)—the noble man's deprivation of wealth owing to his loftiness—is understood from the first hemistich. Because one term is stated and the other is present by way of an overt comparison (not by claim/identity), it is a simile, not a metaphor: an istiʿāra tamthīliyya requires the tenor to be wholly omitted and the claim made that the stated image is itself the intended meaning. The jāmiʿ (ground) is the composite image of one denied benefit precisely because of his elevated station, abstracted from several elements (flood + height + avoidance).",
+   "answer": "تشبيه تمثيليٌّ (لا استعارة تمثيليّة)؛ لذكر المشبّه به صريحاً وفهم المشبّه من الصدر، والجامع صورة منتزَعة من متعدّد. / Tashbīh tamthīlī, not istiʿāra tamthīliyya, because the vehicle is stated and the tenor is understood; the jāmiʿ is a composite image from multiple elements.",
+   "keywords": [
+    "التشبيه التمثيلي",
+    "tashbīh tamthīlī",
+    "الاستعارة التمثيلية",
+    "أبو تمام",
+    "صورة منتزعة من متعدد",
+    "الجامع",
+    "علم البيان",
+    "istiʿāra tamthīliyya"
+   ],
+   "difficulty": "olympiad"
+  }
+ ]
+}
