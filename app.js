@@ -23987,9 +23987,23 @@ async function brainAsk(question) {
     if (brainIsHarvestQuery(q)) {
       chat.messages.push(aiMsg);
       const LH = brainTL(lang);
+      /* Create the turn ONCE, then patch it. Rebuilding the whole thread on every batch (which
+         is what this did) is why a sweep threw the reader back to the top: each rebuild wipes
+         the turns, so the sizes content-visibility had remembered are gone, the thread briefly
+         has nothing to scroll, and scrollTop is clamped to 0. Painting the one live node and
+         retitling the one notice keeps the reader exactly where they are — and is what the
+         normal (non-sweep) answer path has always done. */
+      brainRenderThread(chat, { streamingMsg: aiMsg, pending: LH.harvesting(0, 0) });
       const harvested = await brainHarvest(q, docIds, lang, (soFar, done, total) => {
         aiMsg.content = soFar || "";
-        brainRenderThread(chat, { streamingMsg: aiMsg, pending: LH.harvesting(done, total) });
+        const label = LH.harvesting(done, total);
+        // If the live handles went away (the user navigated, or the thread was re-rendered
+        // from elsewhere), fall back to the full render so progress is never invisible.
+        if (!brainSetPending(label)) {
+          brainRenderThread(chat, { streamingMsg: aiMsg, pending: label });
+          return;
+        }
+        brainPaintStream(soFar || "", lang);
       }, brainState.ctl.signal);
       aiMsg.content = harvested && harvested.trim() ? harvested : LH.noHits;
       return;   // the finally block below renders, persists and clears state
@@ -24083,6 +24097,7 @@ async function brainAsk(question) {
     brainState.asking = false;
     brainState.ctl = null;
     _brainStreamMd = null;
+    _brainPendingEl = null;
     chat.updatedAt = Date.now();
     brainRenderThread(chat);     // final full render: citation chips + the Sources block
     renderHistory();
@@ -24342,6 +24357,7 @@ function brainRenderThread(chat, opts) {
   const atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
   const keepTop = thread.scrollTop;
   _brainStreamMd = null;
+  _brainPendingEl = null;
   thread.innerHTML = "";
   const msgs = (chat && Array.isArray(chat.messages)) ? chat.messages : [];
   if (!msgs.length && !o.pending) {
@@ -24433,7 +24449,12 @@ function brainRenderThread(chat, opts) {
       // Hand brainPaintStream a handle on this node so token updates can patch ONE element
       // instead of tearing down and rebuilding the whole thread (which is what made the view
       // jump up and down while an answer was being written).
-      if (o.streamingMsg && m === o.streamingMsg) _brainStreamMd = md;
+      if (o.streamingMsg && m === o.streamingMsg) {
+        _brainStreamMd = md;
+        // Exempt it from content-visibility BY NAME. A sweep appends a pending notice after it,
+        // so it is not `:last-child` and would otherwise collapse to the 320px estimate.
+        turn.classList.add("is-live");
+      }
       // Copy the ANSWER, without the citation markers or the machine-readable sources fence —
       // a harvested list of definitions is meant to be pasted into notes, and "[S1]" is noise there.
       if (m.content && !(o.streamingMsg && m === o.streamingMsg)) {
@@ -24445,12 +24466,13 @@ function brainRenderThread(chat, opts) {
   }
   if (o.pending) {
     const p = document.createElement("div");
-    p.className = "turn turn--ai";
+    p.className = "turn turn--ai fb-pending";
     const b = document.createElement("div");
     b.className = "msg-ai__body";
     b.textContent = o.pending;
     p.appendChild(b);
     thread.appendChild(p);
+    _brainPendingEl = b;                // so a progress tick can retitle it without a rebuild
   }
   /* `|| o.pending` used to be here, and it is what still threw the reader around mid-sweep:
      a pending notice is shown on EVERY render of a long extraction, so every few seconds the
@@ -24494,6 +24516,19 @@ function brainAutoDir(md, lang) {
    mid-answer is no longer yanked back. */
 let _brainStreamMd = null;
 let _brainStreamAt = 0;
+let _brainPendingEl = null;
+
+/* Retitle the "Sweeping the document… 5/40" notice IN PLACE.
+   The sweep used to call brainRenderThread on every batch purely to change that number, and a
+   full rebuild is the most destructive way possible to update four characters: it wipes the
+   thread, re-creates every turn (losing the sizes content-visibility had remembered), and
+   re-typesets all the maths. Returns false when there is no live notice, so the caller can
+   fall back to a real render. */
+function brainSetPending(text) {
+  if (!_brainPendingEl || !_brainPendingEl.isConnected) return false;
+  _brainPendingEl.textContent = text;
+  return true;
+}
 function brainPaintStream(text, lang, force) {
   if (!_brainStreamMd || !_brainStreamMd.isConnected) return;
   const now = Date.now();

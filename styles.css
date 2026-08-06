@@ -768,8 +768,14 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
   content-visibility: auto;
   contain-intrinsic-size: auto 320px;
 }
-/* The actively-streaming turn is always the last one — keep it fully rendered. */
-.turn:last-child { content-visibility: visible; }
+/* The actively-streaming turn must stay fully rendered. ":last-child" was the whole rule, on
+   the assumption that the live turn is always last — and in Firas Brain it is NOT: a sweep
+   appends a "Sweeping the document… 5/40" notice AFTER it. The answer then lost the exemption,
+   collapsed from its real 5814px to the 320px intrinsic estimate, the thread stopped
+   overflowing at all, and the browser clamped scrollTop to 0 — throwing the reader back to the
+   top of the prompt on every batch. `.is-live` states the intent instead of inferring it. */
+.turn:last-child,
+.turn.is-live { content-visibility: visible; }
 
 /* ----- User bubble — aligned inline-end, quiet ----- */
 .msg-user { display: flex; justify-content: flex-end; }
