@@ -10166,7 +10166,10 @@ function fileStageText(stage, lang) {
 }
 
 /** One engine call returning the full text (the pipeline's building block). */
-async function callAgentText(messages, tierKey, signal) {
+/* `onTick(charsSoFar)` fires on every chunk that carries content. agentCall uses it to tell a
+   LIVE stream apart from a DEAD one — which is the whole difference between a watchdog that
+   protects the user and one that kills the build they are waiting for. */
+async function callAgentText(messages, tierKey, signal, onTick) {
   const m = MODELS[tierKey] || MODELS.pro;
   let response;
   if (CONFIG.BACKEND_URL) {
@@ -10178,14 +10181,22 @@ async function callAgentText(messages, tierKey, signal) {
   }
   if (!response.ok || !response.body) throw new Error("HTTP " + response.status);
   const reader = response.body.getReader(); const dec = new TextDecoder(); let buf = "", out = "";
-  while (true) {
-    const { value, done } = await reader.read(); if (done) break;
-    buf += dec.decode(value, { stream: true }); const lines = buf.split("\n"); buf = lines.pop();
-    for (const line of lines) {
-      const tr = line.trim(); if (!tr.startsWith("data:")) continue;
-      const d = tr.slice(5).trim(); if (d === "[DONE]") { buf = ""; break; }
-      try { const j = JSON.parse(d); const del = j.choices && j.choices[0] && j.choices[0].delta; if (del && del.content) out += del.content; } catch (_) {}
+  /* An abort mid-stream used to destroy everything received so far, which is what turned a
+     watchdog trip on a nearly-finished file into "nothing changed". The text rides out on the
+     error so agentCall can decide whether it is worth keeping. */
+  try {
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); const lines = buf.split("\n"); buf = lines.pop();
+      for (const line of lines) {
+        const tr = line.trim(); if (!tr.startsWith("data:")) continue;
+        const d = tr.slice(5).trim(); if (d === "[DONE]") { buf = ""; break; }
+        try { const j = JSON.parse(d); const del = j.choices && j.choices[0] && j.choices[0].delta; if (del && del.content) { out += del.content; if (onTick) { try { onTick(out.length); } catch (_) {} } } } catch (_) {}
+      }
     }
+  } catch (e) {
+    if (out) { try { e.__partial = out; } catch (_) {} }
+    throw e;
   }
   // The backend, when EVERY engine is saturated, streams a human "engine is busy/offline" NOTICE as
   // a 200 body. For an internal AGENT call that text is poison (it becomes the plan/step) → throw so
@@ -10215,14 +10226,20 @@ async function streamAgentText(messages, tierKey, signal, onDelta) {
   }
   if (!response.ok || !response.body) throw new Error("HTTP " + response.status);
   const reader = response.body.getReader(); const dec = new TextDecoder(); let buf = "", out = "";
-  while (true) {
-    const { value, done } = await reader.read(); if (done) break;
-    buf += dec.decode(value, { stream: true }); const lines = buf.split("\n"); buf = lines.pop();
-    for (const line of lines) {
-      const tr = line.trim(); if (!tr.startsWith("data:")) continue;
-      const d = tr.slice(5).trim(); if (d === "[DONE]") { buf = ""; break; }
-      try { const j = JSON.parse(d); const del = j.choices && j.choices[0] && j.choices[0].delta; if (del && del.content) { out += del.content; if (onDelta) onDelta(out); } } catch (_) {}
+  // Same reason as callAgentText: an abort must not take the received text with it.
+  try {
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); const lines = buf.split("\n"); buf = lines.pop();
+      for (const line of lines) {
+        const tr = line.trim(); if (!tr.startsWith("data:")) continue;
+        const d = tr.slice(5).trim(); if (d === "[DONE]") { buf = ""; break; }
+        try { const j = JSON.parse(d); const del = j.choices && j.choices[0] && j.choices[0].delta; if (del && del.content) { out += del.content; if (onDelta) onDelta(out); } } catch (_) {}
+      }
     }
+  } catch (e) {
+    if (out) { try { e.__partial = out; } catch (_) {} }
+    throw e;
   }
   if (isEngineBusyText(out)) throw new Error("engine-unavailable");   // all engines busy → retry, don't render the notice
   return out;
@@ -16674,28 +16691,94 @@ function buildAgentCard(run, lang) {
   }
   return card;
 }
-/* Robust model call for agent steps: 3 attempts with backoff + a per-call watchdog so a stalled
-   stream (no bytes, no FIN) can NEVER hang the whole run — it aborts, retries, and after 3 tries the
-   phase's try/catch keeps the run moving. */
-async function agentCall(messages, tierKey, signal) {
-  let lastErr = null;
+/* ══ THE PER-CALL WATCHDOG ══════════════════════════════════════════════════════════════════
+   This was `setTimeout(abort, 180000)` armed when the call started — an ABSOLUTE deadline, the
+   same mistake the server's stream deadline made, and here it is worse because the client
+   retries. A big single-file build ("a site exactly like Telegram, very powerful") streams tens
+   of thousands of tokens and passes three minutes while working perfectly. What happened then:
+
+     · at 180s the watchdog aborted a HEALTHY stream
+     · callAgentText throws on abort, so every character it had accumulated was thrown away
+     · retry — from zero — and 180s later, again; three times
+     · ~9 minutes frozen on "يفكر ويعدّل…", then a throw the caller turned into
+       "لا تغييرات مقترحة"
+
+   So any request whose output needs more than three minutes could not succeed, ever. It was not
+   flaky — it was a guaranteed failure, and the failure was reported as "nothing to change".
+
+   A watchdog is supposed to detect a DEAD stream. Dead means silent, not slow, so the clock is
+   now rearmed by every chunk that carries content, with a generous absolute ceiling behind it.
+   And on the last attempt a substantial partial answer is RETURNED rather than discarded: the
+   callers all run it through cwParseFileBlocks + the continuation guard, which is built to
+   finish a cut-off file — infinitely better than handing the user nothing. */
+const AGENT_IDLE_MS = 75000;    // silence that means the stream really is dead
+const AGENT_MAX_MS = 900000;    // 15-min absolute ceiling per call — runaway backstop only
+const AGENT_PARTIAL_MIN = 400;  // below this a partial is noise, not a head start
+
+/* ONE place the IDE's AI button learns that work is happening.
+   A first attempt plumbed a progress callback into the single-shot build — and a live trace
+   showed the reported prompt ("a site exactly like Telegram…") never goes there: it takes the
+   plan→build path, whose three model calls had no callback, so the label still never moved.
+   Threading a parameter through every pipeline (single-shot, plan→build, develop, critique,
+   continuation) is exactly the kind of plumbing one of them will always forget, so the report
+   is made from the ONE place every one of them already funnels through: the agent call itself.
+   It is a no-op unless the code workspace is on screen and busy. */
+function cwReportChars(n) {
+  if (typeof cwState === "undefined" || !cwState || !cwState.busy) return;
+  const now = Date.now();
+  if (now - (cwReportChars._at || 0) < 250) return;
+  cwReportChars._at = now;
+  const root = document.getElementById("codeWorkspace");
+  const go = root && root.querySelector(".cw-ai__go");
+  if (!go) return;
+  const ar = state.lang === "ar";
+  const k = n >= 1000 ? (n / 1000).toFixed(1) + (ar ? "ألف" : "k") : String(n);
+  go.textContent = ar ? ("يكتب… " + k + " حرف") : ("Writing… " + k + " chars");
+}
+
+/** Arms an idle-based watchdog on `ac`. Returns { tick, done } — call tick() on progress. */
+function agentWatchdog(ac, signal) {
+  const startedAt = Date.now();
+  let idle = setTimeout(() => { try { ac.abort("agent-idle"); } catch (_) {} }, AGENT_IDLE_MS);
+  const hard = setTimeout(() => { try { ac.abort("agent-max"); } catch (_) {} }, AGENT_MAX_MS);
+  return {
+    tick() {
+      if (signal && signal.aborted) return;
+      clearTimeout(idle);
+      if (Date.now() - startedAt >= AGENT_MAX_MS) return;
+      idle = setTimeout(() => { try { ac.abort("agent-idle"); } catch (_) {} }, AGENT_IDLE_MS);
+    },
+    done() { clearTimeout(idle); clearTimeout(hard); },
+  };
+}
+
+async function agentCall(messages, tierKey, signal, onTick) {
+  let lastErr = null, bestPartial = "";
   for (let a = 0; a < 3; a++) {
     const ac = new AbortController();
     const onAbort = () => { try { ac.abort(); } catch (_) {} };
     if (signal) { signal.addEventListener("abort", onAbort, { once: true }); if (signal.aborted) onAbort(); }
-    const to = setTimeout(() => { try { ac.abort("agent-timeout"); } catch (_) {} }, 180000); // 3-min hard cap/call
+    let seen = 0;
+    const wd = agentWatchdog(ac, signal);
     try {
-      const out = await callAgentText(messages, tierKey, ac.signal);
+      const out = await callAgentText(messages, tierKey, ac.signal, (n) => {
+        seen = n; wd.tick(); cwReportChars(n);
+        if (onTick) { try { onTick(n); } catch (_) {} }
+      });
       if (out && out.trim()) return out.trim();
     } catch (e) {
       lastErr = e;
+      if (e && e.__partial && e.__partial.length > bestPartial.length) bestPartial = e.__partial;
       if (signal && signal.aborted) throw e;   // real user Stop → abort the run; watchdog abort → retry
     } finally {
-      clearTimeout(to);
+      wd.done();
       if (signal) signal.removeEventListener("abort", onAbort);
     }
-    await new Promise((r) => setTimeout(r, 900 * (a + 1)));
+    // A stream that produced a lot before dying is worth keeping over a fourth cold start.
+    if (a === 2 && bestPartial.trim().length >= AGENT_PARTIAL_MIN) return bestPartial.trim();
+    if (a < 2) await new Promise((r) => setTimeout(r, 900 * (a + 1)));
   }
+  if (bestPartial.trim().length >= AGENT_PARTIAL_MIN) return bestPartial.trim();
   throw (lastErr || new Error("agent call failed"));
 }
 /* Streaming twin of agentCall: same 3-attempt backoff + 180s watchdog + engine-busy resilience,
@@ -16703,25 +16786,35 @@ async function agentCall(messages, tierKey, signal) {
    transport blip aborts+retries; on each retry we fire onDelta('') FIRST so the UI drops the
    corrupted partial buffer before the fresh stream begins. Returns the full text. */
 async function agentCallStream(messages, tierKey, signal, onDelta) {
-  let lastErr = null;
+  let lastErr = null, bestPartial = "";
   for (let a = 0; a < 3; a++) {
     if (a > 0 && onDelta) { try { onDelta(""); } catch (_) {} }   // retry → reset the on-screen partial
     const ac = new AbortController();
     const onAbort = () => { try { ac.abort(); } catch (_) {} };
     if (signal) { signal.addEventListener("abort", onAbort, { once: true }); if (signal.aborted) onAbort(); }
-    const to = setTimeout(() => { try { ac.abort("agent-timeout"); } catch (_) {} }, 180000); // 3-min hard cap/call
+    // Idle-based, exactly like agentCall — this twin carried the same 3-minute absolute cap and
+    // killed the same healthy long builds. onDelta already fires per chunk, so it IS the tick.
+    const wd = agentWatchdog(ac, signal);
+    let last = "";
     try {
-      const out = await streamAgentText(messages, tierKey, ac.signal, onDelta);
+      const out = await streamAgentText(messages, tierKey, ac.signal, (soFar) => {
+        last = soFar; wd.tick(); cwReportChars(soFar.length);
+        if (onDelta) { try { onDelta(soFar); } catch (_) {} }
+      });
       if (out && out.trim()) return out.trim();
     } catch (e) {
       lastErr = e;
+      const p = (e && e.__partial) || last;
+      if (p && p.length > bestPartial.length) bestPartial = p;
       if (signal && signal.aborted) throw e;   // real user Stop → abort the run; watchdog abort → retry
     } finally {
-      clearTimeout(to);
+      wd.done();
       if (signal) signal.removeEventListener("abort", onAbort);
     }
-    await new Promise((r) => setTimeout(r, 900 * (a + 1)));
+    if (a === 2 && bestPartial.trim().length >= AGENT_PARTIAL_MIN) return bestPartial.trim();
+    if (a < 2) await new Promise((r) => setTimeout(r, 900 * (a + 1)));
   }
+  if (bestPartial.trim().length >= AGENT_PARTIAL_MIN) return bestPartial.trim();
   throw (lastErr || new Error("agent call failed"));
 }
 async function agentWebSearch(q) {
@@ -19200,10 +19293,12 @@ function cwImproveT() {
   return state.lang === "ar"
     ? { label: "طوّره", hint: "شغّل المشروع، افحصه فعليًا، ثم طوّره جولة بعد جولة",
         busy: "يطوّر المشروع فعليًا…", none: "المشروع نظيف — لا شيء يستحق التغيير الآن ✓",
-        done: "طُوّر المشروع ✓", noFiles: "لا يوجد مشروع لتطويره بعد." }
+        done: "طُوّر المشروع ✓", noFiles: "لا يوجد مشروع لتطويره بعد.",
+        failed: "تعذّر إكمال التطوير — المحرّك لم يستجب. جرّب مرة أخرى." }
     : { label: "Improve", hint: "Run the project, actually inspect it, then improve it round after round",
         busy: "Really improving the project…", none: "Project is clean — nothing worth changing ✓",
-        done: "Project improved ✓", noFiles: "No project to improve yet." };
+        done: "Project improved ✓", noFiles: "No project to improve yet.",
+        failed: "Could not finish improving — the engine did not respond. Try again." };
 }
 
 /* The toolbar "Improve" action: take the CURRENT saved project, run the develop
@@ -19227,14 +19322,19 @@ async function cwRunImprove(root, chat) {
   }
   if (btn) { btn.disabled = true; btn.classList.add("is-busy"); }
   showToast(L.busy);
-  let rep = null, best = null;
+  let rep = null, best = null, failed = false;
   try {
     cwCommitEdit(root, chat, false);   // flush any un-saved editor buffer first
     const desc = (chat.title || st.name || "") + " — " +
       (state.lang === "ar" ? "طوّر هذا المشروع وحسّنه واجعله أكثر اكتمالًا واحترافية" : "improve and complete this project, make it more professional");
     best = await cwDevelopProject(st.name, st.files, desc, root, null, (r) => { rep = r; });
-  } catch (_) { best = null; }
+  } catch (e) { best = null; failed = true; }
   if (btn) { btn.disabled = false; btn.classList.remove("is-busy"); }
+  /* A THROWN run is not a clean project. Both outcomes used to land on L.none — "المشروع نظيف
+     — لا شيء يستحق التغيير ✓", complete with a tick — so an engine failure was reported to the
+     user as a successful inspection that found nothing wrong. That is the single most
+     misleading thing this path could say, and it is why a dead build looked like a no-op. */
+  if (failed) { showToast(L.failed); return; }
   if (!best || !best.length) { showToast(L.none); return; }
   const changed = best.some((nf) => { const o = st.files.find((f) => f.path === nf.path); return !o || o.content !== nf.content; });
   if (!changed) { showToast(L.none); return; }
@@ -20929,6 +21029,10 @@ async function cwAskAI(chat, instruction) {
   }
   const usr = "PROJECT: " + st.name + "\n\nCURRENT FILES:\n" + filesTxt + "\n\nUSER REQUEST:\n" + req + refBlock;
   const ac = new AbortController();
+  /* The button said "يفكر ويعدّل…" and never changed for the whole run, so a four-minute build
+     was indistinguishable from a hang — which is precisely what was reported ("صارلي فترة
+     أنتظر وما سوّى شي"). Feeding the character count back turns the same wait into visible
+     progress, and it costs one label write per chunk. */
   let out = await agentCall([{ role: "system", content: sys }, { role: "user", content: usr }], "max", ac.signal);
   // COMPLETENESS / CONTINUATION GUARD (mirrors cwPlanBuild): a long single-shot edit can be cut off
   // mid-file, leaving an unterminated ```file: block that cwParseFileBlocks reports as `open` and today
