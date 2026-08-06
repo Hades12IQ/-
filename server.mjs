@@ -41,7 +41,17 @@ const OLLAMA_HOST = (process.env.OLLAMA_HOST || (process.env.OLLAMA_API_KEY ? "h
 const OLLAMA_CHAT_URL = OLLAMA_HOST + "/api/chat";
 const FALLBACK_URL = "https://text.pollinations.ai/openai"; // keyless, server-side (no Origin)
 const FALLBACK_MODEL = "openai";
-const UPSTREAM_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 300_000; // 5 min — long code/full websites need room to finish
+/* THE STREAM DEADLINE IS IDLE-BASED, NOT ABSOLUTE.
+   It used to be one flat `setTimeout(abort, 300_000)` armed when the request arrived, so a
+   reply that was streaming perfectly well was killed the moment it crossed five minutes and
+   the user got "I couldn't reach the service" with ZERO characters kept — reproducibly, on
+   exactly the work that takes longest: a ten-problem PDF with a cover, contents and full
+   worked solutions. A deadline that fires while tokens are still arriving is measuring the
+   wrong thing. What actually indicates a dead upstream is SILENCE, so the clock is reset by
+   every byte written (see sseWrite) and only unbroken silence aborts.
+   UPSTREAM_MAX_MS is the runaway backstop and is deliberately far above any real answer. */
+const UPSTREAM_IDLE_MS = Number(process.env.REQUEST_IDLE_TIMEOUT_MS) || Number(process.env.REQUEST_TIMEOUT_MS) || 300_000;
+const UPSTREAM_MAX_MS = Number(process.env.REQUEST_MAX_MS) || 1_800_000; // 30 min hard ceiling
 
 // Ollama API KEY POOL. Set OLLAMA_API_KEY (+ OLLAMA_HOST=https://ollama.com) to use Ollama's
 // HOSTED cloud API. Each free key has a WEEKLY quota — when one key hits its limit (429/402/403)
@@ -83,7 +93,7 @@ function ollamaHeaders(key) {
 const ANTHROPIC_API_KEY  = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_MODEL    = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
 const ANTHROPIC_URL      = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_MAX_TOK  = Math.max(1024, parseInt(process.env.ANTHROPIC_MAX_TOKENS, 10) || 8192);
+const ANTHROPIC_MAX_TOK  = Math.max(1024, parseInt(process.env.ANTHROPIC_MAX_TOKENS, 10) || 32768); // Claude Sonnet supports far more than the old 8192; long documents were losing their tail
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const OPENROUTER_MODEL   = process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free";
 // NVIDIA NIM (build.nvidia.com) — FREE OpenAI-compatible API. Powers the Max tier's PRIMARY engine
@@ -255,7 +265,13 @@ const TIERS = {
   // Env-overridable so the model swaps without a redeploy if Ollama's cloud catalog
   // rotates. fallbackModel degrades to a known-good hosted model (gpt-oss) before the
   // last-resort pollinations fallback.
-  max:   { model: process.env.OLLAMA_MODEL_MAX || "qwen3-coder:480b-cloud", temperature: 0.7, num_predict: 32768, fallbackModel: process.env.OLLAMA_MODEL_MAX_FALLBACK || "gpt-oss:120b-cloud", capped: false },
+  /* Max was left on 32768 — a QUARTER of pro's ceiling on the tier that runs the Agent and
+     every document build, which is precisely the work that needs the most room. A ten-problem
+     PDF with a cover, a contents page and full worked solutions is tens of thousands of tokens
+     before the model has said anything unusual, so the budget, not the model, was ending the
+     document early and delivering two problems out of ten. Matched to pro/ultra; Ollama clamps
+     to whatever the chosen model actually supports, so raising it cannot error. */
+  max:   { model: process.env.OLLAMA_MODEL_MAX || "qwen3-coder:480b-cloud", temperature: 0.7, num_predict: 131072, fallbackModel: process.env.OLLAMA_MODEL_MAX_FALLBACK || "gpt-oss:120b-cloud", capped: false },
 };
 
 // Vision/multimodal model — used automatically when a request carries images.
@@ -1965,6 +1981,8 @@ function sseWrite(res, content, reasoning) {
   if (reasoning) delta.reasoning = reasoning;
   if (!("content" in delta) && !("reasoning" in delta)) return;
   res.write(`data: ${JSON.stringify({ choices: [{ delta }] })}\n\n`);
+  // Progress is the proof the upstream is alive — push the idle deadline out (see UPSTREAM_IDLE_MS).
+  if (res._keepAlive) res._keepAlive();
 }
 
 function sseDone(res) {
@@ -3526,7 +3544,11 @@ async function streamCloudflareText(res, messages, signal, model, maxTokens) {
   if (!CF_ACCOUNTS.length) return false;
   const useModel = model || CF_TEXT_MODEL;
   const strip = useModel !== CF_TEXT_MODEL;                 // strong/reasoning path → strip <think>
-  const cap = maxTokens || (strip ? 8192 : 4096);           // reasoning needs room for think + answer
+  /* The rescue engines were capped low enough to truncate the very documents they were
+     rescuing: a long worksheet that fell through to Cloudflare stopped at 4096 tokens and the
+     user got half a file with no indication why. Raised, and still env-overridable so a model
+     that rejects the larger ask can be dialled back without a redeploy. */
+  const cap = maxTokens || Number(process.env.CF_MAX_TOKENS) || (strip ? 16384 : 8192);   // reasoning needs room for think AND answer
   const msgs = messages.filter((m) => m.role === "system" || m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role, content: String(m.content || "") }));
   if (!msgs.length) return false;
@@ -4939,10 +4961,20 @@ async function handleChat(req, res) {
   const ollamaMessages = vision ? buildVisionMessages(messages) : stripImages(messages);
   const modelOverride = vision ? OLLAMA_MODEL_VISION : undefined;
 
-  // Never hang: hard timeout + abort upstream on client disconnect.
+  /* Never hang, but never cut a live answer either: the clock measures SILENCE, and every
+     chunk sseWrite emits rearms it. A runaway is still bounded by UPSTREAM_MAX_MS. */
   const ac = new AbortController();
-  const timeout = setTimeout(() => ac.abort(), UPSTREAM_TIMEOUT_MS);
-  res.on("close", () => ac.abort());
+  const startedAt = Date.now();
+  let idleTimer = setTimeout(() => ac.abort("idle"), UPSTREAM_IDLE_MS);
+  const hardTimer = setTimeout(() => ac.abort("max"), UPSTREAM_MAX_MS);
+  res._keepAlive = () => {
+    if (res.writableEnded) return;
+    clearTimeout(idleTimer);
+    if (Date.now() - startedAt >= UPSTREAM_MAX_MS) return;
+    idleTimer = setTimeout(() => ac.abort("idle"), UPSTREAM_IDLE_MS);
+  };
+  const clearDeadlines = () => { clearTimeout(idleTimer); clearTimeout(hardTimer); };
+  res.on("close", () => { clearDeadlines(); ac.abort(); });
   res.on("error", () => {});
 
   sseInit(res);
@@ -5038,7 +5070,7 @@ async function handleChat(req, res) {
       sseDone(res);
     }
   } finally {
-    clearTimeout(timeout);
+    clearDeadlines();
     if (!res.writableEnded) sseDone(res);
   }
 }

@@ -4618,7 +4618,13 @@ html.native-shell .CodeMirror, html.native-shell .CodeMirror *{
    VOICE DICTATION — mic button, recording bar, dialect picker
    ========================================================================== */
 .composer { position: relative; }
-.composer__mic.is-on { color: #fff; background: var(--color-accent); }
+/* The mic inherits .icon-btn's 3px radius, which is invisible until something FILLS it — and
+   `is-on` fills it with solid accent. The result was a hard 36px square sitting between the
+   pill-shaped send button and the rounded composer, the one square edge in the whole cluster.
+   Rounding it here (not on .icon-btn) keeps every other icon button exactly as it was, and it
+   is set for ALL states so the hover shape and the recording shape are the same shape. */
+.composer__mic { border-radius: var(--radius-pill); }
+.composer__mic.is-on { color: #fff; background: var(--color-accent); border-radius: var(--radius-pill); }
 /* Recording bar overlays the composer row while recording / transcribing */
 .mic-rec {
   position: absolute; inset: 0; z-index: 6;

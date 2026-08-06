@@ -45,7 +45,7 @@ const FALLBACK_MODEL = "openai";
 const ANTHROPIC_API_KEY  = env("ANTHROPIC_API_KEY") || "";
 const ANTHROPIC_MODEL    = env("ANTHROPIC_MODEL") || "claude-sonnet-4-6";
 const ANTHROPIC_URL      = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_MAX_TOK  = Math.max(1024, parseInt(env("ANTHROPIC_MAX_TOKENS") || "8192", 10) || 8192);
+const ANTHROPIC_MAX_TOK  = Math.max(1024, parseInt(env("ANTHROPIC_MAX_TOKENS") || "32768", 10) || 32768); // Claude Sonnet supports far more than the old 8192; long documents were losing their tail
 const OPENROUTER_API_KEY = env("OPENROUTER_API_KEY") || "";
 const OPENROUTER_MODEL   = env("OPENROUTER_MODEL") || "nvidia/nemotron-3-ultra-550b-a55b:free";
 // Free VISION models on OpenRouter — used to READ attached images when Gemini/Ollama vision are
@@ -178,7 +178,13 @@ const CF_ACCOUNTS = (() => {
 })();
 const _cfCooldown = new Map(); // accountId -> ms timestamp to skip until (its daily 429)
 function sniffImageMime(b) { if (!b || b.length < 4) return "image/jpeg"; if (b[0] === 0x89 && b[1] === 0x50) return "image/png"; if (b[0] === 0xFF && b[1] === 0xD8) return "image/jpeg"; if (b[0] === 0x52 && b[1] === 0x49 && b[8] === 0x57) return "image/webp"; return "image/jpeg"; }
-const UPSTREAM_TIMEOUT_MS = Number(env("REQUEST_TIMEOUT_MS")) || 300000;
+/* IDLE-BASED, NOT ABSOLUTE — mirrors server.mjs, and for the same defect: a flat 5-minute
+   deadline armed at request time aborted replies that were streaming perfectly well, so the
+   longest jobs (a ten-problem PDF with cover, contents and worked solutions) reliably came
+   back as "I couldn't reach the service" with nothing kept. Silence is what indicates a dead
+   upstream, so every chunk rearms the clock; UPSTREAM_MAX_MS is the runaway backstop. */
+const UPSTREAM_IDLE_MS = Number(env("REQUEST_IDLE_TIMEOUT_MS")) || Number(env("REQUEST_TIMEOUT_MS")) || 300000;
+const UPSTREAM_MAX_MS = Number(env("REQUEST_MAX_MS")) || 1800000; // 30 min hard ceiling
 
 const COOKIE_NAME = "firas_session";
 const COOKIE_MAX_AGE = 2592000;            // 30 days (seconds)
@@ -614,7 +620,11 @@ const TIERS = {
   // Env-overridable so the model can be swapped without a redeploy if Ollama's
   // cloud catalog rotates. fallbackModel degrades to a known-good hosted model
   // (gpt-oss) before the last-resort pollinations fallback.
-  max:   { model: env("OLLAMA_MODEL_MAX") || "qwen3-coder:480b-cloud", temperature: 0.7, num_predict: 32768, fallbackModel: env("OLLAMA_MODEL_MAX_FALLBACK") || "gpt-oss:120b-cloud", capped: false },
+  /* Max was left on 32768 — a QUARTER of pro's ceiling on the tier that runs the Agent and
+     every document build, i.e. exactly the work that needs the most room. The budget, not the
+     model, was ending a ten-problem PDF early. Matched to pro/ultra; Ollama clamps to what the
+     chosen model actually supports, so raising it cannot error. */
+  max:   { model: env("OLLAMA_MODEL_MAX") || "qwen3-coder:480b-cloud", temperature: 0.7, num_predict: 131072, fallbackModel: env("OLLAMA_MODEL_MAX_FALLBACK") || "gpt-oss:120b-cloud", capped: false },
 };
 // Vision model. The edge ALWAYS talks to Ollama cloud, which does NOT host the
 // local-only qwen2.5vl — so use a CLOUD-hosted multimodal model. gemma3:27b-cloud
@@ -1630,7 +1640,15 @@ function stripEngineAd(text) {
 // for minutes. Tries Ollama first; on connect failure falls back to pollinations.
 function chatStreamResponse(messages, tier, think, vision, scrubBt) {
   const ac = new AbortController();
-  const timeout = setTimeout(() => ac.abort(), UPSTREAM_TIMEOUT_MS);
+  const startedAt = Date.now();
+  let idleTimer = setTimeout(() => ac.abort("idle"), UPSTREAM_IDLE_MS);
+  const hardTimer = setTimeout(() => ac.abort("max"), UPSTREAM_MAX_MS);
+  const clearDeadlines = () => { clearTimeout(idleTimer); clearTimeout(hardTimer); };
+  const keepAlive = () => {
+    clearTimeout(idleTimer);
+    if (Date.now() - startedAt >= UPSTREAM_MAX_MS) return;
+    idleTimer = setTimeout(() => ac.abort("idle"), UPSTREAM_IDLE_MS);
+  };
   const ollamaMessages = vision ? buildVisionMessages(messages) : stripImages(messages);
   const modelOverride = vision ? OLLAMA_MODEL_VISION : undefined;
 
@@ -1640,7 +1658,10 @@ function chatStreamResponse(messages, tier, think, vision, scrubBt) {
   let closed = false;
   const body = new ReadableStream({
     async start(controller) {
-      const raw = (s) => { if (closed || !s) return; try { controller.enqueue(te.encode(s)); } catch (_) { closed = true; } };
+      // Progress is the proof the upstream is alive — every emitted chunk pushes the idle
+      // deadline out. `raw` is the single funnel all ~20 emit sites go through, so arming it
+      // here cannot be missed as engines are added.
+      const raw = (s) => { if (closed || !s) return; try { controller.enqueue(te.encode(s)); keepAlive(); } catch (_) { closed = true; } };
 
       /* The scrubber is applied HERE rather than at each of the ~20 emit sites. Every one of
          them goes through sseFrame(), so intercepting the finished frame and re-framing the
@@ -1668,7 +1689,7 @@ function chatStreamResponse(messages, tier, think, vision, scrubBt) {
         closed = true;
         try { controller.enqueue(te.encode("data: [DONE]\n\n")); } catch (_) {}
         try { controller.close(); } catch (_) {}
-        clearTimeout(timeout);
+        clearDeadlines();
       };
       try {
         let served = false;
@@ -1714,7 +1735,7 @@ function chatStreamResponse(messages, tier, think, vision, scrubBt) {
         if (!ac.signal.aborted) enc(sseFrame("Something went wrong with the Firas AI engine. Please try again."));
       } finally { finish(); }
     },
-    cancel() { closed = true; try { ac.abort(); } catch (_) {} clearTimeout(timeout); },
+    cancel() { closed = true; try { ac.abort(); } catch (_) {} clearDeadlines(); },
   });
   return new Response(body, { headers: { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", "Connection": "keep-alive", "X-Accel-Buffering": "no" } });
 }
@@ -1807,7 +1828,11 @@ async function streamCloudflareTextInto(enc, messages, signal, model, maxTokens)
   if (!CF_ACCOUNTS.length) return false;
   const useModel = model || CF_TEXT_MODEL;
   const strip = useModel !== CF_TEXT_MODEL;
-  const cap = maxTokens || (strip ? 8192 : 4096);
+  /* The rescue engines were capped low enough to truncate the very documents they were
+     rescuing: a long worksheet that fell through to Cloudflare stopped at 4096 tokens and the
+     user got half a file with no indication why. Raised, and still env-overridable so a model
+     that rejects the larger ask can be dialled back without a redeploy. */
+  const cap = maxTokens || Number(env("CF_MAX_TOKENS")) || (strip ? 16384 : 8192);
   const msgs = messages.filter((m) => m.role === "system" || m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role, content: String(m.content || "") }));
   if (!msgs.length) return false;

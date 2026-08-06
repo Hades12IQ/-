@@ -1326,25 +1326,147 @@ function balanceMathToken(m) {
   }
   return balanceTexBraces(m);
 }
+/* ══ ONE MATH SCANNER ═══════════════════════════════════════════════════════════════════
+   "Where is the math?" used to be answered separately by THREE passes: sanitizeBareLatex's
+   segment splitter (`$[^$\n]*$`), protectMath's stasher (`$(?!\s)[^$]*?[^\s$]$(?!\d)`), and
+   KaTeX's own rescan of the finished DOM. They disagreed on newlines, on `\$`, on a `$` that
+   precedes a digit — and every disagreement CORRUPTED the answer, because a run one pass
+   thought was prose got `\int` rewritten to `$\int$` while another pass had already claimed it.
+
+   The defect the owner reported — "the first equations are beautiful, then it dumps raw LaTeX
+   for the rest of the reply" — is the worst form of that. ONE stray `$` in the prose (a price,
+   a typo, a half-written formula) shifts the pairing, so from that point every OPENING dollar
+   is read as a CLOSING one and nothing downstream ever renders again. Traced live: `التكلفة $`
+   in front of three correct equations rendered the first and printed
+   `\int_0^1 x\,dx = \frac12` as literal text for the whole remainder of the answer.
+
+   So there is exactly one scanner now, and everybody asks it. It walks the source once,
+   honours `\$`, fenced blocks and code spans, and reports both the math regions AND every
+   dollar that is not a delimiter. Those strays are neutralised into inert markup, which is
+   what makes the cascade structurally impossible rather than merely unlikely: a neutralised
+   `$` is no longer a character KaTeX's independent DOM rescan can pair with anything.
+
+   Returns { math, skip, stray, esc } — `skip` is code (fenced blocks + spans), `esc` indexes
+   the BACKSLASH of a `\$`. All regions are half-open [s,e) and non-overlapping. */
+function scanMathSpans(text) {
+  const s = String(text);
+  const n = s.length;
+  const math = [], skip = [], stray = [], esc = [];
+
+  /* Fenced blocks first, by line. An UNTERMINATED fence runs to the end — mid-stream that is
+     the normal state, and treating its contents as prose would typeset the code. */
+  const fences = [];
+  {
+    const starts = [0];
+    for (let i = 0; i < n; i++) if (s[i] === "\n") starts.push(i + 1);
+    let open = null;
+    for (let li = 0; li < starts.length; li++) {
+      const a = starts[li];
+      const b = li + 1 < starts.length ? starts[li + 1] : n;
+      const m = /^[ \t]{0,3}(`{3,}|~{3,})/.exec(s.slice(a, b));
+      if (!m) continue;
+      if (!open) open = { s: a, ch: m[1][0], len: m[1].length };
+      else if (m[1][0] === open.ch && m[1].length >= open.len) { fences.push({ s: open.s, e: b }); open = null; }
+    }
+    if (open) fences.push({ s: open.s, e: n });
+  }
+
+  /* A `$…$` run is only math when it plausibly IS math. These rules are what stop a price or
+     a sentence from being adopted as an equation and dragging the rest of the answer down. */
+  const acceptInline = (body, afterIdx) => {
+    if (!body.trim()) return false;                       // "$$" / "$   $"
+    if (/\n[ \t]*\n/.test(body)) return false;            // math never crosses a paragraph break
+    if ((body.match(/\n/g) || []).length > 2) return false;
+    // Currency pair: "$5 for tea and $3" — digit-led on both sides of the run.
+    if (/^\d/.test(body) && /^\d/.test(s.slice(afterIdx, afterIdx + 1))) return false;
+    /* Prose swallowed between a stray dollar and a real one. Arabic reaches genuine math ONLY
+       inside \text{…}-style groups, so Arabic left over once those are removed is a sentence
+       that got adopted as an equation. Checking for "no backslash at all" was not enough: a
+       half-written `$x = \frac{-b + \sqrt{` pairs with the next equation's opening dollar and
+       still contains backslashes, and the whole Arabic clause between them became a KaTeX
+       error box. Rejecting it costs the broken formula and saves every equation after it. */
+    if (/[؀-ۿ]/.test(body.replace(/\\(?:text|textrm|textbf|textit|mathrm|mbox|operatorname)\s*\{[^{}]*\}/g, ""))) return false;
+    // Same idea for Latin prose: four or more words and not one TeX construct among them.
+    if (body.trim().split(/\s+/).length >= 4 && !/[\\^_{}=]/.test(body)) return false;
+    return true;
+  };
+
+  let i = 0, fi = 0;
+  while (i < n) {
+    while (fi < fences.length && i >= fences[fi].e) fi++;
+    if (fi < fences.length && i >= fences[fi].s) { skip.push(fences[fi]); i = fences[fi].e; continue; }
+
+    const c = s[i];
+    if (c === "\\") {
+      const d = s[i + 1];
+      if (d === "[") { const e = s.indexOf("\\]", i + 2); if (e !== -1) { math.push({ s: i, e: e + 2 }); i = e + 2; continue; } }
+      if (d === "(") { const e = s.indexOf("\\)", i + 2); if (e !== -1) { math.push({ s: i, e: e + 2 }); i = e + 2; continue; } }
+      if (d === "$") { esc.push(i); i += 2; continue; }
+      i += 2; continue;                                   // any other escape or command name
+    }
+    if (c === "`") {                                      // inline code span
+      let k = i; while (s[k] === "`") k++;
+      const run = s.slice(i, k);
+      const close = s.indexOf(run, k);
+      if (close !== -1) { skip.push({ s: i, e: close + run.length }); i = close + run.length; continue; }
+      i = k; continue;
+    }
+    if (c === "$") {
+      if (s[i + 1] === "$") {
+        let j = i + 2, e = -1;
+        while (j < n - 1) {
+          if (s[j] === "\\") { j += 2; continue; }
+          if (s[j] === "$" && s[j + 1] === "$") { e = j; break; }
+          j++;
+        }
+        if (e !== -1) { math.push({ s: i, e: e + 2 }); i = e + 2; continue; }
+        i += 2; continue;                                 // unterminated mid-stream — leave alone
+      }
+      let j = i + 1, e = -1;
+      while (j < n) {
+        if (s[j] === "\\") { j += 2; continue; }
+        if (s[j] === "$") { e = j; break; }
+        j++;
+      }
+      /* No partner anywhere ahead → it cannot mis-pair, so it stays a literal dollar (this is
+         also every opening delimiter of an equation still being streamed). A run that HAS a
+         partner but fails the rules is the dangerous one, and gets neutralised. */
+      if (e === -1) { i++; continue; }
+      if (acceptInline(s.slice(i + 1, e), e + 1)) { math.push({ s: i, e: e + 1 }); i = e + 1; continue; }
+      stray.push(i); i++; continue;
+    }
+    i++;
+  }
+  math.sort((a, b) => a.s - b.s);
+  skip.sort((a, b) => a.s - b.s);
+  return { math, skip, stray, esc };
+}
+
+/** Inert stand-in for a dollar that is NOT a math delimiter. Class-only markup: markdown and
+    DOMPurify pass it through, and KaTeX's rescan can no longer see a pairable `$`. */
+const CUR_DOLLAR_HTML = '<span class="cur-dollar">$</span>';
+
 function protectMath(text, store) {
+  const s = String(text);
   const stash = (m) => { const i = store.length; store.push(balanceMathToken(m)); return "" + i + ""; };
-  let s = String(text);
-  s = s.replace(/\$\$[\s\S]+?\$\$/g, stash);     // display $$ ... $$
-  s = s.replace(/\\\[[\s\S]+?\\\]/g, stash);     // display \[ ... \]
-  s = s.replace(/\\\([\s\S]+?\\\)/g, stash);     // inline  \( ... \)
-  /* ORDER MATTERS, and it was wrong.
-     The inline `$ … $` rule has to run BEFORE the bare-chemistry rule. Written the other way
-     round, `$\ce{H2O + CO2 -> H2CO3}$` had its INNER \ce{…} stashed first, which left the
-     surrounding dollars wrapping an opaque placeholder — `$⟨token⟩$`. KaTeX then tried to
-     parse the placeholder as math and threw "Unexpected character" on an invisible sentinel,
-     so every chemistry expression written inside math delimiters rendered as an error box.
-     Stashing the whole `$…$` span first keeps it intact; the chemistry rule then only has to
-     handle \ce{…} written BARE, outside any delimiter, which is what it was meant for. */
-  s = s.replace(/\$(?!\s)[^$]*?[^\s$]\$(?!\d)/g, stash); // inline $ ... $ (allow a newline inside → multiline math not dropped)
-  // Bare \ce{...} / \pu{...} (chemistry) written OUTSIDE math delimiters → wrap in \(…\) so KaTeX+mhchem
-  // renders it AND the later unicode-substitution pass never corrupts \cdot/\times inside it.
-  s = s.replace(/\\(?:ce|pu)\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, (m) => stash("\\(" + m + "\\)"));
-  return s;
+  const scan = scanMathSpans(s);
+  const kill = new Set(scan.stray.concat(scan.esc));
+  let out = "", i = 0, mi = 0;
+  while (i < s.length) {
+    if (mi < scan.math.length && i === scan.math[mi].s) {
+      out += stash(s.slice(scan.math[mi].s, scan.math[mi].e));
+      i = scan.math[mi].e; mi++; continue;
+    }
+    if (kill.has(i)) { out += CUR_DOLLAR_HTML; i += (s[i] === "\\" ? 2 : 1); continue; }
+    out += s[i]; i++;
+  }
+  /* Bare \ce{...} / \pu{...} (chemistry) written OUTSIDE math delimiters → wrap in \(…\) so
+     KaTeX+mhchem renders it AND the later unicode-substitution pass never corrupts \cdot /
+     \times inside it. It runs LAST, over text the scanner already declared non-math, so the
+     old ordering bug — stashing the INNER \ce{…} of `$\ce{H2O}$` and leaving the dollars
+     wrapped round an opaque sentinel, which KaTeX then choked on — cannot recur. */
+  out = out.replace(/\\(?:ce|pu)\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, (m) => stash("\\(" + m + "\\)"));
+  return out;
 }
 
 /* Plan-mode: hide the raw `firas-ask` JSON while it streams. We replace the whole
@@ -2083,12 +2205,12 @@ function renderMarkdown(text, opts) {
 
   // Shield math from markdown first, render after.
   const mathStore = [];
+  /* protectMath now neutralises every non-delimiter dollar itself, from the single scan that
+     also decided what the math was — so the two can no longer disagree. The old rule here was
+     a second, blinder guess (`$` glued to a digit) that both missed the stray dollars which
+     actually cause the cascade and mangled `\$20` by wrapping the dollar and orphaning the
+     backslash. */
   let src = protectMath(maskedSrc, mathStore);
-  // Any leftover $ glued to a digit is currency, not math (genuine numeric-leading math like $5x+3$
-  // was already stashed above). Isolate each such $ in its own inline element so KaTeX auto-render —
-  // which re-scans the finished DOM independently of protectMath — cannot pair it with a later $ and
-  // turn "$5 for tea and $3" into rendered math. Inert, class-only markup; tolerated by html2canvas/Word.
-  src = src.replace(/\$(?=\d)/g, '<span class="cur-dollar">$</span>');
 
   let html;
   if (hasMarked) {
@@ -5550,9 +5672,21 @@ function aiActionsEl(msg, index) {
     actions.append(upBtn);
   }
 
-  // Per-message export dropdown intentionally removed — file downloads now use
-  // the prominent file card shown only when the user actually requested a file.
-  // (exportControlEl + the export functions are kept; the card reuses them.)
+  /* SAVE/EXPORT ON EVERY ANSWER — restored, and now on the Brain engine.
+     The dropdown was retired on the reasoning that a download belongs on the file card, which
+     appears only when the user ASKED for a file. But most answers worth keeping were never
+     asked for as a file — you find out you want the derivation as a PDF after reading it — and
+     meanwhile Firas Brain put a prominent, themed export under every single answer. So the
+     control comes back here, with Brain's identities at the top of its menu, and the three
+     products finally export the same way.
+
+     Structured turns are excluded rather than special-cased: a ```firas-code / firas-deck /
+     firas-ask / firas-agent block is not prose, it carries its own card with its own download,
+     and running the document exporter over its raw JSON would produce a beautifully typeset
+     dump of a fence. An offline-fallback turn has nothing worth exporting either. */
+  if (msg.content && msg.content.trim() && !msg.offline && !/^\s*```firas-/.test(msg.content)) {
+    actions.append(exportControlEl(msg, index));
+  }
   return actions;
 }
 
@@ -8781,7 +8915,24 @@ function exportControlEl(msg, index) {
   btn.innerHTML += `<span class="export-menu__caret">${ICONS.chevron}</span>`;
   wrap.appendChild(btn);
 
+  /* THE BRAIN-QUALITY PDF, OFFERED EVERYWHERE.
+     Firas Brain has had the good exporter for a while — ten document identities, real font
+     loading, KaTeX typeset before the capture, a cover — while Firas AI, Code and Agent were
+     left with the plain raster path, and (since the per-message dropdown was retired) often
+     with no way to save an answer at all unless the user had explicitly asked for a file.
+     That is one engine's worth of quality difference for no reason: brainExportPrint takes a
+     message and a title, and nothing in it is specific to a notebook — brainStripSources is a
+     no-op on text that carries no citations. So it is the FIRST option here, defaulting to the
+     identity the user last chose (the frequent case) with the picker one row below it. */
+  // Shell language, not the message language — every other label in this menu comes from t(),
+  // and one Arabic row in an otherwise English list reads as a bug.
+  const _ar = state.lang === "ar";
+  const _hint = () => { const c = activeChat(); return (c && c.title) || (_ar ? "مستند" : "Document"); };
   const items = [
+    { icon: ICONS.filePdf, label: _ar ? "PDF — بالهوية المحفوظة" : "PDF — saved identity",
+      run: () => brainExportPrint(msg, _hint(), null) },
+    { icon: ICONS.filePdf, label: _ar ? "PDF — اختيار الهوية…" : "PDF — choose identity…",
+      run: () => brainOpenPdfThemePicker((id) => brainExportPrint(msg, _hint(), id)) },
     { icon: ICONS.filePdf, label: t().downloadPdf, run: (turn) => exportPdf(turn, msg.lang, msg) },
     // Real selectable text, correct Arabic by construction, native save dialog — see
     // exportPrint. Kept BELOW the raster PDF, which is the only path that yields an
@@ -9010,9 +9161,17 @@ function scrollToBottom() {
   el.scrollTo({ top: el.scrollHeight, behavior: "instant" });
   requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
 }
-function onScroll() {
+/* Is the reader at the live edge right now? Measured, not remembered — `autoScroll` only
+   updates on a scroll EVENT, so after the thread has grown underneath a stationary reader it
+   can be stale in either direction, and the decision to yank the view is too rude to take on
+   a stale value. 80px of slack because a reader "at the bottom" is rarely at exactly 0. */
+function isNearBottom(slack) {
   const el = els.chatScroll;
-  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  if (!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight < (slack || 80);
+}
+function onScroll() {
+  const nearBottom = isNearBottom();
   autoScroll = nearBottom;
   els.scrollBottomBtn.classList.toggle("is-visible", !nearBottom);
 }
@@ -9643,10 +9802,22 @@ function buildMessages(tier, conversation, replyLang) {
   // (no stopping early, no "want me to continue?"). Empty for normal prompts and always empty in plan mode.
   const _lastU = [...conversation].reverse().find((m) => m && m.role === "user");
   const _want = parseRequestedItemCount((_lastU && _lastU.content) || "");
+  /* Phrased as a CONTRACT with a checkable end condition, not an encouragement. The earlier
+     wording ("answer every single one") was a polite request the model routinely traded away
+     for a tidy-looking short answer — ten integrals came back as two and a friendly offer to
+     continue. Naming the exact last label it must reach gives it something to verify itself
+     against, and forbidding the offer to continue removes the escape hatch it kept taking.
+     This is still only a prompt; ensureChatItemCount is what actually guarantees the count. */
   const finishRule = (!planning && _want >= 3)
     ? (replyLang === "ar"
-        ? " أكمل كل المطلوب في هذا الرد نفسه: طُلب " + _want + " عنصرًا/مسألة — أجب عن كلٍّ منها كاملةً مرقّمة حتى الأخيرة، لا تتوقف في المنتصف ولا تسأل إن كنت تريد المتابعة."
-        : " FINISH EVERYTHING in THIS reply: " + _want + " items/problems were requested — answer every single one, numbered, through the last; do not stop midway or ask whether to continue.")
+        ? " ⚠ عدد إلزامي: طُلب منك " + _want + " عنصرًا/مسألة بالضبط. أنتج " + _want + " عنصرًا مرقّمة ١…" + _want +
+          " في هذا الرد نفسه، ولا تُنهِ ردّك قبل أن يظهر العنصر رقم " + _want + " مكتملًا." +
+          " ممنوع منعًا باتًا: التوقف في المنتصف، أو الاكتفاء بعيّنة أو مثال أو مثالين، أو قول «وهكذا» أو «يمكنني المتابعة» أو السؤال إن كنت تريد البقية." +
+          " قبل أن ترسل، عُدّ العناصر: إن كانت أقل من " + _want + " فأكمل الناقص الآن. الإيجاز هنا خطأ، والاكتمال هو المطلوب."
+        : " ⚠ MANDATORY COUNT: exactly " + _want + " items/problems were requested. Produce " + _want +
+          " items, numbered 1…" + _want + ", in THIS reply, and do not end your reply until item " + _want + " is complete." +
+          " STRICTLY FORBIDDEN: stopping midway, giving a sample or 'a couple of examples', writing 'and so on', offering to continue, or asking whether the user wants the rest." +
+          " Before you finish, count them: if there are fewer than " + _want + ", write the missing ones now. Brevity is a failure here; completeness is the task.")
     : "";
   // VOICE CALL: replies are READ ALOUD, so the whole system prompt switches to a
   // spoken-conversation persona. We DROP the LaTeX/markdown/build/science-format
@@ -9680,7 +9851,11 @@ function buildMessages(tier, conversation, replyLang) {
   } else {
     system = {
       role: "system",
-      content: model.persona + productRule + identityRule + langRule + mathRule + accuracyRule + NO_NEEDLESS_REFUSAL + SCIENCE_RIGOR + finishRule + codeRule + genLevelRule + STEM_HARD_RULE + imageRule + tikzRule+ (planning ? "" : buildRule + engineerRule),
+      /* finishRule moved to the very END. It sat in the middle of a ~15-rule prompt, and a
+         count instruction buried between the science-rigor block and the code block is the
+         first thing to lose an argument with "be concise". Last position is the one the model
+         weighs most, and this rule is the one whose failure the user actually notices. */
+      content: model.persona + productRule + identityRule + langRule + mathRule + accuracyRule + NO_NEEDLESS_REFUSAL + SCIENCE_RIGOR + codeRule + genLevelRule + STEM_HARD_RULE + imageRule + tikzRule+ (planning ? "" : buildRule + engineerRule) + finishRule,
     };
   }
 
@@ -10504,11 +10679,22 @@ function fixMathBlanks(md) {
    "0.85 A\cdotpm²") — they reach the page as raw backslash text. Fix the TEXT segments only (math and
    fenced code are left untouched): wrap bare \underline blanks in $…$, unicode-ize simple commands. */
 function sanitizeBareLatex(md) {
+  const full = String(md);
+  /* WHICH PARTS ARE MATH is decided by scanMathSpans, the same scanner protectMath uses.
+     It used to be decided here by a private regex whose inline rule was `\$[^$\n]*\$` — no
+     newline allowed — while protectMath's allowed newlines. Any span the two disagreed about
+     was treated as PROSE here and as MATH there, so the substitutions below fired inside a
+     real equation: `$2I = \int_0^{\pi/4} \ln 2\,dx =\n\frac{\pi\ln 2}{4}$`, a formula the
+     model had merely wrapped across two lines, came out as `$2I = $\int$_0^{\pi/4} …`.
+     One scanner means the disagreement cannot exist. */
+  const scan = scanMathSpans(full);
+  const keep = scan.math.concat(scan.skip).sort((a, b) => a.s - b.s);
+  const fixText = (seg) =>
   // Protect \ce{...}/\pu{...} chemistry FIRST (odd-index = untouched) so the unicode substitutions
   // below never eat a \cdot inside a hydrate like \ce{CuSO4 \cdot 5H2O} and leave a stray backslash.
-  return String(md).split(/(\\(?:ce|pu)\s*\{(?:[^{}]|\{[^{}]*\})*\}|```[\s\S]*?```|\$\$[\s\S]*?\$\$|\$[^$\n]*\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/).map((seg, i) => {
-    if (i % 2 === 1) return seg;                       // math / fenced code — untouched
-    let s = seg;
+  seg.split(/(\\(?:ce|pu)\s*\{(?:[^{}]|\{[^{}]*\})*\})/).map((part, i) => {
+    if (i % 2 === 1) return part;                      // chemistry — untouched
+    let s = part;
     s = s.replace(/\\underline\{\\hspace\{([^{}]*)\}\}/g, (m, l) => "$\\underline{\\hspace{" + l + "}}$");
     s = s.replace(/\\hspace\{([^{}]*)\}/g, " ");
     s = s.replace(/\\cdots(?![a-zA-Z])/g, "⋯");
@@ -10523,9 +10709,22 @@ function sanitizeBareLatex(md) {
     // Runs ONLY on these even, non-math / non-fenced segments; the new $…$ is then protected by
     // protectMath downstream. (?![a-zA-Z]) keeps longer commands (\left, \int, \leftarrow) intact;
     // \cdot/\times/\degree/\pm are excluded since they were already unicode-ized above. "$$$&$$" → $\macro$.
-    s = s.replace(/\\(?:alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|iota|kappa|lambda|mu|nu|xi|rho|varrho|sigma|tau|upsilon|phi|varphi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega|to|gets|infty|approx|neq|leq|geq|le|ge|ll|gg|in|notin|ni|subset|subseteq|supset|supseteq|cup|cap|emptyset|forall|exists|nexists|nabla|partial|sum|prod|int|oint|equiv|cong|sim|simeq|propto|perp|parallel|angle|Rightarrow|Leftarrow|Leftrightarrow|rightarrow|leftarrow|leftrightarrow|mapsto|mp|div|ast|star|circ|bullet|oplus|otimes|wedge|vee)(?![a-zA-Z])/g, "$$$&$$");
+    /* The trailing `(?:…)*` swallows whatever BELONGS to the macro — its sub/superscripts and
+       any macros glued to it. Without it `\int_0^{\pi/4}` became `$\int$_0^{\pi/4}`: the
+       integral sign typeset and its own limits stayed behind as raw text next to it, which is
+       one of the ways an answer ends up showing `_0^{\pi/4}` in the middle of a sentence. */
+    s = s.replace(/\\(?:alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|iota|kappa|lambda|mu|nu|xi|rho|varrho|sigma|tau|upsilon|phi|varphi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega|to|gets|infty|approx|neq|leq|geq|le|ge|ll|gg|in|notin|ni|subset|subseteq|supset|supseteq|cup|cap|emptyset|forall|exists|nexists|nabla|partial|sum|prod|int|oint|equiv|cong|sim|simeq|propto|perp|parallel|angle|Rightarrow|Leftarrow|Leftrightarrow|rightarrow|leftarrow|leftrightarrow|mapsto|mp|div|ast|star|circ|bullet|oplus|otimes|wedge|vee)(?![a-zA-Z])(?:[_^](?:\{[^{}]*\}|\\[a-zA-Z]+|[A-Za-z0-9])|\\[a-zA-Z]+(?![a-zA-Z]))*/g, "$$$&$$");
     return s;
   }).join("");
+
+  let out = "", i = 0;
+  for (const r of keep) {
+    if (r.s < i) continue;                             // regions are disjoint; belt-and-braces
+    if (r.s > i) out += fixText(full.slice(i, r.s));
+    out += full.slice(r.s, r.e);                       // math / code — byte-for-byte untouched
+    i = r.e;
+  }
+  return out + fixText(full.slice(i));
 }
 
 function tightenInlineMath(md) {
@@ -10656,6 +10855,56 @@ async function ensureDocItemCount(doc, requested, reqText, sysContent, call, sig
       const solClean = stripFileMetaBlock(String(sol)).trim();
       if (solClean && countDocSolutions(solClean) >= 1) doc = spliceBeforeConclusion(doc, solClean);
     }
+  }
+  return doc;
+}
+
+/* ═══ COUNT COMPLIANCE IN CHAT ════════════════════════════════════════════════════════════
+   ensureDocItemCount rescues a DOCUMENT that stopped short. The plain chat answer had no
+   equivalent, so "احسب لي ١٠ تكاملات" could come back with two and nothing in the app noticed:
+   the only defence was `finishRule`, a sentence in the system prompt, and an instruction is not
+   a guarantee — it is a request the model is free to ignore, and on a long numbered task it
+   routinely does. This measures the finished answer with the SAME counter the document path
+   uses and continues it in place until the count is met.
+
+   Deliberately conservative. It runs only when the ask was explicit and countable (≥3 items),
+   only while the count is measurable (`countDocItems` returning 0 means "cannot tell", and
+   looping on that would append forever), and it stops the moment a round adds no measurable
+   progress. Continuations go through the internal `nomem` transport, so a rescue never charges
+   the user's quota a second time for one question. */
+async function ensureChatItemCount(answer, convo, replyLang, tierKey, signal, onGrow) {
+  const lastU = [...convo].reverse().find((m) => m && m.role === "user");
+  const reqText = String((lastU && lastU.content) || "");
+  const want = parseRequestedItemCount(reqText);
+  if (!want || want < 3) return answer;
+  const wantsSol = requestWantsSolutions(reqText);
+  let doc = String(answer || "");
+  if (!doc.trim()) return answer;
+  for (let round = 0; round < 2; round++) {
+    if (signal && signal.aborted) break;
+    const have = countDocItems(doc);
+    if (!have || have >= want) break;
+    let cont = "";
+    try {
+      cont = await streamAgentText([
+        { role: "system", content:
+          "You continue an answer that stopped short. Match its language, numbering, heading style and depth EXACTLY. " +
+          "Output ONLY the missing items — no greeting, no preamble, no summary, no repetition of what already exists." },
+        { role: "user", content:
+          "THE USER ASKED:\n" + reqText.slice(0, 3000) +
+          "\n\nTHE ANSWER SO FAR (its ending is shown):\n…" + doc.slice(-6000) +
+          "\n\nINCOMPLETE: " + want + " items were requested but only " + have + " are present. " +
+          "Continue with items " + (have + 1) + " through " + want + ", keeping the same numbering (never restart at 1). " +
+          (wantsSol ? "Each new item needs its COMPLETE worked step-by-step solution immediately after it, ending in a final answer you verified a second independent way. " : "") +
+          "Write mathematics in $ … $ / $$ … $$ exactly as the answer above does." },
+      ], tierKey, signal, (soFar) => { try { onGrow(doc + "\n\n" + soFar); } catch (_) {} });
+    } catch (e) { if (signal && signal.aborted) throw e; break; }
+    const cleaned = String(cont || "").replace(/^\s*(?:of course|sure|certainly|بالطبع|إليك|حسنًا|تابع)[^\n]*\n/i, "").trim();
+    if (!cleaned) break;
+    const merged = doc.replace(/\s*$/, "") + "\n\n" + cleaned;
+    if (countDocItems(merged) <= have) break;          // no measurable progress → stop, keep what we have
+    doc = merged;
+    try { onGrow(doc); } catch (_) {}
   }
   return doc;
 }
@@ -11779,6 +12028,20 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       aiMsg.content = "```firas-code " + JSON.stringify(meta) + "\n" + code + "\n```";
     } else {
       aiMsg.content = scrubBacktrackFull(answer);
+      /* An explicit "give me N of these" that came back with fewer is finished here rather than
+         left short (see ensureChatItemCount). Never for a file reply — that path has its own,
+         richer enforcement in runFileAgentPipeline — and errors are swallowed, because a failed
+         rescue must still leave the user the answer they already have. */
+      if (!fileFmt) {
+        try {
+          aiMsg.content = await ensureChatItemCount(aiMsg.content, convo, replyLang, aiMsg.tier, signal, (grown) => {
+            aiMsg.content = grown;
+            const n = liveNode();
+            const el = n && n.querySelector(".msg-ai__body .md");
+            if (el) { try { paintStreamingMarkdown(el, grown).forEach((x) => typesetMath(x)); } catch (_) {} }
+          });
+        } catch (_) { /* keep whatever we have */ }
+      }
     }
     aiMsg.reasoning = reasoning;
     finalizeAi(aiMsg, chat);
@@ -12318,19 +12581,29 @@ async function sendMessage() {
   renderHistory(); // reflect the new/updated chat in the sidebar immediately
   // Create the chat on the server on its first user message (gets a serverId).
   if (!chat.serverId) persistChat(chat);
-  await runAssistant(chat, state.tier, lang);
+  // The one place a snap to the live edge is unambiguously wanted: the user just pressed send,
+  // and the message about to appear is their own.
+  await runAssistant(chat, state.tier, lang, undefined, true);
 }
 
 /** Append an assistant placeholder for `chat` and stream into it. The stream is
     tied to `chat` (not the active view) so navigating away won't stop it. */
-async function runAssistant(chat, tier, replyLang, convoOverride) {
+async function runAssistant(chat, tier, replyLang, convoOverride, follow) {
   // Firas Agent chats run the AGENT pipeline (plan → execute → verify → deliver).
-  if (chat.agent) return runAgentAssistant(chat, "max", replyLang);   // the Agent ALWAYS runs on Max — no tier choice
+  if (chat.agent) return runAgentAssistant(chat, "max", replyLang, null, follow);   // the Agent ALWAYS runs on Max — no tier choice
   const aiMsg = { role: "assistant", content: "", reasoning: "", tier, lang: replyLang, mode: state.mode };
   chat.messages.push(aiMsg);
 
-  autoScroll = true; // a new turn always follows to the bottom
-  renderThread(chat, true); // includes the new (empty) AI turn
+  /* This used to be an unconditional `autoScroll = true` + forced snap, and it is what threw a
+     reader back to the live edge: the streaming paint already respects where you are, so the
+     only thing that ever yanked the view was the START of a turn. A turn can start without the
+     reader asking for it — an auto-resume after the app was backgrounded, a regenerate from a
+     message halfway up the thread — and in those cases their scroll position is theirs to keep.
+     `follow` is passed explicitly ONLY by the send path, where the user just pressed send and
+     their own message is what is appearing; everywhere else we go by where they actually are. */
+  const snap = follow === undefined ? isNearBottom() : !!follow;
+  autoScroll = snap;
+  renderThread(chat, snap); // includes the new (empty) AI turn
 
   const aiNode = els.thread.querySelector(`.msg-ai[data-index="${chat.messages.length - 1}"]`);
 
@@ -17387,7 +17660,7 @@ function resumeAgentRun(chat, resumeRun) {
   runAgentAssistant(chat, "max", resumeRun.lang || chat.lang || state.lang, resumeRun);
 }
 /** Agent-mode assistant turn: plan → execute → verify → deliver, streamed into a live plan card. */
-async function runAgentAssistant(chat, tier, replyLang, resumeRun) {
+async function runAgentAssistant(chat, tier, replyLang, resumeRun, follow) {
   if (!Array.isArray(chat.messages)) chat.messages = [];   // a failed lazy load must not crash the mission
   const lastUser = [...chat.messages].reverse().find((m) => m.role === "user");
   let task = resumeRun ? String(resumeRun.task || "") : (lastUser ? String(lastUser.content || "") : "");
@@ -17440,8 +17713,11 @@ async function runAgentAssistant(chat, tier, replyLang, resumeRun) {
   }
   const aiMsg = { role: "assistant", content: "", reasoning: "", tier, lang: replyLang, mode: state.mode };
   chat.messages.push(aiMsg);
-  autoScroll = true;
-  renderThread(chat, true);
+  /* Same rule as runAssistant: only the send path asks to snap. A RESUMED mission (the app was
+     backgrounded and came back) must never move a reader who is partway up the run. */
+  const snapA = follow === undefined ? isNearBottom() : !!follow;
+  autoScroll = snapA;
+  renderThread(chat, snapA);
   const controller = new AbortController();
   activeStreams.set(chat.id, { controller, aiMsg });
   beginStreaming(chat.id);
@@ -17486,7 +17762,8 @@ async function runAgentAssistant(chat, tier, replyLang, resumeRun) {
     if (!deckMsg) {
       deckMsg = { role: "assistant", content: serializeDeck(deck), reasoning: "", tier, lang: replyLang, mode: state.mode };
       chat.messages.push(deckMsg);
-      if (activeChat() === chat) renderThread(chat, true);
+      // The deck card landing mid-mission must not throw a reader who is following the run.
+      if (activeChat() === chat) renderThread(chat, isNearBottom());
     } else {
       deckMsg.content = serializeDeck(deck);
       if (activeChat() === chat) {
@@ -17494,7 +17771,7 @@ async function runAgentAssistant(chat, tier, replyLang, resumeRun) {
         const dBody = els.thread.querySelector(`.msg-ai[data-index="${dIdx}"] .msg-ai__body`);
         const dNode = dBody && dBody.querySelector(".md");
         if (dNode) { dNode.innerHTML = ""; dNode.appendChild(buildDeckCard(parseDeckMeta(deckMsg.content), replyLang, deckMsg)); }
-        else renderThread(chat, true);
+        else renderThread(chat, isNearBottom());
       }
     }
     if (persist) { chat.updatedAt = Date.now(); persistChat(chat); }
@@ -23770,6 +24047,17 @@ async function brainAsk(question) {
         full = String(aiMsg.content || "");
         if (full.trim()) full += LQ.stopped;
       }
+      /* Same explicit-count enforcement as the main chat (see ensureChatItemCount): "استخرج ١٠
+         تعريفات" coming back with two is the identical defect here, and Brain is if anything
+         more prone to it because the grounding block already fills much of the context. The
+         continuation runs BEFORE citation renumbering, so any [Sn] it emits is renumbered with
+         the rest instead of being left pointing at a source that got dropped. */
+      try {
+        full = await ensureChatItemCount(full, [{ role: "user", content: q }], lang,
+          state.tier === "mini" ? "mini" : "pro",
+          brainState.ctl && brainState.ctl.signal,
+          (grown) => { aiMsg.content = grown; brainPaintStream(grown, lang); });
+      } catch (_) { /* keep the answer we already have */ }
       // Keep ONLY the sources the model actually cited, in first-citation order, and renumber so
       // the visible [S1..Sn] always line up with the list rendered underneath.
       const used = [];
