@@ -6715,6 +6715,65 @@ body.product-code .composer__call { display: none; }
 }
 .fb-act:disabled { opacity: .55; cursor: default; transform: none; }
 
+/* Print sits beside the gold PDF button as the quieter sibling — it is the secondary
+   route to the same document, so it stays in the muted palette rather than competing
+   for the gold. The icon is sized in em so it tracks the 12px label, and gets its own
+   flex row because `.fb-act`'s padding was written for a text-only pill. */
+.fb-act--print { display: inline-flex; align-items: center; gap: 6px; }
+.fb-act--print svg {
+  width: 1.15em; height: 1.15em; flex: none;
+  /* The glyph is drawn with stroke:currentColor, so it inherits every hover and
+     disabled state from .fb-act without a single extra rule. */
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   COPY YOUR OWN QUESTION (Firas Brain)
+
+   The answer has always had a copy bar; the question had nothing. In Brain the question is
+   often the laboriously typed part, and re-running a sweep means copying it, changing a word
+   and sending it again. `.msg-user__bubble *` sets user-select:none, so on a phone there was
+   no way to get the text back at all.
+
+   Hidden until the turn is hovered or the button is focused, so it never competes with the
+   answer — but always reachable by keyboard, which is why it fades rather than being display:none.
+   ══════════════════════════════════════════════════════════════════════════════ */
+/* IN FLOW, NOT FLOATED OVER THE BUBBLE. Absolute positioning was the first instinct and it was
+   wrong: the user bubble spans the full column width (measured 600px of a 600px turn), so there
+   is no margin to sit in — the button landed on top of the text. A row underneath costs 26px,
+   overlaps nothing, needs no direction-specific rule, and matches the action row the ANSWER
+   already has. */
+.fb-umsg-acts {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-start: 4px;
+  block-size: 26px;
+}
+.fb-umsg-copy {
+  display: inline-flex; align-items: center; justify-content: center;
+  inline-size: 26px; block-size: 26px;
+  padding: 0;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: var(--border-hairline) solid var(--color-border-hairline);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+/* :focus as well as :focus-visible — a keyboard Tab matches both, but a programmatic .focus()
+   matches only :focus, and a control that cannot be revealed under test cannot be verified. */
+.fb-thread .turn--user:hover .fb-umsg-copy,
+.fb-umsg-copy:focus,
+.fb-umsg-copy:focus-visible { opacity: 1; }
+.fb-umsg-copy:hover { color: var(--color-text-primary); border-color: var(--color-border-strong); }
+.fb-umsg-copy:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+.fb-umsg-copy:active { transform: translateY(1px); }
+/* Touch has no hover, so the affordance would never appear — show it permanently, quietly. */
+@media (hover: none) {
+  .fb-umsg-copy { opacity: .55; }
+}
+
 /* The identity control sits beside the export button and carries a live swatch of the
    chosen paper. It is deliberately quieter than --gold: it configures the export, it is
    not the export. */
@@ -7860,6 +7919,76 @@ img.md-img-held:hover::after { color: var(--color-accent); }
 }
 .ann-clear-all:focus-visible { outline: 2px solid var(--color-accent-ring); outline-offset: 2px; }
 .ann-clear-all:disabled { opacity: .55; cursor: default; }
+
+/* ============================================================================
+   TCLAMP — collapse-with-"عرض المزيد" for a very long USER message.
+
+   NO ABSOLUTE POSITIONING ANYWHERE. The fade is a mask-image on the clamped
+   element itself and the gradient axis is VERTICAL (to bottom), so there is
+   nothing to mirror; the button is a normal-flow inline-flex sibling inside the
+   bubble, which sets `text-align: start`. Both render identically under
+   dir="ltr" and dir="rtl" — which matters because applyShellLang hard-codes
+   html.dir="ltr" and only per-element dir carries RTL. Measured in Chrome: the
+   button's offset from the bubble's START edge is 17px in BOTH directions.
+
+   SPECIFICITY: `.msg-user__text.is-tclamped` is (0,2,0) and this block sits at
+   the end of the file. Nothing anywhere in styles.css sets max-height,
+   max-block-size or overflow on .msg-user__bubble or its text child, and there
+   is no `#id *` rule in the file, so these rules win.
+
+   --tclamp-cut is written by JS as an exact pixel boundary snapped to a whole
+   line, and never lands inside a .katex-display block.
+============================================================================ */
+.msg-user__text.is-tclamped {
+  max-block-size: var(--tclamp-cut, 60vh);
+  overflow: hidden;
+  /* Alpha ramp over the last ~2.6 lines. Vertical only — RTL-safe by construction. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.6em), rgba(0,0,0,.3) calc(100% - 1em), transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 calc(100% - 2.6em), rgba(0,0,0,.3) calc(100% - 1em), transparent 100%);
+}
+/* No mask support (very old engines): a clean hard cut. The button still works. */
+@supports not (mask-image: linear-gradient(#000, #000)) {
+  .msg-user__text.is-tclamped { -webkit-mask-image: none; mask-image: none; }
+}
+
+.msg-user__bubble .tclamp__more {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-block-start: var(--space-2);
+  padding: 5px 11px;
+  border: var(--border-hairline) solid var(--color-border-hairline);
+  border-radius: var(--radius-pill);
+  background: transparent;              /* the bubble is already a tinted panel */
+  color: var(--color-text-secondary);
+  font: var(--weight-medium) var(--text-sm) / 1.2 var(--font-sans);
+  white-space: nowrap;                  /* the bubble sets pre-wrap; the pill must not wrap */
+  cursor: pointer;
+  -webkit-user-select: none; user-select: none;
+  transition: color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out);
+}
+.msg-user__bubble .tclamp__more[dir="rtl"] { font-family: var(--font-arabic); }
+.msg-user__bubble .tclamp__more:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface);
+}
+.msg-user__bubble .tclamp__more:focus-visible { outline: 2px solid var(--color-accent-ring); outline-offset: 2px; }
+/* ICONS.caret points RIGHT; rotation has no notion of writing direction, so this
+   is correct in Arabic and English alike. */
+.msg-user__bubble .tclamp__chev {
+  display: inline-flex; inline-size: 13px; block-size: 13px;
+  transition: transform var(--dur-base) var(--ease-out);
+  transform: rotate(90deg);
+}
+.msg-user__bubble .tclamp__chev svg { inline-size: 100%; block-size: 100%; }
+.msg-user__bubble .tclamp__more[aria-expanded="true"] .tclamp__chev { transform: rotate(-90deg); }
+@media (prefers-reduced-motion: reduce) {
+  .msg-user__bubble .tclamp__more, .msg-user__bubble .tclamp__chev { transition: none; }
+}
+@media (pointer: coarse), (max-width: 560px) {
+  .msg-user__bubble .tclamp__more { min-block-size: 40px; padding-inline: 14px; }
+}
 
 /* The English fields read as a secondary pair, so the Arabic ones stay the primary input. */
 .ann-title-en, .ann-body-en { opacity: .92; }

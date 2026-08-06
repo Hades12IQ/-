@@ -283,6 +283,10 @@ const STR = {
     fileCreating: "جاري إنشاء الملف…",
     fileViewContent: "عرض المحتوى",
     fileHideContent: "إخفاء المحتوى",
+    // Collapse-with-expand for a very long pasted message (tclamp). The line count
+    // goes in the accessible name, not in these labels.
+    showMore: "عرض المزيد",
+    showLess: "عرض أقل",
     // Export / download
     download: "تصدير",
     downloadPdf: "ملف PDF",
@@ -292,6 +296,9 @@ const STR = {
     downloadHtml: "صفحة HTML",
     downloadMarkdown: "ملف Markdown",
     downloadText: "نص عادي (TXT)",
+    downloadPrint: "طباعة / حفظ بصيغة PDF…",
+    printPreparing: "يُحضّر نسخة الطباعة…",
+    printUnavailable: "الطباعة غير متاحة في هذا المتصفح — سيُنزَّل ملف PDF بدلًا منها.",
     preparing: "جارٍ التحضير…",
     formatUnavailable: "هذا التنسيق غير متاح حاليًا.",
     exportEmpty: "لا يوجد محتوى للتصدير.",
@@ -499,6 +506,10 @@ const STR = {
     fileCreating: "Creating your file…",
     fileViewContent: "View content",
     fileHideContent: "Hide content",
+    // Collapse-with-expand for a very long pasted message (tclamp). The line count
+    // goes in the accessible name, not in these labels.
+    showMore: "Show more",
+    showLess: "Show less",
     // Export / download
     download: "Download",
     downloadPdf: "PDF document",
@@ -508,6 +519,9 @@ const STR = {
     downloadHtml: "HTML page",
     downloadMarkdown: "Markdown file",
     downloadText: "Plain text (TXT)",
+    downloadPrint: "Print / Save as PDF…",
+    printPreparing: "Preparing the print copy…",
+    printUnavailable: "Printing isn't available in this browser — downloading a PDF instead.",
     preparing: "Preparing…",
     formatUnavailable: "That format is unavailable right now.",
     exportEmpty: "Nothing to export.",
@@ -753,8 +767,21 @@ const FILE_REQUEST_VERBS =
 // Build verbs (kept unambiguous: NO برمج/طور — they collide with the noun
 // "البرمجة"/"التطور". Note: Arabic has no \b word boundary, so never wrap an
 // Arabic token in \b — it would never match.)
+/* A request to UNDERSTAND rather than to receive. "أريد أن أعرف كيف أسوي موقع" and
+   "عايز أفهم يعني إيه منصة" both carry a want-verb and a code noun, and both want words back,
+   not a project. Kept next to CODE_BUILD_VERBS because the two are read together. */
+const ASKS_TO_LEARN =
+  /(?:[أا]ريد|[أا]بي|بدي|عايز|عاوز|ودي|محتاج|[أا]حتاج|[أا]بغى)\s*(?:[أا]ن\s*)?(?:[أا]عرف|[أا]فهم|[أا]تعلم|تعلم|معرف[ةه]|فهم)|كيف\s*(?:[أا])?(?:سوي|عمل|بني|صنع|كتب|اسوي|اعمل|ابني)|يعني\s*[إا]يه|شنو\s*يعني|\bhow\s+(?:do|can|to|would)\b|\bi\s+want\s+to\s+(?:know|learn|understand)\b|\bi\s+need\s+to\s+(?:know|learn|understand)\b|\bwhat\s+(?:is|are|does)\b|\bteach\s+me\b|\blearn\s+(?:about|how)\b/i;
+
+/* WANT is a build verb too. "أريد موقع" — I want a website — is one of the commonest ways an
+   Arabic speaker asks for one, and with no verb matching here the whole request fell through to
+   plain chat and the code arrived as a fenced block in the conversation instead of in the code
+   workspace. The dialect spread matters: أبي (Gulf), بدي (Levantine), عايز (Egyptian), بغيت
+   (Maghrebi), ودي/محتاج everywhere.
+   This does NOT make every "I want" a build: detectCodeRequest still needs a code signal after
+   the verb, and the DOC_NOUN bail above still sends "أريد تقرير" to a document. */
 const CODE_BUILD_VERBS =
-  /(اصنع|إصنع|اعمل|إعمل|سو[يّ]?ي?|سويي|ابن[يي]|أبني|اكتب|أكتب|انشئ|أنشئ|صم[مّ]|generate|create|make|build|write|develop|design|implement|code\s+me|build\s+me)/i;
+  /(اصنع|إصنع|اعمل|إعمل|سو[يّ]?ي?|سويي|ابن[يي]|أبني|اكتب|أكتب|انشئ|أنشئ|صم[مّ]|[أا]ريد|[أا]بي|بدي|عايز|عاوز|بغيت|ودي|محتاج|[أا]حتاج|ابغى|أبغى|generate|create|make|build|write|develop|design|implement|code\s+me|build\s+me|i\s+want|i\s+need)/i;
 // Hard signals = unambiguous programming intent.
 const CODE_HARD =
   /\bhtml\b|\bcss\b|\bjavascript\b|vanilla\s*js|كود|\bcode\b|سكربت|سكريبت|\bscript\b|<!doctype|\bc\+\+|\bcpp\b|\bjava\b|\bc#|csharp|\brust\b|\bgolang\b|\bkotlin\b|\bswift\b|\bphp\b|\btypescript\b|\bpython\b|بايثون|برنامج|برمجة|سي\s*بلس\s*بلس|جافا/i;
@@ -769,8 +796,14 @@ const CODE_DOC_OVERRIDE =
   /powerpoint|pptx|بوربوينت|باوربوينت|عرض\s*تقديمي|شرائح|سلايد|\bpdf\b|بي\s*دي\s*اف|excel|xlsx|اكسل|[إاأ]ي?كس[يى]?ل|\bword\b|docx|وورد|(?:ملف|مستند|بصيغة|صيغة)\s*ورد|\bcsv\b/i;
 // Generic PROGRAMMING nouns: with a build verb these mean CODE even without a named
 // language/web word ("write a function", "build me a calculator app", "make a game").
+/* The KIND OF THING being built is a code signal in its own right. A store, a dashboard, a
+   platform, a portfolio, a landing page — nobody asks for those as prose, they are always a
+   build. They were missing here, so "سوي متجر الكتروني" and "سوي لوحة تحكم" fell through and
+   answered in the chat with a code block instead of opening the workspace.
+   These same words were ALREADY treated as a build one layer up, in the Agent path's `isBuild`
+   test — so the app disagreed with itself about what a store is. Same vocabulary now. */
 const CODE_GENERIC =
-  /\bprogram\b|\bapp(?:lication)?\b|\bfunction\b|\bclass\b|\balgorithm\b|\bsnippet\b|\bgame\b|\bCLI\b|\bAPI\b|\bendpoint\b|\bregex\b|\bquery\b|\b(?:bash|shell)\b|تطبيق|دالة|خوارزمية|لعبة/i;
+  /\bprogram\b|\bapp(?:lication)?\b|\bfunction\b|\bclass\b|\balgorithm\b|\bsnippet\b|\bgame\b|\bCLI\b|\bAPI\b|\bendpoint\b|\bregex\b|\bquery\b|\b(?:bash|shell)\b|\bdashboard\b|\bplatform\b|\bportfolio\b|\blanding\s*page\b|\bstore\b|\bstorefront\b|\be-?commerce\b|\bblog\b|تطبيق|دالة|خوارزمية|لعبة|متجر|منص[ةه]|لوح[ةه]\s*تحكم|داشبورد|بورتفوليو|صفح[ةه]\s*هبوط|مدون[ةه]/i;
 // Document-deliverable nouns: a request for one of these (with a verb, no code/format
 // signal) defaults to a PDF — see detectFileRequest. Shared so detectCodeRequest can
 // bail on document-flavored phrasing.
@@ -811,6 +844,14 @@ function detectCodeRequest(text) {
   // A drawing/figure/graph request → a TikZ figure in chat, NOT code — bail before code routing.
   if (DRAW_REQUEST.test(s) && !DRAW_AS_APP.test(s) && !CODE_SPEC.test(s)) return null;
   if (CODE_SPEC.test(s)) return codeSpecFromText(s);
+  /* WANTING TO KNOW IS NOT WANTING BUILT. Admitting "أريد/محتاج/عايز" as build verbs (so that
+     "أريد موقع" opens the workspace) also admits "أريد أعرف كيف أسوي موقع" — which carries a
+     want-verb AND a code noun but is a question, and answering it with a generated project
+     instead of an explanation is the mirror image of the bug being fixed.
+     codeFollowupSpec already refuses to regenerate a file for an explanation request; this is the
+     same rule, applied one level earlier where a FRESH request is classified. An explicit file
+     spec still wins, so "أريد أعرف كيف أسوي index.html" is still a build. */
+  if (ASKS_TO_LEARN.test(s)) return null;
   const hasVerb = CODE_BUILD_VERBS.test(s);
   if (!hasVerb) return null;
   // Document-flavored request (report/book/essay…) → a DOCUMENT, UNLESS it explicitly
@@ -1626,6 +1667,68 @@ function stripCodeMetaBlock(s) {
   return String(s == null ? "" : s)
     .replace(/^```firas-code[ \t]+\{[\s\S]*?\}[ \t]*\r?\n[\s\S]*\r?\n```[ \t]*$/, "").trim();
 }
+
+/* ── WHEN THE ROUTER GUESSED WRONG ────────────────────────────────────────────
+   Whether a turn opens the code window is decided BEFORE the model is called, from a regex
+   over the request (detectCodeRequest). That regex can only ever know the phrasings someone
+   thought to add: "أريد موقع" and "سوي متجر الكتروني" both had to be hand-written into it
+   today. When it guesses wrong the model still builds the thing — the site just arrives as a
+   fenced block in the middle of the conversation instead of in the code window, with no
+   preview and no download.
+
+   So stop asking the request and ask the ANSWER. This runs at finalize, when the whole reply
+   is in hand, and promotes it to a code deliverable if it turned out to BE one. It is
+   deterministic — no extra model call, no prompt change, no mid-stream surgery — and it costs
+   nothing on every reply that is genuinely prose.
+
+   Deliberately hard to trigger, because the opposite mistake is worse: turning an explanation
+   that happens to quote a snippet into a code card would hide the explanation. Three gates,
+   all of which must pass. */
+const PROMOTE_EXT = {
+  html: "html", htm: "html", svg: "svg", xml: "xml", css: "css",
+  javascript: "js", js: "js", jsx: "jsx", typescript: "ts", ts: "ts", tsx: "tsx",
+  python: "py", py: "py", java: "java", c: "c", cpp: "cpp", "c++": "cpp", cs: "cs",
+  php: "php", ruby: "rb", rb: "rb", go: "go", rust: "rs", rs: "rs", swift: "swift",
+  kotlin: "kt", sql: "sql", sh: "sh", bash: "sh",
+};
+function promoteAnswerToCode(content, lang) {
+  const s = String(content || "");
+  if (!s.trim()) return null;
+  // Never touch a reply that already carries a structured block of its own.
+  if (/^```(?:firas-code|firas-image|firas-agent|firas-deck|firas-project|firas-ask)\b/.test(s.trim())) return null;
+
+  // GATE 1 — exactly one fenced block. Two blocks is a comparison or a tutorial, not a build.
+  const fences = s.match(/```[A-Za-z0-9+#._-]*\s*\r?\n[\s\S]*?\r?\n```/g);
+  if (!fences || fences.length !== 1) return null;
+  const block = fences[0];
+  const tag = (/^```([A-Za-z0-9+#._-]*)/.exec(block) || [])[1] || "";
+  const code = block.replace(/^```[A-Za-z0-9+#._-]*\s*\r?\n/, "").replace(/\r?\n```$/, "");
+
+  // GATE 2 — the block IS the answer, and nothing but a throwaway line surrounds it.
+  // Strict, because promoting REPLACES the message: the fence has to be the entire content for
+  // parseCodeMeta (anchored ^...$) to see it, so whatever prose was there is discarded. Dropping
+  // "تفضّل، هذا موقعك:" costs nothing; dropping a paragraph of explanation would be data loss.
+  const prose = s.replace(block, "").replace(/\s+/g, " ").trim();
+  if (prose.length > 160 || prose.length > code.length * 0.12) return null;
+
+  // GATE 3 — a COMPLETE, runnable artifact, not a fragment.
+  const key = tag.toLowerCase();
+  const isWholePage = /<!doctype\s+html/i.test(code) || (/<html[\s>]/i.test(code) && /<\/html>/i.test(code));
+  const isWholeSvg = /^\s*<svg[\s>]/i.test(code) && /<\/svg>\s*$/i.test(code);
+  const bigEnough = code.length >= 900 && code.split("\n").length >= 30;
+  const knownLang = Object.prototype.hasOwnProperty.call(PROMOTE_EXT, key);
+  if (!(isWholePage || isWholeSvg || (knownLang && bigEnough))) return null;
+
+  const resolved = isWholePage ? "html" : isWholeSvg ? "svg" : key;
+  const ext = PROMOTE_EXT[resolved] || "txt";
+  const meta = {
+    filename: "index." + ext,
+    lang: resolved,
+    ext,
+    label: resolved === "html" ? "HTML" : resolved.toUpperCase(),
+  };
+  return "```firas-code " + JSON.stringify(meta) + "\n" + code + "\n```";
+}
 /** System prompt forcing raw, complete, single-file source (no fences/prose). */
 function codeSystemPrompt(spec) {
   const label = spec.label || "code";
@@ -1973,6 +2076,384 @@ function basicFormat(text) {
   // restore code blocks
   src = src.replace(/B(\d+)/g, (_, i) => blocks[+i]);
   return src;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TCLAMP — one collapse-with-"عرض المزيد" for a very long message the USER wrote,
+   pasted or dictated. Chat bubbles and Firas Brain questions, and NOTHING else.
+
+   WHY ONLY THE USER'S OWN MESSAGE.
+     · A model answer must never be yanked out from under the person reading it.
+       The only place a finished answer could be collapsed is finalizeAi, one frame
+       after the last token lands — i.e. exactly while the reader is at the tail of
+       the text they just watched arrive.
+     · An answer's .md carries tables, code blocks, KaTeX, citations and the
+       firas-ask choice cards. `overflow:hidden` on it would make focusable controls
+       reachable inside a clipped box, and mdNodeForTurn() hands that same .md to
+       exportBody()/buildExportRoot(), which attaches the clone to the LIVE document
+       — where a leaked `.is-tclamped` would silently clip the exported PDF.
+     · A user bubble is `textContent` on a bare div: no table, no code block, no
+       citation, no focusable descendant, and nothing streams into it. The three
+       hazards above are absent BY CONSTRUCTION, not by a guard that can be missed.
+   The mechanism below is preset-free and takes its numbers per call, so the answer
+   surface can be added later — but only behind a real browser measurement of the
+   `content-visibility: auto` interaction described under RE-ARM.
+
+   THE UNIT IS LINES OF THE ELEMENT ITSELF, not characters and not raw pixels.
+     · Characters are wrong across scripts. Measured over this file's own aligned
+       STR.ar / STR.en table, Arabic carries the same meaning in ~0.90x the
+       characters overall and 0.67x for the longest prose string, so one character
+       budget lets 11%-49% MORE Arabic content through than English.
+     · Raw pixels are wrong because line-height is not one number here: styles.css
+       :2630 sets `.msg-user__bubble { line-height: calc(var(--leading-base) *
+       var(--read-scale)) }` and --read-scale is 0.92 / 1 / 1.14 — 22.08px, 24px or
+       27.36px for one intent, before Brain's own bubble rules are considered.
+     Reading the RESOLVED line-height off the element absorbs all of them at once.
+
+   NOTHING IS ABSOLUTELY POSITIONED. The fade is a mask-image on the clamped element
+   (a VERTICAL gradient — no horizontal colour stops to mirror) and the button is a
+   normal-flow inline-flex sibling. Both are byte-identical under dir="ltr" and
+   dir="rtl", which matters because the shell is hard-coded html.dir="ltr" and only
+   per-element dir carries RTL.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Boxes the cut must never land INSIDE. In a user bubble the one that actually
+   occurs is `.katex-display` — typesetMath turns a pasted `$$…$$` / `\[…\]` into
+   one — but a pasted image or table is listed so the rule reads the same if this
+   element ever carries them. Half an equation is not a shorter equation. */
+const TCLAMP_ATOMIC =
+  ".katex-display, table, pre, figure, img, video, canvas, iframe, .code-block, .tikz-figure, .plot-figure";
+
+const TCLAMP_DEFAULTS = {
+  capLines: 12,       // visible height, in lines OF THIS ELEMENT
+  hysteresis: 1.35,   // collapse only if the block is at least this much taller than the cap
+  overshoot: 1.25,    // an indivisible box straddling the cap may be kept WHOLE up to here
+  minKeepFrac: 0.5,   // never cut above half the cap — a stub is worse than the whole block
+  minHiddenLines: 5,  // never put a button in front of fewer lines than this
+};
+
+/* ── Expansion state ─────────────────────────────────────────────────────────
+   NOT in the DOM: brainRenderThread does `thread.innerHTML = ""` and rebuilds the
+   whole thread every few seconds during an extraction, and invalidateTurnCache()
+   (applyShellLang) rebuilds every chat turn on a language switch — anything held
+   in a node is destroyed by both.
+   NOT on the message: chat.messages is JSON.stringify'd on every persistChat.
+   NOT in localStorage: re-opening a chat SHOULD start short again.
+   The content hash is part of the key, so an edited or regenerated message cannot
+   inherit the previous one's expansion. FIFO-capped so a long session is bounded. */
+const TCLAMP_OPEN = new Map();
+const TCLAMP_OPEN_MAX = 400;
+function tclampHash(s) {
+  let h = 2166136261;
+  s = String(s == null ? "" : s);
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36) + "." + s.length;
+}
+function tclampKey(scope, id, i, content) {
+  return scope + ":" + (id || "-") + ":" + i + ":" + tclampHash(content);
+}
+function tclampIsOpen(key) { return !!key && TCLAMP_OPEN.get(key) === true; }
+function tclampSetOpen(key, on) {
+  if (!key) return;
+  if (on) {
+    TCLAMP_OPEN.delete(key); TCLAMP_OPEN.set(key, true);
+    while (TCLAMP_OPEN.size > TCLAMP_OPEN_MAX) TCLAMP_OPEN.delete(TCLAMP_OPEN.keys().next().value);
+  } else TCLAMP_OPEN.delete(key);
+}
+
+/** The element's own RESOLVED line-height in px — absorbs --read-scale and any
+    per-surface override in one read. Never throws. */
+function tclampLineHeight(el) {
+  try {
+    const cs = getComputedStyle(el);
+    let lh = parseFloat(cs.lineHeight);
+    if (!isFinite(lh) || lh <= 0) lh = (parseFloat(cs.fontSize) || 15) * 1.6;   // line-height:normal
+    return lh;
+  } catch (_) { return 24; }
+}
+
+/** "This text is still being written." A user bubble can never be in this state —
+    it is built once, from a string that is already complete — but the guard is kept
+    so the module stays safe if it is ever pointed at an answer node. */
+function tclampIsLive(el) {
+  if (!el) return true;
+  try {
+    if (el.closest && el.closest(".msg-ai.is-generating, .turn.is-generating")) return true;
+    if (el.classList && el.classList.contains("stream-caret")) return true;
+  } catch (_) { return true; }
+  return false;
+}
+
+/** Pure decision function — no DOM access at all. Geometry arrives as numbers, so
+    the same code that ships is the code the harness exercises.
+    `o.totalPx` is the element's NATURAL height; `o.obstacles` are {top,bottom}
+    offsets, relative to the element's own top, of boxes that must not be sliced. */
+function tclampPlan(o) {
+  const lh = o.lineHeight;
+  const total = o.totalPx;
+  const cap = o.capLines * lh;
+  if (!(total > 0)) return { collapse: false, reason: "empty", totalPx: total || 0, capPx: cap };
+  if (total <= cap * o.hysteresis) return { collapse: false, reason: "short", totalPx: total, capPx: cap };
+
+  // Snap DOWN to a whole line, so no half line ever shows through the fade.
+  let cut = Math.floor(cap / lh) * lh;
+  let how = "snapped-to-line";
+
+  /* Obstacles are in document order and never overlap. Moving the cut FORWARD to a
+     box's bottom puts it at or before the next box's top, and moving it BACKWARD
+     puts it before every later box — so one pass reaches a fixed point. */
+  const obs = o.obstacles || [];
+  for (let i = 0; i < obs.length; i++) {
+    const b = obs[i];
+    if (b.top < cut - 0.5 && b.bottom > cut + 0.5) {
+      if (b.bottom <= cap * o.overshoot) { cut = b.bottom; how = "atomic-kept-whole"; }
+      else { cut = Math.max(0, Math.floor(b.top / lh) * lh); how = "cut-before-atomic"; }
+    }
+  }
+
+  /* The 0.5px slack is not cosmetic. cap is capLines*lh and cut is floor(cap/lh)*lh,
+     so `total - cut` lands EXACTLY on minHiddenLines*lh for the boundary message —
+     and in binary that subtraction comes out at 110.39999999999998 for lh 22.08
+     (the --read-scale 0.92 line-height). Without the slack the same 17-line message
+     collapses at one reading size and not at the next, for no reason a user could
+     ever explain. */
+  if (cut < cap * o.minKeepFrac - 0.5)
+    return { collapse: false, reason: "no-safe-cut", totalPx: total, capPx: cap, wouldCutAt: cut };
+  if ((total - cut) < o.minHiddenLines * lh - 0.5)
+    return { collapse: false, reason: "too-little-hidden", totalPx: total, capPx: cap, cutPx: cut };
+
+  return {
+    collapse: true, how,
+    cutPx: Math.round(cut), totalPx: Math.round(total), capPx: Math.round(cap),
+    shownLines: Math.round(cut / lh), hiddenLines: Math.round((total - cut) / lh),
+  };
+}
+
+/* ── The batched reset → read → write pipeline ────────────────────────────── */
+const _tclampQ = [];
+let _tclampRaf = 0;
+let _tclampSeq = 0;
+const _tclampRuns = new WeakMap();
+const _tclampMo = new WeakMap();
+
+function tclampSchedule(el, opts) {
+  if (!el) return;
+  _tclampQ.push({ el, opts: opts || {} });
+  if (_tclampRaf) return;
+  _tclampRaf = (typeof requestAnimationFrame === "function")
+    ? requestAnimationFrame(tclampDrain)
+    : setTimeout(tclampDrain, 16);
+}
+
+function tclampDrain() {
+  _tclampRaf = 0;
+  const jobs = _tclampQ.splice(0);
+
+  /* PHASE 0 — RESET. Writes only; nothing has been measured yet.
+     A clamped element carries `max-block-size: var(--tclamp-cut)` + `overflow:hidden`,
+     so a read taken before this ran would return the CLAMPED height and the plan
+     would then decide "short" from its own previous output — permanently un-clamping
+     the block. Undoing it HERE rather than in tclampCommit (which runs after every
+     read in the batch) is what makes a re-run idempotent. It costs no extra layout:
+     phase 0 only invalidates, phase 1 forces exactly one recalc, phase 2 never reads. */
+  for (let i = 0; i < jobs.length; i++) {
+    try {
+      const el = jobs[i].el;
+      const nx = el.nextElementSibling;
+      if (nx && nx.classList && nx.classList.contains("tclamp__more")) nx.remove();
+      el.classList.remove("is-tclamped");
+      el.style.removeProperty("--tclamp-cut");
+      el.removeAttribute("data-tclamp");
+    } catch (_) { /* one bad node must never break the batch */ }
+  }
+
+  /* PHASE 1 — READ. Every getBoundingClientRect back to back → one layout flush. */
+  const plans = [];
+  const rearm = [];
+  for (let i = 0; i < jobs.length; i++) {
+    try {
+      const el = jobs[i].el, raw = jobs[i].opts;
+      if (!el.isConnected || tclampIsLive(el)) continue;
+      const rect = el.getBoundingClientRect();
+
+      /* RE-ARM, don't decide. A zero height is NOT "this message is short" — it is
+         "ask again". Every `.turn` is `content-visibility: auto` (styles.css:768),
+         and an engine that hands back a zero rect for a skipped subtree would
+         otherwise make every history bubble decide `short` once and never retry,
+         silently disabling the feature for the whole scrollback with nothing to
+         notice. Measured in Chrome 1xx headless: a `.msg-user__text` 3768px below
+         the fold DOES report its real 1080px box, so this path is a guard, not the
+         normal case — but it costs one comparison and removes a whole class of
+         silent failure. Bounded, so a genuinely empty node cannot spin: observe()
+         re-delivers on the next observation cycle, so this is at most 6 frames. */
+      if (rect.height === 0 && (el.textContent || "").trim()) {
+        const n = (raw._tries || 0) + 1;
+        if (n <= 6) {
+          const again = {};
+          for (const k in raw) again[k] = raw[k];
+          again._tries = n;
+          rearm.push({ el, opts: again });
+        }
+        continue;
+      }
+
+      const o = {};
+      for (const k in TCLAMP_DEFAULTS) o[k] = TCLAMP_DEFAULTS[k];
+      for (const k in raw) if (raw[k] !== undefined) o[k] = raw[k];
+
+      const obstacles = [];
+      const kids = el.children;
+      for (let k = 0; k < kids.length; k++) {
+        const c = kids[k];
+        if (c.nodeType !== 1 || !c.matches || !c.matches(TCLAMP_ATOMIC)) continue;
+        const r = c.getBoundingClientRect();
+        obstacles.push({ top: r.top - rect.top, bottom: r.bottom - rect.top });
+      }
+      obstacles.sort((a, b) => a.top - b.top);
+
+      o.lineHeight = tclampLineHeight(el);
+      o.totalPx = rect.height;
+      o.obstacles = obstacles;
+      plans.push({ el, o, plan: tclampPlan(o) });
+    } catch (_) {}
+  }
+
+  /* PHASE 2 — WRITE. Nothing is read after this point, so nothing forces a 2nd layout. */
+  for (let i = 0; i < plans.length; i++) {
+    try { tclampCommit(plans[i].el, plans[i].o, plans[i].plan); } catch (_) {}
+  }
+  for (let i = 0; i < rearm.length; i++) {
+    try { tclamp(rearm[i].el, rearm[i].opts); } catch (_) {}
+  }
+}
+
+function tclampCommit(el, o, plan) {
+  if (!plan.collapse) return;                  // phase 0 already cleared class, cut and button
+  el.setAttribute("data-tclamp", plan.how);
+  el.style.setProperty("--tclamp-cut", plan.cutPx + "px");
+  if (!el.id) el.id = "tclamp-" + (++_tclampSeq);
+  const btn = tclampButton(el, plan, o);
+  if (el.parentNode) el.parentNode.insertBefore(btn, el.nextSibling);
+  tclampPaintState(el, btn, plan, o, tclampIsOpen(o.key));
+  tclampWatchContent(el, o);
+}
+
+/* typesetMath is ASYNCHRONOUS when KaTeX has not loaded yet: it queues the node and
+   polls every 150ms for up to ~18s, then replaces every `$…$` / `\(…\)` run with
+   <span class="katex"> elements and every `$$…$$` with a `.katex-display` BLOCK.
+   That changes the element's real height AFTER the cut was chosen, so on a cold load
+   the fade could end up sitting inside an equation. One re-measure when the content
+   actually changes closes that window. We never add CHILDREN to this element (the
+   button is a SIBLING) and attribute writes are not observed, so this cannot feed
+   itself; the run counter bounds it regardless. */
+function tclampWatchContent(el, o) {
+  if (typeof MutationObserver !== "function") return;
+  const runs = (_tclampRuns.get(el) || 0) + 1;
+  _tclampRuns.set(el, runs);
+  if (runs > 3) return;
+  const prev = _tclampMo.get(el);
+  if (prev) { try { prev.disconnect(); } catch (_) {} }
+  const mo = new MutationObserver(() => {
+    try { mo.disconnect(); } catch (_) {}
+    _tclampMo.delete(el);
+    tclampSchedule(el, o);
+  });
+  try {
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    _tclampMo.set(el, mo);
+  } catch (_) {}
+}
+
+/* Arabic counted nouns do not take one form. `سطراً` is the accusative singular
+   tamyīz and is correct only for 11-99; 3-10 take the plural `أسطر`, and 1 and 2
+   have their own words. minHiddenLines is 5, so 5-10 are all reachable and the
+   naive form would print "٦ سطراً" on an entirely ordinary message. Digits are
+   Arabic-Indic via the file's own arDigits() (app.js:1544), matching every other
+   counted Arabic string in the product ("آخر ٧ أيام", "٥ صور في اليوم"). */
+function tclampArLines(n) {
+  if (n === 1) return "سطر واحد";
+  if (n === 2) return "سطران";
+  if (n >= 3 && n <= 10) return arDigits(n) + " أسطر";
+  return arDigits(n) + " سطراً";
+}
+
+function tclampLabels(lang) {
+  const S = STR[lang] || STR.en || {};
+  return {
+    more: S.showMore || (lang === "ar" ? "عرض المزيد" : "Show more"),
+    less: S.showLess || (lang === "ar" ? "عرض أقل" : "Show less"),
+  };
+}
+
+function tclampPaintState(el, btn, plan, o, open) {
+  const lang = o.lang === "ar" ? "ar" : "en";
+  const L = tclampLabels(lang);
+  el.classList.toggle("is-tclamped", !open);
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+  const lbl = btn.querySelector(".tclamp__lbl");
+  if (lbl) lbl.textContent = open ? L.less : L.more;
+  /* The COUNT lives in the accessible name, not the visible label: a screen-reader
+     user should learn how much is hidden before deciding to expand, while the
+     visible pill stays two words in both languages. */
+  const full = open ? L.less
+    : (lang === "ar"
+        ? L.more + " — " + tclampArLines(plan.hiddenLines) + " مخفية"
+        : L.more + " — " + plan.hiddenLines + " more lines");
+  btn.setAttribute("aria-label", full);
+  btn.title = full;
+}
+
+function tclampButton(el, plan, o) {
+  const lang = o.lang === "ar" ? "ar" : "en";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "tclamp__more";
+  btn.dir = lang === "ar" ? "rtl" : "ltr";     // the shell is fixed LTR; only per-element dir carries RTL
+  btn.setAttribute("aria-controls", el.id);
+  btn.innerHTML = '<span class="tclamp__lbl"></span>' +
+    '<span class="tclamp__chev" aria-hidden="true">' + ((typeof ICONS !== "undefined" && ICONS.caret) || "") + "</span>";
+  /* attachCopyMenu (userTurnEl) puts a 480ms long-press timer and a contextmenu
+     handler on .msg-user__bubble, and this button lives INSIDE that bubble. Without
+     these two lines a long-press on the button opens the Copy menu instead of
+     expanding, and a right-click does the same on desktop. */
+  btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+  btn.addEventListener("contextmenu", (e) => e.stopPropagation());
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = btn.getAttribute("aria-expanded") !== "true";
+    tclampSetOpen(o.key, open);
+    tclampPaintState(el, btn, plan, o, open);
+    /* Collapsing from far down the message would leave the reader staring at dead
+       space; bring the button back into view without yanking the page. */
+    if (!open) { try { btn.scrollIntoView({ block: "nearest" }); } catch (_) {} }
+  });
+  return btn;
+}
+
+/* ── Public entry ────────────────────────────────────────────────────────────
+   Deferred through an IntersectionObserver so an off-screen turn is never measured:
+   reading geometry inside a `content-visibility: auto` turn is exactly the work that
+   optimisation exists to skip. A visible element fires on the next frame, so a
+   message the user just sent clamps without a visible flash. */
+let _tclampIO = null;
+const _tclampPend = new WeakMap();
+function tclamp(el, opts) {
+  if (!el || tclampIsLive(el)) return;
+  if (typeof IntersectionObserver !== "function") { tclampSchedule(el, opts); return; }
+  if (!_tclampIO) {
+    _tclampIO = new IntersectionObserver((entries) => {
+      for (let i = 0; i < entries.length; i++) {
+        const e = entries[i];
+        if (!e.isIntersecting) continue;
+        _tclampIO.unobserve(e.target);
+        const o = _tclampPend.get(e.target);
+        _tclampPend.delete(e.target);
+        tclampSchedule(e.target, o);
+      }
+    }, { rootMargin: "300px 0px" });
+  }
+  _tclampPend.set(el, opts || {});
+  try { _tclampIO.observe(el); } catch (_) { tclampSchedule(el, opts); }
 }
 
 /** Post-process a rendered .md node: wrap code blocks with header + copy, highlight. */
@@ -4806,8 +5287,26 @@ function userTurnEl(msg) {
   if (msg.content) {
     const txt = document.createElement("div");
     txt.style.whiteSpace = "pre-wrap";
+    txt.className = "msg-user__text";
     txt.textContent = msg.content;
     bubble.appendChild(txt);
+    /* A pasted exam or a wall of dictated text should not push the answer off screen.
+       Only the USER's own message is ever collapsed - see the header on tclamp().
+       Deferred through an IntersectionObserver, so a 60-turn history measures the two
+       or three bubbles near the viewport instead of undoing `content-visibility: auto`.
+       The key carries a hash of the content, so expansion survives the node rebuilds
+       invalidateTurnCache() forces on every language switch, and an edited message
+       cannot inherit the old one's state. Position is part of the key too, because
+       user messages carry no id and no ts (sendMessage builds them as
+       { role, content, lang, tier }) - without it two identical questions in one
+       chat would expand together. */
+    const uChat = activeChat();
+    tclamp(txt, {
+      capLines: 12, lang,
+      key: tclampKey("chat", uChat && uChat.id,
+        (uChat && Array.isArray(uChat.messages)) ? uChat.messages.indexOf(msg) : 0,
+        msg.content || ""),
+    });
     typesetMath(txt);   // render the user's own $…$ / \(…\) / $$…$$ / \[…\] as beautiful math (like AI replies)
   }
   turn.appendChild(bubble);
@@ -6086,12 +6585,103 @@ function hexToRgb(hex) {
    fully selectable and searchable.
    ═══════════════════════════════════════════════════════════════════════════════════════ */
 
+/* ── WHAT jsPDF CAN ACTUALLY PUT ON A PAGE ────────────────────────────────────────────
+   pdfTypesetText draws with jsPDF's standard-14 fonts, and every one of them is written
+   into the file as
+
+       /Type /Font  /Subtype /Type1  /BaseFont /Helvetica  /Encoding /WinAnsiEncoding
+
+   — a SIMPLE font: one byte per glyph, cp1252 and nothing else, no shaping table, no bidi.
+   (Verified by dumping the font objects back out of a file this very function produced.
+   Nothing in this app ever calls addFileToVFS/addFont, so a Unicode face is never embedded
+   and never can be.)
+
+   Measured against the real jspdf@2.5.1 — the exact CDN build EXPORT_LIBS.pdf loads — the
+   moment ONE character of a string falls outside cp1252, jsPDF emits that WHOLE string at
+   two bytes per character, and a WinAnsi font reads every one of those bytes as its own
+   glyph. The damage is therefore never local:
+
+       "The word salam (سلام)"  paints as  "▯T▯h▯e▯ ▯w▯o▯r▯d▯ ▯s▯a▯l▯a▯m▯ ▯(þáþüþ³▯)"
+       "Client → Server"        paints as  "▯C▯l▯i▯e▯n▯t▯ !’▯ ▯S▯e▯r▯v▯e▯r"
+
+   one stray character destroys the English sitting on the same line.
+
+   Which is why this is an ALLOWLIST and not a list of scripts to block. A denylist is only
+   ever as complete as the day it was written: the code-point version missed Arabic
+   Extended-B, Thaana, Syriac and N'Ko; the Script_Extensions version that replaced it still
+   let through the bidi controls, seventeen further RTL scripts (Yezidi, Garay, Manichaean,
+   Sogdian, Old South Arabian, Imperial Aramaic, Phoenician, Nabataean, Palmyrene, Avestan,
+   Psalter and Inscriptional Pahlavi, Chorasmian, Elymaic, Hatran, Old Turkic, Old Hungarian,
+   Kharoshthi) and — deliberately — CJK, Cyrillic, Greek and emoji, which are wrecked in
+   exactly the same way. "Can jsPDF draw this?" is a closed, finite question with a provable
+   answer, and it cannot rot when Unicode adds a block. */
+
+/** Every character WinAnsiEncoding can draw: ASCII, the Latin-1 upper half, and the 27
+    defined cp1252 slots in 0x80–0x9F. \n \r \t are members because splitTextToSize eats
+    them as line breaks — they never become a glyph. */
+const PDF_WINANSI_SET = (() => {
+  const set = new Set(["\n", "\r", "\t"]);
+  for (let c = 0x20; c <= 0x7e; c++) set.add(String.fromCharCode(c));
+  for (let c = 0xa0; c <= 0xff; c++) set.add(String.fromCharCode(c));
+  for (const ch of "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ") set.add(ch);
+  return set;
+})();
+
+/** The few characters a real English or technical document does contain that cp1252 has no
+    slot for, folded to something WinAnsi can draw. Without this a single "→" in a 120-page
+    English spec would push the whole document onto the raster path — and today it does
+    something worse: it silently destroys the line that arrow sits on. Nothing in this table
+    is RTL. Arabic is never folded; Arabic is photographed. */
+const PDF_WINANSI_FOLD = {
+  "→": "->", "⟶": "->", "←": "<-", "⟵": "<-", "↔": "<->", "⇒": "=>", "⇐": "<=", "⇔": "<=>",
+  "↑": "^", "↓": "v", "↦": "|->", "⟹": "=>", "⟷": "<->",
+  "≤": "<=", "≥": ">=", "≠": "!=", "≈": "~", "≅": "~=", "≡": "==", "∝": "~", "∴": "therefore",
+  "−": "-", "∓": "-/+", "∗": "*", "∕": "/", "∣": "|", "∥": "||", "⋅": "·", "∘": "o",
+  "√": "sqrt", "∞": "infinity", "∑": "sum", "∏": "product", "∫": "integral", "∂": "d",
+  "∆": "delta", "∇": "nabla", "∈": "in", "∉": "not in", "⊂": "subset of", "⊆": "subset of",
+  "∪": "union", "∩": "intersect", "∀": "for all", "∃": "exists", "∧": "and", "∨": "or",
+  "⊕": "(+)", "⊗": "(x)", "≪": "<<", "≫": ">>",
+  "✓": "[x]", "✔": "[x]", "✅": "[x]", "☑": "[x]", "✗": "[ ]", "✘": "[ ]", "❌": "[ ]", "☐": "[ ]",
+  "★": "*", "☆": "*", "▪": "·", "▫": "·", "●": "·", "○": "·", "■": "·", "□": "·", "◆": "·",
+  "◇": "·", "◦": "·", "▸": ">", "►": ">", "▶": ">", "‣": "-", "⁃": "-", "⚠": "!", "ℹ": "i",
+  "‑": "-", "‒": "-", "―": "—", "′": "'", "″": "\"", "‴": "'''", "‵": "'",
+  "​": "", "‌": "", "‍": "", "⁠": "", "﻿": "",
+  " ": " ", " ": " ", " ": " ", " ": " ", " ": " ", " ": " ", "　": " ",
+};
+
+/** Fold what can be folded. `for…of` walks CODE POINTS, so an astral character (emoji,
+    Adlam, the Arabic Mathematical Alphabetic block) arrives as one unit and can never be
+    mistaken for two harmless-looking surrogate halves. Idempotent: what comes out is
+    already pure cp1252, so folding twice changes nothing. */
+function pdfWinAnsiFold(s) {
+  let out = "";
+  for (const ch of String(s == null ? "" : s)) {
+    if (PDF_WINANSI_SET.has(ch)) { out += ch; continue; }
+    const rep = PDF_WINANSI_FOLD[ch];
+    out += rep === undefined ? ch : rep;
+  }
+  return out;
+}
+
+/** Can jsPDF's standard fonts draw this string once it has been folded? */
+function pdfWinAnsiSafe(s) {
+  for (const ch of pdfWinAnsiFold(s)) if (!PDF_WINANSI_SET.has(ch)) return false;
+  return true;
+}
+
 /** Can this content be typeset as vector text with jsPDF's built-in fonts? */
-function pdfTextModeOk(root) {
+function pdfTextModeOk(root, meta) {
   if (!root) return false;
   const txt = root.textContent || "";
-  // Arabic (and any RTL script) needs shaping + bidi that jsPDF does not have. Raster it.
-  if (/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿֐-׿]/.test(txt)) return false;
+  // THE GATE THAT MUST NEVER LEAK — see the note above. Arabic that reaches pdfTypesetText
+  // comes out in isolated letterforms, in reversed order, through the wrong encoding:
+  // "قلب الكتابة", the single worst-looking failure this app can produce.
+  if (!pdfWinAnsiSafe(txt)) return false;
+  /* The cover is drawn from the model's ```firas-file``` metadata, which never passes through
+     `root` at all — an ENGLISH body carrying an ARABIC title walked straight into the vector
+     path and printed a reversed, unshaped cover. Any new field pdfTypesetText prints on the
+     cover has to be added to this line. */
+  if (meta && !pdfWinAnsiSafe(String(meta.title || "") + "\n" + String(meta.subtitle || "") + "\n" + String(meta.date || ""))) return false;
   // Rendered maths is a DOM tree of positioned spans; only a photograph reproduces it.
   if (root.querySelector(".katex, .katex-display")) return false;
   // Raw LaTeX that KaTeX has not run on yet would export as literal backslashes.
@@ -6104,6 +6694,17 @@ function pdfTextModeOk(root) {
 /** Typeset a rendered-markdown root into a jsPDF document as real text. Returns the doc. */
 function pdfTypesetText(JSPDF, root, meta) {
   const pdf = new JSPDF({ unit: "mm", format: "a4", compress: true });
+  /* Every string that reaches the page is folded to WinAnsi exactly once, HERE, instead of
+     at the ten call sites below — a call site that does not do the folding cannot forget to
+     do it. splitTextToSize is wrapped too: it MEASURES, and measuring the unfolded string
+     would wrap the folded one at the wrong column ("→" is one character wide, "->" is two).
+     Both overrides live on this one document object; the shared jsPDF prototype is never
+     touched, so the raster exporter and the Brain exporter are unaffected. */
+  const _pdfText = pdf.text.bind(pdf), _pdfSplit = pdf.splitTextToSize.bind(pdf);
+  pdf.text = function (txt, ...rest) {
+    return _pdfText(Array.isArray(txt) ? txt.map(pdfWinAnsiFold) : pdfWinAnsiFold(txt), ...rest);
+  };
+  pdf.splitTextToSize = function (txt, ...rest) { return _pdfSplit(pdfWinAnsiFold(txt), ...rest); };
   const PW = 210, PH = 297, M = 18;            // A4 with an 18mm margin
   const W = PW - M * 2;
   let y = M;
@@ -6320,7 +6921,7 @@ async function exportPdf(turn, lang, msg, opts) {
      Wrapped so a failure here can never cost the user their export: any throw drops through
      to the path that has always worked. */
   try {
-    if (!opts.forceRaster && pdfTextModeOk(mdNode)) {
+    if (!opts.forceRaster && pdfTextModeOk(mdNode, meta)) {
       await loadScripts(EXPORT_LIBS.pdf);
       const JSPDF = window.jspdf && window.jspdf.jsPDF;
       if (JSPDF) {
@@ -6591,6 +7192,353 @@ async function exportPdf(turn, lang, msg, opts) {
   return null;
 }
 
+/* ============================================================================
+   PRINT TO SAVE — the browser's own print engine, offered as an export format.
+
+   WHY THIS EXISTS ALONGSIDE exportPdf(), NOT INSTEAD OF IT.
+   The raster exporter photographs the document with html2canvas and stamps the
+   pictures into a jsPDF. That is why its Arabic is never broken — the shaping was
+   done by the page renderer before the photograph. But a photograph is not text:
+   it cannot be searched, selected, copied or read aloud, it is 20-200x larger, and
+   its pagination has to be re-implemented in JavaScript (the chunker, the atomic
+   zones, the carry-over) because the engine's own pagination was thrown away the
+   moment the page became a bitmap.
+
+   Printing gives all of that back. The SAME engine that shaped the Arabic on screen
+   lays it out on the page, so the result is correct by construction, it is real
+   selectable text, and the user gets the native save dialog.
+
+   What print CANNOT do, and why the raster path stays FIRST in the menu:
+     • it hands back no Blob, so warmPdfCache has nothing to warm and there is no
+       instant, dialog-free download;
+     • window.print() is missing or a silent no-op in several in-app WebViews (the
+       Instagram / Facebook / Snapchat browsers a lot of Arabic mobile traffic
+       arrives in);
+     • it cannot stamp per-page numbers — those come from the browser's own
+       header/footer checkbox instead of from us.
+   So print is ADDED directly beneath the raster PDF, and nothing above or below it
+   in that menu changes.
+   ========================================================================== */
+
+/* THE ONE AND ONLY PRINT SURFACE, and the reason it is a single shared id.
+   The stylesheet below hides the application with
+
+       body>*:not(#firasPrintRoot){display:none!important}
+
+   and that rule lives INSIDE the very element it spares. It is therefore only safe
+   while there can never be a SECOND print surface carrying the mirror-image rule:
+   two of them hide each other's root and the sheet prints completely blank — no
+   throw, no toast, no console error, just an empty saved PDF. One id, one surface,
+   evicted before another is built, makes that state unrepresentable. If a second
+   surface ever has to exist, it must reuse THIS id (nest inside this root), never
+   introduce another. Worst case, two elements sharing the id are both spared by the
+   selector, so the failure degrades to "two documents", never to "nothing". */
+const PRINT_ROOT_ID = "firasPrintRoot";
+
+const PRINT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8V3h10v5"/><path d="M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M7 14h10v7H7z"/></svg>';
+
+/* The A4 content column the stylesheet below produces: 210mm − 2×14mm at 96dpi.
+   The off-screen surface is laid out at exactly this width, so the one measurement
+   taken before printing (the over-wide-equation fit pass) is taken against the real
+   printed column. */
+const PRINT_CONTENT_PX = 688;
+
+/* The two rules every print surface needs, factored out because there are now two
+   exporters (chat/agent, and Brain) and the second must not fork them.
+
+   1 — UNWIND THE APP SHELL. styles.css sets body{overflow:hidden} and paints a
+       position:fixed grain layer in body::before, which would otherwise be
+       re-painted on every single sheet.
+   2 — HIDE THE ENTIRE APPLICATION. One rule covers every top-level node, including
+       ones added at runtime (toasts, overlays, #firasExportRoot, Brain's
+       #firasBrainPdfRoot). Specificity is (1,0,1) — :not(#id) carries the id's weight
+       — plus !important, so it outranks every era in styles.css, whose strongest
+       `display:…!important` rule is a (0,3,0) class selector.
+       This lives in a media query and NOT in a JS-toggled class on purpose: a media
+       query reverts by itself, so a phone where `afterprint` never fires can never be
+       left looking at a blank app.
+
+   `bg`/`ink` are parameters for ONE reason: the chat exporter forces the sheet white,
+   but Brain has ten paper identities and several are dark. Painting those on white
+   would print light ink on white paper — invisible. Passing "#fff"/"#000" reproduces
+   the chat exporter's previous output byte for byte. */
+function printShellCss(bg, ink) {
+  const R = "#" + PRINT_ROOT_ID;
+  return (
+    "html,body{height:auto!important;min-height:0!important;max-height:none!important;" +
+      "overflow:visible!important;position:static!important;background:" + bg + "!important;" +
+      "color:" + ink + "!important;color-scheme:only light!important}" +
+    "body::before,body::after{content:none!important;display:none!important}" +
+    "body>*:not(" + R + "){display:none!important}"
+  );
+}
+
+/** The stylesheet that turns the live app into a single printable document.
+    Every rule either undoes something the app or the RASTER exporter does that is
+    wrong on paper, or is a pagination rule the raster paginator re-implements in
+    JavaScript and the print engine does natively. Nothing here is decoration, and
+    every declaration lives inside @media print, so the running app is untouched. */
+function printSurfaceCss(th) {
+  const R = "#" + PRINT_ROOT_ID;
+  const dp = R + " ";
+  const acc = "#" + th.accent;
+  return (
+    "@media print{" +
+      /* THE BODY PAGE. 16mm/14mm is the measure exportCss was designed around — its
+         type is set in pt, so it only needs the column to be a sane 182mm. */
+      "@page{size:A4;margin:16mm 14mm}" +
+      /* THE COVER PAGE — a named page with no margin, so the deep gradient reaches
+         the edge of the sheet instead of sitting in a white picture frame. The cover
+         carries its own 26mm/22mm padding (.cover__pad), so losing the page margin
+         loses nothing. Named pages are Chrome 85+ / Safari 16.4+ / Firefox 110+; an
+         engine that ignores `page:` prints the cover on the default page — a dark
+         panel in a white frame. Degraded, never broken.
+         `@page firasdoc` restates the body margin so the pages AFTER the cover
+         cannot inherit the cover's margin:0 on engines that carry a named page
+         forward. */
+      "@page firascover{size:A4;margin:0}" +
+      "@page firasdoc{size:A4;margin:16mm 14mm}" +
+      /* 1 & 2 — unwind the shell, hide the app. Shared with the Brain exporter. */
+      printShellCss("#fff", "#000") +
+      /* 3 — PUT THE SURFACE BACK IN FLOW and undo the declarations that exist for the
+         RASTER path and are actively wrong on paper:
+           position:fixed;left:-10000px (inline)  → it would print off the sheet
+           width:794px      (exportCss)  → 794px does not fit a 182mm column, so the
+                                           engine shrink-to-fits the WHOLE document
+                                           and the 12.8pt body silently prints at
+                                           11.09pt (measured)
+           overflow:hidden  (exportCss)  → clips a multi-page document */
+      R + "{position:static!important;left:auto!important;top:auto!important;" +
+        "inset:auto!important;display:block!important;width:auto!important;max-width:none!important;" +
+        "min-width:0!important;height:auto!important;overflow:visible!important;" +
+        "margin:0!important;padding:0!important;background:#fff!important;z-index:auto!important;" +
+        "opacity:1!important;box-shadow:none!important;transform:none!important;filter:none!important}" +
+      /* 4 — COLOUR. print-color-adjust:exact overrides the print dialog's
+         "Background graphics" checkbox. Measured over CDP with printBackground
+         explicitly false — that flag IS the checkbox — on the same document:
+             with the property   accent fill 11541 px, cover 123584 px, tints 66185 px
+             without it            accent fill   145 px, cover     389 px, tints  3972 px
+         i.e. without it the table header prints white text on white paper and the
+         cover comes out blank; with it the sheet is identical to the checkbox-ON
+         render.
+         exportCss sets the property once on the root and it inherits, but it is
+         restated per element here because the ink-armor block at the end of exportCss
+         re-declares `filter` on `.doc *`.
+         NOTE what this does NOT do: rule 3 forces the root to #fff, exactly as
+         exportPdf's inline `background:#fff` already does, so the two dark
+         FILE_THEMES (`dark`, `midnight`) print their body on WHITE paper in this
+         exporter and in the raster one alike. That is a pre-existing exportCss
+         behaviour shared with the raster path, not something print introduces. */
+      dp + "*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;" +
+        "box-shadow:none!important;text-shadow:none!important}" +
+      /* 5 — THE COVER fills exactly one full-bleed sheet. 100vh is the printed page
+         box, so it is right under either margin regime. */
+      dp + ".cover{page:firascover!important;height:100vh!important;width:100%!important;" +
+        "max-height:none!important;min-height:0!important;margin:0!important;" +
+        "page-break-after:always;break-after:page;overflow:hidden!important}" +
+      dp + ".doc{page:firasdoc;padding-top:0!important}" +
+      /* 6 — PAGINATION: what the raster paginator has to solve in JavaScript. */
+      dp + "h1," + dp + "h2," + dp + "h3," + dp + "h4{break-after:avoid-page!important;" +
+        "page-break-after:avoid!important;break-inside:avoid!important}" +
+      dp + "p," + dp + "li{orphans:3;widows:3}" +
+      /* A long table must BREAK and repeat its header. exportCss says
+         page-break-inside:avoid on <table> because the raster path needs the table to
+         be one atomic photograph; on paper that is backwards — it pushes the whole
+         table onto a fresh page and prints the header exactly once. */
+      dp + "table{break-inside:auto!important;page-break-inside:auto!important}" +
+      dp + "thead{display:table-header-group!important}" +
+      dp + "tfoot{display:table-footer-group!important}" +
+      dp + "tr," + dp + "td," + dp + "th{break-inside:avoid!important;page-break-inside:avoid!important}" +
+      dp + "li," + dp + "blockquote," + dp + "pre," + dp + "figure," + dp + "img," +
+        dp + ".katex-display," + dp + ".tikz-figure," + dp + ".plot-figure{" +
+        "break-inside:avoid!important;page-break-inside:avoid!important}" +
+      /* 7 — THE PDF TEXT LAYER. KaTeX ships the raw LaTeX in
+         <span class="katex-mathml"> hidden with clip:rect(1px…). `clip` hides it from
+         the eye but NOT from a PDF's text layer, so an equation would otherwise
+         deposit its LaTeX source invisibly on top of the rendered maths and copying
+         out of the finished PDF would come back interleaved.
+         exportCss already emits this exact rule into this exact stylesheet (it needs
+         it because html2canvas ignores clip), so this is a RESTATEMENT, not a fix:
+         it is here so that removing the raster-motivated rule some day cannot quietly
+         corrupt the print text layer. Measured: the raw LaTeX probe does not appear
+         anywhere in the printed file's text. */
+      dp + ".katex-mathml{display:none!important}" +
+      /* 8 — LINKS. Deliberately NO `content:attr(href)` after anchors. The standard
+         print idiom prints the URL after the link text; a bare Latin URL injected
+         into an Arabic sentence is a Latin+neutral run inside an RTL paragraph, and
+         the surrounding brackets resolve at paragraph level — the "(ص 12)" → "12 ص)("
+         failure. The exporter would be manufacturing exactly the misordering it
+         exists to avoid. So: no URLs. */
+      dp + "a{text-decoration:underline!important}" +
+      dp + "a::after{content:none!important}" +
+      /* 9 — the closing ❖ ornament must never open a page of its own. */
+      dp + ".doc::after{break-before:avoid!important;page-break-before:avoid!important}" +
+      /* 10 — accent hairlines survive even where a background would not. */
+      dp + "hr{border-top-color:" + acc + "!important}" +
+    "}"
+  );
+}
+
+/* The live print surface's teardown state, or null. See PRINT_ROOT_ID for why there
+   is only ever one. It is also what keeps document.title honest: printArm reads the
+   title AFTER evicting the previous surface, so a second print inside the guard
+   window cannot capture the FIRST print's filename as its "previous" title and leave
+   the tab permanently misnamed. */
+let _activePrintState = null;
+
+/** Tear down a print surface and undo the document.title swap. Idempotent, and wired
+    to three independent signals because none of them is reliable everywhere —
+    `afterprint` does not fire on iOS Safari, which is exactly why the timer exists. */
+function printTeardown(st) {
+  if (!st || st.done) return;
+  st.done = true;
+  if (_activePrintState === st) _activePrintState = null;
+  try { window.removeEventListener("afterprint", st.onAfter); } catch (_) {}
+  try { if (st.mql && st.mql.removeEventListener) st.mql.removeEventListener("change", st.onMedia); } catch (_) {}
+  try { clearTimeout(st.guard); } catch (_) {}
+  try { if (st.root && st.root.parentNode) st.root.remove(); } catch (_) {}
+  try { if (st.prevTitle != null) document.title = st.prevTitle; } catch (_) {}
+}
+
+/** Remove any surface left over from a previous print — the tracked one first (so its
+    title is restored and its 90s timer cancelled), then, defensively, a stray element
+    whose state was already torn down. MUST be called before the new root is created:
+    it deletes by id, and once the new root is attached that id would match it. */
+function printEvict() {
+  if (_activePrintState) printTeardown(_activePrintState);
+  const stray = document.getElementById(PRINT_ROOT_ID);
+  if (stray) { try { stray.remove(); } catch (_) {} }
+}
+
+/** Attach the teardown signals and start the guard, immediately before print(). */
+function printArm(root) {
+  /* Precise, not by id: the state holds the OLD element, so this cannot touch the new
+     root that is already attached under the same id. */
+  if (_activePrintState) printTeardown(_activePrintState);
+  const st = { root, prevTitle: document.title, done: false, mql: null, guard: 0, onAfter: null, onMedia: null };
+  st.onAfter = () => printTeardown(st);
+  st.onMedia = (e) => { if (!e.matches) printTeardown(st); };
+  window.addEventListener("afterprint", st.onAfter);
+  try {
+    st.mql = window.matchMedia && window.matchMedia("print");
+    if (st.mql && st.mql.addEventListener) st.mql.addEventListener("change", st.onMedia);
+  } catch (_) {}
+  /* Last resort, for the engines where neither signal fires. The surface is off-screen
+     and inert, so a stale one costs nothing but memory; removing it too early, while a
+     phone is still rasterising the preview, costs the user a blank document. */
+  st.guard = setTimeout(() => printTeardown(st), 90000);
+  _activePrintState = st;
+  return st;
+}
+
+/** Content direction for an export: follows the CONTENT, not the UI language. Maths
+    (KaTeX) and code are full of Latin (e^x, dx, sin, ln…) and a maths-heavy ARABIC
+    document was once mis-detected as English, so both are stripped before counting.
+    This is the rule exportPdf applies inline; duplicated rather than refactored so
+    exportPdf — which owns the instant-download warm cache — stays byte-for-byte
+    unchanged. */
+function exportContentIsArabic(mdNode) {
+  const n = mdNode.cloneNode(true);
+  n.querySelectorAll(".katex, .katex-display, code, pre, .plot-figure, .tikz-figure, .plot-legend").forEach((x) => x.remove());
+  const txt = n.textContent || "";
+  const ar = (txt.match(/[؀-ۿ]/g) || []).length;
+  const la = (txt.match(/[A-Za-z]/g) || []).length;
+  return ar > 0 && (ar >= la || ar >= 12);
+}
+
+/** PRINT / SAVE AS PDF — build an isolated print surface in THIS document and hand the
+    page to the browser's own print engine.
+
+    IN-DOCUMENT, NOT AN IFRAME, and that is not a shortcut. buildExportRoot already
+    records why: "Rendering in-document (not an iframe) means the correct width is
+    used, the app's KaTeX stylesheet applies so math renders." An iframe would have to
+    re-fetch katex.min.css and the Google faces and then race them against print();
+    lose that race on a slow phone and the equations print as unstyled fallback glyphs
+    and the Arabic drops to a system face. Same document means both are already
+    resident and already measured. iOS is the second reason: print() on the TOP window
+    is the only broadly supported call; cross-frame printing is the flaky one. */
+async function exportPrint(turn, lang, msg) {
+  if (typeof window.print !== "function") {              // some in-app WebViews
+    showToast(t().printUnavailable);
+    return exportPdf(turn, lang, msg);
+  }
+  const { meta } = parseFileMeta(msg && msg.content);
+  const mdNode = mdNodeForTurn(turn);
+  if (!mdNode || !mdNode.textContent.trim()) { showToast(t().exportEmpty); return null; }
+
+  const isAr = exportContentIsArabic(mdNode);
+  ensureFileTitle(meta, mdNode);
+  const th = themeFor(meta);
+
+  /* Chrome, Edge and Safari take the Save-as-PDF default filename from document.title.
+     Without this every printed document would be called "Firas AI". exportPdf already
+     relies on the same mechanism at its own `document.title = fileTitle` line, so this
+     is not a new assumption — and the same sanitiser is used so both exporters name
+     the same document identically. */
+  const fileTitle = String(meta.filename || meta.title || (activeChat() && activeChat().title) || "Firas AI")
+    .replace(/\$+/g, "").replace(/\\[a-zA-Z]+/g, "").replace(/[{}\\^_]/g, "")
+    .replace(/[\\/:*?"<>|\n\r]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90) || "Firas AI";
+
+  showToast(t().printPreparing);
+  printEvict();                                  // before the new root exists — see printEvict
+  await tikzReady(4000);
+  const { cover, body } = exportBody(mdNode, lang, meta);
+
+  const root = document.createElement("div");
+  root.id = PRINT_ROOT_ID;
+  /* The shell is hard-coded html.dir="ltr" by applyShellLang and stays that way. RTL
+     rides on THIS attribute alone — exportCss already writes its RTL rules as
+     `scope + "[dir=rtl] "`, so they match #firasPrintRoot[dir=rtl] unchanged. */
+  root.setAttribute("dir", isAr ? "rtl" : "ltr");
+  root.setAttribute("aria-hidden", "true");
+  /* Off-screen but LAID OUT (not display:none): a display:none subtree has no
+     measurable widths and the equation fit-pass below needs real ones. The width is
+     the real printed column, so the measurement is the printed measurement. `left` is
+     a PHYSICAL offset on purpose — the shell is always dir=ltr, and an inline-logical
+     offset would land the surface on screen in an RTL context. */
+  root.style.cssText = "position:fixed;left:-10000px;top:0;width:" + PRINT_CONTENT_PX +
+    "px;background:#fff;z-index:-1;pointer-events:none;color-scheme:only light";
+  root.innerHTML = "<style>" + exportCss(th, isAr, "#" + PRINT_ROOT_ID, meta.template) +
+    printSurfaceCss(th) + "</style>" + cover + "<div class='doc'>" + body + "</div>";
+  numberListsExplicitly(root.querySelector(".doc"));
+  const titleEl = root.querySelector(".cover__title");
+  if (titleEl) {
+    let tt = titleEl.textContent;
+    if (!/\$|\\\(|\\\[/.test(tt)) tt = mathifyTitle(tt);
+    titleEl.textContent = tt;
+    typesetMath(titleEl);
+  }
+  document.body.appendChild(root);
+
+  await ensureExportFonts(isAr);          // forces the fetch even though the surface is off-screen
+  await tikzReady(4000);
+  await new Promise((r) => setTimeout(r, isAr ? 320 : 160));
+
+  /* Shrink any display equation wider than the printed column — the same treatment the
+     raster path applies, for the same reason, by font-size rather than transform so the
+     box height reflows and pagination stays honest. */
+  root.querySelectorAll(".katex-display>.katex").forEach((k) => {
+    const avail = (k.parentElement && k.parentElement.clientWidth) || PRINT_CONTENT_PX;
+    const w = k.scrollWidth;
+    if (w > avail + 2) {
+      const cs = parseFloat(getComputedStyle(k).fontSize) || 17;
+      k.style.fontSize = Math.max(9, cs * ((avail - 2) / w)).toFixed(1) + "px";
+    }
+  });
+
+  const st = printArm(root);
+  document.title = fileTitle;
+  try {
+    window.focus();
+    window.print();
+  } catch (_) {
+    printTeardown(st);
+    showToast(t().printUnavailable);
+    return exportPdf(turn, lang, msg);
+  }
+  return null;
+}
+
 /* ── PDF WARM CACHE ── pre-render a freshly-delivered file's PDF in the BACKGROUND so clicking
    "تحميل" hands the file over INSTANTLY (no "Exporting…" wait) — Agent docs especially are big.
    In-memory only (serializeMessages never persists _pdf/_pdfWarm); capped so blobs don't pile up. */
@@ -6717,6 +7665,48 @@ function coerceCell(v) {
   return v;
 }
 
+/** Does an exported spreadsheet read RIGHT-TO-LEFT? Decided by the exported
+    CONTENT, because the `lang` argument is the language of the user's QUESTION
+    (replyLang), not of the answer, and it is missing entirely on chats rebuilt from
+    a share link. Two rules, no magic constants:
+      • only LETTERS vote. Arabic-Indic digits (٠-٩) and Arabic punctuation (، ؛ ؟ ـ)
+        live in the Arabic block but say nothing about language — counting them is what
+        mirrored English sheets that happened to use Arabic numerals.
+      • the HEADER ROW decides when it carries Arabic, because it is the row that reads
+        backwards to an Arabic reader. Arabic column labels keep the sheet RTL even when
+        the data cells are mostly Latin (SKUs, DOIs, paper titles, LaTeX). Only when the
+        header is not Arabic does the table as a whole vote.
+    Returns false whenever there is no Arabic letter at all, so English never flips. */
+function exportTablesAreArabic(tables, fallbackText) {
+  let arRe, laRe;
+  // Built with new RegExp rather than as a literal on purpose: a /\p{…}/u LITERAL is a
+  // PARSE-time construct, so on an engine without ES2018 property escapes it would take
+  // the whole of app.js down. Built this way it throws here instead, and the gate quietly
+  // degrades to exactly today's behaviour (`lang === "ar"` alone).
+  try {
+    arRe = new RegExp("(?=\\p{Script=Arabic})\\p{L}", "gu");
+    laRe = new RegExp("(?=\\p{Script=Latin})\\p{L}", "gu");
+  } catch (_) { return false; }
+  const arOf = (s) => (String(s).match(arRe) || []).length;
+  const laOf = (s) => (String(s).match(laRe) || []).length;
+  let head = "", all = "";
+  if (tables && tables.length) {
+    tables.forEach((tb) => {
+      const rows = (tb && tb.rows) || [];
+      if (rows[0]) head += rows[0].join(" ") + "\n";
+      rows.forEach((r) => { all += r.join(" ") + "\n"; });
+    });
+  } else {
+    all = String(fallbackText == null ? "" : fallbackText);
+  }
+  const ar = arOf(all), la = laOf(all);
+  if (!ar) return false;                     // no Arabic letter anywhere → never flip
+  if (!la) return true;                      // Arabic only → right-to-left
+  const hAr = arOf(head), hLa = laOf(head);
+  if (hAr && hAr >= hLa) return true;        // Arabic column labels → the sheet is Arabic
+  return ar >= la;                           // otherwise the whole table must be Arabic
+}
+
 async function exportExcel(turn, lang, msg) {
   const { meta } = parseFileMeta(msg && msg.content);
   const mdNode = mdNodeForTurn(turn);
@@ -6736,7 +7726,14 @@ async function exportExcel(turn, lang, msg) {
     const headFill = "FF" + th.accent.toUpperCase();
     const zebraFill = "FF" + th.zebra.toUpperCase();
     const borderColor = "FFD8D6CB";
-    const isAr = lang === "ar";
+    const tables = extractTablesNamed(mdNode);
+    // Sheet direction follows the exported CONTENT, not just `lang`. `lang` is the
+    // language of the user's QUESTION, it is absent on chats restored from a share
+    // link, and Firas Brain answers an English question about Arabic documents in
+    // Arabic — so Arabic tables kept opening left-to-right with column A on the wrong
+    // side. `lang === "ar"` stays as an OR, so this can only ADD right-to-left, never
+    // remove it: a sheet with no Arabic letters comes out byte-identical to before.
+    const isAr = lang === "ar" || exportTablesAreArabic(tables, mdNode.textContent);
     const thinB = { style: "thin", color: { rgb: borderColor } };
     const border = { top: thinB, bottom: thinB, left: thinB, right: thinB };
 
@@ -6763,7 +7760,6 @@ async function exportExcel(turn, lang, msg) {
     // Arabic workbooks open in RIGHT-TO-LEFT sheet view (column A on the right),
     // matching how Arabic Excel/Google-Sheets users read tables.
     if (isAr) wb.Workbook = { Views: [{ RTL: true }] };
-    const tables = extractTablesNamed(mdNode);
     const used = {};
     const uniqName = (base) => {
       let name = (base || "Sheet").replace(/[\\/?*\[\]:]/g, " ").trim().slice(0, 28) || "Sheet";
@@ -7427,6 +8423,34 @@ async function exportPpt(turn, lang, msg) {
     const pptx = new Ctor();
     try { pptx.defineLayout({ name: "FIRAS16x9", width: 10, height: 5.625 }); pptx.layout = "FIRAS16x9"; } catch (_) {}
     const rtl = lang === "ar";
+    try { pptx.rtlMode = rtl; } catch (_) {}
+    /* Bidi guard for the ONLY two places PptxGenJS 3.12.0 exposes no rtl="1" lever:
+       speaker notes (makeXmlNotesSlide is a fixed LTR template with no <a:pPr>) and
+       chart text (every <a:pPr> inside chart1.xml is emitted bare). U+202B RLE .. U+202C
+       PDF forces that run's base direction to RTL so embedded Latin, digits, parentheses
+       and the sentence-final period land on the correct side. Two gates, both must pass:
+         1. !rtl  -> the argument comes back verbatim, so English decks stay byte-identical
+            even when their text already contains bidi isolates.
+         2. per LINE, UAX#9 P2/P3 "first strong character": a line whose first strong
+            letter is Latin keeps its LTR base direction even inside an Arabic deck, so a
+            chart label like "Q1 2024" is never flipped to "2024 Q1".
+       Per line, because bidi rule X8 ends an embedding at every paragraph separator.
+       Re-wrapping our own wrapper is idempotent, and any isolate the author put inside
+       the string survives. Written with \uXXXX escapes and plain code-point ranges, so
+       no invisible control character and no \p{...} escape enters app.js. */
+    const bidiFirstStrong = /([א-״ؠ-يٮ-ٯٱ-ەۥ-ۦۮ-ۯۺ-ۿݐ-ݿࢠ-ࣿיִ-﷿ﹰ-﻿])|([A-Za-zÀ-ʯͰ-ӿḀ-῿])/;
+    const bidiRtl = (v) => {
+      const s0 = String(v == null ? "" : v);
+      if (!rtl || !s0) return s0;
+      const lines = s0.split(/\r?\n/);
+      const out = lines.map((ln) => {
+        let s2 = ln;
+        if (s2.charCodeAt(0) === 0x202B && s2.charCodeAt(s2.length - 1) === 0x202C) s2 = s2.slice(1, -1);
+        const m = bidiFirstStrong.exec(s2);
+        return m && m[1] ? "‫" + s2 + "‬" : ln;
+      });
+      return out.some((x, i) => x !== lines[i]) ? out.join("\n") : s0;
+    };
     const al = rtl ? "right" : "left";
     const titleFace = rtl ? "Cairo" : "Montserrat";
     const titleText = String(meta.title || (activeChat() && activeChat().title) || "Firas AI").slice(0, 100);
@@ -7476,12 +8500,12 @@ async function exportPpt(turn, lang, msg) {
     const addChart = (sl, chart, cx2, cy2, cw, chh) => {
       try {
         const ch = normalizeDeckChart(chart); if (!ch) return;
-        const data = ch.series.map((se) => ({ name: se.name || ch.title || "Series", labels: ch.labels, values: se.data }));
+        const data = ch.series.map((se) => ({ name: bidiRtl(se.name || ch.title || "Series"), labels: ch.labels.map((l) => bidiRtl(l)), values: se.data }));
         const type = ch.type === "line" ? pptx.ChartType.line : ch.type === "doughnut" ? pptx.ChartType.doughnut : pptx.ChartType.bar;
         sl.addChart(type, data, {
           x: cx2, y: cy2, w: cw, h: chh,
           chartColors: ch.type === "doughnut" ? PALX.slice(0, ch.labels.length) : PALX.slice(0, ch.series.length),
-          showTitle: !!ch.title, title: ch.title || "", titleFontSize: 13, titleColor: deep,
+          showTitle: !!ch.title, title: bidiRtl(ch.title || ""), titleFontSize: 13, titleColor: deep,
           showLegend: ch.type === "doughnut" || ch.series.length > 1, legendPos: "b", legendFontSize: 9,
           catAxisLabelFontSize: 9, valAxisLabelFontSize: 9, dataLabelFontSize: 9,
           showValue: ch.type !== "line", barDir: "col", barGapWidthPct: 40, lineSize: 2.5, lineDataSymbolSize: 5, holeSize: 55,
@@ -7517,10 +8541,10 @@ async function exportPpt(turn, lang, msg) {
           const px = tx0 + i * (tileW + gap);
           sl.addShape(S.roundRect, { x: px, y: ty, w: tileW, h: tileH, fill: { color: SOFT }, line: { color: accent, width: 0.75 }, rectRadius: 0.1 });
           sl.addShape(S.rect, { x: px, y: ty, w: tileW, h: 0.09, fill: { color: accent } });
-          sl.addText(String(x.value).slice(0, 10), { x: px, y: ty + 0.35, w: tileW, h: 1, fontSize: 42, bold: true, color: accent, align: "center", fontFace: F.num });
+          sl.addText(String(x.value).slice(0, 10), { x: px, y: ty + 0.35, w: tileW, h: 1, fontSize: 42, bold: true, color: accent, align: "center", rtlMode: rtl, fontFace: F.num });
           sl.addText(String(x.label).slice(0, 60), { x: px + 0.12, y: ty + 1.4, w: tileW - 0.24, h: 0.75, fontSize: 12.5, color: INK, align: "center", rtlMode: rtl, valign: "top", fontFace: F.body });
         });
-        if (s.bullets.length) sl.addText(s.bullets.slice(0, 2).map((b) => ({ text: b, options: { bullet: { code: "2022", indent: 14 }, breakLine: true } })), { x: 0.8, y: 4.55, w: W - 1.6, h: 0.6, fontSize: 12, color: MUT, align: al, rtlMode: rtl, fontFace: F.body });
+        if (s.bullets.length) sl.addText(s.bullets.slice(0, 2).map((b) => ({ text: b, options: { bullet: { code: "2022", indent: 14 }, breakLine: true, rtlMode: rtl } })), { x: 0.8, y: 4.55, w: W - 1.6, h: 0.6, fontSize: 12, color: MUT, align: al, rtlMode: rtl, fontFace: F.body });
         footer(sl, idx);
       },
       comparison(sl, s, idx) {
@@ -7532,7 +8556,7 @@ async function exportPpt(turn, lang, msg) {
           sl.addShape(S.roundRect, { x: px, y: cy, w: colW, h: colH, fill: { color: "FFFFFF" }, line: { color: "E6E4DA", width: 1 }, rectRadius: 0.08 });
           sl.addShape(S.roundRect, { x: px, y: cy, w: colW, h: 0.62, fill: { color: i === 0 ? accent : deep }, rectRadius: 0.08 });
           sl.addText(String(c.heading).slice(0, 40), { x: px + 0.1, y: cy + 0.08, w: colW - 0.2, h: 0.5, fontSize: 15, bold: true, color: "FFFFFF", align: "center", rtlMode: rtl, fontFace: F.head });
-          if (c.points.length) sl.addText(c.points.map((p) => ({ text: p, options: { bullet: { code: "2022", indent: 13 }, breakLine: true, paraSpaceAfter: 5 } })), { x: px + 0.22, y: cy + 0.82, w: colW - 0.44, h: colH - 1.0, fontSize: 12.5, color: INK, align: al, rtlMode: rtl, valign: "top", lineSpacingMultiple: 1.12, fontFace: F.body });
+          if (c.points.length) sl.addText(c.points.map((p) => ({ text: p, options: { bullet: { code: "2022", indent: 13 }, breakLine: true, paraSpaceAfter: 5, rtlMode: rtl } })), { x: px + 0.22, y: cy + 0.82, w: colW - 0.44, h: colH - 1.0, fontSize: 12.5, color: INK, align: al, rtlMode: rtl, valign: "top", lineSpacingMultiple: 1.12, fontFace: F.body });
         });
         footer(sl, idx);
       },
@@ -7584,7 +8608,7 @@ async function exportPpt(turn, lang, msg) {
         const textW = (hasImg || hasChart) ? 5.15 : (W - 1.2);
         const textX = rtl ? (hasImg ? W - 0.6 - textW : 0.6) : 0.6;
         header(sl, s.title, textW, textX);
-        if (s.bullets.length) sl.addText(s.bullets.map((b) => ({ text: b, options: { bullet: { code: "2022", indent: 16 }, breakLine: true, paraSpaceAfter: 6 } })), {
+        if (s.bullets.length) sl.addText(s.bullets.map((b) => ({ text: b, options: { bullet: { code: "2022", indent: 16 }, breakLine: true, paraSpaceAfter: 6, rtlMode: rtl } })), {
           x: textX, y: 1.55, w: textW, h: H - 2.15, fontSize: s.bullets.length > 6 ? 14 : 16, color: INK, lineSpacingMultiple: 1.16, align: al, rtlMode: rtl, valign: "top", fontFace: F.body,
         });
         if (hasChart) addChart(sl, s.chart, rtl ? 0.45 : W - 0.45 - 4.15, 1.45, 4.15, 3.6);
@@ -7605,7 +8629,7 @@ async function exportPpt(turn, lang, msg) {
       const sl = pptx.addSlide();
       if (lay !== "section" && lay !== "hero" && lay !== "quote" && lay !== "imagefull") sl.background = { color: "FFFFFF" };
       (R[lay] || R.content)(sl, s, idx, dataImg);
-      if (s.notes) sl.addNotes(s.notes);
+      if (s.notes) sl.addNotes(bidiRtl(s.notes));
     });
     // ---- Closing slide ----
     const end = pptx.addSlide();
@@ -7661,6 +8685,10 @@ function exportControlEl(msg, index) {
 
   const items = [
     { icon: ICONS.filePdf, label: t().downloadPdf, run: (turn) => exportPdf(turn, msg.lang, msg) },
+    // Real selectable text, correct Arabic by construction, native save dialog — see
+    // exportPrint. Kept BELOW the raster PDF, which is the only path that yields an
+    // instant file and the only one that works in an in-app WebView.
+    { icon: PRINT_ICON, label: t().downloadPrint, run: (turn) => exportPrint(turn, msg.lang, msg) },
     { icon: ICONS.fileDoc, label: t().downloadWord, run: (turn) => exportWord(turn, msg.lang, msg) },
     { icon: ICONS.fileXls, label: t().downloadExcel, run: (turn) => exportExcel(turn, msg.lang, msg) },
     { icon: ICONS.filePpt, label: t().downloadPpt, run: (turn) => exportPpt(turn, msg.lang, msg) },
@@ -10312,6 +11340,25 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       const ov = irabOverride(lastUForIrab.content);
       if (ov) requestMessages = [requestMessages[0], { role: "system", content: ov }, ...requestMessages.slice(1)];
     }
+    /* THE OTHER HALF OF THE ROUTER. detectCodeRequest decided this turn is NOT a build, so the
+       coder prompt was not used — but it only knows the phrasings someone remembered to add, and
+       when it is wrong the model builds a whole site into the chat with no preview and no
+       download. promoteAnswerToCode rescues that afterwards, but only if the reply happens to be
+       one clean block. So tell the model the shape up front: it is the only participant here that
+       actually understands the request, and this is the one line that lets it say so.
+       The narrow wording matters more than the permission — "a complete file the user asked to
+       have BUILT" excludes the far more common case of a snippet inside an explanation, which if
+       promoted would replace the explanation with a code card. */
+    if (!codeReq && !fileFmt && requestMessages[0]) {
+      requestMessages = [requestMessages[0], { role: "system", content:
+        "OUTPUT SHAPE — read this only if it applies; otherwise answer normally.\n" +
+        "If what you are about to produce is a COMPLETE, self-contained, runnable file that the user asked you to BUILD (a web page, a script, a program), then reply with NOTHING but one fenced block, the file's full source inside it, and a language tag on the fence:\n" +
+        "```html\n<!DOCTYPE html>\n…the entire file…\n</html>\n```\n" +
+        "No preamble, no explanation after it, no second block — the app turns that into a live preview with a download button, and any text outside the block is lost.\n" +
+        "Do NOT use this shape for anything else. A snippet quoted inside an explanation, a fragment, a comparison of two approaches, or an answer that is mostly prose must stay a normal answer with normal code blocks.\n" +
+        "بالعربي: إذا كنت تبني ملفاً كاملاً وجاهزاً للتشغيل طلبه المستخدم، اكتب الرد كله ككتلة كود واحدة فقط بدون أي كلام قبلها أو بعدها. أما الشرح أو المقتطفات القصيرة فتبقى إجابة عادية.",
+      }, ...requestMessages.slice(1)];
+    }
     // VISION turn. Two paths:
     //  • CREATE/TRANSFORM (make harder questions, solve, rewrite, summarize…) → 2-STAGE:
     //    the small vision model EXTRACTS the whole image, then the STRONG text model GENERATES
@@ -10614,7 +11661,14 @@ function finalizeAi(aiMsg, chat) {
   if (!aiNode) return;
 
   const imgMeta = parseImageMeta(aiMsg.content);
-  const codeMeta = !imgMeta ? parseCodeMeta(aiMsg.content) : null;
+  let codeMeta = !imgMeta ? parseCodeMeta(aiMsg.content) : null;
+  /* The router decides "is this code?" from the REQUEST, before the model has seen it. When it
+     guesses wrong the build still happens, it just lands as a fenced block in the chat with no
+     preview and no download. Ask the ANSWER instead — see promoteAnswerToCode. */
+  if (!imgMeta && !codeMeta) {
+    const promoted = promoteAnswerToCode(aiMsg.content, aiMsg.lang || state.lang);
+    if (promoted) { aiMsg.content = promoted; codeMeta = parseCodeMeta(aiMsg.content); }
+  }
   const fileFmt = !imgMeta && !codeMeta && aiMsg.content && aiMsg.content.trim() ? isFileStreamReply(aiMsg, chat) : null;
   const mdEl = aiNode.querySelector(".msg-ai__body .md");
   if (mdEl) {
@@ -11277,6 +12331,9 @@ function unlockBodyScroll() { if (_annScrollLock > 0 && --_annScrollLock === 0) 
 const ANN_SVG_X = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 const ANN_SVG_EDIT = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 const ANN_SVG_TRASH = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+// The two-sheets copy glyph, drawn at 15px because it sits beside a message bubble rather than
+// in a toolbar. Same stroke weight as the icons above so the set stays one family.
+const ANN_SVG_COPY = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 /** Admin reference library (RAG): upload books → the model silently grounds answers in them. */
 async function openKbManager() {
   if (isGuest()) { openSignUpPrompt("kb"); return; }   // members-only
@@ -11781,15 +12838,18 @@ function subCardHtml(ar) {
      for everyone else, not to sell anything.
      The admin code panel below is untouched — it is how existing records are managed, and
      it only ever renders for an admin. */
+  /* THE DAILY METERS ARE GONE TOO. They were kept as "the honest way to show what is left
+     today" — but there is no longer anything left to show: every plan is unmetered, so a meter
+     could only ever read full, and a progress bar that never moves invites the exact question
+     it was there to answer. What replaces it is the one fact that matters: nothing is counted.
+     subMetersHtml is left defined; the admin panel still reports usage. */
   const u = state.user || {};
-  const sub = u.sub || { plan: "free", limits: { ai: 2000, code: 800, agent: 400, brain: 900 }, used: { ai: 0, code: 0, agent: 0, brain: 0 } };
   return '<section class="set-card set-sub">' +
-    '<div class="set-card-h"><span class="set-ico">✦</span>' + (ar ? "استخدامك اليوم" : "Today's usage") + '</div>' +
+    '<div class="set-card-h"><span class="set-ico">✦</span>' + (ar ? "الاشتراك" : "Plan") + '</div>' +
     '<div class="sub-head"><span class="sub-chip sub-chip--free">✦ ' + (ar ? "مجاني بالكامل" : "Free — everything included") + '</span></div>' +
     '<p class="sub-exp">' + (ar
-      ? "كل مزايا فِراس متاحة للجميع بلا اشتراك. الأرقام أدناه سقفٌ يومي عالٍ يحمي الخدمة من الإفراط، لا خطة بيع."
-      : "Every Firas feature is available to everyone, with no subscription. The numbers below are a high daily ceiling that protects the service from abuse — not a plan.") + '</p>' +
-    '<div class="sub-meters-host">' + subMetersHtml(sub, ar) + '</div>' +
+      ? "كل مزايا فِراس متاحة للجميع بلا اشتراك ولا كود شراء — وبلا حدّ يومي على أي شيء."
+      : "Every Firas feature is available to everyone — no subscription, no purchase code, and no daily limit on anything.") + '</p>' +
     (u.admin ? '<button type="button" class="set-save set-secondary sub-admin-btn" style="margin-top:8px">' + (ar ? "إدارة أكواد التفعيل" : "Manage redeem codes") + '</button>' : '') +
     '</section>';
 }
@@ -20384,7 +21444,8 @@ function brainT() {
     harvesting: (d, t) => "يمسح المستند… " + d + "/" + t,
     copy: "نسخ الكل", copyRefs: "نسخ مع الصفحات", copied: "تم النسخ", copyFail: "تعذّر النسخ",
     toPdf: "تحويل إلى PDF", pdfWorking: "يجهّز الـ PDF…", pdfDone: "تم تنزيل الـ PDF", pdfFail: "تعذّر إنشاء الـ PDF",
-    pdfTheme: "هوية المستند",
+    pdfEmpty: "ما في محتوى لتصديره — الجواب فارغ أو تعذّر استخراجه. أعد إرسال الطلب.",
+    pdfTheme: "هوية المستند", toPrint: "طباعة / حفظ",
     stop: "إيقاف", stopped: "\n\n_(أُوقف الشرح)_",
     thinking: "يبحث في مصادرك…", searching: "يوسّع البحث بلغتين…", engineFail: "تعذّر الوصول للمحرّك. حاول مرة أخرى.",
     gone: "المقطع لم يعد متاحًا (حُذف المصدر).",
@@ -20410,7 +21471,8 @@ function brainT() {
     harvesting: (d, t) => "Sweeping the document… " + d + "/" + t,
     copy: "Copy all", copyRefs: "Copy with pages", copied: "Copied", copyFail: "Couldn't copy",
     toPdf: "Convert to PDF", pdfWorking: "Building the PDF…", pdfDone: "PDF downloaded", pdfFail: "Couldn't build the PDF",
-    pdfTheme: "Document identity",
+    pdfEmpty: "Nothing to export — the answer is empty or the extraction failed. Send the request again.",
+    pdfTheme: "Document identity", toPrint: "Print / Save",
     stop: "Stop", stopped: "\n\n_(stopped)_",
     thinking: "Searching your sources…", searching: "Widening the search across languages…", engineFail: "Couldn't reach the engine. Please try again.",
     gone: "This passage is no longer available (the source was deleted).",
@@ -21436,7 +22498,14 @@ const BRAIN_HARVEST_BATCH_CHARS = 18000;   // per model call; large enough to ha
    staring at a spinner. 10 in flight turns the same sweep into 4 rounds.
    Ceiling check, so this stays safe rather than merely fast: /api/chat allows 120/min, and
    10 concurrent calls at ~6–10s each is 60–100/min — under the limit with real margin. */
-const BRAIN_HARVEST_CONCURRENCY = 10;      // batches in flight; /api/chat allows 120/min
+/* Batches in flight. Lowered from 10: each call now also carries an overlap window, so ten at
+   once was pushing hard enough at the 120/min member limit (and straight past the 30/min guest
+   limit) that a third of a real 40-batch sweep came back 429. Six still finishes a textbook in
+   a couple of minutes, and the retries below cover what still slips. */
+const BRAIN_HARVEST_CONCURRENCY = 6;
+/* Attempts PER BATCH beyond the first. A 429 or a timeout is transient by definition, and the
+   cost of not retrying is a hole in the extraction that the user cannot see or fix. */
+const BRAIN_HARVEST_RETRIES = 3;
 const BRAIN_HARVEST_MAX_BATCHES = 54;      // hard stop, so one request can never run away
 /* Every batch after the first RE-OPENS with the tail of the previous one, so every seam is
    read twice — once from each side. An item that begins near the end of batch K and finishes
@@ -22157,13 +23226,44 @@ async function brainHarvest(q, docIds, lang, onText, signal) {
       else if (flows) body += " " + (ar ? "⟨ص " : "⟨p. ") + h.page + "⟩ " + h.text;
       else body += "\n\n(" + (ar ? "ص " : "p. ") + h.page + " — " + h.title + ")\n" + h.text;
     }
-    try {
+    /* ── A FAILED BATCH IS RETRIED, NOT WRITTEN OFF ──────────────────────────
+       This used to catch once and push the index onto `failed` forever, so a single transient
+       error deleted that batch's pages from the answer permanently. Reported from the live
+       site: "12 of 40 batches failed" — a third of the book missing, and the export that
+       followed was nearly empty because there was almost nothing to lay out.
+
+       Nothing about those 12 was special. Ten batches run concurrently with no pacing, each
+       call now carries an overlap window on top of 18 000 chars, and /api/chat rate-limits at
+       120/min for a member and 30/min for a guest — so the failures are overwhelmingly 429s
+       and timeouts, i.e. exactly the class of error that succeeds on a second attempt.
+
+       Up to BRAIN_HARVEST_RETRIES attempts, backing off longer each time, and MUCH longer for
+       a 429 since that one is explicitly "you are going too fast". Only a batch that fails
+       every attempt is reported to the user. */
+    const attempt = async () => {
       const piece = await callAgentText(
         [{ role: "system", content: sys }, { role: "user", content: body }],
         "pro", signal || null
       );
-      results[i] = String(piece || "").trim();
-    } catch (e) {
+      return String(piece || "").trim();
+    };
+    let lastErr = null;
+    for (let tryNo = 0; tryNo <= BRAIN_HARVEST_RETRIES; tryNo++) {
+      if (signal && signal.aborted) break;
+      try { results[i] = await attempt(); lastErr = null; break; }
+      catch (e) {
+        lastErr = e;
+        if (signal && signal.aborted) break;
+        if (tryNo === BRAIN_HARVEST_RETRIES) break;
+        // A 429 means slow down, so wait out the window rather than hammering it again.
+        const rateLimited = /\b429\b/.test(String((e && e.message) || ""));
+        const wait = rateLimited
+          ? 8000 * (tryNo + 1) + Math.random() * 4000
+          : 1200 * Math.pow(2, tryNo) + Math.random() * 800;
+        await new Promise((r) => setTimeout(r, wait));
+      }
+    }
+    if (lastErr) {
       results[i] = "";                            // one bad batch must not lose the rest
       // …but it must not vanish either. Swallowing this silently deletes that batch's pages
       // from an answer whose entire promise is "EVERY definition in the book", and the output
@@ -22732,8 +23832,19 @@ function brainRenderThread(chat, opts) {
   ask.placeholder = brainState.docs.length ? L.ask : L.askNoSrc;
   ask.disabled = false;
 
-  // Preserve the scroll position while streaming unless the user is already at the bottom.
+  /* ── WHY THE VIEW JUMPED TO THE TOP MID-SWEEP ────────────────────────────────
+     This function rebuilds the WHOLE thread: `thread.innerHTML = ""` and then re-appends every
+     turn. Wiping the children sets scrollTop to 0, and the only thing that used to put it back
+     was `if (atBottom || o.pending)` — which sends you to the BOTTOM. So a reader who had
+     scrolled up to look at an earlier definition, on any render where neither condition held,
+     was thrown to the very top of the thread and lost their place. During a long extraction
+     that is every few seconds.
+
+     Remembering the offset and restoring it is what "stay where I am" actually means. Following
+     to the bottom still wins when you were already there, or while a pending notice is being
+     shown — that is the live-tail behaviour and it is wanted. */
   const atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
+  const keepTop = thread.scrollTop;
   _brainStreamMd = null;
   thread.innerHTML = "";
   const msgs = (chat && Array.isArray(chat.messages)) ? chat.messages : [];
@@ -22753,10 +23864,50 @@ function brainRenderThread(chat, opts) {
     if (m.role === "user") {
       const b = document.createElement("div");
       b.className = "msg-user__bubble";
-      b.dir = (m.lang || detectLang(m.content)) === "ar" ? "rtl" : "ltr";
+      const bLang = (m.lang || detectLang(m.content)) === "ar" ? "ar" : "en";
+      b.dir = bLang === "ar" ? "rtl" : "ltr";
       b.style.textAlign = "start";
-      b.textContent = m.content;
+      /* The question text moves into a child of the bubble instead of being the
+         bubble's own text node, so the "عرض المزيد" control can sit INSIDE the bubble,
+         under the question, rather than loose in the turn next to the copy button.
+         Nothing in the CSS targets that text node directly - white-space, direction,
+         font and colour all inherit - so the rendering is byte-identical when nothing
+         is clamped. */
+      const bTxt = document.createElement("div");
+      bTxt.className = "msg-user__text";
+      bTxt.textContent = m.content;
+      b.appendChild(bTxt);
       turn.appendChild(b);
+      /* A pasted paragraph asked as a question can be longer than the answer. This is
+         the surface that proves the state design: brainRenderThread rebuilds the WHOLE
+         thread with `thread.innerHTML = ""` every few seconds during an extraction, so
+         nothing kept in the DOM survives. TCLAMP_OPEN is a module-level Map keyed on a
+         hash of the question, which does. */
+      tclamp(bTxt, {
+        capLines: 12, lang: bLang,
+        key: tclampKey("brain", chat && chat.id, msgs.indexOf(m), m.content || ""),
+      });
+      /* COPY YOUR OWN QUESTION BACK. The answer has had a copy bar all along and the question
+         had nothing — but in Brain the question is often the laboriously typed part ("استخرج كل
+         التعاريف مع الصفحات من الفصل الثالث"), and the way people re-run a sweep is by copying
+         it, editing a word and sending it again. Selecting it by hand on a phone is miserable.
+         Kept out of the flow until the turn is hovered or focused, so it never competes with
+         the answer for attention — the styles do that half. */
+      const acts = document.createElement("div");
+      acts.className = "fb-umsg-acts";
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "fb-umsg-copy";
+      copyBtn.title = L.copy;
+      copyBtn.setAttribute("aria-label", L.copy);
+      copyBtn.innerHTML = ANN_SVG_COPY;
+      copyBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const done = await copyText(m.content || "");
+        showToast(done ? L.copied : L.copyFail);
+      });
+      acts.appendChild(copyBtn);
+      turn.appendChild(acts);
     } else {
       const body = document.createElement("div");
       body.className = "msg-ai__body";
@@ -22799,6 +23950,7 @@ function brainRenderThread(chat, opts) {
     thread.appendChild(p);
   }
   if (atBottom || o.pending) thread.scrollTop = thread.scrollHeight;
+  else thread.scrollTop = keepTop;      // stay exactly where the reader was
 }
 
 /* Give every block its OWN resolved direction. `unicode-bidi: plaintext` (in the CSS layer)
@@ -23824,6 +24976,26 @@ async function brainExportPdf(msg, titleHint, themeId) {
   const L = brainTL(msg.lang);
   const ar = (msg.lang || "ar") === "ar";
   const T = themeId ? brainPdfTheme(themeId) : brainPdfSavedTheme();
+
+  /* ── NEVER HAND BACK A BLANK FILE ────────────────────────────────────────────
+     Reported from the live site: "when I export from Firas Brain, blank pages." The export was
+     working exactly as written — the ANSWER was nearly empty, because a third of the sweep's
+     batches had failed and their pages were dropped. It still produced a 26 KB, one-page PDF
+     containing a cover and nothing else, which is indistinguishable from the exporter being
+     broken and is the reason that bug took a screenshot to diagnose.
+
+     A blank file is worse than no file: it looks like a product failure and it silently loses
+     the thing the user asked for. So the content is checked BEFORE anything is built, and the
+     disclosure notes the sweep appends — a whole italic "_(N batches failed…)_" line — do not
+     count as content, because a document whose entire body is an apology is just as empty. */
+  const arranged = brainArrangeContent(brainStripSources(msg.content), { numbered: false, toc: false });
+  const realBlocks = arranged.blocks.filter((b) => {
+    if (b.kind === "p" || b.kind === "term") return !/^_\(.*\)_$/.test(String(b.text || "").trim());
+    if (b.kind === "entry") return true;
+    return b.kind !== "hr";
+  });
+  if (!realBlocks.length) { showToast(L.pdfEmpty); return; }
+
   showToast(L.pdfWorking);
   let root = null;
   try {
@@ -23945,6 +25117,193 @@ function brainHexToRgb(hex) {
   if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
   const n = parseInt(h, 16);
   return Number.isFinite(n) && h.length === 6 ? [(n >> 16) & 255, (n >> 8) & 255, n & 255] : [255, 255, 255];
+}
+
+/* ══ BRAIN → PRINT / SAVE AS PDF ═══════════════════════════════════════════════════════
+   The same bargain the chat exporter struck (see the PRINT TO SAVE header): the browser's
+   own engine lays out the page, so the Arabic is shaped by the renderer that already
+   shaped it on screen, the text stays real selectable text, and the user gets the native
+   save dialog and every destination behind it. The raster exporter stays first in the bar
+   because only it hands back a Blob.
+
+   TWO THINGS BREAK IF THIS IS WIRED NAIVELY, and both are bugs that were already fixed
+   once elsewhere — which is exactly why they are easy to reintroduce here.
+
+   ── 1. opacity:0 — "تطبع بس لون بدون نص" all over again.
+   brainBuildPdfDoc hides its root with `opacity:0`, because html2canvas cannot photograph
+   display:none. That root is INVISIBLE INK to the print engine too: opacity is not a
+   capture trick, it is a paint instruction, and printing it yields a correctly-sized,
+   correctly-coloured sheet with nothing on it. The raster path repaired this inside
+   html2canvas's `onclone` hook — a hook that exists only for html2canvas. Print has no
+   clone and no hook, so the fix does not travel. It has to be undone on the real element.
+   Same for `position:absolute;z-index:-1`, which would print underneath the page, and for
+   `width:794px`, which the engine would shrink-to-fit.
+
+   ── 2. Two print surfaces, or one surface with the wrong id — the cascade catastrophe.
+   Every rule brainPdfCss emits is prefixed `#firasBrainPdfRoot` by brainPdfScope, at
+   (1,1,0), so that it outranks the `#firasBrainPdfRoot *` reset at (1,0,0). That is the
+   fix for "مو مرتب ابد ابد" — the export where every padding and margin measured 0px.
+   But the print stylesheet hides everything that is not `#firasPrintRoot`. So:
+       give the surface id firasPrintRoot  → the reset still matches (it is inside), but
+                                             every .bp-* component rule matches NOTHING.
+                                             The reset wins uncontested and the document
+                                             prints completely unformatted — the exact bug.
+       give it id firasBrainPdfRoot        → `body>*:not(#firasPrintRoot)` hides it. Blank.
+       give it both ids                    → impossible; an element has one id.
+   The PRINT_ROOT_ID note already dictates the answer: "If a second surface ever has to
+   exist, it must reuse THIS id (nest inside this root), never introduce another." So the
+   Brain document is NESTED — #firasPrintRoot wraps #firasBrainPdfRoot. The outer id is
+   spared by the :not(), the inner id keeps every scoped rule matching, and neither
+   stylesheet learns anything about the other.
+
+   ── Geometry. @page margin is 0 and .bp-page keeps its own 56px padding, which is the
+   raster export's geometry exactly (it photographs the full 794px sheet, padding included).
+   It also means a dark identity's paper reaches the edge of the sheet instead of sitting in
+   a white picture frame, and it is why printShellCss takes a background: the body behind a
+   multi-page document must be the paper colour, or every page break shows a white band. */
+function brainPrintCss(T, ar) {
+  const R = "#" + PRINT_ROOT_ID;
+  const B = R + " #firasBrainPdfRoot";
+  const dp = B + " ";
+  return (
+    "@media print{" +
+      /* Full bleed — the paper IS the page. See the geometry note above. */
+      "@page{size:A4;margin:0}" +
+      printShellCss(T.paper, T.ink) +
+      /* Undo the raster-only inline styles on the capture root. Defect 1 lives here:
+         without opacity:1 the sheet prints as a flat colour field with no glyphs. */
+      R + "{position:static!important;left:auto!important;top:auto!important;inset:auto!important;" +
+        "display:block!important;width:auto!important;max-width:none!important;min-width:0!important;" +
+        "height:auto!important;overflow:visible!important;margin:0!important;padding:0!important;" +
+        "background:" + T.paper + "!important;z-index:auto!important;opacity:1!important;" +
+        "transform:none!important;filter:none!important;box-shadow:none!important}" +
+      B + "{position:static!important;left:auto!important;top:auto!important;inset:auto!important;" +
+        "display:block!important;width:100%!important;max-width:none!important;min-width:0!important;" +
+        "height:auto!important;overflow:visible!important;margin:0!important;" +
+        "z-index:auto!important;opacity:1!important;pointer-events:auto!important;" +
+        "transform:none!important;filter:none!important;box-shadow:none!important}" +
+      /* Print the accent, the pills, the panel tints and the paper itself even when the
+         dialog's "Background graphics" box is off — the property overrides that checkbox.
+         Without it a dark identity prints as blank sheets and the page pills lose their
+         borders. Stated on the subtree because the reset re-declares nothing else here. */
+      dp + "*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;" +
+        "text-shadow:none!important}" +
+      /* The sheet must stay papered all the way down, including the ragged last page. */
+      dp + ".bp-page{min-height:100vh!important;box-shadow:none!important}" +
+      /* ── PAGINATION. Everything the raster paginator computes in JavaScript
+         (brainPdfBreakpoints and its keepWithNext flag) the engine does natively — but
+         only if it is told which boxes are atomic. A definition split across a page
+         break, or a term stranded alone at the foot of a sheet, is the single most
+         obvious tell that a document was generated rather than typeset. */
+      dp + ".bp-entry{break-inside:avoid!important;page-break-inside:avoid!important}" +
+      dp + ".bp-term{break-after:avoid!important;page-break-after:avoid!important}" +
+      dp + ".bp-h," + dp + ".bp-h1," + dp + ".bp-h2," + dp + ".bp-h3{break-after:avoid!important;" +
+        "page-break-after:avoid!important;break-inside:avoid!important}" +
+      dp + ".bp-srchead{break-after:avoid!important;page-break-after:avoid!important}" +
+      dp + ".bp-toc," + dp + ".bp-src," + dp + ".bp-li," + dp + ".bp-code," + dp + ".bp-quote," +
+        dp + ".bp-math," + dp + ".bp-refs," + dp + ".bp-ref," + dp + ".katex-display{" +
+        "break-inside:avoid!important;page-break-inside:avoid!important}" +
+      dp + ".bp-p{orphans:3;widows:3}" +
+      /* A long table breaks and repeats its header, the opposite of what the raster path
+         needs (there it must be one atomic photograph). */
+      dp + ".bp-t{break-inside:auto!important;page-break-inside:auto!important}" +
+      dp + ".bp-t thead{display:table-header-group!important}" +
+      dp + ".bp-t tr," + dp + ".bp-t td," + dp + ".bp-t th{break-inside:avoid!important;" +
+        "page-break-inside:avoid!important}" +
+      /* The cover leads the first sheet, exactly as it does in the raster export — no
+         forced page break, so the two exporters produce the same document. */
+      dp + ".bp-cover{break-inside:avoid!important;page-break-inside:avoid!important}" +
+      /* KaTeX ships the raw LaTeX in a clip:rect()-hidden node. `clip` hides it from the
+         eye but NOT from a PDF's text layer, so copying out of the saved file would come
+         back with the source interleaved through the rendered maths. */
+      dp + ".katex-mathml{display:none!important}" +
+      /* No content:attr(href) after links: a bare Latin URL injected into an Arabic
+         sentence resolves its brackets at paragraph level — the "(ص 12)" → "12 ص)(" bug
+         this exporter exists to avoid. */
+      dp + "a{text-decoration:underline!important}" +
+      dp + "a::after{content:none!important}" +
+    "}"
+  );
+}
+
+/** Hand a Brain answer to the browser's print engine. Mirrors brainExportPdf's guards and
+    reuses its document builder outright, so the printed sheet and the raster PDF are the
+    same document rendered by two engines. */
+async function brainExportPrint(msg, titleHint, themeId) {
+  const L = brainTL(msg.lang);
+  const ar = (msg.lang || "ar") === "ar";
+  const T = themeId ? brainPdfTheme(themeId) : brainPdfSavedTheme();
+
+  if (typeof window.print !== "function") {          // in-app WebViews (Instagram, Facebook…)
+    showToast(t().printUnavailable);
+    return brainExportPdf(msg, titleHint, themeId);
+  }
+
+  /* The same blank-file guard the raster path applies, for the same reason: a document
+     whose entire body is a "(N batches failed)" apology is as empty as no document. */
+  const arranged = brainArrangeContent(brainStripSources(msg.content), { numbered: false, toc: false });
+  const realBlocks = arranged.blocks.filter((b) => {
+    if (b.kind === "p" || b.kind === "term") return !/^_\(.*\)_$/.test(String(b.text || "").trim());
+    if (b.kind === "entry") return true;
+    return b.kind !== "hr";
+  });
+  if (!realBlocks.length) { showToast(L.pdfEmpty); return; }
+
+  showToast(t().printPreparing);
+  printEvict();                                      // before the new root exists — see printEvict
+
+  let st = null;
+  try {
+    await brainPdfLoadFonts(T, brainStripSources(msg.content));
+
+    const meta = {
+      title: titleHint || (ar ? "مستخرجات" : "Extract"),
+      date: new Date().toLocaleDateString(ar ? "ar" : "en-GB", { year: "numeric", month: "long", day: "numeric" }),
+    };
+    const built = brainBuildPdfDoc(msg, meta, T);
+
+    /* DEFECT 1, undone on the real element. The stylesheet also forces these, but the
+       inline styles are what the engine reads first and leaving them would mean the fix
+       depended entirely on !important winning against an inline declaration — which it
+       does, but only for the properties the sheet happens to name. Clearing the string is
+       the honest fix; the sheet is the belt to this pair of braces. */
+    built.root.style.cssText = "width:100%;background:" + T.paper + ";";
+    built.root.removeAttribute("aria-hidden");
+
+    const wrap = document.createElement("div");
+    wrap.id = PRINT_ROOT_ID;                         // DEFECT 2: nest, never a second surface
+    wrap.setAttribute("aria-hidden", "true");
+    wrap.style.cssText = "position:fixed;left:-10000px;top:0;width:" + BRAIN_PDF_W +
+      "px;background:" + T.paper + ";z-index:-1;pointer-events:none;color-scheme:only light";
+    const st2 = document.createElement("style");
+    st2.textContent = brainPrintCss(T, ar);
+    wrap.appendChild(st2);
+    wrap.appendChild(built.root);
+    document.body.appendChild(wrap);
+
+    // Real typeset maths rather than raw "\frac{a}{b}" — same poll the raster path runs.
+    try {
+      typesetMath(built.root);
+      for (let i = 0; i < 40 && !built.root.querySelector(".katex"); i++) {
+        if (!/\$|\\\(|\\\[|\\frac|\\sum|\\int/.test(built.root.textContent || "")) break;
+        await new Promise((r) => setTimeout(r, 25));
+      }
+    } catch (_) {}
+    await new Promise((r) => setTimeout(r, ar ? 320 : 160));
+
+    const fileTitle = String(meta.title || "Firas AI")
+      .replace(/[\\/:*?"<>|\n\r]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90) || "Firas AI";
+
+    st = printArm(wrap);
+    document.title = fileTitle;
+    window.focus();
+    window.print();
+  } catch (e) {
+    if (st) printTeardown(st); else printEvict();
+    showToast(t().printUnavailable);
+    return brainExportPdf(msg, titleHint, themeId);
+  }
+  return null;
 }
 
 /* ── The identity picker ──────────────────────────────────────────────────────
@@ -24095,6 +25454,23 @@ function brainCopyBar(msg) {
     });
   });
   bar.appendChild(themeBtn);
+
+  /* Print sits BENEATH the raster PDF, never above it — same order, same reasoning as the
+     chat exporter: only the raster path hands back a Blob, and window.print() is a silent
+     no-op in the in-app browsers a lot of Arabic mobile traffic arrives in. It prints the
+     identity currently on the theme button, so the two controls stay in agreement. */
+  const printBtn = document.createElement("button");
+  printBtn.type = "button";
+  printBtn.className = "fb-act fb-act--print";
+  printBtn.innerHTML = PRINT_ICON;
+  printBtn.appendChild(document.createTextNode(L.toPrint));
+  printBtn.addEventListener("click", async () => {
+    printBtn.disabled = true;
+    const chat = activeChat();
+    const hint = (chat && chat.title) || (msg.lang === "en" ? "Extract" : "مستخرجات");
+    try { await brainExportPrint(msg, hint, brainPdfSavedTheme().id); } finally { printBtn.disabled = false; }
+  });
+  bar.appendChild(printBtn);
   return bar;
 }
 

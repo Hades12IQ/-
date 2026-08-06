@@ -695,16 +695,20 @@ const GUEST_LIMITS = {
      one — so this is the allowance an abuser actually farms, and the network-scoped bucket
      (guestChargeIp) multiplies it by 4 per address, not per cookie. Members are the ones the
      site is free for; guests get enough to decide whether to sign up. */
-  ai:    Math.max(0, parseInt(process.env.GUEST_DAILY_AI, 10)    || 60),
-  code:  Math.max(0, parseInt(process.env.GUEST_DAILY_CODE, 10)  || 20),
-  agent: Math.max(0, parseInt(process.env.GUEST_DAILY_AGENT, 10) || 8),
-  brain: Math.max(0, parseInt(process.env.GUEST_DAILY_BRAIN, 10) || 40),
+  /* Tripled 2026-08-06 at Firas's request, now that members are fully unmetered: the gap
+     between "trying it" and "signed up" was wider than it needed to be. Keep server.mjs and
+     the edge function on the SAME numbers — a guest who hits a wall locally that the live
+     site doesn't have (or worse, the reverse) is a bug that only shows up in production. */
+  ai:    Math.max(0, parseInt(process.env.GUEST_DAILY_AI, 10)    || 180),
+  code:  Math.max(0, parseInt(process.env.GUEST_DAILY_CODE, 10)  || 60),
+  agent: Math.max(0, parseInt(process.env.GUEST_DAILY_AGENT, 10) || 24),
+  brain: Math.max(0, parseInt(process.env.GUEST_DAILY_BRAIN, 10) || 120),
   /* Budget for nomem=true helper calls. Without an entry here `guestCharge` returns early
      (`!(limit >= 0)`) and the guest internal channel would stay unlimited — which is the
      exact hole being closed on the member side. Sized ~8x the guest chat allowance so a
      normal Code build never trips it. */
-  internal: Math.max(0, parseInt(process.env.GUEST_DAILY_INTERNAL, 10) || 100),
-  voice: Math.max(0, parseInt(process.env.GUEST_DAILY_VOICE, 10) || 40),
+  internal: Math.max(0, parseInt(process.env.GUEST_DAILY_INTERNAL, 10) || 300),
+  voice: Math.max(0, parseInt(process.env.GUEST_DAILY_VOICE, 10) || 120),
 };
 function newGuestId() { return "g_" + crypto.randomBytes(12).toString("hex"); }
 /** The guest identity carried by this request, or null. */
@@ -900,8 +904,13 @@ function callerOf(req) {
    every 40 seconds for 24 hours without pause. A real user simply never sees a limit.
    Raise them with env overrides if that ever proves wrong. */
 const PLAN_LIMITS = {
-  free:      { ai: 2000, code: 800, agent: 400, brain: 900, internal: 9000, voice: 4000 },
-  gold:      { ai: 2000, code: 800, agent: 400, brain: 900, internal: 9000, voice: 4000 },
+  /* NO DAILY LIMIT. Firas asked for the site to be 100% free with no daily usage at all, so
+     every plan is unmetered and the per-product counters below exist only as statistics.
+     -1 is the existing "unlimited" sentinel every call site already understands, so nothing
+     downstream needed to change: quotaRollDay still rolls the day, the counters still count,
+     and limitsFor() simply never returns a ceiling to compare against. */
+  free:      { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
+  gold:      { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
   diamond:   { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
   unlimited: { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
 };
@@ -2187,7 +2196,12 @@ function parseDuckDuckGo(html) {
 /* Image generation — keyless, server-side pollinations proxy (avoids browser
    CORS/Turnstile). Returns the generated image bytes. */
 // Per-user daily image-creation cap. Configurable via env; defaults to 5/day.
-const IMAGE_DAILY_LIMIT = Math.max(1, parseInt(process.env.IMAGE_DAILY_LIMIT, 10) || 5);
+/* -1 = UNMETERED, and that is now the default: Firas asked for no daily usage anywhere.
+   Kept as a real setting rather than deleted, because this is the ONE counter standing between
+   a single runaway client and the shared upstream image pools (which have their own hard daily
+   caps that cannot be raised from here). Set the env var to a positive number to bring a
+   ceiling back without a code change. */
+const IMAGE_DAILY_LIMIT = (() => { const n = parseInt(process.env.IMAGE_DAILY_LIMIT, 10); return Number.isFinite(n) ? n : -1; })();
 
 /* The quota day is the USERS' calendar day, not the host's. This used the machine's
    local time while the edge used UTC, so the same build reset counters at a different
@@ -2215,7 +2229,10 @@ function imgRollDay(user) {
 }
 
 // Per-user daily cap for the Max tier (strongest model). Configurable via env.
-const MAX_DAILY_LIMIT = Math.max(1, parseInt(process.env.MAX_DAILY_LIMIT, 10) || 10);
+/* -1 = UNMETERED, now the default. Same reasoning as IMAGE_DAILY_LIMIT: Max is the largest
+   model in the chain, so this is the one guard against one client draining it for everyone —
+   set the env var to a positive number to restore a ceiling. */
+const MAX_DAILY_LIMIT = (() => { const n = parseInt(process.env.MAX_DAILY_LIMIT, 10); return Number.isFinite(n) ? n : -1; })();
 // Reset the per-day Max-request set when the local day rolls over.
 function maxRollDay(user) {
   const today = serverDay();
@@ -2242,10 +2259,10 @@ async function handleImageQuota(req, res) {
   }
   if (imgRollDay(user)) await persist();
   const used = user.imgCids.length;
-  if (used >= IMAGE_DAILY_LIMIT) {
+  if (IMAGE_DAILY_LIMIT >= 0 && used >= IMAGE_DAILY_LIMIT) {
     return sendJson(res, 429, { ok: false, limit: IMAGE_DAILY_LIMIT, used, remaining: 0 });
   }
-  return sendJson(res, 200, { ok: true, limit: IMAGE_DAILY_LIMIT, used, remaining: IMAGE_DAILY_LIMIT - used });
+  return sendJson(res, 200, { ok: true, limit: IMAGE_DAILY_LIMIT, used, remaining: IMAGE_DAILY_LIMIT < 0 ? -1 : IMAGE_DAILY_LIMIT - used });
 }
 
 // Generate an image with Gemini (Google AI Studio). Returns {buf, mime} or null to
@@ -2533,7 +2550,7 @@ async function handleImage(req, res) {
      parameter parsing because it now needs them. */
   const slot = imgCacheKey(prompt, w, h, seed);
   const isNew = !user.imgCids.includes(slot);
-  if (isNew && user.imgCids.length >= IMAGE_DAILY_LIMIT) { res.writeHead(429); return res.end("daily limit reached"); }
+  if (IMAGE_DAILY_LIMIT >= 0 && isNew && user.imgCids.length >= IMAGE_DAILY_LIMIT) { res.writeHead(429); return res.end("daily limit reached"); }
   // Serve a previously-generated identical image straight from disk: instant, stable
   // (the saved picture never changes), and zero extra Puter/engine spend on reloads.
   const ckey = imgCacheKey(prompt, w, h, seed);
@@ -4169,7 +4186,10 @@ const BRAIN_UNITS = new Set(["page", "slide", "sheet", "section"]);
 // Daily INGEST budget, in pages. Metered here because page OCR runs through /api/chat with
 // nomem:true, which both backends deliberately exclude from quota charging — so without this
 // a 400-page scan would fire 400 unmetered vision calls.
-const BRAIN_PAGES_DAILY = { free: 400, gold: 4000, diamond: -1, unlimited: -1 };
+/* Unmetered like every other product — see PLAN_LIMITS. The daily page ceiling on Brain
+   INGEST was the last per-member cap left, and a document library is exactly the thing a
+   student hits it with. */
+const BRAIN_PAGES_DAILY = { free: -1, gold: -1, diamond: -1, unlimited: -1 };
 
 /* SITE-WIDE vision budget. The per-user budgets above meter fairness between users; this meters
    the resource they all draw from, which is a far smaller number than it looks.
@@ -4822,7 +4842,7 @@ async function handleChat(req, res) {
     maxRollDay(user);
     let cid = String(payload.cid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
     const isNew = !cid || !user.maxCids.includes(cid);
-    if (isNew && user.maxCids.length >= MAX_DAILY_LIMIT) {
+    if (MAX_DAILY_LIMIT >= 0 && isNew && user.maxCids.length >= MAX_DAILY_LIMIT) {
       return sendJson(res, 429, { error: "daily Max limit reached", limit: MAX_DAILY_LIMIT, used: user.maxCids.length, remaining: 0 });
     }
     if (isNew) { user.maxCids.push(cid || ("r" + Date.now())); persist(); }

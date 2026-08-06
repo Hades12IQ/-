@@ -184,8 +184,20 @@ const COOKIE_NAME = "firas_session";
 const COOKIE_MAX_AGE = 2592000;            // 30 days (seconds)
 const MAX_CHATS_PER_USER = 1000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const IMAGE_DAILY_LIMIT = Math.max(1, parseInt(env("IMAGE_DAILY_LIMIT") || "5", 10) || 5);
-const MAX_DAILY_LIMIT  = Math.max(1, parseInt(env("MAX_DAILY_LIMIT")  || "10", 10) || 10);
+/* -1 = UNMETERED, and that is now the default: Firas asked for no daily usage anywhere.
+   Kept as a real setting rather than deleted, because this is the ONE counter standing between
+   a single runaway client and the shared upstream image pools (which have their own hard daily
+   caps that cannot be raised from here). Set the env var to a positive number to bring a
+   ceiling back without a code change. */
+const IMAGE_DAILY_LIMIT = (() => { const n = parseInt(env("IMAGE_DAILY_LIMIT"), 10); return Number.isFinite(n) ? n : -1; })();
+/* Same shape as IMAGE_DAILY_LIMIT above, and for the same reason. This used to be
+   `Math.max(1, parseInt(env(…) || "10", 10) || 10)`, which had two independent faults:
+   it defaulted to 10 instead of the -1 sentinel, and the Math.max(1, …) floor made
+   "unlimited" UNREPRESENTABLE — setting MAX_DAILY_LIMIT=-1 in the Netlify UI produced a
+   ceiling of 1, tighter than the default it was meant to remove. server.mjs was already
+   on -1 with a `>= 0` guard at its enforcement site, so the live edge deploy was the only
+   place still capping the Max tier (at 10/day) after everything else went unmetered. */
+const MAX_DAILY_LIMIT   = (() => { const n = parseInt(env("MAX_DAILY_LIMIT"), 10); return Number.isFinite(n) ? n : -1; })();
 // Admins (the owner) can publish site updates. Comma-separated emails; default the owner.
 const ADMIN_EMAILS = (env("ADMIN_EMAILS") || "firasnozad@gmail.com").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 function isAdmin(user) { return !!(user && user.email && ADMIN_EMAILS.includes(String(user.email).toLowerCase())); }
@@ -323,7 +335,10 @@ const BRAIN_UNITS = new Set(["page", "slide", "sheet", "section"]);
 // Daily INGEST budget, in pages. Metered because page OCR runs through /api/chat with
 // nomem:true, which both backends deliberately exclude from quota charging — so without this
 // a 400-page scan would fire 400 unmetered vision calls.
-const BRAIN_PAGES_DAILY = { free: 400, gold: 4000, diamond: -1, unlimited: -1 };
+/* Unmetered like every other product — see PLAN_LIMITS. The daily page ceiling on Brain
+   INGEST was the last per-member cap left, and a document library is exactly the thing a
+   student hits it with. */
+const BRAIN_PAGES_DAILY = { free: -1, gold: -1, diamond: -1, unlimited: -1 };
 
 function brainIdOk(s) { return /^[A-Za-z0-9_-]{1,64}$/.test(String(s || "")); }
 function brainNewId() {
@@ -834,8 +849,13 @@ async function dbIncrement(path, delta, opts) {
    every 40 seconds for 24 hours without pause. A real user simply never sees a limit.
    Raise them with env overrides if that ever proves wrong. */
 const PLAN_LIMITS = {
-  free:      { ai: 2000, code: 800, agent: 400, brain: 900, internal: 9000, voice: 4000 },
-  gold:      { ai: 2000, code: 800, agent: 400, brain: 900, internal: 9000, voice: 4000 },
+  /* NO DAILY LIMIT. Firas asked for the site to be 100% free with no daily usage at all, so
+     every plan is unmetered and the per-product counters below exist only as statistics.
+     -1 is the existing "unlimited" sentinel every call site already understands, so nothing
+     downstream needed to change: quotaRollDay still rolls the day, the counters still count,
+     and limitsFor() simply never returns a ceiling to compare against. */
+  free:      { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
+  gold:      { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
   diamond:   { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
   unlimited: { ai: -1,   code: -1,  agent: -1,  brain: -1,  internal: -1,   voice: -1 },
 };
@@ -1196,13 +1216,15 @@ const GUEST_COOKIE_MAX_AGE = 604800; // 7 days
 const GUEST_LIMITS = {
   /* Raised for real trial use, still FAR below members — mirrors server.mjs. A guest
      identity is free to mint, so this is the allowance an abuser farms; the network-scoped
-     bucket multiplies it by 4 per ADDRESS, not per cookie. */
-  ai:    Math.max(0, parseInt(env("GUEST_DAILY_AI")    || "60", 10) || 60),
-  code:  Math.max(0, parseInt(env("GUEST_DAILY_CODE")  || "20", 10) || 20),
-  agent: Math.max(0, parseInt(env("GUEST_DAILY_AGENT") || "8", 10)  || 8),
-  brain: Math.max(0, parseInt(env("GUEST_DAILY_BRAIN") || "40", 10) || 40),
-  internal: Math.max(0, parseInt(env("GUEST_DAILY_INTERNAL") || "100", 10) || 100),
-  voice: Math.max(0, parseInt(env("GUEST_DAILY_VOICE") || "40", 10) || 40),
+     bucket multiplies it by 4 per ADDRESS, not per cookie.
+     Tripled 2026-08-06 at Firas's request, now that members are fully unmetered. These
+     numbers MUST match server.mjs — see the note there. */
+  ai:    Math.max(0, parseInt(env("GUEST_DAILY_AI")    || "180", 10) || 180),
+  code:  Math.max(0, parseInt(env("GUEST_DAILY_CODE")  || "60", 10) || 60),
+  agent: Math.max(0, parseInt(env("GUEST_DAILY_AGENT") || "24", 10) || 24),
+  brain: Math.max(0, parseInt(env("GUEST_DAILY_BRAIN") || "120", 10) || 120),
+  internal: Math.max(0, parseInt(env("GUEST_DAILY_INTERNAL") || "300", 10) || 300),
+  voice: Math.max(0, parseInt(env("GUEST_DAILY_VOICE") || "120", 10) || 120),
 };
 function newGuestId() {
   const b = crypto.getRandomValues(new Uint8Array(12));
@@ -2532,7 +2554,7 @@ export default async (request, context) => {
         const node = await maxDayNode(user.id);
         let cid = String(payload.cid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
         const isNew = !cid || !(cid in node);
-        if (isNew && Object.keys(node).length >= MAX_DAILY_LIMIT) {
+        if (MAX_DAILY_LIMIT >= 0 && isNew && Object.keys(node).length >= MAX_DAILY_LIMIT) {
           return json({ error: "daily Max limit reached", limit: MAX_DAILY_LIMIT, used: Object.keys(node).length, remaining: 0 }, 429);
         }
         if (isNew) { if (!cid) cid = crypto.randomUUID(); try { await dbPut(`maxQuota/${dbKey(user.id)}/${day}/${dbKey(cid)}`, true); } catch (_) {} }
@@ -2944,8 +2966,8 @@ export default async (request, context) => {
         return json({ ok: false, error: "auth required" }, 401);
       }
       const used = Object.keys(await imgDayNode(user.id)).length;
-      if (used >= IMAGE_DAILY_LIMIT) return json({ ok: false, limit: IMAGE_DAILY_LIMIT, used, remaining: 0 }, 429);
-      return json({ ok: true, limit: IMAGE_DAILY_LIMIT, used, remaining: IMAGE_DAILY_LIMIT - used });
+      if (IMAGE_DAILY_LIMIT >= 0 && used >= IMAGE_DAILY_LIMIT) return json({ ok: false, limit: IMAGE_DAILY_LIMIT, used, remaining: 0 }, 429);
+      return json({ ok: true, limit: IMAGE_DAILY_LIMIT, used, remaining: IMAGE_DAILY_LIMIT < 0 ? -1 : IMAGE_DAILY_LIMIT - used });
     }
 
     /* ---- Max tier quota (read-only pre-check) ---- */
@@ -3673,7 +3695,7 @@ export default async (request, context) => {
       const node = await imgDayNode(user.id);
       const slot = await imgSlotKey(prompt, w, h, seed);
       const isNew = !(slot in node);
-      if (isNew && Object.keys(node).length >= IMAGE_DAILY_LIMIT) return new Response("daily limit reached", { status: 429 });
+      if (IMAGE_DAILY_LIMIT >= 0 && isNew && Object.keys(node).length >= IMAGE_DAILY_LIMIT) return new Response("daily limit reached", { status: 429 });
       // Cloudflare Workers AI (FREE FLUX.2, ~65/day) FIRST → great quality + in-image text,
       // no per-image cost, no user login. Falls through to Puter when its daily quota is gone.
       try {
