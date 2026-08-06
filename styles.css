@@ -6715,17 +6715,6 @@ body.product-code .composer__call { display: none; }
 }
 .fb-act:disabled { opacity: .55; cursor: default; transform: none; }
 
-/* Print sits beside the gold PDF button as the quieter sibling — it is the secondary
-   route to the same document, so it stays in the muted palette rather than competing
-   for the gold. The icon is sized in em so it tracks the 12px label, and gets its own
-   flex row because `.fb-act`'s padding was written for a text-only pill. */
-.fb-act--print { display: inline-flex; align-items: center; gap: 6px; }
-.fb-act--print svg {
-  width: 1.15em; height: 1.15em; flex: none;
-  /* The glyph is drawn with stroke:currentColor, so it inherits every hover and
-     disabled state from .fb-act without a single extra rule. */
-}
-
 /* ══════════════════════════════════════════════════════════════════════════════
    COPY YOUR OWN QUESTION (Firas Brain)
 

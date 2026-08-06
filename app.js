@@ -861,7 +861,14 @@ function detectCodeRequest(text) {
   // A bare LANGUAGE NAME (python/html…) can be a TOPIC ("report about python"), so it does
   // NOT count as a code artifact here — only an explicit "code/كود/script/<!doctype", a
   // single-file spec, or a generic programming noun (function/app/game) overrides a document.
-  const codeArtifact = CODE_SPEC.test(s) || CODE_GENERIC.test(s) ||
+  /* CODE_SOFT belongs here, and leaving it out is what sent "سوّي لي موقع…" into the FILE
+     pipeline. A website is not a document — but DOC_NOUN matches ordinary words that any
+     real request contains (guide/notes/article/letter/دليل/مقال/ملاحظات), and a long pasted
+     brief is almost guaranteed to carry one. With CODE_SOFT missing from codeArtifact the
+     bail fired, detectCodeRequest returned null, and isFileStreamReply picked the turn up
+     instead — which is why the reported symptom was the app's own file-stage label,
+     "Planning the file…" (see fileStageLabel), on a request to build a site. */
+  const codeArtifact = CODE_SPEC.test(s) || CODE_GENERIC.test(s) || CODE_SOFT.test(s) ||
     /\bcode\b|كود|\bscript\b|سكر[يى]?بت|سكريبت|<!doctype/i.test(s);
   if (DOC_NOUN.test(s) && !codeArtifact) return null;
   // A build verb + a hard/soft/generic programming signal → real code request.
@@ -21445,7 +21452,7 @@ function brainT() {
     copy: "نسخ الكل", copyRefs: "نسخ مع الصفحات", copied: "تم النسخ", copyFail: "تعذّر النسخ",
     toPdf: "تحويل إلى PDF", pdfWorking: "يجهّز الـ PDF…", pdfDone: "تم تنزيل الـ PDF", pdfFail: "تعذّر إنشاء الـ PDF",
     pdfEmpty: "ما في محتوى لتصديره — الجواب فارغ أو تعذّر استخراجه. أعد إرسال الطلب.",
-    pdfTheme: "هوية المستند", toPrint: "طباعة / حفظ",
+    pdfTheme: "هوية المستند",
     stop: "إيقاف", stopped: "\n\n_(أُوقف الشرح)_",
     thinking: "يبحث في مصادرك…", searching: "يوسّع البحث بلغتين…", engineFail: "تعذّر الوصول للمحرّك. حاول مرة أخرى.",
     gone: "المقطع لم يعد متاحًا (حُذف المصدر).",
@@ -21472,7 +21479,7 @@ function brainT() {
     copy: "Copy all", copyRefs: "Copy with pages", copied: "Copied", copyFail: "Couldn't copy",
     toPdf: "Convert to PDF", pdfWorking: "Building the PDF…", pdfDone: "PDF downloaded", pdfFail: "Couldn't build the PDF",
     pdfEmpty: "Nothing to export — the answer is empty or the extraction failed. Send the request again.",
-    pdfTheme: "Document identity", toPrint: "Print / Save",
+    pdfTheme: "Document identity",
     stop: "Stop", stopped: "\n\n_(stopped)_",
     thinking: "Searching your sources…", searching: "Widening the search across languages…", engineFail: "Couldn't reach the engine. Please try again.",
     gone: "This passage is no longer available (the source was deleted).",
@@ -23956,7 +23963,13 @@ function brainRenderThread(chat, opts) {
     p.appendChild(b);
     thread.appendChild(p);
   }
-  if (atBottom || o.pending) thread.scrollTop = thread.scrollHeight;
+  /* `|| o.pending` used to be here, and it is what still threw the reader around mid-sweep:
+     a pending notice is shown on EVERY render of a long extraction, so every few seconds the
+     view was forced to the bottom no matter where you had scrolled to read a definition.
+     Following the tail is only ever right when you were ALREADY at the tail — which is
+     exactly what `atBottom` means, and exactly what the streaming path (brainStreamPaint)
+     has always done. The two agree now. */
+  if (atBottom) thread.scrollTop = thread.scrollHeight;
   else thread.scrollTop = keepTop;      // stay exactly where the reader was
 }
 
@@ -24612,11 +24625,14 @@ function brainPdfCss(T, ar) {
     TEXTURE +
 
     /* cover */
-    ".bp-cover{padding:0 0 26px;margin-bottom:30px;}" +
-    ".bp-title{font:700 " + z(34) + "px/1.24 " + dispFont + ";color:" + T.ink + ";letter-spacing:-.01em;}" +
+    /* The cover carries only a kicker, the title and a rule now that the attribution and date
+       are gone, so it has to earn its page with SPACE and SCALE rather than with more lines.
+       Bigger title, tighter leading on it, and a wider gap under the block. */
+    ".bp-cover{padding:0 0 36px;margin-bottom:40px;}" +
+    ".bp-title{font:700 " + z(40) + "px/1.16 " + dispFont + ";color:" + T.ink + ";letter-spacing:-.015em;}" +
     ".bp-sub{font:400 " + z(13) + "px/1.7 " + bodyFont + ";color:" + T.inkDim + ";margin-top:9px;}" +
-    ".bp-kicker{font:600 " + z(10.5) + "px/1 " + LA + ";letter-spacing:.20em;text-transform:uppercase;color:" + T.accent + ";margin-bottom:14px;}" +
-    ".bp-rule{width:64px;height:2px;background:" + T.accent + ";margin:16px 0 14px;}" +
+    ".bp-kicker{font:600 " + z(10.5) + "px/1 " + LA + ";letter-spacing:.24em;text-transform:uppercase;color:" + T.accent + ";margin-bottom:18px;}" +
+    ".bp-rule{width:76px;height:2px;background:" + T.accent + ";margin:22px 0 0;}" +
     ".bp-meta{font:400 " + z(12) + "px/1.75 " + bodyFont + ";color:" + T.inkDim + ";}" +
     ".bp-meta b{color:" + T.accent + ";font-weight:600;}" +
     ".bp-cover--centered{text-align:center;}" +
@@ -24635,22 +24651,22 @@ function brainPdfCss(T, ar) {
     ".bp-corner{position:absolute;width:9px;height:9px;border:1px solid " + T.accent + ";}" +
 
     /* contents */
-    ".bp-toc{margin:0 0 30px;padding:16px 18px;background:" + T.panel + ";border-inline-start:2px solid " + T.accent + ";}" +
+    ".bp-toc{margin:0 0 36px;padding:20px 22px;background:" + T.panel + ";border-inline-start:3px solid " + T.accent + ";}" +
     ".bp-toc-h{font:600 " + z(10.5) + "px/1 " + LA + ";letter-spacing:.18em;text-transform:uppercase;color:" + T.accent + ";margin-bottom:11px;}" +
     ".bp-toc-i{font:400 " + z(12.5) + "px/1.95 " + bodyFont + ";color:" + T.inkDim + ";}" +
     ".bp-toc-i--2{padding-inline-start:16px;font-size:" + z(12) + "px;opacity:.86;}" +
     ".bp-toc-i b{color:" + T.ink + ";font-weight:600;}" +
 
     /* headings */
-    ".bp-h{font-family:" + dispFont + ";color:" + T.ink + ";font-weight:700;margin:26px 0 12px;}" +
+    ".bp-h{font-family:" + dispFont + ";color:" + T.ink + ";font-weight:700;margin:32px 0 14px;}" +
     ".bp-h1{font-size:" + z(22) + "px;line-height:1.35;}" +
     ".bp-h2{font-size:" + z(17.5) + "px;line-height:1.4;}" +
     ".bp-h3{font-size:" + z(15) + "px;line-height:1.45;}" +
     HEAD +
 
     /* entries + prose */
-    ".bp-entry{padding:14px 0;border-bottom:1px solid " + T.rule + ";}" +
-    ".bp-term{font:700 " + z(16.5) + "px/1.5 " + dispFont + ";color:" + T.accent + ";margin-bottom:5px;}" +
+    ".bp-entry{padding:17px 0;border-bottom:1px solid " + T.rule + ";}" +
+    ".bp-term{font:700 " + z(16.5) + "px/1.45 " + dispFont + ";color:" + T.accent + ";margin-bottom:7px;}" +
     ".bp-p{font:400 " + z(14.5) + "px/" + T.lead + " " + bodyFont + ";color:" + T.ink + ";}" +
     ".bp-entry .bp-p + .bp-p{margin-top:8px;}" +
     ".bp-block > .bp-p + .bp-p{margin-top:10px;}" +
@@ -24697,7 +24713,7 @@ function brainPdfCss(T, ar) {
       "margin-inline-start:8px;font-weight:400;}" +
 
     /* sources */
-    ".bp-srchead{margin:30px 0 12px;font:600 " + z(10.5) + "px " + LA + ";letter-spacing:.18em;" +
+    ".bp-srchead{margin:38px 0 14px;font:600 " + z(10.5) + "px " + LA + ";letter-spacing:.20em;" +
       "text-transform:uppercase;color:" + T.accent + ";}" +
     ".bp-src{font:400 " + z(12.2) + "px/1.85 " + bodyFont + ";color:" + T.inkDim + ";padding:3px 0;}" +
     ".bp-src b{color:" + T.ink + ";font-weight:600;font-family:" + MONO + ";font-size:" + z(11) + "px;margin-inline-end:7px;}");
@@ -24877,31 +24893,23 @@ function brainBuildPdfDoc(msg, meta, T) {
   /* ── cover ──────────────────────────────────────────────────────────────────
      No mark, no product name, no "generated by" line — see the header note. The kicker
      carries the document's OWN subject instead. */
-  const names = [...new Set(srcs.map((s) => s.t))].filter(Boolean);
+  /* NOTHING BUT THE DOCUMENT'S OWN SUBJECT. The attribution line ("المصدر: chapter3.pdf") and
+     the date+count line are gone at Firas's request: these are handed in and handed over, and
+     a provenance stamp with today's date on the front of someone's revision notes is both
+     noise and a tell. The kicker and the title carry the whole cover now, and the Sources
+     section at the END still lists every document with its page numbers — which is where a
+     reader actually looks for provenance, not on the cover. */
   const cover = document.createElement("div");
   cover.className = "bp-cover bp-cover--" + T.cover;
   const kicker = ar ? "مستخرج من المصادر" : "Extracted from source";
   cover.innerHTML =
     '<div class="bp-kicker"></div>' +
     '<h1 class="bp-title"></h1>' +
-    '<div class="bp-rule"></div>' +
-    '<div class="bp-meta"></div>';
+    '<div class="bp-rule"></div>';
   cover.querySelector(".bp-kicker").textContent = kicker;
   const tEl = cover.querySelector(".bp-title");
   tEl.setAttribute("dir", brainDirOf(meta.title, ar ? "rtl" : "ltr"));
   tEl.textContent = meta.title;
-  const mEl = cover.querySelector(".bp-meta");
-  if (names.length) {
-    const d = document.createElement("div");
-    d.setAttribute("dir", brainDirOf(names.join(" "), ar ? "rtl" : "ltr"));
-    d.innerHTML = "<b></b> ";
-    d.querySelector("b").textContent = (ar ? "المصدر" : "Source") + ":";
-    d.appendChild(document.createTextNode(" " + names.join(" · ")));
-    mEl.appendChild(d);
-  }
-  const d2 = document.createElement("div");
-  d2.textContent = meta.date + (arranged.entries ? " · " + arranged.entries + " " + (ar ? "عنصرًا" : "entries") : "");
-  mEl.appendChild(d2);
   if (T.cover === "plate") {
     // Registration marks, one per corner — the detail that makes a technical plate read as one.
     const pos = [["top:-1px;left:-1px", "border-width:1px 0 0 1px"], ["top:-1px;right:-1px", "border-width:1px 1px 0 0"],
@@ -25426,11 +25434,16 @@ function brainCopyBar(msg) {
      every export walk through a modal would tax the frequent path to serve the rare one. */
   const runExport = async (btn, themeId) => {
     btn.disabled = true;
+    /* "تحويل إلى PDF" now goes through the PRINT engine, keeping its name. Firas asked for one
+       control that behaves like Save/Print — the browser's own dialog, where you choose the
+       destination and the filename — instead of two buttons that produce the same document by
+       different routes. brainExportPrint falls back to the raster exporter by itself when
+       window.print() is missing (the in-app browsers), so nothing is lost on those. */
     // The chat's own title is the best label available — it is derived from the request
     // ("استخرج كل التعاريف" → "التعاريف"), which is exactly what belongs on the cover.
     const chat = activeChat();
     const hint = (chat && chat.title) || (msg.lang === "en" ? "Extract" : "مستخرجات");
-    try { await brainExportPdf(msg, hint, themeId); } finally { btn.disabled = false; }
+    try { await brainExportPrint(msg, hint, themeId); } finally { btn.disabled = false; }
   };
 
   const pdfBtn = document.createElement("button");
@@ -25457,27 +25470,15 @@ function brainCopyBar(msg) {
       themeBtn.innerHTML = '<span class="fb-act__swatch" style="background:' + T.paper +
         ';border-color:' + T.accent + '"></span>';
       themeBtn.appendChild(document.createTextNode(state.lang === "ar" ? T.ar : T.en));
-      runExport(pdfBtn, id);
+      /* Choosing an identity SELECTS it — it does not export. Firing the export from here
+         meant you could never just look at the ten and settle on one: every click produced a
+         document. The choice is persisted by the picker, so the next "تحويل إلى PDF" uses it. */
     });
   });
   bar.appendChild(themeBtn);
 
-  /* Print sits BENEATH the raster PDF, never above it — same order, same reasoning as the
-     chat exporter: only the raster path hands back a Blob, and window.print() is a silent
-     no-op in the in-app browsers a lot of Arabic mobile traffic arrives in. It prints the
-     identity currently on the theme button, so the two controls stay in agreement. */
-  const printBtn = document.createElement("button");
-  printBtn.type = "button";
-  printBtn.className = "fb-act fb-act--print";
-  printBtn.innerHTML = PRINT_ICON;
-  printBtn.appendChild(document.createTextNode(L.toPrint));
-  printBtn.addEventListener("click", async () => {
-    printBtn.disabled = true;
-    const chat = activeChat();
-    const hint = (chat && chat.title) || (msg.lang === "en" ? "Extract" : "مستخرجات");
-    try { await brainExportPrint(msg, hint, brainPdfSavedTheme().id); } finally { printBtn.disabled = false; }
-  });
-  bar.appendChild(printBtn);
+  /* No separate Print button: "تحويل إلى PDF" IS the print/save control now (see runExport).
+     Two buttons producing the same document by two routes was a choice nobody wanted to make. */
   return bar;
 }
 
