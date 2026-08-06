@@ -910,7 +910,57 @@ function codeFollowupSpec(convo) {
 }
 
 /** Detect a requested file format from user text, or null. */
-function detectFileRequest(text) {
+/* ══ A FORMAT WORD CAN NAME THE INPUT, NOT THE OUTPUT ═══════════════════════════════════════
+   "اشرح هذا البي دي اف" with a PDF attached asks for an explanation IN THE CHAT. It produced a
+   brand-new PDF instead — the owner's report, and the single most confusing thing this router
+   can do, because the user's own file is the reason the word "PDF" is in the sentence at all.
+
+   Three questions, in this order, decide it:
+     1. Does the prompt name a DESTINATION ("as a pdf", "الى بوربوينت", "كملف وورد", "اعمل لي
+        pdf")? Then that format wins — including over a different format mentioned earlier in
+        the same sentence, which is how "اعد صياغة هذا البي دي اف كملف وورد" used to come back
+        as a PDF.
+     2. Otherwise, is the user asking to UNDERSTAND something that already exists — a
+        comprehension verb pointed at a demonstrative or at an actual attachment? Then no file.
+     3. Otherwise, the original rules.                                                        */
+const FMT_WORD = {
+  pdf:  "pdf|بي\\s*دي\\s*اف|بدف",
+  docx: "word|docx|وورد|(?:ملف|مستند|صيغة)\\s*ورد",
+  xlsx: "excel|xlsx|spreadsheet|اكسل|[إاأ]كسل|جدول\\s*بيانات",
+  pptx: "powerpoint|pptx|\\bppt\\b|بوربوينت|باوربوينت|عرض\\s*تقديمي|شرائح|سلايد",
+  csv:  "csv",
+};
+/** The format the user wants BACK, when the prompt names one as a destination. */
+function outputFormatTarget(s) {
+  /* Every lead is anchored to a token boundary. A bare `ل`/`ك` prefix is NOT usable as one:
+     Arabic writes the definite article as part of the word, so "ل" happily matched the ل of
+     "البي دي اف" and turned "اشرح هذا البي دي اف" — the exact reported prompt — into a request
+     for a new PDF. Only unambiguous multi-letter markers are leads. */
+  const B = "(?:^|[\\s،,.:؛!?؟\\-–—()\"'])";
+  const LEAD = "(?:as|into|to|in)\\s+(?:an?\\s+)?(?:new\\s+)?(?:file\\s+|document\\s+)?|" +
+               "(?:[إا]لى|بصيغة|بصبغة|كملف|كمستند|بصورة|على\\s*شكل|بشكل)\\s*(?:ملف\\s*|مستند\\s*|صيغة\\s*)?|" +
+               "(?:make|create|generate|produce|export|convert|turn|save|download|write|prepare)\\s+(?:me\\s+)?(?:an?\\s+)?(?:new\\s+)?(?:file\\s+|document\\s+)?|" +
+               "(?:اعمل|إعمل|سوّ?ي|انشئ|أنشئ|اصنع|إصنع|حوّ?ل|صدّ?ر|جهّ?ز|اكتب|اطبع|نزّ?ل|أعطني|اعطني|اعطيني|جيب|هات)\\s*(?:لي\\s*)?(?:ملف\\s*|مستند\\s*)?";
+  for (const fmt of ["pptx", "xlsx", "csv", "docx", "pdf"]) {
+    if (new RegExp(B + "(?:" + LEAD + ")(?:" + FMT_WORD[fmt] + ")", "i").test(s)) return fmt;
+  }
+  return null;
+}
+/* Verbs that operate ON a document rather than ask for one. "شرح" is here without its alif
+   because "شرح مفصل لهذا الملف" carries no imperative at all. */
+const COMPREHEND_VERB =
+  /\b(?:explain|summari[sz]e|analy[sz]e|review|describe|read|extract|walk\s+me\s+through|go\s+through|tell\s+me\s+about|what\s+(?:does|is)\s+(?:this|it|the))\b|[إا]شرح|شرحلي|شرح|وضّ?ح|فسّ?ر|لخّ?ص|لخصلي|تلخيص|ملخّ?ص|حلّ?ل|تحليل|راجع|مراجعة|[إا]قرأ|[إا]ستخرج|محتوى|ما\s*(?:هو|فيه|يقول)|ماذا\s*(?:يقول|يحتوي|فيه)|شنو\s*(?:مكتوب|فيه|يحتوي)|عن\s*ماذا|عن\s*شنو|ترجم/i;
+/* A pointer at something that already exists. */
+const REFERS_EXISTING =
+  /\b(?:this|that|the|it|attached|uploaded|above|my)\b|هذا|هذه|هاي|هاذ|هالـ?|ذا\b|ديك|المرفق|المرفقة|المُرفق|أرفقت|ارفقت|رفعت|الملف|الملفات|المستند|الوثيقة|الكتاب|اللي\s*(?:رفعت|أرسلت)|الي\s*رفعت/i;
+
+/** Did this user turn carry a document/image the model can read? */
+function msgHasAttachment(m) {
+  if (!m) return false;
+  return !!(m.fileText || (m.files && m.files.length) || (m.images && m.images.length));
+}
+
+function detectFileRequest(text, opts) {
   if (!text) return null;
   const s = String(text).toLowerCase();
 
@@ -954,6 +1004,18 @@ function detectFileRequest(text) {
     /^\s*(ما|ماذا|كيف|لماذا|ليش|وش|شنو|شو|هل|متى|اين|أين|كم|أي)(\s|$)/.test(s) ||
     /(معنى|تعريف|الفرق\s*بين|اشرح|وضّح|فسّر)/.test(s) ||
     /\b(what|how|why|who|when|where|which|whose|meaning|explain|describe|difference\s+between)\b/i.test(s);
+
+  /* A named DESTINATION decides the format, and decides it first — otherwise the scan below
+     returns whichever format happens to appear earliest, which is the INPUT one whenever the
+     user is converting their own file ("اعد صياغة هذا البي دي اف كملف وورد" → docx, not pdf). */
+  const target = outputFormatTarget(s);
+  if (target) return target;
+
+  /* Reading, not producing. Requires a comprehension verb AND something to point at, so a
+     plain "اعمل لي pdf عن الجاذبية" is untouched. An actual attachment counts as the thing
+     being pointed at, which is what makes a bare "لخص الملف" resolve correctly. */
+  const points = REFERS_EXISTING.test(s) || !!(opts && opts.hasAttachment);
+  if (COMPREHEND_VERB.test(s) && points) return null;
 
   // 0) An EXPLICIT pdf output request ("pdf book/file", "as pdf", "في صيغة pdf") wins
   //    over any incidental sheet/table/word/slide mention elsewhere in the prompt.
@@ -1001,7 +1063,9 @@ function requestedFormatForAssistant(chat, index) {
   if (!chat || !Array.isArray(chat.messages)) return null;
   for (let i = index - 1; i >= 0; i--) {
     const m = chat.messages[i];
-    if (m.role === "user") return detectFileRequest(m.content);
+    /* An ATTACHMENT is the strongest evidence that a format word names the INPUT: with a PDF
+       in hand, "لخص الملف" wants a summary in the chat, not a second PDF. */
+    if (m.role === "user") return detectFileRequest(m.content, { hasAttachment: msgHasAttachment(m) });
   }
   return null;
 }
@@ -7824,6 +7888,8 @@ async function exportWord(turn, lang, msg) {
 function markdownToPlainText(md) {
   let s = String(md == null ? "" : md).replace(/\r\n?/g, "\n");
   s = s.replace(/```[a-zA-Z0-9]*\n?([\s\S]*?)```/g, "$1");                 // keep code-block bodies
+  // Plain text has no typesetter either — an equation must arrive as characters, not source.
+  s = s.split("\n").map((ln) => mathToUnicode(ln)).join("\n");
   s = s.replace(/`([^`]+)`/g, "$1");                                       // inline code
   s = s.replace(/!\[[^\]]*\]\([^)]*\)/g, "");                              // images
   s = s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");                           // links → text
@@ -7862,6 +7928,9 @@ function exportMarkdown(turn, lang, msg) {
   let md = String(body || "").trim();
   if (!md) { const n = mdNodeForTurn(turn); md = n ? n.textContent.trim() : ""; }
   if (!md) { showToast(t().exportEmpty); return; }
+  // Every OTHER export derives a title before naming the file; these two skipped it, so a
+  // perfectly good report downloaded as "firas-4252kl.md".
+  ensureFileTitle(meta, mdNodeForTurn(turn) || md);
   const blob = new Blob([md + "\n"], { type: "text/markdown;charset=utf-8" });
   downloadBlob(blob, resolveFileName(meta, "md"));
   showToast(ar ? "تم تنزيل الملف ✓" : "File downloaded ✓");
@@ -7875,6 +7944,7 @@ function exportTxt(turn, lang, msg) {
   let src = String(body || "").trim();
   if (!src) { const n = mdNodeForTurn(turn); src = n ? n.textContent.trim() : ""; }
   if (!src) { showToast(t().exportEmpty); return; }
+  ensureFileTitle(meta, mdNodeForTurn(turn) || src);
   const txt = "﻿" + markdownToPlainText(src) + "\n";
   const blob = new Blob([txt.replace(/\n/g, "\r\n")], { type: "text/plain;charset=utf-8" });
   downloadBlob(blob, resolveFileName(meta, "txt"));
@@ -8065,6 +8135,76 @@ function exportCsv(turn, lang, msg) {
 
 /** Split the message markdown into slides by headings / blank-line groups. */
 const DECK_LAYOUTS = ["content", "hero", "twocol", "stats", "comparison", "timeline", "process", "cards", "quote", "imagefull", "section"];
+/* ══ LaTeX → READABLE UNICODE ═══════════════════════════════════════════════════════════════
+   For surfaces that cannot typeset: PowerPoint slides, plain text, speaker notes. KaTeX is a
+   browser renderer, so anywhere the text leaves the browser as text, an equation has to arrive
+   as characters a human reads — "∫₀^(π/4) ln(1+tan x) dx", not "\int_0^{\pi/4}\ln…".
+   Uses the one authoritative scanner (scanMathSpans) to find the math, so it agrees with the
+   chat renderer about what math even is. */
+const _TEX_SYM = {
+  alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", varepsilon: "ε", zeta: "ζ",
+  eta: "η", theta: "θ", vartheta: "ϑ", iota: "ι", kappa: "κ", lambda: "λ", mu: "μ", nu: "ν",
+  xi: "ξ", pi: "π", rho: "ρ", sigma: "σ", tau: "τ", upsilon: "υ", phi: "φ", varphi: "φ",
+  chi: "χ", psi: "ψ", omega: "ω", Gamma: "Γ", Delta: "Δ", Theta: "Θ", Lambda: "Λ", Xi: "Ξ",
+  Pi: "Π", Sigma: "Σ", Upsilon: "Υ", Phi: "Φ", Psi: "Ψ", Omega: "Ω",
+  int: "∫", oint: "∮", iint: "∬", sum: "Σ", prod: "∏", infty: "∞", partial: "∂", nabla: "∇",
+  times: "×", cdot: "·", cdots: "⋯", div: "÷", pm: "±", mp: "∓", leq: "≤", le: "≤",
+  geq: "≥", ge: "≥", neq: "≠", ne: "≠", approx: "≈", equiv: "≡", sim: "∼", propto: "∝",
+  to: "→", rightarrow: "→", leftarrow: "←", Rightarrow: "⇒", Leftarrow: "⇐",
+  Leftrightarrow: "⇔", leftrightarrow: "↔", mapsto: "↦", in: "∈", notin: "∉",
+  subset: "⊂", subseteq: "⊆", supset: "⊃", supseteq: "⊇", cup: "∪", cap: "∩",
+  emptyset: "∅", forall: "∀", exists: "∃", angle: "∠", perp: "⊥", parallel: "∥",
+  degree: "°", ldots: "…", dots: "…", quad: " ", qquad: "  ",
+};
+const _SUP = { 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹", "+": "⁺", "-": "⁻", "(": "⁽", ")": "⁾", n: "ⁿ", i: "ⁱ" };
+const _SUB = { 0: "₀", 1: "₁", 2: "₂", 3: "₃", 4: "₄", 5: "₅", 6: "₆", 7: "₇", 8: "₈", 9: "₉", "+": "₊", "-": "₋", "(": "₍", ")": "₎", a: "ₐ", e: "ₑ", i: "ᵢ", n: "ₙ", x: "ₓ" };
+/** One TeX fragment → readable text. Never throws; anything it can't map is left legible. */
+function texToUnicode(tex) {
+  let s = String(tex || "");
+  s = s.replace(/\\(?:text|mathrm|textrm|mathbf|textbf|mathit|textit|operatorname)\s*\{([^{}]*)\}/g, "$1");
+  // Parenthesise only what needs it — "(π)/(4)" reads worse than "π/4", and a fraction whose
+  // parts are single tokens is unambiguous without them.
+  const wrap = (x) => (/^[A-Za-z0-9Ͱ-Ͽ⁰-₟]+$/.test(x.trim()) ? x.trim() : "(" + x.trim() + ")");
+  s = s.replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, (m, a, b) => wrap(a) + "/" + wrap(b));
+  s = s.replace(/\\d?frac\s*(\d)(\d)/g, "$1/$2");                       // \frac12
+  s = s.replace(/\\sqrt\s*\[([^\]]*)\]\s*\{([^{}]*)\}/g, "ᵛ√($2)");
+  s = s.replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)");
+  s = s.replace(/\\(?:left|right|big|Big|bigg|Bigg)\s*/g, "");
+  s = s.replace(/\\(?:quad|qquad|,|;|:|!|\s)/g, " ");
+  s = s.replace(/\\begin\{[^}]*\}|\\end\{[^}]*\}/g, " ");
+  s = s.replace(/\\\\/g, "؛ ");
+  s = s.replace(/\\boxed\s*\{([^{}]*)\}/g, "$1");
+  s = s.replace(/\\([a-zA-Z]+)/g, (m, name) => (_TEX_SYM[name] !== undefined ? _TEX_SYM[name] : name));
+  // sub/superscripts — braces first, then a single character
+  const mapRun = (run, table) => [...run].map((c) => table[c] || null).every(Boolean)
+    ? [...run].map((c) => table[c]).join("") : null;
+  s = s.replace(/\^\s*\{([^{}]*)\}/g, (m, g) => mapRun(g, _SUP) || "^(" + g + ")");
+  s = s.replace(/_\s*\{([^{}]*)\}/g, (m, g) => mapRun(g, _SUB) || "_(" + g + ")");
+  s = s.replace(/\^\s*([A-Za-z0-9])/g, (m, c) => _SUP[c] || "^" + c);
+  s = s.replace(/_\s*([A-Za-z0-9])/g, (m, c) => _SUB[c] || "_" + c);
+  s = s.replace(/[{}]/g, "");
+  return s.replace(/\s{2,}/g, " ").trim();
+}
+/** Replace every math span in a line of markdown with its readable form. */
+function mathToUnicode(line) {
+  const s = String(line || "");
+  if (s.indexOf("$") === -1 && s.indexOf("\\") === -1) return s;
+  let scan;
+  try { scan = scanMathSpans(s); } catch (_) { return s; }
+  if (!scan.math.length) return s;
+  let out = "", i = 0;
+  for (const r of scan.math) {
+    if (r.s < i) continue;
+    out += s.slice(i, r.s);
+    let body = s.slice(r.s, r.e);
+    body = body.replace(/^\$\$|\$\$$/g, "").replace(/^\$|\$$/g, "")
+               .replace(/^\\\[|\\\]$/g, "").replace(/^\\\(|\\\)$/g, "");
+    out += texToUnicode(body);
+    i = r.e;
+  }
+  return out + s.slice(i);
+}
+
 function slidesFromMarkdown(md, fallbackTitle) {
   const lines = (md || "").replace(/```[\s\S]*?```/g, "").split(/\n/); // strip fenced code (was a no-op)
   const slides = [];
@@ -8103,7 +8243,16 @@ function slidesFromMarkdown(md, fallbackTitle) {
     // Image on its own line → the slide's visual (first one wins).
     const im = line.match(/^\s*>?\s*!\[([^\]]*)\]\(([^)\s]+)[^)]*\)\s*$/);
     if (im) { if (!cur) cur = mk(); if (!cur.image) { cur.image = im[2]; cur.imageAlt = im[1].trim(); } return; }
-    const txt = line.replace(/^[-*+]\s+/, "").replace(/!\[[^\]]*\]\([^)]*\)/g, "").replace(/[*_`#>]/g, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").trim();
+    /* Math FIRST, and as Unicode. PowerPoint has no KaTeX, so an equation reaching a slide as
+       LaTeX source is already a failure — and the markdown cleanup right after this strips
+       `_ * > # \`` GLOBALLY, so `$a_1 > 0$` was landing on the slide as "$a1  0$": the
+       subscript and the inequality silently deleted. Converting the math spans before the
+       strip means the strip can no longer reach inside one. */
+    const txt = mathToUnicode(line)
+      .replace(/^[-*+]\s+/, "").replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+      .replace(/^\s*>+\s*/, "")                 // blockquote marker — only at the START of a line
+      .replace(/[*_`#]/g, "")                   // `>` is NOT stripped mid-line: it is "greater than"
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").trim();
     if (!txt) return;
     if (!cur) cur = mk();
     cur.bullets.push(txt);
@@ -9906,7 +10055,7 @@ function buildMessages(tier, conversation, replyLang) {
   // files and must NOT mention buttons — the app generates the file itself.
   const lastUser = [...conversation].reverse().find((m) => m.role === "user");
   // Skip file steering during a voice call — spoken replies must stay plain text.
-  const fileFmt = (lastUser && !state.callMode) ? detectFileRequest(lastUser.content) : null;
+  const fileFmt = (lastUser && !state.callMode) ? detectFileRequest(lastUser.content, { hasAttachment: msgHasAttachment(lastUser) }) : null;
   const fileTurnSystem = fileFmt ? { role: "system", content: fileGuidance(fileFmt) } : null;
 
   const history = conversation.map((m) => {
