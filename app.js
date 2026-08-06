@@ -1651,6 +1651,42 @@ function stripCodeFences(s) {
   t = t.replace(/\r?\n?```[ \t]*$/, ""); // trailing ```
   return t;
 }
+/* ── THE FILE ENDS WHERE THE FILE ENDS ───────────────────────────────────────────────
+   stripCodeFences only removes a fence at the very START or the very END of the string.
+   That is exactly one token short of the failure this hits in practice: a model that
+   finishes the document and then keeps talking.
+
+   Measured on a real 39,343-character build of an ambitious brief: clean HTML through
+   char 38,680 (</html>), then 651 characters of
+
+       ```  ---  ### 📌 Features  - **3D Rotating Globe** …  Would you like the **voice
+       search** feature added as well?
+
+   The trailing fence is no longer at the end of the string, so the `…```$` rule cannot
+   see it, and every byte of that chatter went into the saved index.html. A browser
+   tolerates it, which is why it survives review — but it fails validation, it pollutes
+   the code view, and it is the difference between a deliverable and a chat transcript.
+
+   Cutting on the LAST </html> rather than the first is deliberate: a page may legitimately
+   contain the string inside a template literal or an escaped example, and the real document
+   end is always the final one. The leading trim handles the mirror case (a preamble before
+   <!DOCTYPE). Both are no-ops on a well-behaved reply, so this costs nothing when the model
+   does as it was told — it just stops a badly-behaved one from shipping its own commentary. */
+function tidyCodeArtifact(code, lang) {
+  let t = stripCodeFences(code);
+  const isHtml = String(lang || "").toLowerCase() === "html" || /^\s*<!doctype\s+html/i.test(t);
+  if (!isHtml) return t;
+  const lower = t.toLowerCase();
+  const start = (() => {
+    const d = lower.indexOf("<!doctype");
+    if (d >= 0) return d;
+    const h = lower.indexOf("<html");
+    return h >= 0 ? h : -1;
+  })();
+  const endIdx = lower.lastIndexOf("</html>");
+  if (start < 0 || endIdx < 0 || endIdx + 7 <= start) return t;   // not a whole document — leave it alone
+  return t.slice(start, endIdx + 7);
+}
 function codeMime(ext) {
   return ({ html: "text/html", css: "text/css", js: "text/javascript",
     py: "text/x-python", json: "application/json", txt: "text/plain",
@@ -11665,7 +11701,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
     if (codeReq) {
       // Persist as a code block: ```firas-code {meta}\n<code>\n``` → renders the
       // finished code card (copy/download/preview) and survives reload.
-      let code = sanitizeContinuation(stripCodeFences(answer));
+      let code = sanitizeContinuation(tidyCodeArtifact(answer, (codeReq && codeReq.lang) || "html"));
       const renderCode = (merged, status) => {
         const node = liveNode(); const mdEl = node && node.querySelector(".msg-ai__body .md");
         if (!mdEl) return;
@@ -11713,7 +11749,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
         // so the partial result still renders as a code card (and survives reload).
         if (hasCode) {
           const meta = { filename: codeReq.filename, lang: codeReq.lang, ext: codeReq.ext, label: codeReq.label };
-          aiMsg.content = "```firas-code " + JSON.stringify(meta) + "\n" + stripCodeFences(answer) + "\n```";
+          aiMsg.content = "```firas-code " + JSON.stringify(meta) + "\n" + tidyCodeArtifact(answer, codeReq.lang) + "\n```";
         } else {
           aiMsg.content = scrubBacktrackFull(answer || "");
         }
