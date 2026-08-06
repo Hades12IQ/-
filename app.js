@@ -1739,6 +1739,14 @@ function promoteAnswerToCode(content, lang) {
 /** System prompt forcing raw, complete, single-file source (no fences/prose). */
 function codeSystemPrompt(spec) {
   const label = spec.label || "code";
+  /* THE "© 2023" TELL. A model's sense of "now" is its training cutoff, so a generated
+     footer, changelog or copyright line silently dates the page to whenever the weights were
+     frozen — and nothing in the app ever told it otherwise. That single stale number is the
+     most obvious sign a page came out of an old API, on the one element that appears on
+     EVERY page of a generated site.
+     Read from the clock rather than written as a literal, so this is right next January
+     without anyone remembering to come back and edit it. */
+  const YEAR = new Date().getFullYear();
   return [
     "You are an elite senior software engineer. Produce a COMPLETE, production-quality " + label + " deliverable as ONE single self-contained file.",
     "",
@@ -1754,6 +1762,8 @@ function codeSystemPrompt(spec) {
       : "- Structure the file so it is COMPLETE and ends properly with every block/function closed.",
     "- Write clean, well-organized, professional code with helpful comments and consistent formatting.",
     "- Follow EVERY requirement in the user's request precisely. Prefer more complete over shorter.",
+    "- THE CURRENT YEAR IS " + YEAR + ". Any copyright line, footer, changelog, date, \"last updated\" or example date you write MUST use " + YEAR + " — never a year from your training data. A footer reading \"© " + (YEAR - 3) + "\" is a defect.",
+    "- Make it genuinely INTERACTIVE, not a static mockup: buttons, links, tabs, menus, forms, sliders and modals must all actually work in the page, wired with real JavaScript. Nothing may be decorative — if it looks clickable it must do something.",
     "- Begin your response immediately with the first character of the code (e.g. <!DOCTYPE html>).",
   ].join("\n");
 }
@@ -1814,6 +1824,21 @@ function wireCodeActions(card, meta, lang) {
     const p = mkBtn(ICONS.preview, ar ? "معاينة" : "Preview", "js-preview");
     p.addEventListener("click", () => toggleCodePreview(card, code, ar));
     actions.appendChild(p);
+    /* A FINISHED PAGE OPENS AS A PAGE, not as source. Someone who asked for a website wants
+       to click through the thing they asked for; source is what you look at second. The
+       preview was one tap away but shut by default, so the first thing every build showed
+       was a wall of markup — and a preview nobody opens reads as "there is no preview".
+
+       Gated on a COMPLETE document (doctype or <html>…</html>) so a fragment or a snippet,
+       which would render as a blank white box, still opens on its source. Deferred a frame
+       because toggleCodePreview reads .code-card__preview out of the card, which is not in
+       the document yet at this point. */
+    if (/<!doctype\s+html/i.test(code) || (/<html[\s>]/i.test(code) && /<\/html>/i.test(code))) {
+      requestAnimationFrame(() => {
+        try { if (card.isConnected && card.querySelector(".code-card__preview")) toggleCodePreview(card, code, ar); }
+        catch (_) {}
+      });
+    }
   }
   const c = mkBtn(ICONS.copy, ar ? "نسخ" : "Copy", "js-copy");
   c.addEventListener("click", async () => {
@@ -1872,7 +1897,7 @@ function toggleCodePreview(card, code, ar) {
   bar.appendChild(open);
   const frame = document.createElement("iframe");
   frame.className = "code-card__frame";
-  frame.setAttribute("sandbox", "allow-scripts allow-modals allow-popups allow-forms allow-pointer-lock");
+  frame.setAttribute("sandbox", "allow-scripts allow-modals allow-popups allow-forms allow-pointer-lock allow-downloads");
   frame.setAttribute("title", "preview");
   frame.srcdoc = code;
   wrap.appendChild(bar);
@@ -8799,7 +8824,13 @@ function openHtmlPreview(rawCode) {
   // app's origin, cookies, or storage. srcdoc content runs isolated.
   const iframe = document.createElement("iframe");
   iframe.className = "preview-frame";
-  iframe.setAttribute("sandbox", "allow-scripts allow-forms allow-popups");
+  /* Full interaction, matching the code-card and Firas Code frames. The short list here
+     silently disabled real behaviour that generated pages rely on: allow-modals kills
+     alert/confirm/prompt (a click handler that ends in alert() looks like a dead button),
+     allow-pointer-lock kills any canvas game that captures the mouse, and allow-downloads
+     kills an "export/save" button. allow-same-origin stays OFF in all three — that is the
+     line that keeps previewed code away from our cookies, storage and origin. */
+  iframe.setAttribute("sandbox", "allow-scripts allow-modals allow-popups allow-forms allow-pointer-lock allow-downloads");
   iframe.setAttribute("title", t().previewTitle);
   iframe.srcdoc = html;
 
@@ -10869,6 +10900,29 @@ async function runBatchedFileDoc(userText, count, fmt, lang, tierKey, signal, on
    WEB SEARCH — when the user's message has web/current-info intent, Firas fetches
    live results (keyless, via the server's /api/search) and answers with sources.
    ========================================================================== */
+/* ── DOES THIS BUILD NEED LIVE FACTS? ────────────────────────────────────────────────
+   Code turns never searched the web: the search block lives in the `else` branch that only
+   runs when codeReq is falsy, and benefitsFromSilentSearch excludes code requests outright.
+   That is right for "build me a tic-tac-toe game" — the web has nothing to add and every
+   millisecond of latency is pure loss — and wrong for "a landing page for the iPhone 17"
+   or "a page showing this season's standings", where the model furnishes the page from
+   whatever it remembers and the result reads as stale the moment you look at it.
+
+   So: NARROW on purpose, like needsWebSearch and for the same reason. It fires only when the
+   brief names something the world updates — a price, a spec, a ranking, a schedule, a named
+   real-world entity, or an explicit "latest/current/2026". Everything else builds instantly
+   with no network at all. A false positive costs one short request on a tight leash; a false
+   negative costs nothing, because the page still gets built. */
+const FRESH_FACT_SIGNALS =
+  /\b(latest|newest|current(?:ly)?|up[\s-]?to[\s-]?date|this\s+(?:year|season|month)|today'?s|202[6-9]|price[sd]?|pricing|cost|spec(?:ification)?s?|release[sd]?|launch(?:ed)?|version|standings?|schedule|fixtures?|rankings?|statistics|market|exchange\s*rate|weather|news)\b/i;
+const FRESH_FACT_SIGNALS_AR =
+  /أحدث|احدث|الأحدث|الجديدة?|الحالي[ةه]?|حالياً|هسه|هذا\s*(?:العام|الموسم|الشهر)|سعر|أسعار|اسعار|التسعير|تكلفة|مواصفات|إصدار|اصدار|نسخة|ترتيب\s*الفرق|جدول\s*المباريات|مواعيد|تصنيف|إحصائيات|احصائيات|أخبار|اخبار|الطقس|سعر\s*الصرف|٢٠٢[٦-٩]/;
+function siteNeedsFreshFacts(text) {
+  const s = String(text || "").trim();
+  if (s.length < 12) return false;
+  return FRESH_FACT_SIGNALS.test(s) || FRESH_FACT_SIGNALS_AR.test(s);
+}
+
 function needsWebSearch(text) {
   const s = String(text || "");
   if (!s.trim()) return false;
@@ -11276,6 +11330,28 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       requestMessages = [{ role: "system", content: codeSystemPrompt(codeReq) }, ...codeConvo];
       requestTier = "ultra";
       aiMsg.think = false;
+      /* LIVE FACTS FOR A BUILD, only when the brief actually needs them — see
+         siteNeedsFreshFacts. No badge and no spinner: this is meant to be invisible, so it
+         runs on the same tight leash the silent factual search uses and the build proceeds
+         from the model's own knowledge if it does not come back in time. A page that is one
+         short request slower is a fair trade for a page whose prices are not two years old;
+         a page that WAITS on a dead network is not, which is why the budget is hard. */
+      const buildAsk = [...convo].reverse().find((m) => m.role === "user");
+      if (buildAsk && !(Array.isArray(buildAsk.images) && buildAsk.images.length) &&
+          siteNeedsFreshFacts(buildAsk.content)) {
+        try {
+          const hits = await fetchWebSearch(buildAsk.content, 3500);
+          if (hits && hits.length) {
+            /* Demoted to `user`, exactly as the chat path does: the block is quoted web text,
+               and formatSearchContext fences it with a per-request nonce so a page cannot
+               close the fence and speak as the system. Placed AFTER the code system prompt so
+               the output contract (raw source, one file, no fences) still leads. */
+            requestMessages = [requestMessages[0],
+              { role: "user", content: formatSearchContext(hits, replyLang) },
+              ...requestMessages.slice(1)];
+          }
+        } catch (_) { /* a failed lookup must never block a build */ }
+      }
     } else if (state.mode !== "plan") {
       const lastUserMsg = [...convo].reverse().find((m) => m.role === "user");
       // Skip web search on VISION turns (the server routes those to the vision

@@ -7984,3 +7984,27 @@ img.md-img-held:hover::after { color: var(--color-accent); }
 @media (pointer: coarse), (max-width: 560px) {
   .ann-clear-all { min-block-size: 44px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   THE TIER PICKER DOES NOT BELONG TO FIRAS CODE
+
+   Firas Code picks its own engine — the workspace routes builds to the coder tier
+   itself (requestTier = "ultra" on a code turn), so the topbar's Mini/Pro/Ultra/Max
+   control was offering a choice that Code does not honour. It leaked into BOTH Code
+   screens: the "Build with AI" home and the IDE.
+
+   ONLY HALF OF IT WAS HIDDEN. `.product-code #tierSwitch{display:none}` has been in this
+   file since Deck v2 — but the tier control has TWO presentations of the same state:
+   #tierSwitch, the desktop strip, and #tierSelect, the phone dropdown. Code hid the strip
+   and never the dropdown, so the control was invisible on a laptop and fully present on a
+   phone. That is why it took a phone screenshot to surface, and why it appeared on BOTH
+   Code screens (home and IDE) — nothing about the screen was ever the variable.
+   The .product-brain block below already hides the pair and its comment names this exact
+   asymmetry as an open bug; this closes it.
+
+   Layout is safe: `.topbar__spacer` is the flex growth element that positions this
+   group, so removing the control lets the remaining buttons close up normally —
+   no gap, no reflow of the wordmark.
+   ══════════════════════════════════════════════════════════════════════════════ */
+body.product-code #tierSwitch,
+body.product-code #tierSelect { display: none !important; }
