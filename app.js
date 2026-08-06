@@ -23908,6 +23908,13 @@ function brainRenderThread(chat, opts) {
       });
       acts.appendChild(copyBtn);
       turn.appendChild(acts);
+      /* …and the SAME long-press / right-click menu the main chat puts on its own user
+         bubbles (renderTurn → attachCopyMenu). The hover button above is a desktop
+         affordance; on a phone there is no hover, and reaching for a 26px target beside a
+         long question is not how anyone copies text. Brain had the button and not the
+         gesture, so the two products behaved differently on the surface where Brain is
+         used most. One line, and the gesture is identical because it is the same code. */
+      if (m.content) attachCopyMenu(b, () => m.content || "");
     } else {
       const body = document.createElement("div");
       body.className = "msg-ai__body";
