@@ -1755,7 +1755,7 @@ function codeSystemPrompt(spec) {
     "- Do NOT wrap the code in Markdown code fences (no triple backticks), and do NOT add any explanation, preamble, or closing remarks.",
     "- Never use placeholders like \"continue here\", \"...\", \"rest of the code\", \"TODO\", or any truncation. Write the ENTIRE file to completion, however long it needs to be.",
     spec.lang === "html"
-      ? "- For HTML: put ALL HTML, CSS and JavaScript INSIDE this one file (inline <style> and <script>). Do NOT reference external files or CDN libraries unless the user explicitly asks. No frameworks (Bootstrap/Tailwind/React) unless requested."
+      ? "- For HTML: put ALL your OWN HTML, CSS and JavaScript INSIDE this one file (inline <style> and <script>) — no companion .css/.js files, and no framework you were not asked for. Third-party LIBRARIES are the exception, governed by the CDN rule below: reach for one only when the task genuinely needs it (real 3D, charts, physics, maps), never for styling or convenience."
       : "- Keep everything in this single file; avoid external dependencies unless the user explicitly asks.",
     spec.lang === "html"
       ? "- BUILD IN ORDER and BUDGET your output so you REACH THE END: <head> + a FOCUSED <style> (only the CSS the sections actually need — do NOT over-expand or pad the CSS), then the COMPLETE <body> with EVERY section, then <script>, then </html>. The document MUST end with </html>. NEVER spend your whole budget on CSS and stop before the <body>."
@@ -1764,6 +1764,42 @@ function codeSystemPrompt(spec) {
     "- Follow EVERY requirement in the user's request precisely. Prefer more complete over shorter.",
     "- THE CURRENT YEAR IS " + YEAR + ". Any copyright line, footer, changelog, date, \"last updated\" or example date you write MUST use " + YEAR + " — never a year from your training data. A footer reading \"© " + (YEAR - 3) + "\" is a defect.",
     "- Make it genuinely INTERACTIVE, not a static mockup: buttons, links, tabs, menus, forms, sliders and modals must all actually work in the page, wired with real JavaScript. Nothing may be decorative — if it looks clickable it must do something.",
+    /* ── AMBITIOUS BRIEFS ──────────────────────────────────────────────────────────────
+       The rules above were written for a page you can hand-write. They are actively wrong
+       for the brief that arrives when someone is testing what this thing can really do:
+       "World Atlas 3D — an interactive Three.js globe, glassmorphism, cinematic lighting,
+       country profiles, charts, voice search — build it in Next.js + TypeScript + React
+       Three Fiber."
+
+       Two rules collide with that, and both used to lose silently:
+
+       · "no CDN libraries unless the user explicitly asks" — a real 3D globe is not
+         hand-writable. Three.js is ~600KB minified; there is no version of "inline it"
+         that fits, so a model reading that rule either writes a fake globe out of divs or
+         spends its budget reimplementing a renderer badly. Naming a library IS asking, and
+         a pinned CDN <script> is the ONLY way a single file can be genuinely 3D.
+
+       · the brief names a framework that cannot run from a file:// document. Next.js needs
+         a build step and a server; JSX and TypeScript need a compiler. Emitting them
+         produces a file that shows a blank page — the worst possible outcome, because it
+         looks like a delivery. The honest translation is to keep every REQUIREMENT and drop
+         only the toolchain.
+
+       Third: ambition has to be spent in the right order. A brief with fifteen features and
+       a finite budget produces either one breathtaking thing that works, or fifteen stubs.
+       The globe is the product; the sixth chart is not. */
+    spec.lang === "html"
+      ? "- HEAVY LIBRARIES ARE ALLOWED AND EXPECTED WHEN THE TASK NEEDS THEM. If the request needs real 3D, data-visualisation, physics or mapping (Three.js, D3, Chart.js, Cannon, Leaflet…), load it from a CDN with a PINNED version — e.g. <script src=\"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js\"></script>, or an importmap + `import * as THREE from 'three'` for ES modules. Naming a library in the request IS explicit permission. Never fake a 3D scene with CSS/divs when a real WebGL one was asked for, and never hand-roll a renderer."
+      : "- Use the language's standard library; add a dependency only if the task genuinely needs one.",
+    spec.lang === "html"
+      ? "- IF THE REQUEST NAMES A FRAMEWORK OR TOOLCHAIN THAT CANNOT RUN FROM A SINGLE FILE (Next.js, React, Vue, Svelte, TypeScript, React Three Fiber, Tailwind config, npm packages, a build step), DO NOT emit that code — it would produce a blank page. Translate it into the equivalent that runs when the file is opened directly, and deliver EVERY feature that was asked for: React Three Fiber → Three.js from a CDN; JSX/TSX → plain DOM or template literals; TypeScript → JavaScript; Tailwind → real CSS in the <style>; npm imports → CDN or importmap. Keep the design, the interactions and the feature list intact. Never mention what you dropped, never apologise, and never explain the substitution — just ship the working file."
+      : "- If the request names tooling that does not fit one file, deliver the equivalent that runs as written.",
+    spec.lang === "html"
+      ? "- ON A LARGE BRIEF, SPEND THE BUDGET IN THIS ORDER: (1) the centrepiece the request is actually about, fully working and beautiful — if it is a globe it must really render in WebGL, really rotate, really respond to drag/zoom/click; (2) the surrounding UI and layout with the stated visual language (glassmorphism, lighting, motion) done properly; (3) the secondary panels and data views; (4) nice-to-haves. Cut depth from (3) and (4) before you ever cut quality from (1). Fifteen half-finished sections is a failure; one stunning working centrepiece with fewer side panels is a success. Every feature you DO include must be real."
+      : "- On a large brief, make the core capability genuinely work before adding breadth.",
+    spec.lang === "html"
+      ? "- USE REAL DATA, not lorem ipsum: real country names, real capitals, real coordinates, plausible figures. Placeholder content in a finished-looking UI reads as broken. If an API key would be required, generate a rich embedded dataset in the file instead — never call an API that needs a secret, and never leave a fetch() that will fail."
+      : "- Use realistic sample data rather than placeholders.",
     "- Begin your response immediately with the first character of the code (e.g. <!DOCTYPE html>).",
   ].join("\n");
 }
