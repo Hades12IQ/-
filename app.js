@@ -6663,8 +6663,58 @@ function exportCss(th, isAr, scope, tpl) {
 }
 
 /** Build the cover + body HTML (no <style>). Returns { cover, body, hasCover }. */
-function exportBody(mdNode, lang, meta) {
+/* ══ MATH FOR SURFACES THAT CANNOT TYPESET ══════════════════════════════════════════════════
+   The PDF path PHOTOGRAPHS the browser, so KaTeX's own rendering is exactly what we want there.
+   Word is the opposite: html-docx-js drops `.katex-html` (the visual layer) and keeps only the
+   MathML mirror — which Word cannot render — AND KaTeX's `<annotation>` carries the LaTeX
+   source, so it keeps that too. Measured on a real "10 JEE-level integrals as a Word document",
+   the deliverable the owner reported: every equation arrived TWICE, once as loose MathML tokens
+   and once as raw source —
+
+       ∫ 0 π / 2 ln ⁡ ( 1 + tan ⁡ 1 x ) 1 + cos ⁡ 2 x d x
+       \int_0^{\pi/2} \frac{\ln\left(1+\tan^{1} x\right)}{\sqrt{1+\cos^2 x}}\,dx
+
+   — 40 MathML blocks, 0 surviving KaTeX spans. In a document that is almost entirely equations
+   that is the "blank / hopelessly disordered page".
+
+   So for those surfaces every KaTeX node is replaced by readable Unicode BEFORE the document is
+   built. The source is taken from KaTeX's own x-tex annotation, which is the exact LaTeX that
+   produced the node — no re-parsing, no guessing. */
+function flattenMathForExport(root) {
+  if (!root || !root.querySelectorAll) return root;
+  const readable = (k) => {
+    const ann = k.querySelector('annotation[encoding="application/x-tex"]');
+    const tex = (ann && ann.textContent) || "";
+    if (tex.trim()) return texToUnicode(tex);
+    const mm = k.querySelector(".katex-mathml");
+    return ((mm && mm.textContent) || k.textContent || "").replace(/\s+/g, " ").trim();
+  };
+  const MATH_FONT = "font-family:'Cambria Math','Segoe UI Symbol','Times New Roman',serif;";
+  // Display first: it OWNS its line, so it becomes a centred paragraph rather than a run.
+  root.querySelectorAll(".katex-display").forEach((d) => {
+    const k = d.querySelector(".katex") || d;
+    const p = document.createElement("p");
+    p.className = "doc-math-block";
+    p.setAttribute("dir", "ltr");
+    p.style.cssText = "text-align:center;direction:ltr;margin:.85em 0;" + MATH_FONT;
+    p.textContent = readable(k);
+    if (d.parentNode) d.parentNode.replaceChild(p, d);
+  });
+  root.querySelectorAll(".katex").forEach((k) => {
+    const s = document.createElement("span");
+    s.className = "doc-math-inline";
+    s.setAttribute("dir", "ltr");
+    s.style.cssText = "direction:ltr;white-space:nowrap;" + MATH_FONT;
+    s.textContent = readable(k);
+    if (k.parentNode) k.parentNode.replaceChild(s, k);
+  });
+  return root;
+}
+
+function exportBody(mdNode, lang, meta, opts) {
   const clone = mdNode.cloneNode(true);
+  // Non-raster deliverables (Word, standalone HTML) get readable text instead of KaTeX markup.
+  if (opts && opts.flattenMath) flattenMathForExport(clone);
   clone.querySelectorAll(".code-block__head, .code-block__copy, .code-preview-btn, .file-disclosure__summary, .tikz-figure__spin, .plot-reset, script[type='text/tikz']").forEach((n) => n.remove());
   // PDF must use ONLY our in-house renderers. A TikZJax-engine figure has an SVG whose glyphs are
   // <use xlink:href> into the EXTERNAL tikzjax stylesheet → unresolved off-screen → broken/blank in
@@ -6735,18 +6785,24 @@ function buildDocToc(mdNode, isAr, th) {
 }
 
 /** Full self-contained themed HTML document (used by Word / html-docx-js). */
-function buildExportHtml(mdNode, lang, meta) {
+function buildExportHtml(mdNode, lang, meta, opts) {
   meta = meta || {};
   const th = themeFor(meta);
   const isAr = lang === "ar";
   const dir = isAr ? "rtl" : "ltr";
-  const { cover, body } = exportBody(mdNode, lang, meta);
+  const { cover, body } = exportBody(mdNode, lang, meta, opts);
   // Contents page for multi-section Word docs (buildDocToc self-skips short docs);
   // exam papers ('ministry') never get one — a real exam has no table of contents.
   const toc = String(meta.template || "").toLowerCase().trim() === "ministry" ? "" : buildDocToc(mdNode, isAr, th);
   return (
     '<!doctype html><html dir="' + dir + '" lang="' + (isAr ? "ar" : "en") + '">' +
-    '<head><meta charset="utf-8"><style>' + exportCss(th, isAr, "", meta.template) + "</style></head><body>" +
+    "<head><meta charset=\"utf-8\">" +
+    /* A standalone .html carries KaTeX MARKUP but none of KaTeX's layout CSS, which lives in the
+       app's own stylesheet — so every equation opened as unstyled spans. Word never sees this
+       (it gets flattened text instead), so linking the same CDN build index.html already uses
+       costs nothing there and restores real typeset math in the exported page. */
+    (opts && opts.flattenMath ? "" : '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">') +
+    "<style>" + exportCss(th, isAr, "", meta.template) + "</style></head><body>" +
     cover + toc + "<div class='doc'>" + body + "</div></body></html>"
   );
 }
@@ -7872,7 +7928,8 @@ async function exportWord(turn, lang, msg) {
     await loadScripts(EXPORT_LIBS.docx);
     if (typeof window.htmlDocx === "undefined" || !window.htmlDocx.asBlob) throw new Error("nolib");
     ensureFileTitle(meta, mdNode);
-    const html = buildExportHtml(mdNode, lang, meta);
+    // Word cannot typeset KaTeX — see flattenMathForExport.
+    const html = buildExportHtml(mdNode, lang, meta, { flattenMath: true });
     const blob = window.htmlDocx.asBlob(html, {
       orientation: "portrait",
       margins: { top: 720, right: 720, bottom: 720, left: 720 },
@@ -8162,13 +8219,48 @@ const _SUB = { 0: "₀", 1: "₁", 2: "₂", 3: "₃", 4: "₄", 5: "₅", 6: "�
 function texToUnicode(tex) {
   let s = String(tex || "");
   s = s.replace(/\\(?:text|mathrm|textrm|mathbf|textbf|mathit|textit|operatorname)\s*\{([^{}]*)\}/g, "$1");
-  // Parenthesise only what needs it — "(π)/(4)" reads worse than "π/4", and a fraction whose
-  // parts are single tokens is unambiguous without them.
-  const wrap = (x) => (/^[A-Za-z0-9Ͱ-Ͽ⁰-₟]+$/.test(x.trim()) ? x.trim() : "(" + x.trim() + ")");
-  s = s.replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, (m, a, b) => wrap(a) + "/" + wrap(b));
-  s = s.replace(/\\d?frac\s*(\d)(\d)/g, "$1/$2");                       // \frac12
-  s = s.replace(/\\sqrt\s*\[([^\]]*)\]\s*\{([^{}]*)\}/g, "ᵛ√($2)");
-  s = s.replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)");
+  /* \frac and \sqrt need a BALANCED-brace reader, not a regex. `[^{}]*` cannot describe an
+     argument that itself contains braces, and real problems are full of them —
+     `\frac{\ln\left(1+\tan^{1} x\right)}{\sqrt{1+\cos^2 x}}` left the literal word "frac" in
+     the Word document because the inner `{1}` broke the match. */
+  const readGroup = (str, i) => {
+    let d = 0;
+    for (let j = i; j < str.length; j++) {
+      if (str[j] === "{") d++;
+      else if (str[j] === "}" && --d === 0) return { body: str.slice(i + 1, j), end: j + 1 };
+    }
+    return null;
+  };
+  const expand = (str, depth) => {
+    if (depth > 12) return str;
+    let out = "", i = 0;
+    while (i < str.length) {
+      const f = str.indexOf("\\frac", i), q = str.indexOf("\\sqrt", i);
+      const at = f === -1 ? q : (q === -1 ? f : Math.min(f, q));
+      if (at === -1) { out += str.slice(i); break; }
+      out += str.slice(i, at);
+      const isFrac = str.startsWith("\\frac", at);
+      let k = at + 5;
+      while (str[k] === " ") k++;
+      if (str[k] !== "{") {                       // \frac12 shorthand, or a bare command
+        const sh = /^\\frac\s*(\d)(\d)/.exec(str.slice(at));
+        if (isFrac && sh) { out += sh[1] + "/" + sh[2]; i = at + sh[0].length; continue; }
+        out += str.slice(at, at + 5); i = at + 5; continue;
+      }
+      const g1 = readGroup(str, k);
+      if (!g1) { out += str.slice(at); break; }
+      if (!isFrac) { out += "√(" + expand(g1.body, depth + 1) + ")"; i = g1.end; continue; }
+      let m2 = g1.end;
+      while (str[m2] === " ") m2++;
+      const g2 = str[m2] === "{" ? readGroup(str, m2) : null;
+      if (!g2) { out += "(" + expand(g1.body, depth + 1) + ")/"; i = g1.end; continue; }
+      out += "(" + expand(g1.body, depth + 1) + ")/(" + expand(g2.body, depth + 1) + ")";
+      i = g2.end;
+    }
+    return out;
+  };
+  s = s.replace(/\\sqrt\s*\[([^\]]*)\]\s*\{/g, "\\sqrt{");   // n-th root → plain root
+  s = expand(s, 0);
   s = s.replace(/\\(?:left|right|big|Big|bigg|Bigg)\s*/g, "");
   s = s.replace(/\\(?:quad|qquad|,|;|:|!|\s)/g, " ");
   s = s.replace(/\\begin\{[^}]*\}|\\end\{[^}]*\}/g, " ");
@@ -8183,6 +8275,8 @@ function texToUnicode(tex) {
   s = s.replace(/\^\s*([A-Za-z0-9])/g, (m, c) => _SUP[c] || "^" + c);
   s = s.replace(/_\s*([A-Za-z0-9])/g, (m, c) => _SUB[c] || "_" + c);
   s = s.replace(/[{}]/g, "");
+  // "(π)/(4)" reads worse than "π/4" — drop parentheses that wrap a single short atom.
+  s = s.replace(/\(([^()\s]{1,3})\)/g, "$1");
   return s.replace(/\s{2,}/g, " ").trim();
 }
 /** Replace every math span in a line of markdown with its readable form. */
@@ -24082,6 +24176,29 @@ async function brainExpandQuery(q, lang) {
 /** Build the grounding block. Sources are numbered [S1..Sn] and the model is REQUIRED to cite
     them — the exact inverse of kbContext's preamble, which is why Brain never reuses it and why
     both backends now skip the legacy KB injection when product === "brain". */
+/* ══ "MAKE ME QUESTIONS FROM THIS" IS NOT A QUESTION ════════════════════════════════════════
+   Brain had three modes — extract, reason, overview — and all three are shaped around ANSWERING
+   something the user asked. A request to AUTHOR questions therefore arrived wearing the wrong
+   prompt entirely: the model was told to answer the exact question asked, using targeted search
+   hits, so it wrote questions about whichever corner of the book the retrieval happened to
+   return. That is the "أسئلة سياقها خطأ" report — the questions were not wrong so much as aimed
+   at the wrong six pages.
+
+   Two things have to change together, and neither works alone:
+     · RETRIEVAL — questions about a book need a spread across the WHOLE book, not the passages
+       nearest a query that was never really a query. Quiz requests use the overview sampler.
+     · THE PROMPT — authoring is a different job from answering, with its own failure modes
+       (clustering, unanswerable questions, no answer key, silently fewer than asked).          */
+function brainIsQuizQuery(q) {
+  const s = String(q || "");
+  // "جاوب على الأسئلة" / "solve the questions" is the OPPOSITE request — never treat it as authoring.
+  if (/\b(?:answer|solve)\s+(?:the\s+)?(?:questions?|exercises?)\b|جاوب|أجب|اجب|حلّ?\s*(?:لي\s*)?(?:ال)?(?:أسئلة|اسئلة|السؤال|التمارين)/i.test(s)) return false;
+  const NOUN = "(?:أسئلة|اسئلة|أسالة|اسالة|سؤال|اختبار|امتحان|كويز|فحص|تمارين|تمرين|بطاقات|questions?|quiz(?:zes)?|exam|test|mcqs?|flash\\s*cards?|worksheet)";
+  const VERB = "(?:سوّ?ي|سويلي|اعمل|إعمل|اعملي|جهّ?ز|حضّ?ر|طلّ?ع|اطلع|اكتب|أنشئ|انشئ|اصنع|ولّ?د|صمّ?م|هات|جيب|أعطني|اعطني|اعطيني|ابي|أبي|بدي|عايز|عاوز|بغيت|أريد|اريد|محتاج|make|create|generate|write|prepare|build|produce|design|give\\s*me|i\\s*want|i\\s*need)";
+  if (new RegExp(VERB + "[^.؟?!\\n]{0,45}?" + NOUN, "i").test(s)) return true;
+  return /\b(?:quiz|test)\s+me\b|اختبرني|امتحنّ?ي|امتحني|اسألني|اسالني/i.test(s);
+}
+
 function brainGroundingBlock(hits, lang, mode) {
   const ar = lang === "ar";
   const body = hits.map((h, i) =>
@@ -24095,6 +24212,46 @@ function brainGroundingBlock(hits, lang, mode) {
   // "علّل" worked through, an إعراب actually performed. Same citation discipline as extract mode,
   // but the model is explicitly permitted to derive. Without this it refuses or parrots a
   // fragment, which is the behaviour that reads as stupid when the book plainly contains the rule.
+  if (mode === "quiz") {
+    /* Written against the four ways an authored quiz actually fails: it clusters on whichever
+       pages retrieval returned, it asks things the passages cannot answer, it ships without an
+       answer key, and it quietly delivers six questions when ten were asked for. */
+    const qz = ar
+      ? "أنت «فِراس برين»، وأنت الآن **تؤلّف أسئلة** من ملفات المستخدم — لا تُجيب عن سؤال.\n\n" +
+        "**التغطية (أهم قاعدة):**\n" +
+        "• المقاطع أدناه مأخوذة من **كامل** المستند بترتيبه. وزّع أسئلتك عليها **كلها** بالتساوي: من أوله ووسطه وآخره.\n" +
+        "• ممنوع تكديس الأسئلة على صفحة أو فصل واحد لأنه بدا أغزر. إن كانت المقاطع تغطي عشرة مواضع، فلازم أسئلتك تلمس عشرتها.\n" +
+        "• قبل أن تكتب، حدّد بصمت المواضيع الرئيسية في المقاطع، ثم اسحب سؤالًا (أو أكثر) من كل موضوع.\n\n" +
+        "**صياغة السؤال:**\n" +
+        "• كل سؤال **لازم تكون إجابته موجودة صراحةً في المقاطع**. لا تسأل عمّا لا تستطيع الإجابة عنه منها.\n" +
+        "• اجعل السؤال قائمًا بذاته: من يقرأه دون رؤية المقطع يفهم المطلوب. ممنوع «حسب النص أعلاه» أو «ما المذكور في الفقرة».\n" +
+        "• نوّع الأنماط: اختيار من متعدد بأربعة بدائل (أ/ب/ج/د) — وتكون المشتّتات **معقولة** ومن نفس المجال لا عشوائية — وصح/خطأ، وأكمل الفراغ، وإجابة قصيرة، وسؤال تطبيقي/تحليلي يطلب الربط لا الحفظ.\n" +
+        "• درّج الصعوبة: يبدأ سهلًا وينتهي بأصعبها.\n" +
+        "• ممنوع سؤالان يقيسان نفس المعلومة بصياغتين.\n\n" +
+        "**الشكل:**\n" +
+        "• رقّم الأسئلة **1..N متسلسلة** عبر الورقة كلها، ولا تعيد الترقيم عند تغيير النمط.\n" +
+        "• إن طلب المستخدم عددًا محدّدًا فالتزم به **حرفيًا**؛ عدّ أسئلتك قبل أن تنهي.\n" +
+        "• بعد آخر سؤال اكتب `## نموذج الإجابة`، ثم لكل سؤال بالترتيب: الإجابة الصحيحة + سطر تعليل واحد + مرجعه هكذا [S1].\n" +
+        "• لا تكتب قسم مصادر — الواجهة تعرضه تلقائيًا. ولا مقدمة ولا خاتمة."
+      : "You are Firas Brain, and right now you are **authoring questions** from the user's files — not answering one.\n\n" +
+        "**Coverage (the rule that matters most):**\n" +
+        "• The passages below are sampled across the **whole** document in order. Spread your questions over **all** of them — beginning, middle and end.\n" +
+        "• Never cluster on one page or chapter because it looked richer. If the passages touch ten places, your questions must touch ten places.\n" +
+        "• Before writing, silently list the main topics present, then draw at least one question from each.\n\n" +
+        "**Writing each question:**\n" +
+        "• Every question's answer **must be explicitly present in the passages**. Never ask what they cannot answer.\n" +
+        "• Make it self-contained: someone who cannot see the passage still understands what is being asked. No \"according to the text above\".\n" +
+        "• Vary the types: multiple choice with four options (A–D) whose distractors are **plausible and from the same domain**, true/false, fill-in-the-blank, short answer, and an applied/analytical item that requires connecting ideas rather than recall.\n" +
+        "• Grade the difficulty: start accessible, end with the hardest.\n" +
+        "• Never ask the same fact twice in different words.\n\n" +
+        "**Format:**\n" +
+        "• Number the questions **1..N continuously** across the whole paper; never restart when the type changes.\n" +
+        "• If the user named a count, honour it **exactly**; count your questions before you finish.\n" +
+        "• After the last question write `## Answer Key`, then for each question in order: the correct answer + one line of justification + its citation as [S1].\n" +
+        "• Do NOT write a sources section — the interface renders one. No preamble, no closing remark.";
+    return qz + "\n" + (ar ? BRAIN_NO_EMPTY_RULE_AR : BRAIN_NO_EMPTY_RULE_EN) +
+           "\n" + (ar ? "المقاطع:" : "PASSAGES:") + "\n\n" + body;
+  }
   if (mode === "reason") {
     const rs = ar
       ? "أنت «فِراس برين»، وأمامك مقاطع من ملفات المستخدم. هذا السؤال يطلب **فهمًا وتطبيقًا**، لا نقلًا.\n\n" +
@@ -24262,18 +24419,23 @@ async function brainAsk(question) {
       return;   // the finally block below renders, persists and clears state
     }
 
-    let overview = brainIsOverviewQuery(q);
+    /* Authoring questions needs the SAMPLER, not the search. Targeted retrieval hands back the
+       passages nearest the wording of "سوي لي ١٠ أسئلة" — which is about as related to the
+       book's content as any sentence could be — and the quiz was then built from those six
+       arbitrary pages. Sampling the whole document is what makes the questions cover it. */
+    const quiz = brainIsQuizQuery(q);
+    let overview = !quiz && brainIsOverviewQuery(q);
     // A definition / تعليل / إعراب needs MORE of the book in front of it than a lookup does: the
     // rule, its conditions and an example usually sit in different places, and the model has to
     // see all of them to reason rather than parrot one fragment.
-    const reasoning = !overview && brainIsReasoningQuery(q);
-    let found = overview ? await ask({ q, mode: "overview" }) : await ask({ q, k: reasoning ? 12 : 8 });
+    const reasoning = !overview && !quiz && brainIsReasoningQuery(q);
+    let found = (overview || quiz) ? await ask({ q, mode: "overview" }) : await ask({ q, k: reasoning ? 12 : 8 });
     let hits = (found && found.hits) || [];
 
     // Thin result on a real question → the vocabulary probably just doesn't line up (an Arabic
     // question against an English document is the common case). Expand to bilingual keywords and
     // retry once. Costs one tiny nomem call, and only when the cheap path already fell short.
-    if (!overview && hits.length < 2) {
+    if (!overview && !quiz && hits.length < 2) {
       brainRenderThread(chat, { pending: LQ.searching });
       const expanded = await brainExpandQuery(q, lang);
       if (expanded && expanded !== q) {
@@ -24299,7 +24461,7 @@ async function brainAsk(question) {
         .filter((m) => m !== aiMsg && m.role !== "system")
         .slice(-8)
         .map((m) => ({ role: m.role, content: m.role === "assistant" ? brainStripSources(m.content) : m.content }));
-      const msgs = [{ role: "system", content: brainGroundingBlock(hits, lang, overview ? "overview" : reasoning ? "reason" : "extract") }, ...history];
+      const msgs = [{ role: "system", content: brainGroundingBlock(hits, lang, quiz ? "quiz" : overview ? "overview" : reasoning ? "reason" : "extract") }, ...history];
       // Full render ONCE to create the turn, then paint into it incrementally.
       brainRenderThread(chat, { streamingMsg: aiMsg });
       let full = "";
