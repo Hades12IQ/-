@@ -1959,13 +1959,7 @@ function toggleCodePreview(card, code, ar) {
   const open = document.createElement("button");
   open.type = "button"; open.className = "code-card__btn";
   open.innerHTML = ICONS.external + "<span>" + escapeHtml(ar ? "فتح في تبويب" : "Open in tab") + "</span>";
-  open.addEventListener("click", () => {
-    try {
-      const url = URL.createObjectURL(new Blob([code], { type: "text/html" }));
-      window.open(url, "_blank", "noopener");
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
-    } catch (_) {}
-  });
+  open.addEventListener("click", () => { openCodeInTab(code, ar); });
   bar.appendChild(open);
   const frame = document.createElement("iframe");
   frame.className = "code-card__frame";
@@ -8840,6 +8834,70 @@ function exportControlEl(msg, index) {
    LIVE HTML PREVIEW
    ========================================================================== */
 
+/* ── "OPEN IN TAB" — WHY IT DID NOTHING ──────────────────────────────────────────────
+   Both preview bars did this:
+
+       try {
+         const url = URL.createObjectURL(new Blob([code], { type: "text/html" }));
+         window.open(url, "_blank", "noopener");
+         setTimeout(() => URL.revokeObjectURL(url), 30000);
+       } catch (_) {}
+
+   Three faults, and together they make a silent no-op:
+
+   · window.open RETURNS NULL when the popup is blocked. Nothing checked it, so a blocked
+     tab produced no tab and no message — the button simply did nothing, which is exactly
+     what was reported. `catch (_) {}` then guaranteed that even a thrown error was
+     invisible.
+   · `noopener` in the FEATURES argument makes this a popup rather than a tab, and blockers
+     treat popups far more harshly. It also buys nothing here: a blob: URL is same-origin
+     with this document either way, so the isolation it looks like it provides is imaginary.
+   · a blob: URL is a fresh navigation. Some in-app browsers (the Instagram/Facebook
+     webviews a lot of this traffic arrives in) refuse to navigate to blob: at top level at
+     all, and revoking after 30s races a slow tab.
+
+   The order below goes from most-permissive to least. `window.open("", "_blank")` inside a
+   real click is the call browsers are most willing to honour — there is no URL yet to judge
+   — and document.write then delivers the whole file with no navigation, no blob lifetime and
+   no revoke race. Blob is kept as the second attempt for engines that dislike about:blank
+   writes. If everything is refused we say so and hand over a download, because the one
+   outcome that must never happen again is a button that quietly does nothing. */
+function openCodeInTab(code, ar) {
+  const html = String(code || "");
+  // 1 — a blank tab, then write into it. No URL to block, no blob to expire.
+  try {
+    const w = window.open("", "_blank");
+    if (w && w.document) {
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      try { w.opener = null; } catch (_) {}
+      try { w.focus(); } catch (_) {}
+      return true;
+    }
+  } catch (_) {}
+  // 2 — blob navigation, WITHOUT the noopener features string.
+  try {
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const w = window.open(url, "_blank");
+    if (w) { setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 60000); return true; }
+    URL.revokeObjectURL(url);
+  } catch (_) {}
+  // 3 — refused. Say so, and give them the file rather than nothing.
+  try {
+    showToast(ar ? "المتصفح منع فتح تبويب جديد — يُنزَّل الملف بدلًا منه"
+                 : "Your browser blocked the new tab — downloading the file instead");
+  } catch (_) {}
+  try {
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "preview.html";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 60000);
+  } catch (_) {}
+  return false;
+}
+
 /** Heuristic: does this code block contain previewable HTML? */
 function looksLikeHtml(lang, code) {
   if (/^(html|xhtml|htm)$/i.test(lang || "")) return true;
@@ -8908,12 +8966,7 @@ function openHtmlPreview(rawCode) {
 
   const refreshBtn = mkTool(ICONS.refresh, t().previewRefresh, () => { iframe.srcdoc = html; });
   const openBtn = mkTool(ICONS.external, t().previewOpen, () => {
-    try {
-      const blob = new Blob([html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
-    } catch (_) { showToast(t().formatUnavailable); }
+    openCodeInTab(html, state.lang === "ar");
   });
   const dlBtn = mkTool(ICONS.download, t().previewDownload, () => {
     downloadBlob(new Blob([html], { type: "text/html" }), exportFileId() + ".html");
