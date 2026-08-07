@@ -5335,6 +5335,10 @@ function renderWelcome() {
   els.thread.classList.add("hidden");
   const w = els.welcome;
   w.classList.remove("hidden");
+  /* Coming back to the greeting screen is exactly when a leftover "scroll to latest" pill is
+     most absurd — it floats over the composer pointing at an empty page. No scroll event fires
+     on this transition, so it has to be cleared explicitly. */
+  if (typeof updateScrollBtn === "function") updateScrollBtn();
   if (state.product === "agent") {
     // Firas Agent home: its own identity + a one-line pitch so first-time users
     // instantly understand what Agent does (styled by the existing .agent-welcome__sub rule).
@@ -5470,6 +5474,9 @@ function renderThread(chat, forceScroll = false) {
   // message) or when the user is already following along — never yank the view
   // out from under someone who scrolled up to read during a background finalize.
   if (forceScroll || autoScroll) requestAnimationFrame(scrollToBottom);
+  // The thread just changed shape (and possibly emptied) — re-derive the pill from the view.
+  updateScrollBtn();
+  requestAnimationFrame(updateScrollBtn);
 }
 
 /** Build a usable data-URL from a RAW base64 image (no prefix), sniffing the mime
@@ -9546,7 +9553,7 @@ function scrollToBottom() {
   // once content-visibility sizes resolve on long threads.
   const el = els.chatScroll;
   el.scrollTo({ top: el.scrollHeight, behavior: "instant" });
-  requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; if (typeof updateScrollBtn === "function") updateScrollBtn(); });
 }
 /* Is the reader at the live edge right now? Measured, not remembered — `autoScroll` only
    updates on a scroll EVENT, so after the thread has grown underneath a stationary reader it
@@ -9557,10 +9564,27 @@ function isNearBottom(slack) {
   if (!el) return true;
   return el.scrollHeight - el.scrollTop - el.clientHeight < (slack || 80);
 }
+/* ══ THE SCROLL-TO-LATEST BUTTON ════════════════════════════════════════════════════════════
+   Its visibility used to be toggled ONLY inside onScroll, so the class was a leftover from the
+   last scroll event rather than a statement about the view. Leave a long chat scrolled up, press
+   New chat, and no scroll event ever fires — the pill stays floating over the composer on the
+   empty greeting screen, pointing down at nothing. (Turn starts used to force a scroll to the
+   bottom, which fired the event and hid it by accident; that is no longer true, so the stale
+   state became visible.)
+
+   It is derived from the view now, not remembered: there must be a real thread, it must actually
+   overflow, and the reader must be away from the bottom. Any of the three false → hidden. */
+function updateScrollBtn() {
+  const btn = els.scrollBottomBtn, el = els.chatScroll;
+  if (!btn) return;
+  const onWelcome = els.welcome && !els.welcome.classList.contains("hidden");
+  const hasTurns = !!(els.thread && els.thread.childNodes.length);
+  const overflows = !!(el && el.clientHeight > 0 && el.scrollHeight > el.clientHeight + 80);
+  btn.classList.toggle("is-visible", !onWelcome && hasTurns && overflows && !isNearBottom());
+}
 function onScroll() {
-  const nearBottom = isNearBottom();
-  autoScroll = nearBottom;
-  els.scrollBottomBtn.classList.toggle("is-visible", !nearBottom);
+  autoScroll = isNearBottom();
+  updateScrollBtn();
 }
 
 /* ----------------------------------------------------------------------------
