@@ -6310,15 +6310,16 @@ async function loadScripts(list) {
 /* CDN endpoints — only fetched on first use of each format. */
 const EXPORT_LIBS = {
   pdf: ["https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js", "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"],
-  /* html-docx-js does NOT generate Word markup for the content: asBlob() writes a document.xml
-     whose entire body is a single <w:altChunk r:id="htmlChunk"/> and drops the export HTML verbatim
-     into word/afchunk.mht, leaving every layout decision to Word's HTML import filter at open time.
-     The strings bidi / rtl / w:pPr / w:rPr / styles.xml appear ZERO times in its 416KB bundle, so no
-     amount of CSS tuning can make it emit w:bidi or w:rtl. Real RTL paragraph properties need a
-     different backend (docx@8.5.0 UMD writes <w:pPr><w:bidi/></w:pPr> correctly) — a ~500-line
-     DOM→OOXML walker, not a drop-in swap. Until then the export sets explicit per-block dir (see
-     exportBody) so the importer has something correct to read. */
-  docx: ["https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js"],
+  /* A REAL OOXML writer, replacing html-docx-js — which never generated Word markup at all:
+     asBlob() wrote a document.xml whose whole body was one <w:altChunk r:id="htmlChunk"/> and
+     dumped the export HTML into word/afchunk.mht for Word's importer, and the strings bidi /
+     rtl / w:pPr / w:rPr appear ZERO times in its 416KB bundle — so it could not emit RTL
+     properties no matter what CSS it was fed.
+     PINNED TO 8.5.0 ON PURPOSE: 9.x ships its UMD as `index.umd.cjs`, which jsDelivr serves as
+     Content-Type application/node, and Chrome refuses to execute that under nosniff. 8.5.0's
+     build/index.umd.js is served as application/javascript (725KB, verified) and defines
+     window.docx. See exportWord for the walker and the Arabic rules. */
+  docx: ["https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"],
   xlsx: ["https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"],
   pptx: ["https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"],
 };
@@ -8070,6 +8071,268 @@ function warmPdfCache(chat, idx, delay) {
   }, delay || 1800);
 }
 
+/* ══ WORD: A REAL OOXML WRITER, BUILT FOR ARABIC ═══════════════════════════════════════════
+   The old path went through html-docx-js, which does not write Word markup at all: asBlob()
+   emits a document.xml whose entire body is one <w:altChunk/> and drops the export HTML into
+   word/afchunk.mht for Word's HTML importer to interpret at open time. The strings bidi, rtl,
+   w:pPr and w:rPr appear ZERO times in its 416KB bundle, so it can never emit RTL paragraph or
+   run properties — no amount of CSS tuning changes that. For an Arabic-first product whose
+   audience is Arab students, a .docx with broken direction is not a document, it is a defect.
+
+   So Word now gets its own writer. The division of labour is deliberate and was the owner's
+   call: the PDF stays the visual deliverable — gradient cover, full themed design, photographed
+   from the browser — and Word becomes the CLEAN, EDITABLE one: correct Arabic, correct
+   direction, real Word styles you can carry on typing into.
+
+   WHAT MAKES ARABIC CORRECT HERE, and it is not what people expect:
+   shaping is NOT our job. OOXML stores plain logical-order Unicode; Word's own layout engine
+   joins the letters and runs the bidi algorithm. Every "reversed Arabic" bug in a generator
+   comes from someone trying to help by pre-shaping or pre-reversing. We store the text exactly
+   as written and set three things Word needs to know:
+     · <w:bidi/> on the paragraph  — the paragraph's base direction
+     · <w:rtl/> on the run          — the run's direction, which also picks the complex-script font
+     · w:rFonts w:cs="…"            — the COMPLEX-SCRIPT font; w:ascii alone never applies to Arabic
+   Verified against the real library: an Arabic heading emits
+   <w:pPr><w:pStyle w:val="Heading1"/><w:bidi/><w:jc w:val="right"/></w:pPr>
+   <w:rPr><w:szCs w:val="32"/><w:rtl/><w:rFonts w:cs="Tajawal"/></w:rPr>, and the Arabic sits in
+   <w:t> byte-identical to the source. 19-part package, real styles.xml, no altChunk. */
+
+const DOCX_FONT_AR = "Tajawal";        // ships with the doc as a NAME; Word substitutes if absent
+const DOCX_FONT_LA = "Calibri";
+const DOCX_FONT_MATH = "Cambria Math";
+const DOCX_FONT_MONO = "Consolas";
+
+/** Split text into same-script runs so each gets its own direction and font.
+    Neutrals (spaces, digits, punctuation) join the run they follow, which is what keeps
+    "الناتج 12 كم" from breaking into three fragments. */
+function docxScriptRuns(text) {
+  const s = String(text == null ? "" : text);
+  if (!s) return [];
+  const isAr = (ch) => /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/.test(ch);
+  const isLa = (ch) => /[A-Za-z]/.test(ch);
+  const out = [];
+  let cur = null;
+  for (const ch of s) {
+    let kind = isAr(ch) ? "ar" : (isLa(ch) ? "la" : null);
+    if (kind === null) {                      // neutral → stays with the current run
+      if (!cur) { cur = { text: "", rtl: null }; out.push(cur); }
+      cur.text += ch;
+      continue;
+    }
+    const rtl = kind === "ar";
+    if (!cur || (cur.rtl !== null && cur.rtl !== rtl)) { cur = { text: "", rtl }; out.push(cur); }
+    else if (cur.rtl === null) cur.rtl = rtl;
+    cur.text += ch;
+  }
+  return out.filter((r) => r.text.length).map((r) => ({ text: r.text, rtl: r.rtl === true }));
+}
+
+/** Inline DOM → docx TextRun[]. `inh` carries bold/italic/etc. down the tree. */
+function docxRuns(node, inh, D) {
+  const st = inh || {};
+  const out = [];
+  const push = (text, s) => {
+    if (!text) return;
+    for (const seg of docxScriptRuns(text)) {
+      const rtl = s.forceLtr ? false : seg.rtl;
+      const font = s.mono ? { ascii: DOCX_FONT_MONO, cs: DOCX_FONT_MONO }
+        : s.math ? { ascii: DOCX_FONT_MATH, cs: DOCX_FONT_MATH }
+        : { ascii: DOCX_FONT_LA, cs: DOCX_FONT_AR };
+      out.push(new D.TextRun({
+        text: seg.text,
+        bold: !!s.bold, italics: !!s.italic,
+        strike: !!s.strike,
+        underline: s.underline ? { type: D.UnderlineType.SINGLE } : undefined,
+        rightToLeft: rtl,
+        font,
+        // szCs is the COMPLEX-SCRIPT size. Without it Arabic keeps Word's default and a
+        // heading's Arabic renders at body size next to correctly-sized Latin.
+        size: s.size, szCs: s.size,
+        color: s.color,
+      }));
+    }
+  };
+  const walk = (n, s) => {
+    if (n.nodeType === 3) { push(n.nodeValue, s); return; }
+    if (n.nodeType !== 1) return;
+    const tag = n.tagName.toLowerCase();
+    if (tag === "br") { out.push(new D.TextRun({ break: 1 })); return; }
+    if (/^(script|style|button)$/.test(tag)) return;
+    const cls = n.className && typeof n.className === "string" ? n.className : "";
+    const next = Object.assign({}, s);
+    if (tag === "strong" || tag === "b") next.bold = true;
+    if (tag === "em" || tag === "i") next.italic = true;
+    if (tag === "del" || tag === "s") next.strike = true;
+    if (tag === "u") next.underline = true;
+    if (tag === "code" || tag === "kbd" || tag === "samp") { next.mono = true; next.forceLtr = true; }
+    if (/doc-math-inline|doc-math-block/.test(cls)) { next.math = true; next.forceLtr = true; }
+    if (tag === "a") {
+      const href = n.getAttribute("href") || "";
+      const kids = [];
+      const sub = docxRuns(n, Object.assign({}, next, { color: "1155CC", underline: true }), D);
+      kids.push.apply(kids, sub);
+      if (/^https?:/i.test(href) && kids.length) { out.push(new D.ExternalHyperlink({ children: kids, link: href })); return; }
+      out.push.apply(out, kids);
+      return;
+    }
+    for (const c of n.childNodes) walk(c, next);
+  };
+  for (const c of node.childNodes) walk(c, st);
+  return out;
+}
+
+/** Dominant-script direction for a block, reusing the app's one rule. */
+function docxDirOf(text, fallbackAr) {
+  const d = (typeof brainDirOf === "function") ? brainDirOf(text, fallbackAr ? "rtl" : "ltr") : (fallbackAr ? "rtl" : "ltr");
+  return d === "rtl";
+}
+
+/** One block element → docx Paragraph(s)/Table. */
+function docxBlock(el, D, isAr, listCtx) {
+  const tag = el.tagName.toLowerCase();
+  const text = el.textContent || "";
+  const rtl = docxDirOf(text, isAr);
+  /* NO EXPLICIT ALIGNMENT ON BODY TEXT — on purpose.
+     `w:jc` is LOGICAL in OOXML: on a bidi paragraph "right" names the trailing edge, not the
+     physical right, so stating it fights the direction rather than reinforcing it. Word already
+     start-aligns a paragraph from its own `w:bidi`, which is unambiguous and is what a human
+     typing Arabic in Word gets. Alignment is set ONLY where it is a real design decision — the
+     title block and display equations, both centred.
+     (I tried to settle the physical side by measurement and could not: forcing Alignment 0/1/2/3
+     from inside Word moved `Information(wdHorizontalPositionRelativeToPage)` by less than a
+     point, so that probe cannot see alignment. Rather than encode a guess, this states less and
+     lets Word do what it does natively.) */
+  const base = { bidirectional: rtl };
+  const cls = el.className && typeof el.className === "string" ? el.className : "";
+
+  if (/^h[1-6]$/.test(tag)) {
+    const lvl = [D.HeadingLevel.HEADING_1, D.HeadingLevel.HEADING_2, D.HeadingLevel.HEADING_3,
+      D.HeadingLevel.HEADING_4, D.HeadingLevel.HEADING_5, D.HeadingLevel.HEADING_6][+tag[1] - 1];
+    const size = [36, 30, 26, 24, 22, 22][+tag[1] - 1];
+    return [new D.Paragraph(Object.assign({}, base, {
+      heading: lvl,
+      spacing: { before: 260, after: 130 },
+      children: docxRuns(el, { bold: true, size }, D),
+    }))];
+  }
+  if (tag === "hr") {
+    return [new D.Paragraph({ text: "", border: { bottom: { style: D.BorderStyle.SINGLE, size: 6, color: "CCCCCC", space: 1 } }, spacing: { before: 120, after: 120 } })];
+  }
+  if (tag === "pre") {
+    // Code is always LTR, whatever surrounds it.
+    const lines = (el.textContent || "").replace(/\n+$/, "").split("\n");
+    return lines.map((ln) => new D.Paragraph({
+      bidirectional: false, alignment: D.AlignmentType.LEFT,
+      shading: { type: D.ShadingType.CLEAR, fill: "F5F5F3" },
+      spacing: { before: 0, after: 0 },
+      children: [new D.TextRun({ text: ln || " ", font: { ascii: DOCX_FONT_MONO, cs: DOCX_FONT_MONO }, size: 19, szCs: 19, rightToLeft: false })],
+    }));
+  }
+  if (tag === "blockquote") {
+    const out = [];
+    const kids = el.children.length ? [...el.children] : [el];
+    for (const k of kids) {
+      out.push(new D.Paragraph(Object.assign({}, base, {
+        indent: rtl ? { right: 400 } : { left: 400 },
+        border: rtl ? { right: { style: D.BorderStyle.SINGLE, size: 12, color: "D8D3C7", space: 8 } }
+                    : { left: { style: D.BorderStyle.SINGLE, size: 12, color: "D8D3C7", space: 8 } },
+        spacing: { before: 100, after: 100 },
+        children: docxRuns(k, { italic: true }, D),
+      })));
+    }
+    return out;
+  }
+  if (/doc-math-block/.test(cls)) {
+    // A display equation: its own centred, always-LTR line.
+    return [new D.Paragraph({
+      bidirectional: false, alignment: D.AlignmentType.CENTER, spacing: { before: 140, after: 140 },
+      children: [new D.TextRun({ text: (el.textContent || "").trim(), font: { ascii: DOCX_FONT_MATH, cs: DOCX_FONT_MATH }, size: 24, szCs: 24, rightToLeft: false })],
+    })];
+  }
+  if (tag === "table") {
+    const rows = [...el.querySelectorAll("tr")];
+    if (!rows.length) return [];
+    const wCells = Math.max.apply(null, rows.map((r) => r.children.length));
+    const trs = rows.map((tr, ri) => new D.TableRow({
+      tableHeader: ri === 0 && !!tr.querySelector("th"),
+      children: [...tr.children].map((td) => {
+        const ctext = td.textContent || "";
+        const crtl = docxDirOf(ctext, isAr);
+        const head = td.tagName.toLowerCase() === "th";
+        return new D.TableCell({
+          width: { size: Math.floor(100 / wCells), type: D.WidthType.PERCENTAGE },
+          shading: head ? { type: D.ShadingType.CLEAR, fill: "EFEDE7" } : undefined,
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+          children: [new D.Paragraph({
+            bidirectional: crtl,
+            children: docxRuns(td, { bold: head }, D),
+          })],
+        });
+      }),
+    }));
+    return [new D.Table({
+      rows: trs,
+      width: { size: 100, type: D.WidthType.PERCENTAGE },
+      // A table in an RTL document reads right-to-left: the FIRST column belongs on the right.
+      visuallyRightToLeft: rtl,
+    }), new D.Paragraph({ text: "", spacing: { after: 120 } })];
+  }
+  if (tag === "ul" || tag === "ol") {
+    const out = [];
+    const depth = (listCtx && listCtx.depth) || 0;
+    for (const li of [...el.children]) {
+      if (li.tagName.toLowerCase() !== "li") continue;
+      const liText = li.textContent || "";
+      const liRtl = docxDirOf(liText, isAr);
+      // Direct inline content of the <li>, excluding nested lists (handled after).
+      const holder = li.ownerDocument.createElement("div");
+      for (const c of li.childNodes) {
+        if (c.nodeType === 1 && /^(ul|ol)$/i.test(c.tagName)) continue;
+        holder.appendChild(c.cloneNode(true));
+      }
+      out.push(new D.Paragraph({
+        bidirectional: liRtl,
+        bullet: tag === "ul" ? { level: Math.min(depth, 4) } : undefined,
+        numbering: tag === "ol" ? { reference: "firas-ol", level: Math.min(depth, 4) } : undefined,
+        spacing: { before: 20, after: 20 },
+        children: docxRuns(holder, {}, D),
+      }));
+      for (const c of li.children) {
+        if (/^(ul|ol)$/i.test(c.tagName)) out.push.apply(out, docxBlock(c, D, isAr, { depth: depth + 1 }));
+      }
+    }
+    return out;
+  }
+  if (tag === "img" || tag === "figure" || tag === "svg" || tag === "canvas") {
+    // Figures are the PDF's job (see the header note). Keep any caption so nothing silently vanishes.
+    const cap = el.querySelector && el.querySelector("figcaption");
+    const capText = cap ? (cap.textContent || "").trim() : "";
+    if (!capText) return [];
+    const crtl = docxDirOf(capText, isAr);
+    return [new D.Paragraph({
+      bidirectional: crtl, alignment: D.AlignmentType.CENTER, spacing: { before: 60, after: 120 },
+      children: [new D.TextRun({ text: capText, italics: true, size: 20, szCs: 20, rightToLeft: crtl, font: { ascii: DOCX_FONT_LA, cs: DOCX_FONT_AR } })],
+    })];
+  }
+  // Default: a paragraph.
+  const runs = docxRuns(el, {}, D);
+  if (!runs.length) return [];
+  return [new D.Paragraph(Object.assign({}, base, { spacing: { before: 60, after: 120 }, children: runs }))];
+}
+
+/** The whole rendered answer → docx section children. */
+function docxBlocksFromDom(root, D, isAr) {
+  const out = [];
+  for (const el of [...root.children]) {
+    if (el.nodeType !== 1) continue;
+    const tag = el.tagName.toLowerCase();
+    if (/^(script|style)$/.test(tag)) continue;
+    try { out.push.apply(out, docxBlock(el, D, isAr, { depth: 0 })); } catch (_) { /* one bad block never kills the file */ }
+  }
+  if (!out.length) out.push(new D.Paragraph({ text: (root.textContent || "").trim().slice(0, 4000) }));
+  return out;
+}
+
 async function exportWord(turn, lang, msg) {
   const { meta } = parseFileMeta(msg && msg.content);
   const mdNode = mdNodeForTurn(turn);
@@ -8077,16 +8340,78 @@ async function exportWord(turn, lang, msg) {
   showToast(t().preparing);
   try {
     await loadScripts(EXPORT_LIBS.docx);
-    if (typeof window.htmlDocx === "undefined" || !window.htmlDocx.asBlob) throw new Error("nolib");
+    const D = window.docx;
+    if (!D || !D.Document || !D.Packer) throw new Error("nolib");
     ensureFileTitle(meta, mdNode);
-    // Word cannot typeset KaTeX — see flattenMathForExport.
-    const html = buildExportHtml(mdNode, lang, meta, { flattenMath: true });
-    const blob = window.htmlDocx.asBlob(html, {
-      orientation: "portrait",
-      margins: { top: 720, right: 720, bottom: 720, left: 720 },
+
+    /* Work on a CLONE with the maths already turned into readable Unicode — Word has no KaTeX,
+       and the KaTeX DOM would otherwise contribute its MathML mirror and its LaTeX annotation
+       as text. flattenMathForExport also tags the results so the walker can force them LTR. */
+    const clone = mdNode.cloneNode(true);
+    flattenMathForExport(clone);
+    clone.querySelectorAll(".code-block__head, .code-block__copy, .code-preview-btn, .file-disclosure__summary, .plot-reset, .tikz-figure__spin, script").forEach((n) => n.remove());
+    /* ensureFileTitle DERIVES the title from the document's first heading when the model did not
+       supply one — so printing the title block and then the body would show the same words twice
+       in a row. Drop the leading heading when it IS the title. */
+    const firstH = clone.firstElementChild;
+    if (firstH && /^H[1-3]$/.test(firstH.tagName) && meta.title &&
+        (firstH.textContent || "").trim() === String(meta.title).trim()) firstH.remove();
+
+    const docText = (clone.textContent || "") + " " + String(meta.title || "") + " " + String(meta.subtitle || "");
+    const isAr = docxDirOf(docText, (lang || state.lang) === "ar");
+
+    const body = [];
+    // A plain title block — no gradient cover. The PDF owns the visual identity; this one is
+    // meant to be opened and edited.
+    if (meta.title) {
+      body.push(new D.Paragraph({
+        bidirectional: isAr, alignment: D.AlignmentType.CENTER, spacing: { before: 0, after: 60 },
+        children: [new D.TextRun({ text: String(meta.title), bold: true, size: 44, szCs: 44,
+          rightToLeft: isAr, font: { ascii: DOCX_FONT_LA, cs: DOCX_FONT_AR } })],
+      }));
+    }
+    if (meta.subtitle) {
+      body.push(new D.Paragraph({
+        bidirectional: isAr, alignment: D.AlignmentType.CENTER, spacing: { after: 200 },
+        children: [new D.TextRun({ text: String(meta.subtitle), size: 24, szCs: 24, color: "6B6B6B",
+          rightToLeft: isAr, font: { ascii: DOCX_FONT_LA, cs: DOCX_FONT_AR } })],
+      }));
+    }
+    body.push.apply(body, docxBlocksFromDom(clone, D, isAr));
+
+    const doc = new D.Document({
+      creator: "Firas AI",
+      title: String(meta.title || ""),
+      description: String(meta.subtitle || ""),
+      styles: {
+        default: {
+          document: { run: { font: { ascii: DOCX_FONT_LA, cs: DOCX_FONT_AR }, size: 24, szCs: 24 },
+                      paragraph: { spacing: { line: 320 } } },
+        },
+      },
+      numbering: {
+        config: [{
+          reference: "firas-ol",
+          levels: [0, 1, 2, 3, 4].map((i) => ({
+            level: i, format: D.LevelFormat.DECIMAL, text: "%" + (i + 1) + ".",
+            alignment: isAr ? D.AlignmentType.RIGHT : D.AlignmentType.LEFT,
+          })),
+        }],
+      },
+      sections: [{
+        properties: {
+          page: { margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 } },
+          // The SECTION carries the document's own direction, so Word opens it reading correctly.
+          bidi: isAr,
+        },
+        children: body,
+      }],
     });
+
+    const blob = await D.Packer.toBlob(doc);
     downloadBlob(blob, resolveFileName(meta, "docx"));
-  } catch (_) {
+    showToast((lang || state.lang) === "ar" ? "تم تنزيل الملف ✓" : "File downloaded ✓");
+  } catch (e) {
     showToast(t().formatUnavailable);
   }
 }
