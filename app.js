@@ -988,7 +988,11 @@ function detectFileRequest(text, opts) {
     { fmt: "docx",
       // "ورد" alone also means roses / "was mentioned" (ما ورد) — only treat it as
       // Word when a document cue precedes it; "وورد"/word/docx stay unambiguous.
-      strong: /docx|مستند\s*word|مستند\s*وورد|وورد|(?:ملف|مستند|بصيغة|صيغة|بصبغة)\s*ورد/i,
+      /* Latin "word" after an Arabic document noun was missing, so "ملف word احترافي" — the
+         owner's own phrasing — matched NOTHING here and fell through to the generic pdf rule
+         (or to plain chat when there was no verb either), which is how a Word request ended up
+         as an ordinary answer with the model writing raw OOXML into the conversation. */
+      strong: /docx|(?:ملف|مستند|بصيغة|صيغة|بصبغة)\s*(?:word|ورد|وورد)|مستند\s*word|وورد/i,
       weak:   /\bms\s*word\b|\bword\s+(?:doc|document|file|format)\b/i },
     { fmt: "pdf",
       strong: /\bpdf\b|بي\s*دي\s*اف|بدف|ملف\s*pdf/i,
@@ -1074,8 +1078,52 @@ function requestedFormatForAssistant(chat, index) {
     card + collapsed disclosure instead of raw content)? True when the user
     requested a file format for this turn AND this turn actually delivers it —
     i.e. not a plan-mode clarifying/plan turn (those come before approval). */
+/* ══ THE MODEL HAND-WRITING OOXML ═══════════════════════════════════════════════════════════
+   Asked for "ملف word احترافي" on a turn the router did NOT send to the file pipeline, the model
+   does the only thing it can: it writes a Word file the only way a text model knows how — as raw
+   OOXML — and the conversation printed it. The owner's screenshot is a fenced block titled DOCX
+   full of `<w:document>`, `<w:p><w:r><w:t>`, `</w:document>`.
+
+   The routing hole that caused it is fixed (Latin "word" after an Arabic document noun), but a
+   router will always have holes, so this is the backstop: recognise the shape and recover from
+   it. NOT by zipping the model's XML — hand-written OOXML is routinely invalid and Word would
+   refuse to open it, which trades a visible failure for a silent one. Instead the TEXT is
+   recovered from the `<w:t>` runs, paragraph structure and heading styles included, and handed
+   back to the normal document pipeline, which produces a real .docx the same way every other
+   export does. */
+function looksLikeOoxml(content) {
+  const s = String(content || "");
+  if (s.length < 60) return false;
+  return /<w:document[\s>]/i.test(s) && /<w:body[\s>]/i.test(s) && /<w:t[\s>]/i.test(s);
+}
+/** Recover readable markdown from a raw OOXML document body. */
+function ooxmlToMarkdown(content) {
+  const s = String(content || "");
+  const unesc = (x) => String(x)
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'").replace(/&apos;/g, "'").replace(/&amp;/g, "&");
+  const out = [];
+  const paras = s.match(/<w:p\b[\s\S]*?<\/w:p>/gi) || [];
+  for (const p of paras) {
+    const texts = (p.match(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/gi) || [])
+      .map((t) => unesc(t.replace(/<w:t\b[^>]*>/i, "").replace(/<\/w:t>/i, "")));
+    const line = texts.join("").replace(/\s+/g, " ").trim();
+    if (!line) continue;
+    const st = /w:pStyle[^>]*w:val="([^"]+)"/i.exec(p);
+    const style = st ? st[1].toLowerCase() : "";
+    const hm = /^heading\s*([1-6])$/.exec(style) || /^h([1-6])$/.exec(style);
+    if (hm) out.push("#".repeat(Math.min(6, +hm[1])) + " " + line);
+    else if (/listparagraph/i.test(style)) out.push("- " + line);
+    else if (/^title$/i.test(style)) out.push("# " + line);
+    else out.push(line);
+  }
+  return out.join("\n\n").trim();
+}
+
 function isFileStreamReply(msg, chat) {
   if (!msg || msg.offline) return null;
+  // A turn we RESCUED from raw OOXML is a document by construction, whatever the router thought.
+  if (msg.forceFmt) return msg.forceFmt;
   // STRUCTURED blocks (firas-ask / firas-agent / firas-deck / firas-project / firas-code / firas-image)
   // are NEVER file-maskable — they have their own renderers. Without this, an agent's clarifying
   // questions after a "…pdf" request were masked as a downloadable file of raw JSON.
@@ -6255,6 +6303,14 @@ async function loadScripts(list) {
 /* CDN endpoints — only fetched on first use of each format. */
 const EXPORT_LIBS = {
   pdf: ["https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js", "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"],
+  /* html-docx-js does NOT generate Word markup for the content: asBlob() writes a document.xml
+     whose entire body is a single <w:altChunk r:id="htmlChunk"/> and drops the export HTML verbatim
+     into word/afchunk.mht, leaving every layout decision to Word's HTML import filter at open time.
+     The strings bidi / rtl / w:pPr / w:rPr / styles.xml appear ZERO times in its 416KB bundle, so no
+     amount of CSS tuning can make it emit w:bidi or w:rtl. Real RTL paragraph properties need a
+     different backend (docx@8.5.0 UMD writes <w:pPr><w:bidi/></w:pPr> correctly) — a ~500-line
+     DOM→OOXML walker, not a drop-in swap. Until then the export sets explicit per-block dir (see
+     exportBody) so the importer has something correct to read. */
   docx: ["https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js"],
   xlsx: ["https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"],
   pptx: ["https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"],
@@ -6370,16 +6426,50 @@ function resolveFileName(meta, ext) {
 /** Graceful fallback: if the AI didn't emit a metadata title, derive one from the
     document's first heading (so we still get a cover + meaningful filename). Mutates
     and returns `meta`. Accepts a rendered node (querySelector) or raw markdown text. */
+/* ══ A TITLE READ OFF A TYPESET HEADING ═════════════════════════════════════════════════════
+   `h.textContent` looks like the obvious way to get a heading's words, and it is a trap the
+   moment KaTeX has run on it. A typeset `$y = mx + b$` contributes its content THREE times —
+   the MathML mirror, the `<annotation>` holding the original LaTeX, and the visual layer — and
+   textContent concatenates all of them with no separator. Measured on `# تحليل البيانات $y = mx + b$`:
+
+       "تحليل البيانات y=mx+by = mx + by=mx+b"
+
+   That string then goes onto the PDF cover, where bidi reordering of the Latin and math runs
+   inside Arabic scrambles it further — which is how the owner's cover read "تحليل ليٮات = y + bmx".
+   The Arabic was never corrupted; it was pushed around by three copies of an equation that
+   should not have been in the title at all.
+
+   So: take the visual layer only (never the mirror, never the annotation), render it as readable
+   Unicode, and mark the node so downstream cannot double-count it. */
+function headingPlainText(el) {
+  if (!el) return "";
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll(".katex, .katex-display").forEach((k) => {
+    const ann = k.querySelector('annotation[encoding="application/x-tex"]');
+    const tex = (ann && ann.textContent) || "";
+    const txt = tex.trim()
+      ? (typeof texToUnicode === "function" ? texToUnicode(tex) : tex)
+      : ((k.querySelector(".katex-html") || {}).textContent || "");
+    k.replaceWith(document.createTextNode(" " + String(txt).trim() + " "));
+  });
+  return (clone.textContent || "").replace(/\s+/g, " ").trim();
+}
+
 function ensureFileTitle(meta, mdNodeOrText) {
   if (!meta || meta.title) return meta || {};
   let title = "";
   if (mdNodeOrText && typeof mdNodeOrText.querySelector === "function") {
     const h = mdNodeOrText.querySelector("h1, h2, h3");
-    if (h) title = h.textContent.trim();
+    if (h) title = headingPlainText(h);
   } else if (typeof mdNodeOrText === "string") {
     const m = mdNodeOrText.match(/^\s*#{1,3}\s+(.+)$/m);
-    if (m) title = m[1].replace(/[*_`#]/g, "").trim();
+    // Source markdown still has the math as `$…$` — make it readable rather than raw LaTeX.
+    if (m) title = (typeof mathToUnicode === "function" ? mathToUnicode(m[1]) : m[1]).replace(/[*_`#]/g, "").trim();
   }
+  /* A document TITLE with an equation in it is a model slip, not a user intent (see the file
+     metadata prompt, which now forbids it). Keep the words, drop a trailing formula rather than
+     printing it across the cover. */
+  title = title.replace(/\s*[:：-]?\s*[A-Za-z]\s*=\s*[^\s].{0,40}$/, "").trim() || title;
   if (title) meta.title = title.slice(0, 120);
   return meta;
 }
@@ -6564,7 +6654,8 @@ function exportCss(th, isAr, scope, tpl) {
     dp + ".cover__brand{font-family:" + sansStack + ";font-size:13pt;font-weight:700;letter-spacing:.06em;color:#" + th.coverAccent + ";text-transform:uppercase}" +
     dp + ".cover__mid{margin-top:auto;margin-bottom:auto}" +
     dp + ".cover__kicker{font-family:" + sansStack + ";font-size:10.5pt;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:" + rgba(th.coverAccent, 0.95) + ";margin:0 0 6mm}" +
-    dp + ".cover__title{font-family:" + fontStack + ";font-size:38pt;line-height:1.18;font-weight:700;margin:0;color:#FFF;text-wrap:balance}" +
+    // letter-spacing stated EXPLICITLY here too: this is the one element the owner watched break.
+    dp + ".cover__title{font-family:" + fontStack + ";font-size:38pt;line-height:1.18;font-weight:700;letter-spacing:normal;margin:0;color:#FFF;text-wrap:balance}" +
     dp + ".cover__sub{font-family:" + sansStack + ";font-size:14pt;line-height:1.55;margin:.7em 0 0;color:rgba(255,255,255,.82);font-weight:400;max-width:120mm}" +
     dp + ".cover__rule{width:52mm;height:3px;background:linear-gradient(90deg,#" + th.coverAccent + "," + rgba(th.coverAccent, 0.25) + ");margin-top:11mm;border-radius:2px}" +
     rdp + ".cover__rule{background:linear-gradient(270deg,#" + th.coverAccent + "," + rgba(th.coverAccent, 0.25) + ")}" +
@@ -6574,7 +6665,20 @@ function exportCss(th, isAr, scope, tpl) {
     dp + ".doc{padding-top:2mm}" +
     // Editorial lead: the opening paragraph reads slightly larger, like a professional report.
     dp + ".doc:not(.doc--cont)>p:first-of-type{font-size:13.8pt;line-height:1.78;color:#" + ink + "}" +
-    dp + "h1," + dp + "h2," + dp + "h3," + dp + "h4{font-family:" + sansStack + ";color:#" + ink + ";line-height:1.3;font-weight:700;" + (isAr ? "letter-spacing:normal;word-spacing:.04em;" : "letter-spacing:-.01em;") + "page-break-after:avoid;break-after:avoid}" +
+    /* NEVER give a heading non-zero letter-spacing. This is not a taste call — it is the bug
+       that produced "تحليل ليٮات" on the owner's cover. html2canvas@1.4.1's breakText reads
+
+           return 0 !== e.letterSpacing ? segmentGraphemes(A) : segmentWords(A, e)
+
+       so ANY tracking switches it from drawing words to drawing one grapheme at a time with
+       fillText. For Latin that is merely slower; for Arabic it destroys the script — each letter
+       is painted in its isolated form at a rect measured from the shaped run, so the glyphs
+       overprint and letters visually disappear. The old `-.01em` was applied on the non-Arabic
+       branch, and `isAr` is computed from the BODY only, so an Arabic title on a mixed or
+       English document walked straight into it. Both halves are fixed (see the isAr change at
+       exportPdf), but the tracking goes regardless: a heading anywhere can hold Arabic, and
+       ~1% negative tracking is worth nothing next to that. */
+    dp + "h1," + dp + "h2," + dp + "h3," + dp + "h4{font-family:" + sansStack + ";color:#" + ink + ";line-height:1.3;font-weight:700;letter-spacing:normal;" + (isAr ? "word-spacing:.04em;" : "") + "page-break-after:avoid;break-after:avoid}" +
     dp + "h1{font-size:23.5pt;margin:.2em 0 .5em;padding-bottom:.24em;border-bottom:2.5px solid #" + th.accent + "}" +
     dp + "h2{font-size:17.5pt;margin:1.35em 0 .5em;color:#" + ink + ";padding-inline-start:.55em;border-inline-start:4.5px solid #" + th.accent + "}" +
     dp + "h3{font-size:14.5pt;margin:1em 0 .4em;color:#" + th.accent + "}" +
@@ -6658,7 +6762,16 @@ function exportCss(th, isAr, scope, tpl) {
     // academic template has a LIGHT cover with dark title — don't force white there
     (String(tpl || "").toLowerCase().trim() === "academic" ? "" :
       dp + ".cover__title{color:#FFF!important}" + dp + ".cover__sub{color:rgba(255,255,255,.82)!important}") +
-    dp + ".doc .plot-tick{fill:#4b5563!important}" + dp + ".doc .plot-axislabel{fill:#374151!important}"
+    dp + ".doc .plot-tick{fill:#4b5563!important}" + dp + ".doc .plot-axislabel{fill:#374151!important}" +
+    /* ══ THE SHAPING INVARIANT — LAST SO IT WINS ═══════════════════════════════════════════
+       On an Arabic document nothing inside the export root may carry tracking. html2canvas
+       switches to per-grapheme drawing the instant computed letter-spacing is non-zero, and
+       per-grapheme drawing of Arabic paints isolated letterforms over one another. The
+       headings are already pinned to `normal` in both directions above; this catches the
+       decorative small-caps labels (.cover__kicker at .14em, .cover__brand at .06em) and
+       anything a future template adds without knowing about this. Uppercase tracking is a
+       Latin device and means nothing in Arabic, so the design loses nothing. */
+    (isAr ? dp + "*{letter-spacing:normal!important}" : "")
   );
 }
 
@@ -6715,6 +6828,23 @@ function exportBody(mdNode, lang, meta, opts) {
   const clone = mdNode.cloneNode(true);
   // Non-raster deliverables (Word, standalone HTML) get readable text instead of KaTeX markup.
   if (opts && opts.flattenMath) flattenMathForExport(clone);
+  /* EXPLICIT PER-BLOCK DIRECTION, for anything that is not a photograph.
+     The app gets RTL right on screen with `unicode-bidi: plaintext`, which resolves each block
+     from its own first strong character. Word's HTML importer does not implement that property,
+     and the only direction signal the exported document carried was `dir="rtl"` on <html> — two
+     or three levels above the paragraphs — so Word was left inferring, and a standalone .html
+     opened without the app's stylesheet had nothing at all. Writing the resolved direction onto
+     each block as a real attribute costs nothing and is understood by every consumer.
+     NOTE: this does NOT make html-docx-js emit OOXML bidi properties — it cannot; see the note
+     on EXPORT_LIBS.docx. It gives Word's converter something correct to read. */
+  if (opts && opts.flattenMath) {
+    clone.querySelectorAll("p,h1,h2,h3,h4,h5,h6,li,blockquote,td,th,figcaption,dd,dt").forEach((el) => {
+      if (el.getAttribute("dir")) return;                       // already decided (math runs)
+      const t = el.textContent || "";
+      if (!/[؀-ۿA-Za-z]/.test(t)) return;
+      el.setAttribute("dir", brainDirOf(t, lang === "ar" ? "rtl" : "ltr"));
+    });
+  }
   clone.querySelectorAll(".code-block__head, .code-block__copy, .code-preview-btn, .file-disclosure__summary, .tikz-figure__spin, .plot-reset, script[type='text/tikz']").forEach((n) => n.remove());
   // PDF must use ONLY our in-house renderers. A TikZJax-engine figure has an SVG whose glyphs are
   // <use xlink:href> into the EXTERNAL tikzjax stylesheet → unresolved off-screen → broken/blank in
@@ -7244,11 +7374,17 @@ async function exportPdf(turn, lang, msg, opts) {
   const _pn = mdNode.cloneNode(true);
   _pn.querySelectorAll(".katex, .katex-display, code, pre, .plot-figure, .tikz-figure, .plot-legend").forEach((n) => n.remove());
   const _dt = _pn.textContent || "";
-  const _arN = (_dt.match(/[؀-ۿ]/g) || []).length, _laN = (_dt.match(/[A-Za-z]/g) || []).length;
+  ensureFileTitle(meta, mdNode);          // derive the title BEFORE it is counted below
+  /* The COVER's own words have to count. This looked only at the body, so an Arabic title on an
+     English or mixed document scored as non-Arabic and the cover was typeset with the Latin
+     stack — which is exactly the combination the vector gate at pdfWinAnsiSafe already knows to
+     fold title+subtitle+date into. Mirroring it here closes the same hole for the raster path. */
+  const _cov = String((meta && meta.title) || "") + " " + String((meta && meta.subtitle) || "");
+  const _all = _dt + " " + _cov;
+  const _arN = (_all.match(/[؀-ۿ]/g) || []).length, _laN = (_all.match(/[A-Za-z]/g) || []).length;
   // Arabic wins if it's the majority of prose OR clearly substantial (a mostly-Arabic doc with some
   // English terms still renders RTL with the Arabic font).
   const isAr = _arN > 0 && (_arN >= _laN || _arN >= 12);
-  ensureFileTitle(meta, mdNode);
   const th = themeFor(meta);
   // Save-as filename = the request/title (Chrome uses document.title as the default PDF name).
   const prevDocTitle = document.title;
@@ -7308,7 +7444,11 @@ async function exportPdf(turn, lang, msg, opts) {
     let tt = titleEl.textContent;
     // If the title ALREADY has math delimiters ($…$, \(…\)), render them directly — mathifyTitle is
     // for plain-text math only and double-processing produced garbled/duplicated titles.
-    if (!/\$|\\\(|\\\[/.test(tt)) tt = mathifyTitle(tt);
+    /* mathifyTitle INVENTS LaTeX: its regex is written to match a Latin equation that is FOLLOWED
+       by Arabic, so on a mixed title it wraps "y = mx + b" in (…), KaTeX typesets it, and the
+       result is reordered by bidi against the Arabic words around it. That is where the owner's
+       "= y + bmx" came from. A title carrying Arabic is never the place for opportunistic maths. */
+    if (!/[؀-ۿ]/.test(tt) && !/\$|\\\(|\\\[/.test(tt)) tt = mathifyTitle(tt);
     titleEl.textContent = tt;
     typesetMath(titleEl);
   }
@@ -7856,7 +7996,11 @@ async function exportPrint(turn, lang, msg) {
   const titleEl = root.querySelector(".cover__title");
   if (titleEl) {
     let tt = titleEl.textContent;
-    if (!/\$|\\\(|\\\[/.test(tt)) tt = mathifyTitle(tt);
+    /* mathifyTitle INVENTS LaTeX: its regex is written to match a Latin equation that is FOLLOWED
+       by Arabic, so on a mixed title it wraps "y = mx + b" in (…), KaTeX typesets it, and the
+       result is reordered by bidi against the Arabic words around it. That is where the owner's
+       "= y + bmx" came from. A title carrying Arabic is never the place for opportunistic maths. */
+    if (!/[؀-ۿ]/.test(tt) && !/\$|\\\(|\\\[/.test(tt)) tt = mathifyTitle(tt);
     titleEl.textContent = tt;
     typesetMath(titleEl);
   }
@@ -9740,6 +9884,25 @@ const STEM_HARD_RULE =
    This is narrow on purpose. It licenses ESTABLISHED SCIENCE and normal academic subjects —
    it does not tell the model to abandon judgement, and it says nothing about genuinely
    harmful requests, which are unaffected. */
+/* ══ A GUARD THAT SWITCHED ITSELF OFF ═══════════════════════════════════════════════════════
+   "Never write raw file-format code" lived inside fileGuidance(), which is only attached when
+   detectFileRequest() returns a format. So the one turn that needed it most — a Word request the
+   router FAILED to recognise, leaving the model to satisfy "ملف word احترافي" with its own hands
+   — was precisely the turn that never received it. The model wrote OOXML, and the chat printed
+   `<w:document>…<w:p><w:r><w:t>` as a code block.
+
+   The routing hole is fixed and there is a runtime rescue downstream (looksLikeOoxml), but a
+   rule that protects against a mis-route must not itself be gated on the route being right. It
+   is unconditional now. */
+const NEVER_RAW_FILE_FORMAT =
+  " NEVER hand-write a file format. You cannot produce a binary or packaged document by typing " +
+  "its internals, and attempting it always produces something the user cannot open: no OOXML " +
+  "(<w:document>, <w:body>, <w:p>, <w:r>, <w:t>, wordprocessingml), no <?xml document skeletons, " +
+  "no PDF operators (BT/ET/Tj/stream/endobj/xref/%PDF), no RTF, no zip or base64 blobs. If the " +
+  "user wants a Word/PDF/Excel/PowerPoint file, WRITE THE CONTENT ITSELF as ordinary Markdown — " +
+  "headings, paragraphs, lists, tables, and math in $ … $ — and the application converts it into " +
+  "the real file. Say nothing about formats or conversion; just write the document's content.";
+
 const NO_NEEDLESS_REFUSAL =
   " ANSWER SCHOOL AND UNIVERSITY SUBJECTS — DO NOT REFUSE ESTABLISHED SCIENCE. Evolution and " +
   "human origins, natural selection, the age of the Earth and the universe, the Big Bang, " +
@@ -10098,7 +10261,7 @@ function buildMessages(tier, conversation, replyLang) {
          count instruction buried between the science-rigor block and the code block is the
          first thing to lose an argument with "be concise". Last position is the one the model
          weighs most, and this rule is the one whose failure the user actually notices. */
-      content: model.persona + productRule + identityRule + langRule + mathRule + accuracyRule + NO_NEEDLESS_REFUSAL + SCIENCE_RIGOR + codeRule + genLevelRule + STEM_HARD_RULE + imageRule + tikzRule+ (planning ? "" : buildRule + engineerRule) + finishRule,
+      content: model.persona + productRule + identityRule + langRule + mathRule + accuracyRule + NO_NEEDLESS_REFUSAL + SCIENCE_RIGOR + NEVER_RAW_FILE_FORMAT + codeRule + genLevelRule + STEM_HARD_RULE + imageRule + tikzRule+ (planning ? "" : buildRule + engineerRule) + finishRule,
     };
   }
 
@@ -10275,8 +10438,13 @@ function plannerSys(fmt, lang) {
     "THINK like a professional first: who is the reader, what is the document's purpose, and what structure + visual " +
     "hierarchy would make it look polished, credible and authoritative. Then decide the file's identity and a COMPLETE, " +
     "well-ordered structure — do NOT write the full content yet. Output FIRST this exact block (valid JSON):\n" +
+    /* The title used to be told a formula "goes ONCE as $ … $". It should not go there at all.
+       A cover title is set in the document's display face and, in Arabic, sits in an RTL line —
+       an inline equation dropped into it is reordered around the Arabic words and comes out as
+       the owner's "تحليل ليٮات = y + bmx". Titles are WORDS; the mathematics belongs in the body. */
     "```firas-file\n{\"filename\":\"short meaningful name in the user's language, no extension\",\"title\":\"a SHORT " +
-    "clean title (max ~8 words); a formula goes ONCE as $ … $ LaTeX, never raw code/backslashes, never repeated\"," +
+    "clean title in WORDS ONLY (max ~8 words) — absolutely NO mathematics, NO $ … $, NO LaTeX, no backslashes, " +
+    "no equals sign, no variables: name the SUBJECT ('تحليل البيانات', 'Data Analysis'), never state a formula\"," +
     "\"subtitle\":\"one concise line or empty\",\"theme\":\"<one theme key>\",\"accent\":\"\",\"template\":\"\"}\n```\n" +
     "ACCENT: if the user named a SPECIFIC colour/style (وردي، أزرق سماوي، ذهبي فخم، بألوان جامعتي #1E90FF…), set \"accent\" " +
     "to the best matching 6-digit hex (NO #) so the whole design adapts; otherwise leave it empty. " +
@@ -12399,6 +12567,12 @@ function finalizeAi(aiMsg, chat) {
   if (!imgMeta && !codeMeta) {
     const promoted = promoteAnswerToCode(aiMsg.content, aiMsg.lang || state.lang);
     if (promoted) { aiMsg.content = promoted; codeMeta = parseCodeMeta(aiMsg.content); }
+  }
+  /* Same idea one step further: the model answered a "make me a Word file" with hand-written
+     OOXML. Recover the text and let it become a real .docx card instead of a wall of XML. */
+  if (!imgMeta && !codeMeta && looksLikeOoxml(aiMsg.content)) {
+    const recovered = ooxmlToMarkdown(aiMsg.content);
+    if (recovered && recovered.length > 40) { aiMsg.content = recovered; aiMsg.forceFmt = "docx"; }
   }
   const fileFmt = !imgMeta && !codeMeta && aiMsg.content && aiMsg.content.trim() ? isFileStreamReply(aiMsg, chat) : null;
   const mdEl = aiNode.querySelector(".msg-ai__body .md");
@@ -25655,7 +25829,17 @@ function brainPdfCss(T, ar) {
     ".bp-srchead{margin:38px 0 14px;font:600 " + z(10.5) + "px " + LA + ";letter-spacing:.20em;" +
       "text-transform:uppercase;color:" + T.accent + ";}" +
     ".bp-src{font:400 " + z(12.2) + "px/1.85 " + bodyFont + ";color:" + T.inkDim + ";padding:3px 0;}" +
-    ".bp-src b{color:" + T.ink + ";font-weight:600;font-family:" + MONO + ";font-size:" + z(11) + "px;margin-inline-end:7px;}");
+    ".bp-src b{color:" + T.ink + ";font-weight:600;font-family:" + MONO + ";font-size:" + z(11) + "px;margin-inline-end:7px;}" +
+    /* ══ LAST, AND IT MUST WIN ══════════════════════════════════════════════════════════════
+       html2canvas@1.4.1 draws text one GRAPHEME at a time whenever computed letter-spacing is
+       non-zero (`0 !== e.letterSpacing ? segmentGraphemes : segmentWords`). For Arabic that
+       destroys the script: every letter is painted in its isolated form, so the words come out
+       unjoined and overprinting — the same mechanism that produced "تحليل ليٮات" on the Firas AI
+       cover. Brain's identities carry tracking on the title (-.015em) and on every small-caps
+       label (+.13em … +.24em) UNCONDITIONALLY, so an Arabic notebook was hitting it on every
+       export. The uppercase transforms those labels also carry are no-ops for Arabic, so
+       nothing of the design is lost by neutralising the tracking here. */
+    (ar ? "*{letter-spacing:normal!important;}" : ""));
 }
 
 /* Prefix every selector with the capture root's ID, taking each rule from (0,1,0) to (1,1,0)
