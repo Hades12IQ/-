@@ -1675,16 +1675,85 @@ function videoUrl(meta) {
 
 /* Is the user asking for a VIDEO (not an image, not a chart)? Kept narrow: the word must be a
    real video noun next to a make-verb, because a false positive costs 20 seconds and a slot. */
+/* ══ MEDIA INTENT — ASKED, NOT PATTERN-MATCHED ══════════════════════════════════════════════
+   This was a regex, and a regex can only recognise the phrasings whoever wrote it happened to
+   think of. Every one of these means "make me a video" and not one of them contains a verb+noun
+   pair the old pattern listed:
+
+       "خلي الصورة تتحرك"            "حرّكلي هالمشهد"
+       "أبي مشهد متحرك للبحر"        "شنو رأيك تسويها متحركة؟"
+       "animate this"                "bring the scene to life"
+       "طلعلي ٦ ثواني للغروب"        "can you make it move"
+
+   And the mirror failure is worse: "اشرح لي هذا الفيديو" contains BOTH a verb and the word
+   video, so a verb+noun pattern reads a question about an attachment as a request to spend a
+   slot generating one. The old code needed a hand-written exclusion list for exactly that, which
+   is the tell that the approach was wrong — every exclusion is a phrasing someone had to lose
+   first.
+
+   So the model decides. It is asked one question with three possible answers, on the mini tier,
+   with nomem so it is never charged.
+
+   THE PRE-GATE IS NOT THE DECISION. Asking the model on every single chat turn would put a round
+   trip in front of every answer, so a deliberately WIDE net skips the call when a message cannot
+   plausibly be about creating media. It is tuned to over-admit: anything it lets through is
+   decided by the model, and its only job is to keep "ما عاصمة اليابان؟" from costing a
+   classification call. */
+const MEDIA_MAYBE = new RegExp(
+  // any creation-ish verb, in either language …
+  "(اصنع|اعمل|سوّ?ي|ولّ?د|ولد|صم[مّ]|اعطني|اعطيني|عطني|ابي|أبي|اريد|أريد|بدي|عايز|عاوز|ودي|محتاج|جهّ?ز|طلّ?ع|هات|جيب|ارسم|حرّ?ك|خلي|خلّي" +
+  "|\\b(?:make|create|generate|render|animate|produce|draw|design|give\\s*me|i\\s*want|can\\s*you)\\b)" +
+  // … or any media noun at all
+  "|(فيديو|فديو|مقطع|كليب|انيميشن|أنيميشن|رسوم|متحرك|صورة|صوره|مشهد|لقطة" +
+  "|\\b(?:video|clip|animation|animate|movie|reel|footage|scene|shot|image|picture|photo)\\b)", "i");
+
+/* A function graph / equation / geometric figure. Lifted verbatim from detectImageRequest's own
+   guard so the two cannot drift apart and start disagreeing about the same sentence. */
+const MATH_FIGURE_RE = /y\s*=|f\s*\(\s*x\s*\)|رسم\s*بياني|الكراف|الغراف|\bgraph\b|\bplot\b|دال[ةه]|منحن[يى]|\bfunction\b|معادلة|\b(?:sin|cos|tan|cot|sec|csc|exp|log|ln|lg|sqrt|cbrt|arctan|arcsin|arccos|sinh|cosh|tanh)\s*\(|مثلث|\bمربع\b|مستطيل|\bدائرة\b|قطع\s*مكافئ|\bparabola\b|متجه|\bvector\b|إحداثي|احداثي/i;
+
+/** "video" | "image" | "none" — the model's call, cached per message text. */
+const _mediaIntentCache = new Map();
+async function classifyMediaIntent(text, signal) {
+  const t = String(text || "").trim();
+  if (!t) return "none";
+  if (state.product === "agent" || (activeChat() && activeChat().agent)) return "none";
+  if (t.length > 600) return "none";                  // a brief that long is a document, not a clip
+  /* MATHS IS NOT MEDIA — a hard veto, asked before the model rather than after.
+     "ارسم منحنى y = cos(x)" is a `plot` figure this app renders natively and exactly; sending it
+     to an image generator produces a decorative picture of a graph that is mathematically wrong.
+     Measured: the classifier answers "image" for that sentence, so this cannot be left to it —
+     and it is the one category where a pattern genuinely is the better instrument, because the
+     giveaway is notation (y =, f(x), sin/cos) rather than phrasing. */
+  if (MATH_FIGURE_RE.test(t)) return "none";
+  if (!MEDIA_MAYBE.test(t)) return "none";            // performance gate only — see the note above
+  if (_mediaIntentCache.has(t)) return _mediaIntentCache.get(t);
+
+  let verdict = "none";
+  try {
+    const raw = await callAgentText([
+      { role: "system", content:
+        "Decide what the user wants CREATED. Answer with exactly one word: video, image, or none.\n" +
+        "video — they want a moving clip/animation generated (any phrasing: 'make a video', 'animate this', 'خلي الصورة تتحرك', 'أبي مشهد متحرك', 'حرّكلي المشهد', 'طلعلي ٦ ثواني').\n" +
+        "image — they want a still picture/logo/poster/illustration generated.\n" +
+        "none — anything else. In particular answer none when they ask ABOUT an existing video or image (explain it, summarise it, transcribe it), when they want a chart/graph/equation plot, when they want code or a document, or when they are just talking.\n" +
+        "Reply with the single word only." },
+      { role: "user", content: t.slice(0, 600) },
+    ], "mini", signal);
+    const w = String(raw || "").toLowerCase();
+    if (/\bvideo\b/.test(w)) verdict = "video";
+    else if (/\bimage\b/.test(w)) verdict = "image";
+  } catch (_) {
+    /* The classifier is an enhancement, never a gate that can strand a request: if it cannot be
+       reached, fall back to the conservative reading — a normal chat answer. */
+    verdict = "none";
+  }
+  _mediaIntentCache.set(t, verdict);
+  return verdict;
+}
+
+/** Kept for the synchronous callers that only need a cheap "could be video" hint. */
 function detectVideoRequest(text) {
-  const t = String(text || "");
-  if (!t.trim()) return false;
-  if (state.product === "agent" || (activeChat() && activeChat().agent)) return false;
-  // "اشرح لي الفيديو" / "لخص هذا الفيديو" is ABOUT a video, not a request to make one.
-  if (/(اشرح|لخّ?ص|حلّ?ل|فرّ?غ|ترجم)\s*[^.؟?!\n]{0,20}(الفيديو|الفديو|المقطع|هذا\s*الفيديو)/i.test(t)) return false;
-  if (/\b(summari[sz]e|explain|transcribe|translate)\b[^.?!\n]{0,20}\b(this\s+)?video\b/i.test(t)) return false;
-  const ar = /(اصنع|اعمل|سوّ?ي?(?:لي)?|ولّ?د|ولد|صم[مّ]|اعطني|اعطيني|عطني|اريد|أريد|بدي|ابي|أبي|عايز|جهّ?ز|طلّ?علي)\s*[^؟?]{0,24}?(فيديو|فديو|مقطع\s*(?:فيديو|مرئي)|كليب|انيميشن|أنيميشن|رسوم\s*متحركة)/i;
-  const en = /\b(generate|create|make|render|animate|produce)\b[^.?!\n]{0,40}?\b(video|clip|animation|movie|reel|footage)\b/i;
-  return ar.test(t) || en.test(t);
+  return _mediaIntentCache.get(String(text || "").trim()) === "video";
 }
 
 /** The player card. Streams from /api/video; a refusal is read and explained. */
@@ -12487,7 +12556,12 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
     /* VIDEO REQUESTS. Checked before images: video is the narrower intent and by far the more
        expensive one — a clip spends a slice of a shared daily GPU allowance that only resets
        once a day, so it must never be entered by accident. */
-    if (imgUser && !imgHasAttachments && (state.mode !== "plan" || planExecuting) && !fileFmt && !codeReq && detectVideoRequest(imgUser.content)) {
+    /* One intent decision serves both media branches, so video and image can never disagree
+       about the same sentence — and it is asked once, not pattern-matched twice. */
+    const mediaIntent = (imgUser && !imgHasAttachments && (state.mode !== "plan" || planExecuting) && !fileFmt && !codeReq)
+      ? await classifyMediaIntent(imgUser.content, signal) : "none";
+    if (signal.aborted) { clearTimeout(timeoutId); return; }
+    if (mediaIntent === "video") {
       if (isGuest()) {
         clearTimeout(timeoutId);
         finalized = true;
@@ -12540,7 +12614,9 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
     // Only generate an image when the turn is NOT already routed to code or a file —
     // so a stray "logo"/"image" mention inside a website/app/document request can no
     // longer hijack it into image-gen (the "does the opposite of what I asked" bug).
-    if (imgUser && !imgHasAttachments && (state.mode !== "plan" || planExecuting) && !fileFmt && !codeReq && detectImageRequest(imgUser.content)) {
+    /* The model's verdict OR the long-standing pattern — images predate the intent layer and
+       their regex is well-tuned, so it stays as a second opinion rather than being dropped. */
+    if (imgUser && !imgHasAttachments && (state.mode !== "plan" || planExecuting) && !fileFmt && !codeReq && (mediaIntent === "image" || detectImageRequest(imgUser.content))) {
       // GUESTS CANNOT GENERATE IMAGES. Stop before any engine call, answer in the
       // thread with the reason, and open the sign-up prompt (the server also
       // returns 403 signin_required, so this is defence-in-depth, not the gate).
