@@ -8020,3 +8020,87 @@ img.md-img-held:hover::after { color: var(--color-accent); }
    ══════════════════════════════════════════════════════════════════════════════ */
 body.product-code #tierSwitch,
 body.product-code #tierSelect { display: none !important; }
+
+/* ----------------------------------------------------------------------------
+   Video card — a generated clip. Deliberately the same visual language as
+   .image-card (frame, glow, shimmer, action bar) so the two read as one family;
+   only the aspect ratio and the player differ.
+---------------------------------------------------------------------------- */
+.video-card {
+  inline-size: 100%; max-inline-size: 520px;
+  margin-block: var(--space-3) var(--space-1);
+}
+.video-card__frame {
+  position: relative; overflow: hidden;
+  inline-size: 100%; aspect-ratio: 16 / 9;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-subtle);
+  border: var(--border-hairline) solid var(--color-border-hairline);
+}
+.video-card.is-loading .video-card__frame {
+  border-color: transparent;
+  box-shadow: 0 0 0 1.5px var(--color-accent-soft), 0 10px 34px -12px var(--color-accent);
+  animation: imgGlow 1.7s ease-in-out infinite;
+}
+.video-card.is-loading .video-card__frame::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, color-mix(in srgb, var(--color-accent) 22%, transparent) 50%, transparent 65%);
+  background-size: 220% 100%;
+  animation: imgShimmer 1.5s linear infinite;
+}
+.video-card__loader {
+  position: absolute; inset: 0; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans); font-size: var(--text-sm);
+  text-align: center; padding-inline: var(--space-4);
+}
+[dir="rtl"] .video-card__loader { font-family: var(--font-arabic); }
+.video-card.is-done .video-card__loader { display: none; }
+.video-card__spin {
+  inline-size: 28px; block-size: 28px; border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
+  border-top-color: var(--color-accent);
+  /* auth-spin is the file's existing rotation keyframe — .image-card__spin uses it too.
+     There is no `spin` keyframe in this stylesheet; naming one would have failed silently. */
+  animation: auth-spin 0.7s linear infinite;
+}
+.video-card.is-error .video-card__spin { display: none; }
+.video-card__vid {
+  position: absolute; inset: 0;
+  inline-size: 100%; block-size: 100%;
+  object-fit: contain; background: #000;
+  opacity: 0; transition: opacity var(--dur-base) var(--ease-out);
+}
+.video-card.is-done .video-card__vid { opacity: 1; }
+.video-card.is-error .video-card__frame { box-shadow: none; animation: none; border-color: var(--color-border-hairline); }
+.video-card.is-error .video-card__frame::after { content: none; }
+.video-card.is-error .video-card__loadtext { color: var(--color-text-muted); }
+.video-card__bar {
+  display: flex; align-items: center; gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+.video-card__cap {
+  flex: 1 1 auto; min-inline-size: 0;
+  font-family: var(--font-sans); font-size: var(--text-xs); color: var(--color-text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+[dir="rtl"] .video-card__cap { font-family: var(--font-arabic); }
+.video-card__dl {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: 6px 10px; border-radius: var(--radius-pill);
+  border: var(--border-hairline) solid var(--color-border-hairline);
+  background: var(--color-surface); color: var(--color-text-secondary);
+  font-family: var(--font-sans); font-size: var(--text-xs);
+  transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+}
+[dir="rtl"] .video-card__dl { font-family: var(--font-arabic); }
+.video-card__dl:hover { background: var(--color-bg-subtle); border-color: var(--color-border-strong); color: var(--color-text); }
+.video-card__dl svg { inline-size: 15px; block-size: 15px; }
+@media (prefers-reduced-motion: reduce) {
+  .video-card.is-loading .video-card__frame,
+  .video-card.is-loading .video-card__frame::after,
+  .video-card__spin { animation: none; }
+  .video-card__vid { transition: none; }
+}

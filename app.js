@@ -1652,6 +1652,98 @@ function buildFileDisclosure(content) {
    IMAGE GENERATION — "اصنع لي صورة…" → generate via the keyless /api/image proxy,
    shown in a framed card with a generating effect + a download button.
    ========================================================================== */
+
+/* ══ VIDEO GENERATION ═══════════════════════════════════════════════════════════════════════
+   Same shape as images on purpose: the chat message stores only a ```firas-video``` metadata
+   block and the card re-derives /api/video?… from it, so nothing large is ever persisted.
+   The important difference is COST. An image is cheap and effectively unlimited; a clip spends
+   a slice of a shared daily GPU allowance that resets once a day, so the card states the
+   remaining allowance up front and a refusal is explained rather than shown as a broken frame. */
+function parseVideoMeta(content) {
+  const m = String(content || "").match(/```firas-video\s*([\s\S]*?)```/i);
+  if (!m) return null;
+  try { const o = JSON.parse(m[1].trim()); if (o && o.prompt) return o; } catch (_) {}
+  return null;
+}
+function stripVideoMetaBlock(s) {
+  return String(s == null ? "" : s).replace(/```firas-video\s*[\s\S]*?```/i, "").trim();
+}
+function videoUrl(meta) {
+  return "/api/video?prompt=" + encodeURIComponent(meta.prompt) +
+    "&seconds=" + (meta.seconds || 6) + (meta.seed ? "&seed=" + meta.seed : "");
+}
+
+/* Is the user asking for a VIDEO (not an image, not a chart)? Kept narrow: the word must be a
+   real video noun next to a make-verb, because a false positive costs 20 seconds and a slot. */
+function detectVideoRequest(text) {
+  const t = String(text || "");
+  if (!t.trim()) return false;
+  if (state.product === "agent" || (activeChat() && activeChat().agent)) return false;
+  // "اشرح لي الفيديو" / "لخص هذا الفيديو" is ABOUT a video, not a request to make one.
+  if (/(اشرح|لخّ?ص|حلّ?ل|فرّ?غ|ترجم)\s*[^.؟?!\n]{0,20}(الفيديو|الفديو|المقطع|هذا\s*الفيديو)/i.test(t)) return false;
+  if (/\b(summari[sz]e|explain|transcribe|translate)\b[^.?!\n]{0,20}\b(this\s+)?video\b/i.test(t)) return false;
+  const ar = /(اصنع|اعمل|سوّ?ي?(?:لي)?|ولّ?د|ولد|صم[مّ]|اعطني|اعطيني|عطني|اريد|أريد|بدي|ابي|أبي|عايز|جهّ?ز|طلّ?علي)\s*[^؟?]{0,24}?(فيديو|فديو|مقطع\s*(?:فيديو|مرئي)|كليب|انيميشن|أنيميشن|رسوم\s*متحركة)/i;
+  const en = /\b(generate|create|make|render|animate|produce)\b[^.?!\n]{0,40}?\b(video|clip|animation|movie|reel|footage)\b/i;
+  return ar.test(t) || en.test(t);
+}
+
+/** The player card. Streams from /api/video; a refusal is read and explained. */
+function buildVideoCard(meta, lang) {
+  lang = lang || state.lang;
+  const ar = lang === "ar";
+  const card = document.createElement("div");
+  card.className = "video-card is-loading";
+  card.innerHTML =
+    '<div class="video-card__frame">' +
+      '<div class="video-card__loader"><span class="video-card__spin" aria-hidden="true"></span>' +
+        '<span class="video-card__loadtext">' + escapeHtml(ar ? "يولّد الفيديو… قد يستغرق نحو نصف دقيقة" : "Generating video… this takes about half a minute") + "</span></div>" +
+      '<video class="video-card__vid" controls playsinline preload="metadata"></video>' +
+    "</div>" +
+    '<div class="video-card__bar">' +
+      '<span class="video-card__cap" dir="auto">' + escapeHtml(String(meta.prompt).slice(0, 80)) + "</span>" +
+      '<button type="button" class="video-card__dl" hidden>' + ICONS.download + "<span>" + escapeHtml(ar ? "تحميل" : "Download") + "</span></button>" +
+    "</div>";
+  const vid = card.querySelector(".video-card__vid");
+  const dl = card.querySelector(".video-card__dl");
+  const fail = (msg) => {
+    card.classList.remove("is-loading"); card.classList.add("is-error");
+    const lt = card.querySelector(".video-card__loadtext");
+    if (lt) lt.textContent = msg;
+  };
+  /* fetch() rather than <video src>: the endpoint answers a 429 with a JSON body explaining
+     the daily allowance, and a bare <video> would swallow that into a generic media error. */
+  (async () => {
+    try {
+      const r = await fetch(videoUrl(meta), { credentials: "same-origin" });
+      if (!r.ok) {
+        let why = ar ? "تعذّر توليد الفيديو" : "Video generation failed";
+        try {
+          const j = await r.json();
+          if (j && j.error === "daily_limit") {
+            why = ar ? ("بلغت حدّك اليومي من الفيديو (" + j.limit + " يوميًا). جرّب غدًا.")
+                     : ("Daily video limit reached (" + j.limit + "/day). Try again tomorrow.");
+          } else if (j && j.error === "signin_required") {
+            why = ar ? "أنشئ حسابًا لتوليد الفيديو" : "Create an account to generate video";
+          }
+        } catch (_) {}
+        fail(why); return;
+      }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      vid.src = url;
+      card.classList.remove("is-loading"); card.classList.add("is-done");
+      dl.hidden = false;
+      dl.addEventListener("click", () => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = (String(meta.prompt).replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim().slice(0, 50) || "firas") + ".mp4";
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+    } catch (_) { fail(ar ? "تعذّر توليد الفيديو" : "Video generation failed"); }
+  })();
+  return card;
+}
+
 function detectImageRequest(text) {
   const s = String(text || "");
   if (!s.trim()) return false;
@@ -5685,6 +5777,7 @@ function aiTurnEl(msg, index) {
   body.dir = lang === "ar" ? "rtl" : "ltr";
   const md = document.createElement("div");
   md.className = "md";
+  const vidMeta = parseVideoMeta(msg.content);
   const imgMeta = parseImageMeta(msg.content);
   const agentMeta = !imgMeta ? parseAgentMeta(msg.content) : null;
   const deckMeta = !imgMeta && !agentMeta ? parseDeckMeta(msg.content) : null;
@@ -5699,6 +5792,8 @@ function aiTurnEl(msg, index) {
     md.appendChild(buildProjectCard(projMeta, lang)); // multi-file folder (viewer + ZIP download)
   } else if (imgMeta) {
     md.appendChild(buildImageCard(imgMeta, lang)); // generated image (re-loads on reload)
+  } else if (vidMeta) {
+    md.appendChild(buildVideoCard(vidMeta, lang)); // generated video
   } else if (codeMeta) {
     md.appendChild(buildCodeCard(codeMeta, lang)); // code deliverable (copy/download/preview)
   } else if (fileFmt) {
@@ -12389,6 +12484,59 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
     // A vision turn (the user attached images) must NOT be treated as image
     // generation — answer about the image instead.
     const imgHasAttachments = imgUser && Array.isArray(imgUser.images) && imgUser.images.length > 0;
+    /* VIDEO REQUESTS. Checked before images: video is the narrower intent and by far the more
+       expensive one — a clip spends a slice of a shared daily GPU allowance that only resets
+       once a day, so it must never be entered by accident. */
+    if (imgUser && !imgHasAttachments && (state.mode !== "plan" || planExecuting) && !fileFmt && !codeReq && detectVideoRequest(imgUser.content)) {
+      if (isGuest()) {
+        clearTimeout(timeoutId);
+        finalized = true;
+        aiMsg.content = replyLang === "ar"
+          ? "**توليد الفيديو للأعضاء**\n\nأنشئ حسابًا مجانيًا لتوليد مقاطع فيديو."
+          : "**Video generation is for members**\n\nCreate a free account to generate video clips.";
+        aiMsg.reasoning = "";
+        finalizeAi(aiMsg, chat);
+        setTimeout(() => openSignUpPrompt("image"), 250);
+        return;
+      }
+      // Read the remaining allowance BEFORE spending ~20s on a generation that would be refused.
+      let vq = null;
+      try { const r = await fetch("/api/video/quota", { credentials: "same-origin" }); if (r.ok) vq = await r.json(); } catch (_) {}
+      if (vq && vq.ok === false) {
+        clearTimeout(timeoutId);
+        finalized = true;
+        aiMsg.content = replyLang === "ar"
+          ? ("بلغت حدّك اليومي من الفيديو (" + vq.limit + " يوميًا). الحدّ يتجدّد غدًا.")
+          : ("Daily video limit reached (" + vq.limit + "/day). It resets tomorrow.");
+        aiMsg.reasoning = "";
+        finalizeAi(aiMsg, chat);
+        return;
+      }
+      const vnode = liveNode(); const vmd = vnode && vnode.querySelector(".msg-ai__body .md");
+      if (vmd) vmd.innerHTML = buildFileLoadingHtml(replyLang === "ar" ? "يجهّز الفيديو…" : "Preparing the video…");
+      let vprompt = String(imgUser.content).slice(0, 300);
+      try {
+        const enhanced = await callAgentText([
+          { role: "system", content: "Turn the user's request into ONE vivid ENGLISH text-to-video prompt for a 6-second clip. Describe a SINGLE continuous shot: the subject, the setting, the lighting, and ONE simple camera or subject motion (a slow push in, a gentle pan, a rising object). Keep it concrete and filmable in six seconds — no scene cuts, no dialogue, no on-screen text, no story beats. Output ONLY the prompt text." },
+          { role: "user", content: imgUser.content },
+        ], "pro", signal);
+        if (enhanced && enhanced.trim()) vprompt = enhanced.trim().replace(/^["'\`\s]+|["'\`\s]+$/g, "").replace(/\s+/g, " ").slice(0, 400);
+      } catch (_) { /* the raw request is a serviceable prompt */ }
+      if (signal.aborted) { clearTimeout(timeoutId); return; }
+      clearTimeout(timeoutId);
+      finalized = true;
+      const vSeconds = (vq && vq.seconds) || 6;
+      const vSeed = Math.floor(Math.random() * 1e9);
+      aiMsg.content = "\u0060\u0060\u0060firas-video\n" + JSON.stringify({ prompt: vprompt, seconds: vSeconds, seed: vSeed }) + "\n\u0060\u0060\u0060";
+      aiMsg.reasoning = "";
+      finalizeAi(aiMsg, chat);
+      if (vq && typeof vq.remaining === "number" && vq.remaining >= 0) {
+        const left = Math.max(0, vq.remaining - 1);
+        showToast(replyLang === "ar" ? ("بقي لك " + left + " فيديو اليوم") : (left + " video(s) left today"));
+      }
+      return;
+    }
+
     // Only generate an image when the turn is NOT already routed to code or a file —
     // so a stray "logo"/"image" mention inside a website/app/document request can no
     // longer hijack it into image-gen (the "does the opposite of what I asked" bug).
@@ -12908,6 +13056,7 @@ function finalizeAi(aiMsg, chat) {
   if (!aiNode) { renderThread(chat); aiNode = els.thread.querySelector(`.msg-ai[data-index="${idx}"]`); }
   if (!aiNode) return;
 
+  const vidMeta = parseVideoMeta(aiMsg.content);
   const imgMeta = parseImageMeta(aiMsg.content);
   let codeMeta = !imgMeta ? parseCodeMeta(aiMsg.content) : null;
   /* The router decides "is this code?" from the REQUEST, before the model has seen it. When it
@@ -12930,6 +13079,9 @@ function finalizeAi(aiMsg, chat) {
     if (imgMeta) {
       mdEl.innerHTML = "";
       mdEl.appendChild(buildImageCard(imgMeta, aiMsg.lang || state.lang)); // generated image
+    } else if (vidMeta) {
+      mdEl.innerHTML = "";
+      mdEl.appendChild(buildVideoCard(vidMeta, aiMsg.lang || state.lang)); // generated video
     } else if (codeMeta) {
       // Code deliverable → swap the live streaming window for the finished card
       // (copy/download/preview), keeping the same code text.

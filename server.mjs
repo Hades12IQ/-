@@ -2527,6 +2527,150 @@ async function generateImageHF(prompt) {
   finally { clearTimeout(to); }
 }
 
+/* ══ VIDEO GENERATION — HuggingFace ZeroGPU Spaces ══════════════════════════════════════════
+   The only path we could verify that is free, RESETS DAILY, and is callable from a server.
+   Measured live before building: 16.2-21.6 s for a 5.90 s H.264 clip at 704x512, 30 fps —
+   generated from PLAIN NODE over Gradio's REST protocol, with no Python and no gradio_client:
+
+       POST {space}/gradio_api/call/{api}   {data:[…]}  -> { event_id }
+       GET  {space}/gradio_api/call/{api}/{event_id}    -> SSE, "complete" carries the result
+
+   WHY A POOL. ZeroGPU quota is per ACCOUNT ("GPU usage is subject to daily quotas, per account
+   tier": free 5 min/day, PRO 40 min/day, "resets exactly 24 hours after your first GPU usage"),
+   NOT per IP — so N tokens multiply the daily allowance the same way CF_ACCOUNTS already
+   multiplies Cloudflare's. 18 free accounts ≈ 90 GPU-minutes/day ≈ 280 clips ≈ 140 users at two
+   clips each. Tokens are tried in rotation and a token that reports its quota exhausted is
+   parked for the rest of the day rather than retried on every request.
+
+   WHY A SPACE LIST. These are community Spaces, not a product API: of the video Spaces live when
+   this was written, 36 were RUNNING and 36 were in RUNTIME_ERROR. One name is a single point of
+   failure, so the list is walked in order exactly like the image chain. */
+const HF_VIDEO_SPACES = (process.env.HF_VIDEO_SPACES ||
+  "Lightricks/ltx-video-distilled")
+  .split(",").map((s) => s.trim()).filter(Boolean);
+const HF_VIDEO_API = process.env.HF_VIDEO_API || "/text_to_video";
+/* Seconds per clip. 6 is the tested sweet spot: the model returns 5.90 s and the whole call
+   lands ~19 s, comfortably inside a 60 s @spaces.GPU slot. Longer clips are not merely slower —
+   they raise the odds of exceeding the Space's own duration cap and failing outright. */
+const VIDEO_SECONDS = Math.min(10, Math.max(2, parseInt(process.env.VIDEO_SECONDS, 10) || 6));
+const VIDEO_W = Math.min(1280, Math.max(256, parseInt(process.env.VIDEO_W, 10) || 704));
+const VIDEO_H = Math.min(1280, Math.max(256, parseInt(process.env.VIDEO_H, 10) || 512));
+/* Per-user DAILY cap. 2 by default — the owner's number. -1 disables the cap. */
+const VIDEO_DAILY_LIMIT = (() => { const n = parseInt(process.env.VIDEO_DAILY_LIMIT, 10); return Number.isFinite(n) ? n : 2; })();
+
+/* Up to 18 tokens: HF_ACCOUNTS="hf_a,hf_b,…" plus the single HF_API_KEY, de-duplicated. */
+const HF_ACCOUNTS = (() => {
+  const out = [];
+  const add = (t) => { const v = String(t || "").trim(); if (v && !out.includes(v)) out.push(v); };
+  for (const t of (process.env.HF_ACCOUNTS || "").split(",")) add(t);
+  for (let i = 1; i <= 18; i++) add(process.env["HF_API_KEY_" + i]);
+  add(process.env.HF_API_KEY);
+  return out.slice(0, 18);
+})();
+let _hfNext = 0;                       // rotation cursor, so load spreads across accounts
+const _hfCooldown = new Map();         // token -> ms timestamp to skip until (its daily quota)
+
+/** Slugify "Owner/Space" into its *.hf.space origin. */
+function hfSpaceOrigin(id) {
+  return "https://" + String(id).replace("/", "-").toLowerCase().replace(/[^a-z0-9-]/g, "-") + ".hf.space";
+}
+/** Does this error text mean "this account is out of daily GPU", as opposed to a transient fault? */
+function hfQuotaExhausted(txt) {
+  return /quota|exceeded|exhaust|limit reached|gpu.*(quota|limit)|too many requests/i.test(String(txt || ""));
+}
+
+/** One attempt against one Space with one token. Returns { bytes, mime } or null. */
+async function hfVideoAttempt(space, token, prompt, seconds, seed, signal) {
+  const origin = hfSpaceOrigin(space);
+  const auth = token ? { Authorization: "Bearer " + token } : {};
+  // Parameter ORDER is the endpoint signature — see /text_to_video on the Space's API page.
+  const data = [
+    String(prompt || "").slice(0, 1200),
+    "worst quality, blurry, jittery, distorted, watermark, text, subtitles",
+    null, null,                                  // input image / input video (text-to-video)
+    VIDEO_H, VIDEO_W,
+    "text-to-video",
+    seconds,
+    9,                                           // frames to use (image/video modes only)
+    Number(seed) || 0,
+    !seed,                                       // randomize when no seed was pinned
+    1,                                           // guidance
+    false,                                       // improve_texture (slower; off for the free tier)
+  ];
+  const post = await fetch(origin + "/gradio_api/call" + HF_VIDEO_API, {
+    method: "POST",
+    headers: Object.assign({ "Content-Type": "application/json" }, auth),
+    body: JSON.stringify({ data }),
+    signal,
+  });
+  const posted = await post.text();
+  if (!post.ok) { if (hfQuotaExhausted(posted)) throw new Error("QUOTA"); return null; }
+  let eventId = "";
+  try { eventId = JSON.parse(posted).event_id || ""; } catch (_) { return null; }
+  if (!eventId) return null;
+
+  const ev = await fetch(origin + "/gradio_api/call" + HF_VIDEO_API + "/" + eventId, { headers: auth, signal });
+  if (!ev.ok || !ev.body) return null;
+  const reader = ev.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", lastEvent = "", result = null;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for (const ln of lines) {
+      if (ln.startsWith("event:")) { lastEvent = ln.slice(6).trim(); continue; }
+      if (!ln.startsWith("data:")) continue;
+      const raw = ln.slice(5).trim();
+      if (lastEvent === "complete") { try { result = JSON.parse(raw); } catch (_) {} }
+      else if (lastEvent === "error") {
+        if (hfQuotaExhausted(raw)) throw new Error("QUOTA");
+        return null;
+      }
+    }
+    if (result) break;
+  }
+  const first = result && result[0];
+  const vid = first && (first.video || first);
+  const href = vid && (vid.url || vid.path);
+  if (!href) return null;
+  const fileUrl = /^https?:/i.test(href) ? href : origin + "/gradio_api/file=" + href;
+  const f = await fetch(fileUrl, { headers: auth, signal });
+  if (!f.ok) return null;
+  const bytes = new Uint8Array(await f.arrayBuffer());
+  // A "success" that returns a few bytes is a failure wearing a 200.
+  if (bytes.length < 20000) return null;
+  return { bytes, mime: f.headers.get("content-type") || "video/mp4" };
+}
+
+/** Walk the Space list and the token pool until something produces a real clip. */
+async function generateVideoHF(prompt, seconds, seed, signal) {
+  if (!HF_ACCOUNTS.length) return null;
+  const secs = Math.min(10, Math.max(2, Number(seconds) || VIDEO_SECONDS));
+  const now = Date.now();
+  for (const space of HF_VIDEO_SPACES) {
+    for (let k = 0; k < HF_ACCOUNTS.length; k++) {
+      const idx = (_hfNext + k) % HF_ACCOUNTS.length;
+      const token = HF_ACCOUNTS[idx];
+      if ((_hfCooldown.get(token) || 0) > now) continue;   // this account is out for today
+      try {
+        const out = await hfVideoAttempt(space, token, prompt, secs, seed, signal);
+        if (out) { _hfNext = (idx + 1) % HF_ACCOUNTS.length; return out; }
+      } catch (e) {
+        if (String(e && e.message) === "QUOTA") {
+          // Park the account until tomorrow — ZeroGPU resets 24h after first use.
+          _hfCooldown.set(token, now + 6 * 3600_000);
+          continue;
+        }
+        if (signal && signal.aborted) throw e;
+      }
+    }
+  }
+  return null;
+}
+
 async function handleImage(req, res) {
   // Require a session so the proxy can't be used as an anonymous, unmetered relay
   // to pollinations. Authed reloads of saved images still carry the cookie, so
@@ -2649,6 +2793,79 @@ async function handleImage(req, res) {
     res.writeHead(502);
     res.end("image generation error");
   }
+}
+
+
+// Reset the per-day video set when the local day rolls over. Mirrors imgRollDay.
+function vidRollDay(user) {
+  const today = serverDay();
+  if (user.vidDay !== today) { user.vidDay = today; user.vidCids = []; return true; }
+  if (!Array.isArray(user.vidCids)) { user.vidCids = []; return true; }
+  return false;
+}
+/* The daily slot is derived from the VIDEO (prompt + seconds + seed), never from a
+   client-supplied id — the same bypass that once made IMAGE_DAILY_LIMIT unbounded would
+   otherwise apply here, on a path that spends a far scarcer resource. */
+function vidSlotKey(prompt, seconds, seed) {
+  return crypto.createHash("sha1").update("v1|" + prompt + "|" + seconds + "|" + (seed || "")).digest("hex");
+}
+
+async function handleVideo(req, res) {
+  const user = currentUser(req);
+  if (!user) {
+    // A guest hitting video generation is the upsell moment, not an error — same shape as images.
+    if (currentGuest(req)) {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ error: "signin_required", feature: "video" }));
+    }
+    res.writeHead(401); return res.end("auth required");
+  }
+  if (rateLimited("vid:" + user.id, 12, 60_000)) { res.writeHead(429); return res.end("rate limited"); }
+  const u = new URL(req.url, "http://localhost");
+  const prompt = (u.searchParams.get("prompt") || "").trim().slice(0, 1000);
+  if (!prompt) { res.writeHead(400); return res.end("no prompt"); }
+  const seconds = Math.min(10, Math.max(2, parseInt(u.searchParams.get("seconds"), 10) || VIDEO_SECONDS));
+  const seed = (u.searchParams.get("seed") || "").replace(/[^0-9]/g, "").slice(0, 12);
+
+  vidRollDay(user);
+  const slot = vidSlotKey(prompt, seconds, seed);
+  const isNew = !user.vidCids.includes(slot);
+  if (VIDEO_DAILY_LIMIT >= 0 && isNew && user.vidCids.length >= VIDEO_DAILY_LIMIT) {
+    res.writeHead(429, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ error: "daily_limit", limit: VIDEO_DAILY_LIMIT, used: user.vidCids.length }));
+  }
+  if (!HF_ACCOUNTS.length) { res.writeHead(503); return res.end("video engine not configured"); }
+
+  /* No absolute deadline on a live generation — the same lesson as the chat stream. A clip is
+     ~20s when the queue is empty and minutes when it is not, and killing a healthy job to obey
+     a stopwatch is how a working feature becomes "it does nothing". The client aborts if the
+     user navigates away; this only bounds a truly dead call. */
+  const ac = new AbortController();
+  const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 300_000);
+  res.on("close", () => { try { ac.abort(); } catch (_) {} });
+  try {
+    const out = await generateVideoHF(prompt, seconds, seed, ac.signal);
+    if (!out || !out.bytes || !out.bytes.length) { res.writeHead(502); return res.end("video generation failed"); }
+    if (isNew) { user.vidCids.push(slot); persist(); }   // charge once, only on success
+    res.writeHead(200, { "Content-Type": out.mime || "video/mp4", "Cache-Control": "public, max-age=86400" });
+    res.end(Buffer.from(out.bytes));
+  } catch (_) {
+    if (!res.writableEnded) { res.writeHead(502); res.end("video generation error"); }
+  } finally { clearTimeout(to); }
+}
+
+/** Remaining video allowance for today — lets the UI say "1 of 2 left" before spending 20s. */
+async function handleVideoQuota(req, res) {
+  const user = currentUser(req);
+  if (!user) { res.writeHead(401); return res.end("auth required"); }
+  vidRollDay(user);
+  const used = user.vidCids.length;
+  return sendJson(res, 200, {
+    ok: VIDEO_DAILY_LIMIT < 0 || used < VIDEO_DAILY_LIMIT,
+    limit: VIDEO_DAILY_LIMIT, used,
+    remaining: VIDEO_DAILY_LIMIT < 0 ? -1 : Math.max(0, VIDEO_DAILY_LIMIT - used),
+    seconds: VIDEO_SECONDS,
+  });
 }
 
 // Lite-mirror parser (lite.duckduckgo.com) — same {title,url,snippet} shape as parseDuckDuckGo.
@@ -5295,6 +5512,8 @@ const server = http.createServer(async (req, res) => {
     // ---- Image generation (keyless, server-proxied pollinations) ----
     if (route === "/api/image/quota" && method === "POST") return await handleImageQuota(req, res);
     if (route === "/api/image" && method === "GET") return await handleImage(req, res);
+    if (route === "/api/video/quota" && method === "GET") return await handleVideoQuota(req, res);
+    if (route === "/api/video" && method === "GET") return await handleVideo(req, res);
 
     // ---- Max tier daily quota (read-only pre-check) ----
     if (route === "/api/max/quota" && method === "POST") return await handleMaxQuota(req, res);
