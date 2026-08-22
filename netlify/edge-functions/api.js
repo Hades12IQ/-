@@ -4385,6 +4385,88 @@ export default async (request, context) => {
         : "OpenAI could not be reached. See the error text below.";
       return json(out);
     }
+    /* ASK OPENAI FOR A PICTURE WITHOUT A STOPWATCH.
+
+       An edge function cannot wait for a medium or high render — it has a wall-clock budget it
+       does not negotiate, and overrunning it kills the whole function along with every fallback
+       below it. So the edge stops waiting: it writes a job, fires the background runner, and
+       answers at once. netlify/functions/image-background.mjs is a Node runtime with a
+       15-minute ceiling; it renders at full quality and stores the result. The browser polls.
+
+       Quality is therefore no longer a hostage to the clock, and nothing silently degrades to
+       another engine because a timer expired. */
+    if (path === "/api/image/job" && method === "POST") {
+      const user = await currentUser(context);
+      if (!user) {
+        if (await currentGuest(context)) return json({ error: "signin_required", feature: "image" }, 403);
+        return new Response("auth required", { status: 401 });
+      }
+      if (rateLimited("imgjob:" + user.id, 20, 60000)) return new Response("rate limited", { status: 429 });
+      if (!OPENAI_API_KEY) return json({ error: "openai_unconfigured" }, 503);
+      if (!INTERNAL_JOB_SECRET) return json({ error: "background_unconfigured" }, 503);
+
+      let b = null; try { b = await request.json(); } catch (_) {}
+      const prompt = String((b && b.prompt) || "").trim().slice(0, 1000);
+      if (!prompt) return json({ error: "bad_request" }, 400);
+      const w = Math.min(1280, Math.max(256, parseInt((b && b.w), 10) || 1024));
+      const h = Math.min(1280, Math.max(256, parseInt((b && b.h), 10) || 1024));
+      const size = openaiImageSize(w, h);
+
+      if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return json({ error: "no_budget" }, 503);
+
+      // Both allowances: the premium two-a-day and the overall five-a-day.
+      const slot = await imgSlotKey(prompt, w, h, "");
+      if (!(await openaiImageAllowed(user.id, slot))) return json({ error: "daily_limit", limit: OPENAI_IMAGE_DAILY }, 429);
+      const day = serverDay();
+      const node = await imgDayNode(user.id);
+      if (IMAGE_DAILY_LIMIT >= 0 && !(slot in node) && Object.keys(node).length >= IMAGE_DAILY_LIMIT) {
+        return json({ error: "daily_limit", limit: IMAGE_DAILY_LIMIT }, 429);
+      }
+
+      const jobId = slot;                       // same picture asked for twice reuses the job
+      const already = await oaiEditLoad(user.id, jobId);
+      if (already) return json({ ok: true, jobId, phase: "done", key: jobId });
+
+      await dbPut(`imgJobs/${dbKey(user.id)}/${dbKey(jobId)}`, {
+        id: jobId, prompt, size, quality: OPENAI_IMAGE_QUALITY,
+        models: OPENAI_IMAGE_MODELS.join(","),
+        phase: "queued", createdAt: Date.now(), updatedAt: Date.now(),
+      });
+      // Fire and forget — the runner answers immediately and keeps going without us.
+      const kick = fetch(new URL("/.netlify/functions/image-background", request.url).toString(), {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-firas-internal": INTERNAL_JOB_SECRET },
+        body: JSON.stringify({ jobId, userId: user.id }),
+      }).catch(() => {});
+      if (context && typeof context.waitUntil === "function") context.waitUntil(kick);
+      return json({ ok: true, jobId, phase: "queued" });
+    }
+
+    if (path === "/api/image/job" && method === "GET") {
+      const user = await currentUser(context);
+      if (!user) return new Response("auth required", { status: 401 });
+      const id = dbKey(url.searchParams.get("id") || "");
+      if (!id) return json({ error: "not_found" }, 404);
+      let job = null;
+      try { job = await dbGet(`imgJobs/${dbKey(user.id)}/${id}`); } catch (_) {}
+      if (!job) return json({ error: "not_found" }, 404);
+
+      /* Charged HERE, once, when the finished picture is first seen — not when the job was
+         queued. A render that failed costs nothing, which is the same rule the synchronous
+         path follows. */
+      if (job.phase === "done" && !job.charged) {
+        await openaiImageCharge(openaiImageCost(job.size || "1024x1024", job.quality || OPENAI_IMAGE_QUALITY));
+        await openaiImageMark(user.id, id);
+        try { await dbPut(`imgQuota/${dbKey(user.id)}/${serverDay()}/${dbKey(id)}`, true); } catch (_) {}
+        job.charged = true;
+        try { await dbPut(`imgJobs/${dbKey(user.id)}/${id}`, job); } catch (_) {}
+      }
+      return json({
+        ok: true, phase: job.phase, key: job.key || null, error: job.error || null,
+        model: job.model || null, quality: job.quality || null, ms: job.ms || null,
+      });
+    }
+
     if (path === "/api/image/edit" && method === "POST") {
       const user = await currentUser(context);
       if (!user) {

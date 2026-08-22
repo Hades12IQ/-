@@ -1946,6 +1946,51 @@ function parseImageMeta(content) {
 function stripImageMetaBlock(s) {
   return String(s == null ? "" : s).replace(/```firas-image\s*[\s\S]*?```/i, "").trim();
 }
+/** Queue a picture with the background renderer and wait for it, however long it takes.
+
+    The synchronous route cannot ask OpenAI for a medium or high render: an edge function has a
+    wall-clock budget, and a render that outlives it kills the request outright — which is how a
+    working key kept delivering a Cloudflare picture with mangled Arabic instead. The background
+    runner has fifteen minutes, so the quality asked for is the quality delivered.
+
+    Resolves to a cache key the image card points at, or null when the job path is not available
+    (no background secret, no database, no key) — the caller then falls back to the direct URL and
+    behaves exactly as it did before. */
+async function requestImageJob(prompt, w, h, signal) {
+  let start = null;
+  try {
+    const r = await fetch("/api/image/job", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ prompt: String(prompt || "").slice(0, 1000), w, h }),
+      signal,
+    });
+    if (!r.ok) return null;                       // 503 = not configured, 429 = out of allowance
+    start = await r.json();
+  } catch (_) { return null; }
+  if (!start || !start.jobId) return null;
+  if (start.phase === "done" && start.key) return start.key;   // the same picture, already made
+
+  /* Poll gently and back off: a render is minutes, not milliseconds, and hammering it would
+     cost far more than it saves. The ceiling matches the runner's own budget. */
+  const deadline = Date.now() + 12 * 60 * 1000;
+  let wait = 1500;
+  while (Date.now() < deadline) {
+    if (signal && signal.aborted) return null;
+    await new Promise((res) => setTimeout(res, wait));
+    wait = Math.min(5000, Math.round(wait * 1.25));
+    try {
+      const p = await fetch("/api/image/job?id=" + encodeURIComponent(start.jobId),
+        { credentials: "same-origin", signal });
+      if (!p.ok) continue;
+      const j = await p.json();
+      if (j.phase === "done" && j.key) return j.key;
+      if (j.phase === "fail") { console.error("[firas] image job failed:", j.error || j.reason); return null; }
+    } catch (_) { /* a dropped poll is not a failed render — keep waiting */ }
+  }
+  return null;
+}
 function imageUrl(meta) {
   /* An EDITED image already exists on disk — it is addressed by its cache key, not regenerated
      from a prompt. That is what makes it survive a reload without being remade or recharged. */
@@ -13232,7 +13277,17 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       // and a stable cid so the daily cap charges exactly once (on first success).
       const imgSeed = Math.floor(Math.random() * 1e9);
       const imgCid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (imgSeed + "-" + Math.floor(Math.random() * 1e9));
-      aiMsg.content = "```firas-image\n" + JSON.stringify({ prompt: prompt, w: 1024, h: 1024, seed: imgSeed, cid: imgCid }) + "\n```";
+      /* THE PICTURE COMES FROM OPENAI, AT THE QUALITY ASKED FOR, however long that takes. The
+         background runner has fifteen minutes where the edge had seconds, so nothing degrades to
+         another engine because a timer ran out. If it is not available — no background secret, no
+         database, no key — this returns null and the direct URL below is used exactly as before. */
+      let jobKey = null;
+      try { jobKey = await requestImageJob(prompt, 1024, 1024, signal); } catch (_) {}
+      if (signal.aborted) return;
+      aiMsg.content = "```firas-image\n" + JSON.stringify(
+        jobKey ? { prompt: prompt, key: jobKey }
+               : { prompt: prompt, w: 1024, h: 1024, seed: imgSeed, cid: imgCid }
+      ) + "\n```";
       aiMsg.reasoning = "";
       finalizeAi(aiMsg, chat);
       if (quota && quota.ok && typeof quota.remaining === "number") {
