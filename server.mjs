@@ -800,7 +800,7 @@ function reqHash(cid, messages) {
       if (messages[i] && messages[i].role === "user") { lastUser = String(messages[i].content || ""); break; }
     }
   }
-  return crypto.createHash("sha256").update(cid + " " + lastUser).digest("hex").slice(0, 32);
+  return crypto.createHash("sha256").update(cid + "\u0000" + lastUser).digest("hex").slice(0, 32);
 }
 /** True when this is a genuine retry of an already-charged request. Prunes as it goes. */
 function isRepeatCharge(bucket, product, cid, messages) {
@@ -3508,18 +3508,42 @@ function b64Mime(b64) {
 }
 // Stream a prebuilt OpenAI-format messages array through the Gemini OpenAI-compat endpoint,
 // trying each candidate model id. Returns true if any bytes streamed. Shared by text + vision.
-async function _geminiStream(res, msgs, signal, label, models) {
+async function _geminiStream(res, msgs, signal, label, models, think) {
   for (const model of (models && models.length ? models : GEMINI_TEXT_MODELS)) {
     if (res.writableEnded) return true;
-    const body = JSON.stringify({ model, messages: msgs, stream: true });
-    let upstream;
-    try {
-      upstream = await fetch(GEMINI_OAI_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (geminiPickKey() || GEMINI_API_KEY) },
-        body, signal,
-      });
-    } catch (e) { if (signal.aborted) return true; continue; }
+    /* THINKING. Gemini is reached through its OpenAI-COMPAT endpoint, so the switch is
+       OpenAI-shaped (reasoning_effort) and the thoughts come back on delta.reasoning_content,
+       NOT through the native thinkingConfig/parts[].thought shape. Gated on `think`: with the
+       toggle off the body stays byte-identical to what shipped before, so the default path
+       cannot regress. "low" is deliberate — it is enough for a readable summary, and
+       gemini-2.5-flash's free tier is ~20 requests/day, so a bigger budget buys length nobody
+       asked for. Vision never reaches here with think set (it passes 5 args). */
+    let askThink = !!think;
+    let upstream = null;
+    for (;;) {
+      const body = JSON.stringify(askThink
+        ? { model, messages: msgs, stream: true, reasoning_effort: "low" }
+        : { model, messages: msgs, stream: true });
+      try {
+        upstream = await fetch(GEMINI_OAI_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (geminiPickKey() || GEMINI_API_KEY) },
+          body, signal,
+        });
+      } catch (e) { if (signal.aborted) return true; upstream = null; break; }
+      /* A rejected reasoning_effort must NOT cost us the engine. Gemini is rescue slot #1 and
+         holds the only text key that is reliably present, so a 400 here would silently drop
+         every tier to the next engine and turn "show me the thinking" into "the site got
+         worse". Retry the same model once without the field, then continue as before. */
+      if (upstream.status === 400 && askThink) {
+        try { upstream.body && upstream.body.cancel(); } catch (_) {}
+        console.error("[firas] " + (label || "Gemini") + " (" + model + ") rejected reasoning_effort — retrying without thinking");
+        askThink = false;
+        continue;
+      }
+      break;
+    }
+    if (!upstream) continue;
     if (!upstream.ok || !upstream.body) {
       console.error("[firas] " + (label || "Gemini") + " (" + model + ") HTTP " + (upstream && upstream.status) + " — trying next");
       try { upstream && upstream.body && upstream.body.cancel(); } catch (_) {}
@@ -3540,7 +3564,15 @@ async function _geminiStream(res, msgs, signal, label, models) {
           if (!payload || payload === "[DONE]") continue;
           let evt; try { evt = JSON.parse(payload); } catch { continue; }
           const delta = evt.choices && evt.choices[0] && evt.choices[0].delta;
-          if (delta && delta.content) { sseWrite(res, delta.content); any = true; }
+          if (delta) {
+            /* Thoughts stream LIVE so the panel fills as the model reasons — but they must
+               NEVER set `any`. A thought-only stream that reported itself as served would
+               cancel the rest of the rescue chain and leave the user a thinking panel above
+               an empty answer. Only real content means "this engine served the turn". */
+            const rz = delta.reasoning_content || delta.reasoning;
+            if (rz) sseWrite(res, "", rz);
+            if (delta.content) { sseWrite(res, delta.content); any = true; }
+          }
         }
       }
       if (any) { console.log("[firas] served by " + (label || "Gemini") + " (" + model + ")"); return true; }
@@ -3549,13 +3581,13 @@ async function _geminiStream(res, msgs, signal, label, models) {
   return false;
 }
 // Text: Max-tier first engine. Returns true if it streamed any bytes.
-async function streamGemini(res, messages, signal) {
+async function streamGemini(res, messages, signal, think) {
   if (!GEMINI_API_KEY) return false;
   const msgs = messages
     .filter((m) => m.role === "system" || m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role, content: String(m.content || "") }));
   if (!msgs.length) return false;
-  return _geminiStream(res, msgs, signal, "Max→Gemini");
+  return _geminiStream(res, msgs, signal, "Max→Gemini", null, think);
 }
 // Max-tier PRIMARY engine: DeepSeek V4 Pro via NVIDIA NIM (free, OpenAI-compatible) — frontier-class
 // reasoning + coding, so Max is genuinely the strongest tier. Returns true if it streamed any bytes;
@@ -5219,7 +5251,7 @@ async function handleChat(req, res) {
         served = await streamDeepSeek(res, messages, ac.signal);
         if (served) nvidiaCharge();
       }
-      if (!served && !res.writableEnded) served = await streamGemini(res, messages, ac.signal);
+      if (!served && !res.writableEnded) served = await streamGemini(res, messages, ac.signal, think);
       if (!served && !res.writableEnded) served = await streamAnthropic(res, messages, ac.signal);
       if (!served && !res.writableEnded) served = await streamOpenRouter(res, messages, ac.signal);
     }
@@ -5268,7 +5300,7 @@ async function handleChat(req, res) {
         // everyday chat stays on the fast model. (Agent always runs tier "max" → always the strong model.)
         const cfHard = tier === "max" || CF_HARD_RE.test(cfLastUserText(messages));
         const cfModel = cfHard ? CF_TEXT_MODEL_STRONG : CF_TEXT_MODEL;
-        let recovered = await streamGemini(res, messages, ac.signal);
+        let recovered = await streamGemini(res, messages, ac.signal, think);
         if (!recovered && !res.writableEnded) recovered = await streamCloudflareText(res, messages, ac.signal, cfModel);
         // If the strong reasoning model produced nothing (e.g. truncated mid-think / unavailable), retry
         // the fast model so we still answer rather than falling straight through.

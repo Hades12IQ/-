@@ -1703,11 +1703,18 @@ function chatStreamResponse(messages, tier, think, vision, scrubBt) {
         if (tier === "max" && !vision && !served) {
           // Max = Qwen3.5 397B (free Ollama) FIRST — strongest tier, zero credit. External engines fall back.
           served = await streamOllamaInto(enc, ollamaMessages, tier, think, ac.signal);   // Qwen3.5 397B
-          if (!served && !closed) served = await streamGeminiInto(enc, messages, ac.signal);
+          if (!served && !closed) served = await streamGeminiInto(enc, messages, ac.signal, think);
           if (!served && !closed) served = await streamAnthropicInto(enc, messages, ac.signal);
           if (!served && !closed) served = await streamOpenRouterInto(enc, messages, ac.signal);
         }
-        const okOllama = served ? true : await streamOllamaInto(enc, ollamaMessages, tier, think, ac.signal, modelOverride);
+        // Max (non-vision) already exhausted its Ollama attempt in the premium chain above —
+        // don't burn seconds retrying the same dead pool before the rescue chain answers.
+        // server.mjs has carried this guard for a while (5260); the EDGE function is what Netlify
+        // actually deploys (netlify.toml line 4), so until now the fix had never shipped. Every
+        // Firas Agent and Firas Code call runs on tier "max", so a saturated pool charged each of
+        // them a SECOND full pass — attempts × a 12 s head timeout — before Gemini Flash (~1 s to
+        // first token) was ever asked. That doubled silence is the "very slow" users feel.
+        const okOllama = served ? true : ((tier === "max" && !vision) ? false : await streamOllamaInto(enc, ollamaMessages, tier, think, ac.signal, modelOverride));
         if (!okOllama && !closed) {
           if (vision) {
             // Gemini + Ollama vision failed → free OpenRouter vision model reads the image before giving up.
@@ -1723,7 +1730,7 @@ function chatStreamResponse(messages, tier, think, vision, scrubBt) {
             // chat stays on the fast model. (Agent always runs tier "max" → always the strong model.)
             const cfHard = tier === "max" || CF_HARD_RE.test(cfLastUserText(messages));
             const cfModel = cfHard ? CF_TEXT_MODEL_STRONG : CF_TEXT_MODEL;
-            let recovered = await streamGeminiInto(enc, messages, ac.signal);
+            let recovered = await streamGeminiInto(enc, messages, ac.signal, think);
             if (!recovered && !closed) recovered = await streamCloudflareTextInto(enc, messages, ac.signal, cfModel);   // free, ANY country
             if (!recovered && !closed && cfModel !== CF_TEXT_MODEL) recovered = await streamCloudflareTextInto(enc, messages, ac.signal, CF_TEXT_MODEL);   // strong model empty → fast model
             if (!recovered && !closed) recovered = await streamOpenRouterInto(enc, messages, ac.signal);
@@ -1948,16 +1955,35 @@ async function streamAnthropicInto(enc, messages, signal) {
 }
 
 // ── Max engine: OpenRouter (OpenAI-compatible, free DeepSeek-R1) ──
-async function streamGeminiInto(enc, messages, signal) {
+async function streamGeminiInto(enc, messages, signal, think) {
   if (!GEMINI_API_KEY) return false;
   const msgs = messages.filter((m) => m.role === "system" || m.role === "user" || m.role === "assistant").map((m) => ({ role: m.role, content: String(m.content || "") }));
   if (!msgs.length) return false;
   for (const model of GEMINI_TEXT_MODELS) {
-    const reqBody = JSON.stringify({ model, messages: msgs, stream: true });
-    let upstream;
-    const key = gemPick() || GEMINI_API_KEY;         // rotate the pool + cool a failing key (parity with server.mjs:2855)
-    try { upstream = await fetch(GEMINI_OAI_URL, { method: "POST", headers: { "content-type": "application/json", "Authorization": "Bearer " + key }, body: reqBody, signal }); }
-    catch (e) { if (signal.aborted) return true; gemMark(key, 0); continue; }
+    /* THINKING — mirrors server.mjs _geminiStream exactly. This is the OpenAI-COMPAT endpoint,
+       so the switch is reasoning_effort and thoughts arrive on delta.reasoning_content. Gated
+       on `think`, so with the toggle off the body is byte-identical to what shipped before. */
+    let askThink = !!think;
+    let upstream = null;
+    let key = gemPick() || GEMINI_API_KEY;           // rotate the pool + cool a failing key (parity with server.mjs)
+    for (;;) {
+      const reqBody = JSON.stringify(askThink
+        ? { model, messages: msgs, stream: true, reasoning_effort: "low" }
+        : { model, messages: msgs, stream: true });
+      try { upstream = await fetch(GEMINI_OAI_URL, { method: "POST", headers: { "content-type": "application/json", "Authorization": "Bearer " + key }, body: reqBody, signal }); }
+      catch (e) { if (signal.aborted) return true; gemMark(key, 0); upstream = null; break; }
+      /* A rejected reasoning_effort must NOT cost us the engine — Gemini is rescue slot #1 and
+         holds the only reliably-present text key, so a 400 here would drop every tier to the
+         next engine. Retry once without the field. Deliberately NOT gemMark'd: the key is fine,
+         the field was the problem, and cooling it would punish a healthy key. */
+      if (upstream.status === 400 && askThink) {
+        try { upstream.body && upstream.body.cancel(); } catch (_) {}
+        askThink = false;
+        continue;
+      }
+      break;
+    }
+    if (!upstream) continue;
     if (!upstream.ok || !upstream.body) { gemMark(key, upstream && upstream.status); try { upstream && upstream.body && upstream.body.cancel(); } catch (_) {} continue; }
     const reader = upstream.body.getReader(); let buffer = "", any = false;
     try {
@@ -1973,7 +1999,14 @@ async function streamGeminiInto(enc, messages, signal) {
           if (!payload || payload === "[DONE]") continue;
           let evt; try { evt = JSON.parse(payload); } catch { continue; }
           const delta = evt.choices && evt.choices[0] && evt.choices[0].delta;
-          if (delta && delta.content) { const f = sseFrame(delta.content); if (f) enc(f); any = true; }
+          if (delta) {
+            /* Thoughts stream LIVE, but must NEVER set `any`: a thought-only stream reporting
+               itself as served would cancel the rest of the rescue chain and leave the user a
+               thinking panel above an empty answer. Only content means "served". */
+            const rz = delta.reasoning_content || delta.reasoning;
+            if (rz) { const f = sseFrame("", rz); if (f) enc(f); }
+            if (delta.content) { const f = sseFrame(delta.content); if (f) enc(f); any = true; }
+          }
         }
       }
       if (any) return true;   // served by this id; otherwise try the next candidate

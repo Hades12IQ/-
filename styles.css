@@ -1157,6 +1157,10 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 .agent-card__resume { margin-top: 12px; padding: 9px 18px; border: 0; border-radius: 999px; cursor: pointer; background: linear-gradient(100deg, var(--color-accent), #5b8def); color: #fff; font: 600 13px var(--font-sans); }
 .agent-card__resume:hover { filter: brightness(1.07); }
 .agent-card__resume:disabled { opacity: .5; cursor: default; }
+/* "Fix what's left" sits on a DONE mission, next to a delivered result — an amber repair
+   affordance, not the blue "carry on" one, so the two never read as the same action. It can
+   appear alongside nothing else, so it also carries its own top margin. */
+.agent-card__fixrest { background: linear-gradient(100deg, #c98a2b, #b3622a); margin-inline-start: 8px; }
 .agent-step__file { font-size: 11px; padding: 1px 7px; border-radius: 6px; background: var(--color-bg-subtle); border: 1px solid var(--color-border-hairline); color: var(--color-text-muted); margin-inline-start: 6px; }
 /* ── Project (folder) card: file viewer + ZIP download ── */
 .proj-card { border: 1px solid color-mix(in srgb, var(--color-accent) 32%, var(--color-border-hairline)); border-radius: 14px; background: var(--color-surface, var(--color-bg-subtle)); font-family: var(--font-sans); overflow: hidden; }
@@ -3359,6 +3363,11 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 /* ===== Document attachments (PDF / code / text) ===== */
 .attach-file{position:relative;display:flex;align-items:center;gap:8px;max-width:210px;padding-block:8px;padding-inline-start:9px;padding-inline-end:30px;background:var(--color-bg-subtle);border:1px solid var(--color-border-hairline);border-radius:var(--radius-md)}
 .attach-file.is-loading{opacity:.6}
+/* Only part of this file fitted in the request budget. The chip carries the full explanation
+   in its title; this is the mark that makes the user look. --color-error is defined in both
+   the light and dark palettes, so one rule covers both themes. */
+.attach-file.is-cut .attach-file__icon{background:var(--color-error)}
+.attach-file.is-cut::after{content:"…";position:absolute;inset-block-end:2px;inset-inline-end:22px;font:700 11px var(--font-mono);color:var(--color-error);line-height:1}
 .attach-file__icon{font:700 9px/1 var(--font-mono);letter-spacing:.5px;color:var(--color-on-accent);background:var(--color-accent);padding:4px 5px;border-radius:5px;flex:0 0 auto}
 .attach-file__name{font:500 12.5px var(--font-sans);color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .msg-user__files{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
@@ -3654,6 +3663,13 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 .cw-conrow--error{color:#ff8a80}
 .cw-conrow--warn{color:#ffd54f}
 .cw-conrow--info{color:#81d4fa}
+.cw-conrow--ok{color:#8fd694}
+.cw-conrow--run{color:#81d4fa}
+/* The app's OWN messages, as opposed to program output. .cw-conrow forces direction:ltr —
+   correct for stdout and tracebacks, wrong for an Arabic sentence, whose trailing punctuation
+   and Latin runs get reordered inside an LTR paragraph. plaintext lets the row take its
+   direction from its own first strong character, which is what dir=auto on the element means. */
+.cw-conrow.is-msg{unicode-bidi:plaintext;text-align:start}
 /* AI bar */
 .cw-ai{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--color-border-hairline);background:var(--color-surface)}
 .cw-ai__in{flex:1;padding:11px 14px;border:1.5px solid var(--color-border-strong);border-radius:var(--radius-pill);background:var(--color-bg-subtle);color:var(--color-text-primary);font:400 13.5px var(--font-sans)}
@@ -3813,6 +3829,17 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 .cw-conrow::before{content:"›";position:absolute;left:2px;color:#57ae9c;opacity:.7}
 .cw-conrow--error::before{content:"✕";color:#ff8a80}
 .cw-conrow--warn::before{content:"⚠";font-size:10px;color:#ffd54f}
+.cw-conrow--ok::before{content:"✓";color:#8fd694}
+.cw-conrow--run::before{content:"▶";font-size:9px;color:#81d4fa}
+/* On a message row the marker FLOWS instead of being pinned with `left`. An absolute marker
+   cannot follow the text: dir="auto" does not match a [dir="rtl"] selector, and
+   unicode-bidi:plaintext changes only how inline content is ordered, not the `direction`
+   property that inset-inline-start resolves against — so every logical-position trick still
+   lands it on the left while Arabic text sits on the right. As a static inline box it is a
+   NEUTRAL character at the logical start, which the bidi algorithm places correctly in both
+   directions with no branching at all. */
+/* The layout half of `is-msg` lives further down, scoped to .cw--v3 — a later rule there
+   re-applies the gutter this needs removed, and at equal specificity the later rule wins. */
 /* AI bar: glowing focus + gradient action */
 .cw-ai{gap:10px;padding:12px 14px}
 .cw-ai__in{transition:border-color .2s,box-shadow .2s}
@@ -5329,6 +5356,17 @@ body.product-code .composer__call { display: none; }
    overlaps the first characters of every log line. Restore the 24px gutter the
    glyph is positioned inside. */
 .cw--v3 .cw-conrow { padding: 3px 8px 3px 24px; }
+/* …EXCEPT the app's own localized messages. Their marker flows inline instead of being parked
+   in that gutter (see .cw-conrow.is-msg above), so the 24px would be blank space pushing the
+   text out of line with the log rows beneath it. Scoped to .cw--v3 and placed AFTER the rule
+   above on purpose: at equal specificity the later declaration wins, and an is-msg rule in the
+   earlier block silently loses this exact argument.
+   The marker's gap is a SYMMETRIC physical margin, not margin-inline-end. `direction` stays
+   ltr here — is-msg only sets unicode-bidi:plaintext — so every inline-logical property still
+   resolves to the left/right it would in English, which is the trap this file keeps setting.
+   5px on both sides is correct in either direction with nothing to get wrong. */
+.cw--v3 .cw-conrow.is-msg { padding: 3px 8px; }
+.cw--v3 .cw-conrow.is-msg::before { position: static; margin: 0 5px; }
 
 /* ----------------------------------------------------------------------------
    D. FOCUS VISIBILITY
@@ -5681,6 +5719,17 @@ body.product-code .composer__call { display: none; }
   box-shadow: none;
 }
 .cw--v3 .cw-bar__btn.cw-run:hover { background: var(--color-bg-subtle); color: var(--color-text-primary); box-shadow: none; }
+/* RUN-A-.PY MODE — the button already reads "تشغيل / Run" instead of "تحديث / Refresh"; this
+   makes the change of meaning visible and not merely readable. Deliberately a tint and not a
+   fill: the rule above demoted Run to a utility precisely so "Improve" stays the one
+   emphasised control in the bar, and executing a script must not take that slot back. Placed
+   AFTER that rule at the same (0,3,0) weight — anywhere earlier and it silently loses. */
+.cw--v3 .cw-bar__btn.cw-run--py {
+  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border-hairline));
+}
+.cw--v3 .cw-bar__btn.cw-run--py:hover { color: var(--color-accent); background: var(--color-accent-soft); }
+.cw--v3 .cw-bar__btn.cw-run[disabled] { opacity: .62; pointer-events: none; }
 
 /* EXACTLY ONE emphasised control in the bar: "Improve" — the action that
    actually re-runs, inspects and develops the project. */
@@ -5982,6 +6031,15 @@ body.product-code .composer__call { display: none; }
   border-radius: var(--radius-pill);
   padding: 2px 8px;
   direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums;
+}
+/* The library has a real ceiling (20 documents, 3 for a guest). One slot left is a warning;
+   full is a refusal waiting to happen — both are worth seeing before the upload is rejected.
+   --color-error is defined in BOTH the light and dark blocks, so this reads correctly in
+   either theme without a second rule. */
+.fb-rail__count.is-near { color: var(--color-text-primary); }
+.fb-rail__count.is-full {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
 }
 .fb-rail__list {
   flex: 1 1 auto; min-height: 0;

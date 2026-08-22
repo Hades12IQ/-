@@ -9,6 +9,18 @@
       ],
       "port": 1988,
       "autoPort": true
+    },
+    {
+      "//": "STATIC-ONLY. Serves the front end without a backend, for checking that app.js parses and the UI renders when Node is unavailable. /api/* returns 404 here — use the 'firas' entry for anything that talks to the server.",
+      "name": "firas-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "1989"
+      ],
+      "port": 1989,
+      "autoPort": true
     }
   ]
 }

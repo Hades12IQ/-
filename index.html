@@ -58,7 +58,7 @@
   <!-- Highlight.js + KaTeX stylesheets load LAZILY with their JS (see the loader below) so
        the site opens without waiting on ~350 KB of code/math libs it doesn't need yet. -->
 
-  <link rel="stylesheet" href="styles.css?v=v2" />
+  <link rel="stylesheet" href="styles.css?v=v17" />
 
   <!-- CDN libs: marked + DOMPurify are needed for the FIRST message render, so they load
        eagerly (defer). The HEAVY math + code-highlight libs (~350 KB) are NOT needed to open
@@ -105,7 +105,7 @@
        degrades gracefully (email/password still works) when it's absent. -->
   <script defer src="firebase-config.js"></script>
 
-  <script defer src="app.js?v=v2"></script>
+  <script defer src="app.js?v=v17"></script>
 </head>
 <body>
 <!--
@@ -337,7 +337,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         </button>
         <form class="composer" id="composer">
           <div class="attach-tray" id="attachTray" aria-label="Attached images"></div>
-          <input type="file" id="fileInput" accept="image/*,application/pdf,.pdf,.txt,.md,.markdown,.csv,.tsv,.json,.jsonl,.xml,.yml,.yaml,.html,.htm,.css,.scss,.js,.jsx,.mjs,.cjs,.ts,.tsx,.py,.java,.c,.h,.cpp,.cc,.hpp,.cs,.go,.rs,.rb,.php,.swift,.kt,.sql,.sh,.bash,.ini,.toml,.env,.log,.tex,.srt,.vtt,text/*" multiple hidden />
+          <input type="file" id="fileInput" accept="image/*,application/pdf,.pdf,.docx,.pptx,.xlsx,.xlsm,.txt,.md,.markdown,.csv,.tsv,.json,.jsonl,.xml,.yml,.yaml,.html,.htm,.css,.scss,.js,.jsx,.mjs,.cjs,.ts,.tsx,.py,.java,.c,.h,.cpp,.cc,.hpp,.cs,.go,.rs,.rb,.php,.swift,.kt,.sql,.sh,.bash,.ini,.toml,.env,.log,.tex,.srt,.vtt,text/*" multiple hidden />
           <div class="composer__row">
           <textarea
             class="composer__textarea"

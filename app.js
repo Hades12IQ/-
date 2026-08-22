@@ -5774,7 +5774,7 @@ function userTurnEl(msg) {
       chip.className = "msg-file-chip";
       const ic = document.createElement("span");
       ic.className = "msg-file-chip__ic";
-      ic.textContent = f.kind === "pdf" ? "PDF" : "TXT";
+      ic.textContent = brainKindTag(f.kind);
       const nm = document.createElement("span");
       nm.className = "msg-file-chip__nm";
       nm.textContent = f.name || "file";
@@ -10105,6 +10105,58 @@ function isPdfFile(file) { return file.type === "application/pdf" || /\.pdf$/i.t
 function isTextFile(file) {
   return (file.type && (file.type.startsWith("text/") || /(json|xml|javascript|typescript|csv|yaml|x-sh|x-python)/i.test(file.type))) || CODE_EXT.test(file.name || "");
 }
+/* ══ OFFICE ATTACHMENTS (.docx / .pptx / .xlsx) ═══════════════════════════════════════════════
+   The app EXPORTED all three long before it could READ any of them: a user with a Word lecture
+   or an Excel sheet had to open it elsewhere and paste. Meanwhile Firas Brain has carried real
+   OOXML extractors for these formats all along — extractBrainDocx / extractBrainPptx /
+   extractBrainXlsx, with the run-splitting, table and shared-string handling that a regex over
+   the XML gets wrong. Nothing new is invented here: the chat calls the same three functions.
+   Matched on the EXTENSION, not file.type: Windows reports these as
+   application/vnd.openxmlformats-… only when the Office MIME map is registered, and an empty
+   type is common enough (drag-drop from an archive, some Android pickers) that trusting it
+   would silently reject real .docx files. Extension is what the picker filters on anyway. */
+const OFFICE_EXT = /\.(docx|pptx|xlsx|xlsm)$/i;
+function isOfficeFile(file) { return OFFICE_EXT.test(file.name || ""); }
+function officeKindOf(file) {
+  const n = (file.name || "").toLowerCase();
+  return /\.docx$/.test(n) ? "docx" : /\.pptx$/.test(n) ? "pptx" : /\.(xlsx|xlsm)$/.test(n) ? "xlsx" : "";
+}
+/* The citable unit each format actually has. Word has no fixed pages (pagination is the
+   renderer's decision), so a .docx cites the SECTION its heading opens — never a page number
+   it cannot back up. Same reasoning, same words, as Firas Brain's brainUnitOf. */
+const OFFICE_UNIT = { docx: "Section", pptx: "Slide", xlsx: "Sheet" };
+/** Page records → one plain-text block per unit, each headed by a marker the model can cite. */
+function officePagesToText(pages, kind) {
+  const unit = OFFICE_UNIT[kind] || "Page";
+  const firstLine = (s) => { const i = s.indexOf("\n"); return i < 0 ? s : s.slice(0, i); };
+  const groups = [];
+  for (const pg of pages || []) {
+    const body = String((pg && pg.text) || "").trim();
+    if (!body) continue;
+    const n = Number(pg.p) || (groups.length + 1);
+    const last = groups[groups.length - 1];
+    if (last && last.p === n) {
+      /* .xlsx emits SEVERAL 700-char row-groups per sheet, each repeating the column-header
+         line so the chunk can stand alone in retrieval. Concatenated back into one block for
+         the chat that repetition is pure noise, so the echoed header is dropped. */
+      const head = firstLine(body);
+      last.text += "\n" + (head && head === last.head ? body.slice(head.length + 1) : body);
+    } else {
+      groups.push({ p: n, l: (pg.l || ""), text: body, head: firstLine(body) });
+    }
+  }
+  return groups
+    .map((g) => "[" + unit + " " + g.p + (g.l ? " — " + String(g.l).slice(0, 80) : "") + "]\n" + g.text)
+    .join("\n\n");
+}
+/** Read one Office file into the labelled plain text the chat sends as message context. */
+async function extractOfficeText(file, kind) {
+  const pages = kind === "docx" ? await extractBrainDocx(file)
+              : kind === "pptx" ? await extractBrainPptx(file)
+              : kind === "xlsx" ? await extractBrainXlsx(file)
+              : [];
+  return officePagesToText(pages, kind);
+}
 /** Lazy-load pdf.js (CDN) once, for in-browser PDF text extraction. */
 let _pdfjsPromise = null;
 function loadPdfJs() {
@@ -10211,8 +10263,8 @@ function rawBase64(dataUrl) {
 async function handleFiles(fileList) {
   const all = Array.from(fileList || []);
   const images = all.filter((f) => f.type.startsWith("image/"));
-  const docs = all.filter((f) => !f.type.startsWith("image/") && (isPdfFile(f) || isTextFile(f)));
-  const bad = all.filter((f) => !f.type.startsWith("image/") && !isPdfFile(f) && !isTextFile(f));
+  const docs = all.filter((f) => !f.type.startsWith("image/") && (isPdfFile(f) || isOfficeFile(f) || isTextFile(f)));
+  const bad = all.filter((f) => !f.type.startsWith("image/") && !isPdfFile(f) && !isOfficeFile(f) && !isTextFile(f));
   if (bad.length) showToast(state.lang === "ar" ? "نوع ملف غير مدعوم" : "Unsupported file type");
   if (images.length) await handleImageFiles(images);
   if (docs.length) await handleDocFiles(docs);
@@ -10228,17 +10280,36 @@ async function handleDocFiles(files) {
     const used = pendingFiles.reduce((n, f) => n + (f.text ? f.text.length : 0), 0);
     if (used >= MAX_TOTAL_FILE_CHARS) { showToast(state.lang === "ar" ? "حجم الملفات كبير جداً" : "Files too large"); break; }
     const id = uid();
-    const kind = isPdfFile(file) ? "pdf" : "code";
-    pendingFiles.push({ id, name: (file.name || (kind === "pdf" ? "document.pdf" : "file.txt")).slice(0, 80), kind, text: "", loading: true });
+    const office = isOfficeFile(file) ? officeKindOf(file) : "";
+    const kind = isPdfFile(file) ? "pdf" : (office || "code");
+    const fallbackName = kind === "pdf" ? "document.pdf" : office ? ("document." + (office === "xlsx" ? "xlsx" : office)) : "file.txt";
+    pendingFiles.push({ id, name: (file.name || fallbackName).slice(0, 80), kind, text: "", loading: true });
     renderAttachTray(); readingImages++; updateSendState();
     try {
-      let text = isPdfFile(file) ? await extractPdfText(file) : await file.text();
+      let text = isPdfFile(file) ? await extractPdfText(file)
+               : office ? await extractOfficeText(file, office)
+               : await file.text();
+      /* This cut has always been silent, and a workbook can extract to millions of characters
+         against a 120,000 budget — so the model answered from the first fifth of the file
+         while the user believed it had read all of it. An answer built on a third of a
+         document is worse than a refusal, because nothing about it looks wrong. Say so. */
+      const fullLen = String(text || "").length;
       text = String(text || "").slice(0, Math.min(MAX_FILE_CHARS, Math.max(0, MAX_TOTAL_FILE_CHARS - used)));
+      const cut = fullLen > text.length;
       const item = pendingFiles.find((p) => p.id === id);
       if (!text.trim()) {
         pendingFiles = pendingFiles.filter((p) => p.id !== id);
         showToast(state.lang === "ar" ? "ما كدرت أقرأ نص من الملف" : "No readable text in file");
-      } else if (item) { item.text = text; item.loading = false; }
+      } else if (item) {
+        item.text = text; item.loading = false; item.cut = cut;
+        if (cut) {
+          const pct = Math.max(1, Math.round((text.length / fullLen) * 100));
+          item.cutNote = state.lang === "ar"
+            ? ("الملف كبير — أُرسل نحو " + pct + "٪ من محتواه فقط. للمستند الكامل استخدم فِراس Brain.")
+            : ("File is large — only about " + pct + "% of it was sent. Use Firas Brain for the whole document.");
+          showToast(item.cutNote);
+        }
+      }
     } catch (_) {
       pendingFiles = pendingFiles.filter((p) => p.id !== id);
       showToast(state.lang === "ar" ? "تعذّر قراءة الملف" : "Couldn't read file");
@@ -10319,10 +10390,14 @@ function renderAttachTray() {
   });
   pendingFiles.forEach((p) => {
     const cell = document.createElement("div");
-    cell.className = "attach-file" + (p.loading ? " is-loading" : "");
+    cell.className = "attach-file" + (p.loading ? " is-loading" : "") + (p.cut ? " is-cut" : "");
+    // The toast is transient; the chip is what is still on screen when the user presses send.
+    if (p.cutNote) cell.setAttribute("title", p.cutNote);
     const icon = document.createElement("span");
     icon.className = "attach-file__icon";
-    icon.textContent = p.kind === "pdf" ? "PDF" : "TXT";
+    // brainKindTag covers pdf/docx/pptx/xlsx and falls through to TXT — which is exactly what
+    // the chat's own legacy "code" kind (still stored in older chats) should show.
+    icon.textContent = brainKindTag(p.kind);
     const name = document.createElement("span");
     name.className = "attach-file__name";
     name.textContent = p.loading ? (state.lang === "ar" ? "...قراءة" : "reading…") : p.name;
@@ -13567,7 +13642,16 @@ async function sendMessage() {
   if (readyFiles.length) {
     // fileText = the attached content sent to the model (this request only, like raw
     // images); files = lightweight {name,kind} chips kept for rendering + persistence.
+    /* A .docx/.pptx/.xlsx arrives carrying [Section n] / [Slide n] / [Sheet n] markers. Left
+       unexplained the model treats them as content and quotes them back; named as locations it
+       can answer "on slide 4" — which is the whole point of extracting the unit in the first
+       place. Added only when such a file is actually attached, so a plain PDF or code file
+       carries no rule about markers it does not have. */
+    const hasUnitMarkers = readyFiles.some((f) => OFFICE_UNIT[f.kind]);
     userMsg.fileText = "The user attached the following file(s) — read them carefully and use them to answer.\n\n" +
+      (hasUnitMarkers
+        ? "NOTE: lines such as [Slide 4 — Chlorophyll], [Section 2 — Refund policy] or [Sheet 1 — المبيعات] are LOCATION MARKERS inserted by this app, not text from the document. Use them to say exactly where something came from (\"في الشريحة ٤\" / \"on slide 4\"), and never quote a marker back as if it were document content.\n\n"
+        : "") +
       readyFiles.map((f) => "===== FILE: " + f.name + " =====\n" + f.text + "\n===== END FILE: " + f.name + " =====").join("\n\n");
     userMsg.files = readyFiles.map((f) => ({ name: f.name, kind: f.kind }));
   }
@@ -15518,10 +15602,17 @@ async function startGuestSession() {
     if (!u) throw new Error("no guest");
     try { localStorage.setItem(LS_GUEST_ACTIVE, u.guest ? "1" : "0"); } catch (_) {}
     await bootApp(u);
-  } catch (_) {
-    // Guest start failed (offline / server not configured) → fall back to the
-    // normal auth screen so the visitor is never stuck on the landing page.
+  } catch (e) {
+    /* Guest start failed → still fall back to the auth screen, so the visitor is never
+       stuck on the landing page. But SAY WHY. This used to swallow the reason entirely,
+       which made a misconfigured deploy indistinguishable from "the button does nothing":
+       the visitor is silently dropped on the email form — the exact screen they pressed
+       this button to avoid — and the owner has nothing to debug from.
+       A thrown fetch has no .status (no response ever arrived) and IS the real connection
+       case; anything with a status means the server answered and its own message is the
+       useful one, e.g. "server not configured — missing/invalid env: SESSION_SECRET". */
     showAuthScreen();
+    try { showToast(!(e && e.status) ? t().authNetworkError : ((e && e.message) || t().authGenericError)); } catch (_) {}
   } finally {
     if (btn) { btn.disabled = false; btn.classList.remove("is-busy"); }
   }
@@ -17302,18 +17393,294 @@ async function loadPyodide2() {
   })();
   return _pyodideLoading;
 }
-async function runPythonInSandbox(code, timeoutMs) {
-  // Only attempt stdlib-only scripts — a third-party import (pandas/requests/…) isn't installed and
-  // would be a false failure. Those we leave to static review, not execution.
-  const thirdParty = /^\s*(?:import|from)\s+(?!(?:os|sys|re|math|random|json|datetime|time|collections|itertools|functools|typing|string|decimal|fractions|statistics|heapq|bisect|copy|abc|enum|dataclasses|pathlib|io|csv|hashlib|base64|textwrap|unicodedata|calendar|pprint|operator|struct|array|queue|threading|asyncio|contextlib|warnings|traceback|argparse|__future__)\b)/m;
-  if (thirdParty.test(String(code || ""))) return { ok: true, out: "", err: "", skipped: true };
+/* Only stdlib-only scripts are attempted — a third-party import (pandas/requests/…) isn't
+   installed and would be a false failure. Hoisted out of runPythonInSandbox because the Run
+   button in Firas Code has to tell the user WHICH of the two skip reasons applied, and a regex
+   copied into a second place is a regex that drifts.
+
+   This WAS a single negative-lookahead regex, and exposing Run exposed two faults in it:
+   1. It only ever looked at the FIRST name after `import`, so `import json, pandas` read as
+      stdlib and then failed at runtime for a reason the caller had been told to expect never
+      to happen.
+   2. It had no idea the project's own files exist, so `from helpers import greet` — the most
+      ordinary line in a two-file Python project — was reported to the user as "a third-party
+      library", and no multi-file project could run at all.
+   Parsing the names out and checking each one against stdlib PLUS the project's own modules
+   fixes both. */
+const PY_STDLIB = new Set(("os sys re math random json datetime time collections itertools functools typing string " +
+  "decimal fractions statistics heapq bisect copy abc enum dataclasses pathlib io csv hashlib base64 textwrap " +
+  "unicodedata calendar pprint operator struct array queue threading asyncio contextlib warnings traceback " +
+  "argparse __future__").split(" "));
+/** Top-level module names a script imports — `import a.b, c as d` → ["a", "c"]. */
+function pyImportedModules(code) {
+  const out = [];
+  const re = /^[ \t]*(import|from)[ \t]+([^\n#]+)/gm;
+  let m;
+  while ((m = re.exec(String(code || "")))) {
+    /* CUT AT THE SEMICOLON FIRST. Python allows `import sys; sys.setrecursionlimit(10000)`,
+       and without this the name parsed out is "sys; sys" — in no stdlib list, so a script that
+       imports nothing but the standard library was refused with "this needs a third-party
+       library" and never ran. A trailing backslash continuation is dropped for the same
+       reason: it is punctuation, not a module name. */
+    const clause = m[2].split(";")[0].replace(/\\\s*$/, "");
+    if (m[1] === "from") {
+      // `from . import x` and `from .mod import y` are relative — always the project's own.
+      const first = clause.trim().split(/[ \t]/)[0];
+      if (!first || first.charAt(0) === ".") continue;
+      const n = first.split(".")[0];
+      if (n) out.push(n);
+    } else {
+      for (const part of clause.split(",")) {
+        const n = part.trim().split(/[ \t]+as[ \t]+/)[0].trim().split(".")[0];
+        if (n) out.push(n);
+      }
+    }
+  }
+  return out;
+}
+/** Module names the project itself provides: helpers.py → "helpers", pkg/util.py → "pkg". */
+function pyProjectModules(files) {
+  const s = new Set();
+  for (const f of files || []) {
+    const p = String((f && f.path) || "").replace(/^[./]+/, "");
+    if (!/\.py$/i.test(p)) continue;
+    const head = p.split("/")[0];
+    if (head) s.add(head.replace(/\.py$/i, ""));
+  }
+  return s;
+}
+function pyNeedsThirdParty(code, files) {
+  const own = pyProjectModules(files);
+  return pyImportedModules(code).some((n) => !PY_STDLIB.has(n) && !own.has(n));
+}
+/* Where sibling modules are written so `import utils` resolves inside a project. ONE fixed
+   path, cleared before every run: Pyodide is cached for the life of the tab, and a stale
+   utils.py from an earlier project silently shadowing the current one is the kind of bug that
+   reads as "my edit changed nothing". */
+const PY_PROJ_DIR = "/home/pyodide/_firas_proj";
+/* ── The two halves of a run, factored out for ONE reason: the worker below is built from
+   these functions' own source via .toString(). A worker written as its own string literal is
+   a second copy of this logic that drifts the first time either side is fixed; generating it
+   from the real functions makes drift impossible. Consequence: they must stay SELF-CONTAINED —
+   no closure over anything but their arguments. ── */
+/** Write the project's sibling modules into the sandbox FS, clearing whatever ran before. */
+function pyWriteMods(FS, mods, dir) {
+  const mkdirp = (d) => {
+    let cur = "";
+    for (const seg of d.split("/")) {
+      if (!seg) continue;
+      cur += "/" + seg;
+      try { FS.mkdir(cur); } catch (_) { /* already there */ }
+    }
+  };
+  const wipe = (d) => {
+    let entries = [];
+    try { entries = FS.readdir(d); } catch (_) { return; }
+    for (const n of entries) {
+      if (n === "." || n === "..") continue;
+      const p = d + "/" + n;
+      let isDir = false;
+      try { isDir = FS.isDir(FS.stat(p).mode); } catch (_) {}
+      if (isDir) { wipe(p); try { FS.rmdir(p); } catch (_) {} }
+      else try { FS.unlink(p); } catch (_) {}
+    }
+  };
+  mkdirp(dir);
+  wipe(dir);
+  for (const f of mods) {
+    /* Path hygiene, in this order and not the reverse: strip every ".." segment FIRST, then
+       any leading slashes/dots, then re-check. A single pass the other way round lets
+       "/../x" survive as "../x" and write outside the sandbox directory. */
+    const rel = String((f && f.path) || "").replace(/\\/g, "/").split("/")
+      .filter((s) => s && s !== "." && s !== "..").join("/");
+    if (!rel) continue;
+    const full = dir + "/" + rel;
+    mkdirp(full.slice(0, full.lastIndexOf("/")));
+    try { FS.writeFile(full, String((f && f.content) || ""), { encoding: "utf8" }); } catch (_) {}
+  }
+}
+/** The Python program that runs the user's code and captures stdout + the traceback. */
+function pyBuildRunner(hasMods, dir) {
+  /* Dropping the already-imported modules is what makes a SECOND Run see the edit the user
+     just made — without it Python serves the first run's cached module object forever. The
+     path test is anchored to the sandbox dir, so a stdlib module is never evicted.
+
+     BOTH branches run, and that symmetry is the point. The cleanup used to be skipped entirely
+     when a call passed no modules, so a Firas Code project left its directory on sys.path and
+     its modules in sys.modules for the life of the engine — and the next bare script (Firas
+     Agent's, typically) could import a helpers.py belonging to a project it knows nothing
+     about. A call with no modules must therefore actively REMOVE the directory, not ignore
+     it. */
+  const prologue = "import importlib\n_D=" + JSON.stringify(dir) + "\n" +
+    "sys.path[:] = [p for p in sys.path if p != _D]\n" +
+    (hasMods ? "sys.path.insert(0, _D)\n" : "") +
+    "for _m in [k for k, v in list(sys.modules.items()) if str(getattr(v, '__file__', '') or '').startswith(_D)]:\n    del sys.modules[_m]\nimportlib.invalidate_caches()\n";
+  /* The compiled name is what every traceback frame prints. It defaults to '<agent>', which
+     was fine while only Firas Agent read these; a person pressing Run is better served by the
+     real file name. */
+  return "import sys, io, traceback\n" + prologue +
+    "_o=io.StringIO()\n_e=''\n_so,_se=sys.stdout,sys.stderr\nsys.stdout=_o; sys.stderr=_o\n" +
+    "try:\n    input=lambda *a: ''\n    exec(compile(__usercode__, __pyfile__, 'exec'), {'__name__':'__main__','input':lambda *a: ''})\n" +
+    "except SystemExit:\n    pass\nexcept Exception:\n    _e=traceback.format_exc()\n" +
+    "finally:\n    sys.stdout=_so; sys.stderr=_se\n";
+}
+
+/* ══ PYTHON IN A WORKER ═══════════════════════════════════════════════════════════════════
+   Pyodide on the main thread cannot be interrupted: `while True: pass` holds the only thread
+   the page has, so the deadline below could REPORT an overrun but never stop one, and the tab
+   was frozen until the user reloaded it. That was tolerable while only Firas Agent ran Python
+   (model-written code, short scripts); it stopped being tolerable the moment a Run button let
+   a person execute a loop they wrote themselves.
+
+   A worker has its own thread, and terminate() is absolute — it kills a runaway loop mid-
+   iteration. So the timeout finally means what it says. The engine is gone with it, so the
+   next run pays the load again; that is the correct trade for "the page never freezes".
+
+   Degrades in one step: if Worker or blob: URLs are unavailable (an odd CSP, an old embedded
+   webview), _pyWorkerBroken latches and every later call takes the original main-thread path,
+   which is still here in full and still what Firas Agent gets if the worker cannot start. */
+const PY_CDN = "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/";
+const PY_BOOT_MS = 60000;   // the engine's OWN budget — never charged to a script's deadline
+let _pyWorker = null, _pyWorkerBroken = false, _pySeq = 0;
+let _pyBoot = null, _pyBootSettle = null;
+const _pyPending = new Map();
+function pyWorkerSource() {
+  return [
+    "const DIR = " + JSON.stringify(PY_PROJ_DIR) + ";",
+    "const CDN = " + JSON.stringify(PY_CDN) + ";",
+    pyWriteMods.toString(),
+    pyBuildRunner.toString(),
+    "let _ready = null;",
+    "function boot() {",
+    "  if (!_ready) _ready = (async () => { importScripts(CDN + 'pyodide.js'); return await loadPyodide({ indexURL: CDN }); })();",
+    "  return _ready;",
+    "}",
+    "self.onmessage = async (e) => {",
+    "  const msg = e.data || {};",
+    /* The boot is its own message, answered before any script is sent, so downloading the
+       engine is never inside a run's timeout. See pyWorkerBoot. */
+    "  if (msg.boot) {",
+    "    try { await boot(); self.postMessage({ boot: true, ok: true }); }",
+    "    catch (err) { self.postMessage({ boot: true, ok: false }); }",
+    "    return;",
+    "  }",
+    "  let py;",
+    "  try { py = await boot(); }",
+    "  catch (err) { self.postMessage({ id: msg.id, engine: true }); return; }",
+    "  try {",
+    "    const mods = msg.mods || [];",
+    "    if (mods.length) pyWriteMods(py.FS, mods, DIR);",
+    "    py.globals.set('__usercode__', String(msg.code || ''));",
+    "    py.globals.set('__pyfile__', String(msg.filename || '<agent>'));",
+    "    await py.runPythonAsync(pyBuildRunner(mods.length > 0, DIR));",
+    "    const err = String(py.globals.get('_e') || '');",
+    "    const out = String(py.globals.get('_o').getvalue() || '');",
+    "    self.postMessage({ id: msg.id, ok: !err, out: out.slice(0, 4000), err: err.slice(0, 2000) });",
+    "  } catch (err) {",
+    "    self.postMessage({ id: msg.id, ok: false, out: '', err: String((err && err.message) || err).slice(0, 800) });",
+    "  }",
+    "};",
+  ].join("\n");
+}
+function pyWorkerGet() {
+  if (_pyWorkerBroken) return null;
+  if (_pyWorker) return _pyWorker;
+  try {
+    const url = URL.createObjectURL(new Blob([pyWorkerSource()], { type: "text/javascript" }));
+    const w = new Worker(url);
+    URL.revokeObjectURL(url);              // the worker keeps its own reference to the source
+    w.onmessage = (e) => {
+      const d = e.data || {};
+      if (d.boot) { if (_pyBootSettle) _pyBootSettle(!!d.ok); return; }
+      const p = _pyPending.get(d.id);
+      if (!p) return;                       // a reply from a run we already timed out
+      _pyPending.delete(d.id);
+      clearTimeout(p.timer);
+      p.resolve(d.engine ? { ok: true, out: "", err: "", skipped: true, reason: "engine" }
+                         : { ok: !!d.ok, out: d.out || "", err: d.err || "" });
+    };
+    /* A worker-level error means this worker is finished, not that Python failed: settle every
+       run waiting on it and drop it, so the NEXT call builds a fresh one instead of hanging. */
+    w.onerror = () => { pyWorkerKill({ ok: true, out: "", err: "", skipped: true, reason: "engine" }); };
+    _pyWorker = w;
+    return w;
+  } catch (_) { _pyWorkerBroken = true; return null; }
+}
+/** Terminate the worker and settle everything waiting on it with `res`. */
+function pyWorkerKill(res) {
+  const w = _pyWorker;
+  _pyWorker = null;
+  if (_pyBootSettle) { _pyBootSettle(false); }   // nobody is left to answer a pending boot
+  _pyBoot = null; _pyBootSettle = null;          // the next worker boots from scratch
+  if (w) { try { w.terminate(); } catch (_) {} }
+  for (const [, p] of _pyPending) { clearTimeout(p.timer); p.resolve(res); }
+  _pyPending.clear();
+}
+/* THE ENGINE GETS ITS OWN BUDGET — this is the whole reason boot is a separate round trip.
+   Pyodide is a multi-megabyte download compiled on first use. With the boot folded into the
+   run, a caller's deadline covered the download: Firas Agent passes 8000ms, so on a cold cache
+   its very first script came back as `err: "py timeout"` — which its debugger loop reads as a
+   real traceback and answers by REWRITING the user's file to fix an error the script never
+   raised. And a Firas Code user saw "usually an endless loop" for a program that had not run a
+   statement. The main-thread path always had this separation (loadPyodide2 raced its own 40s);
+   the worker has to keep it. */
+function pyWorkerBoot(w) {
+  if (_pyBoot) return _pyBoot;
+  _pyBoot = new Promise((resolve) => {
+    let done = false;
+    const finish = (ok) => { if (done) return; done = true; clearTimeout(timer); _pyBootSettle = null; resolve(ok); };
+    const timer = setTimeout(() => { finish(false); }, PY_BOOT_MS);
+    _pyBootSettle = finish;
+    try { w.postMessage({ boot: true }); } catch (_) { finish(false); }
+  });
+  return _pyBoot;
+}
+async function pyWorkerRun(code, timeoutMs, mods, filename) {
+  const w = pyWorkerGet();
+  if (!w) return null;                      // caller falls back to the main thread
+  const booted = await pyWorkerBoot(w);
+  if (!booted) {
+    // Never leave a half-booted worker behind to answer the next call.
+    pyWorkerKill({ ok: true, out: "", err: "", skipped: true, reason: "engine" });
+    return { ok: true, out: "", err: "", skipped: true, reason: "engine" };
+  }
+  if (_pyWorker !== w) return null;         // killed while booting → let the caller retry/fall back
+  const id = ++_pySeq;
+  return new Promise((resolve) => {
+    /* Only NOW does the clock start, and it covers execution alone. Terminating kills the
+       engine with the run — which is exactly why it works on a loop that never yields.
+       Everything queued behind it is settled by pyWorkerKill. */
+    const timer = setTimeout(() => { pyWorkerKill({ ok: false, out: "", err: "py timeout" }); }, timeoutMs || 8000);
+    _pyPending.set(id, { resolve, timer });
+    try { w.postMessage({ id, code: String(code || ""), filename: filename || "<agent>", mods }); }
+    catch (_) { clearTimeout(timer); _pyPending.delete(id); resolve(null); }
+  });
+}
+
+/** opts.files: sibling {path,content} modules to make importable. `reason` names any skip. */
+async function runPythonInSandbox(code, timeoutMs, opts) {
+  const mods = ((opts && opts.files) || [])
+    .filter((f) => f && /\.py$/i.test(f.path || ""))
+    .map((f) => ({ path: String(f.path), content: String(f.content || "") }));   // structured-clone safe
+  if (pyNeedsThirdParty(code, mods)) return { ok: true, out: "", err: "", skipped: true, reason: "thirdparty" };
+  const filename = String((opts && opts.filename) || "<agent>");
+
+  const viaWorker = pyWorkerRun(code, timeoutMs, mods, filename);
+  if (viaWorker) {
+    const r = await viaWorker;
+    if (r) return r;                        // null only when postMessage itself failed → fall through
+  }
+
+  // ── main-thread fallback (no Worker available) ──
   let py;
   try { py = await Promise.race([loadPyodide2(), new Promise((_, r) => setTimeout(() => r(new Error("pyodide load timeout")), 40000))]); }
-  catch (_) { return { ok: true, out: "", err: "", skipped: true }; }   // engine unavailable → don't block
+  catch (_) { return { ok: true, out: "", err: "", skipped: true, reason: "engine" }; }   // engine unavailable → don't block
   try {
-    const runner = "import sys, io, traceback\n_o=io.StringIO()\n_e=''\n_so,_se=sys.stdout,sys.stderr\nsys.stdout=_o; sys.stderr=_o\ntry:\n    input=lambda *a: ''\n    exec(compile(__usercode__, '<agent>', 'exec'), {'__name__':'__main__','input':lambda *a: ''})\nexcept SystemExit:\n    pass\nexcept Exception:\n    _e=traceback.format_exc()\nfinally:\n    sys.stdout=_so; sys.stderr=_se\n";
+    if (mods.length) pyWriteMods(py.FS, mods, PY_PROJ_DIR);
     py.globals.set("__usercode__", String(code || ""));
-    await Promise.race([py.runPythonAsync(runner), new Promise((_, r) => setTimeout(() => r(new Error("py timeout")), timeoutMs || 8000))]);
+    py.globals.set("__pyfile__", filename);
+    await Promise.race([py.runPythonAsync(pyBuildRunner(mods.length > 0, PY_PROJ_DIR)),
+                        new Promise((_, r) => setTimeout(() => r(new Error("py timeout")), timeoutMs || 8000))]);
     const err = String(py.globals.get("_e") || "");
     const out = String(py.globals.get("_o").getvalue() || "");
     return { ok: !err, out: out.slice(0, 4000), err: err.slice(0, 2000) };
@@ -17565,7 +17932,13 @@ function serializeAgentRun(run) {
     steps: run.steps.map((s) => ({ title: String(s.title || "").slice(0, 200), kind: s.kind, file: s.file || "", s: s.s, out: String(s.out || "").slice(0, 15000) })),
     final: String(run.final || "").slice(0, 40000),
     stats: run.stats || {},
+    /* The QA findings the fix loop could not land. These were live-only, so the honest
+       "still unresolved" list survived a reload as PROSE inside `final` while the machine-
+       readable copy vanished — and with it any chance of acting on it with one click.
+       Bounded to 8×300 chars, which the budget below never has to think about. */
+    qaOpen: (run._qaOpen || []).slice(0, 8).map((s) => String(s).slice(0, 300)),
   };
+  if (!slim.qaOpen.length) delete slim.qaOpen;   // keep old blocks byte-identical
   // HARD BUDGET so the persisted block stays under the server's ~200K content cap — a truncated
   // block loses its closing fence and won't re-parse on reload. Trim step outputs adaptively (the
   // full code lives in the SEPARATE deliverable message, so the card is only a summary anyway).
@@ -17605,7 +17978,11 @@ function buildAgentCard(run, lang) {
   const head = document.createElement("div");
   head.className = "agent-card__head";
   head.innerHTML = '<span class="agent-card__bolt">⚡</span><span class="agent-card__brand">Firas Agent</span>' +
-    '<span class="agent-card__phase' + (run.phase === "run" || run.phase === "plan" || run.phase === "verify" || run.phase === "read" ? " is-live" : "") + '">' + (ar ? phase.ar : phase.en) + "</span>";
+    /* LIVE_PHASES already lists all seven working phases — this pill hand-rolled four of them and
+       so went STATIC during enhance, assemble and test, which are the LONGEST phases of a big
+       mission. Every step reads "done", the bar sits at N/N, and the one moving thing stops: the
+       card looks hung at precisely the moment it is working hardest. Reuse the real list. */
+    '<span class="agent-card__phase' + (LIVE_PHASES[run.phase] ? " is-live" : "") + '">' + (ar ? phase.ar : phase.en) + "</span>";
   card.appendChild(head);
   if (run.title) { const h = document.createElement("div"); h.className = "agent-card__title"; h.textContent = run.title; card.appendChild(h); }
   // Progress bar: n/N done + animated fill.
@@ -17616,7 +17993,7 @@ function buildAgentCard(run, lang) {
   prog.innerHTML = '<div class="agent-card__prog-bar"><div class="agent-card__prog-fill" style="width:' + pct + '%"></div></div>' +
     '<span class="agent-card__prog-n">' + doneN + "/" + run.steps.length + "</span>";
   card.appendChild(prog);
-  const KIND_IC = { research: "🔎", write: "✍️", solve: "🧮", draw: "📈", code: "💻", design: "🎨" };
+  const KIND_IC = { research: "🔎", write: "✍️", solve: "🧮", draw: "📈", code: "💻", design: "🎨", compute: "⚙️", cite: "📚" };
   const ol = document.createElement("ol");
   ol.className = "agent-card__steps";
   run.steps.forEach((st) => {
@@ -17671,6 +18048,36 @@ function buildAgentCard(run, lang) {
     rb.textContent = ar ? "▶ استئناف المهمة" : "▶ Resume task";
     rb.addEventListener("click", () => { rb.disabled = true; resumeAgentRun(activeChat(), run); });
     card.appendChild(rb);
+  }
+  /* FIX WHAT'S LEFT. The mission already reports, honestly, which QA findings it ran the
+     result against and could not fix — and then asked the user to TYPE "improve it", which
+     makes them re-describe a list the app is holding in memory. This hands the exact findings
+     back instead. It goes through the composer on purpose: that is the one path that charges
+     the mission, mints a cid and streams into a card, and a second entrance to all of that is
+     a second thing to keep correct. */
+  const qaOpen = run._qaOpen || run.qaOpen;
+  /* checkShareLink renders these same cards on the public /?share= page. A visitor there has no
+     session and no way to get one from that page, so the button must not appear — and testing
+     for a missing composer does NOT detect it: cacheEls() and wireEvents() (app.js init, before
+     checkShareLink) populate els.input/els.sendBtn on every page including that one, and
+     checkShareLink only sets display:none. The URL is the honest signal. */
+  const canCompose = !isSharePage() && !!(els && els.input && els.sendBtn);
+  if (canCompose && run.phase === "done" && Array.isArray(qaOpen) && qaOpen.length && !state.streaming) {
+    const fb = document.createElement("button");
+    fb.type = "button"; fb.className = "agent-card__resume agent-card__fixrest";
+    fb.textContent = ar ? ("🛠 أصلح ما تبقّى (" + qaOpen.length + ")") : ("🛠 Fix what's left (" + qaOpen.length + ")");
+    fb.addEventListener("click", () => {
+      fb.disabled = true;
+      const list = qaOpen.map((x, i) => (i + 1) + ") " + String(x).slice(0, 300)).join("\n");
+      const msg = ar
+        ? ("أصلح هذه الملاحظات تحديدًا في ما سلّمته، ولا تغيّر أي شيء آخر يعمل:\n" + list)
+        : ("Fix exactly these findings in what you delivered, and change nothing else that works:\n" + list);
+      if (!els || !els.input || !els.sendBtn) return;
+      els.input.value = msg;
+      els.input.dispatchEvent(new Event("input", { bubbles: true }));
+      els.sendBtn.click();
+    });
+    card.appendChild(fb);
   }
   if (run.final) {
     const fin = document.createElement("div");
@@ -17810,6 +18217,204 @@ async function agentCallStream(messages, tierKey, signal, onDelta) {
   }
   if (bestPartial.trim().length >= AGENT_PARTIAL_MIN) return bestPartial.trim();
   throw (lastErr || new Error("agent call failed"));
+}
+/* A COMPUTE step. Every other kind ASKS the model for its numbers; this one makes it write a
+   Python script, RUNS that script for real in the sandbox worker, and then narrates the output it
+   actually got. It is the only step whose figures are executed rather than asserted — which is
+   what the "NEVER FABRICATE … no invented statistics" mandate in every persona has been asking
+   for all along, and what a model alone cannot honour on arithmetic it has to do in its head.
+   Costs two model calls plus a sandbox run instead of one call. That is the price of a true number.
+   NOTE: client-side only. A mission handed to the background runner executes server-side where
+   there is no Pyodide worker, so a resumed/background mission simply runs these as written steps. */
+async function agentComputeStep(st, taskCtx, planList, prevCtx, langRule, signal) {
+  let code = "", runOut = null;
+  for (let attempt = 0; attempt < 2 && !signal.aborted; attempt++) {
+    /* One repair round: the traceback goes back with the script. Any more and a stubbornly broken
+       script would eat the mission's time budget for a single step. */
+    const fix = (runOut && runOut.err)
+      ? "\n\nYOUR PREVIOUS SCRIPT FAILED. Return the CORRECTED script.\nSCRIPT:\n" + code +
+        "\nERROR:\n" + String(runOut.err).slice(0, 1200)
+      : "";
+    let raw = "";
+    try {
+      raw = await agentCall([
+        { role: "system", content:
+          "You are Firas Agent's COMPUTATION engine. Write ONE self-contained Python 3 script that " +
+          "actually computes what this step needs and PRINTS the results clearly labelled (print a " +
+          "markdown table when the result is tabular). STANDARD LIBRARY ONLY — no pandas, no numpy, " +
+          "no network, no file I/O. Fully deterministic: no randomness, no clocks. Under 120 lines, " +
+          "must finish in a few seconds. Return ONLY the code in one ```python block." },
+        { role: "user", content: "THE TASK:\n" + taskCtx.slice(0, 3000) + "\n\nFULL PLAN:\n" + planList +
+          "\n\nTHE STEP TO COMPUTE: " + st.title + fix },
+      ], "max", signal);
+    } catch (_) { break; }
+    const m = raw.match(/```(?:python|py)?\s*\n([\s\S]*?)```/i);
+    code = (m ? m[1] : raw).trim();
+    if (!code) break;
+    runOut = await runPythonInSandbox(code, 15000, { files: [], filename: "step.py" });
+    if (runOut && runOut.ok) break;
+  }
+  const computed = (runOut && runOut.ok && String(runOut.out || "").trim()) ? String(runOut.out).slice(0, 8000) : "";
+  if (!computed) {
+    /* No usable run → degrade to an ordinary written step rather than failing. A calculation that
+       would not run must not cost the user the other fifteen steps of the mission; all that is
+       lost is the "computed" guarantee, and this is exactly what a `write` step produces. */
+    return await agentCall([
+      { role: "system", content: "You are Firas Agent EXECUTING ONE STEP of a bigger plan. Produce the " +
+        "COMPLETE, final content for THIS step only — it will be assembled with the other steps." + AGENT_QUALITY + langRule },
+      { role: "user", content: "THE TASK:\n" + taskCtx.slice(0, 4500) + "\n\nFULL PLAN:\n" + planList +
+        (prevCtx ? "\n\nALREADY COMPLETED (context — do not repeat):\n" + prevCtx : "") +
+        "\n\nEXECUTE THIS STEP NOW: " + st.title },
+    ], "max", signal);
+  }
+  return await agentCall([
+    { role: "system", content:
+      "You are Firas Agent WRITING UP a computation that has ALREADY RUN. The OUTPUT below is real " +
+      "program output: treat every figure in it as ground truth, and never change, re-round or add " +
+      "a number that is not in it. Present it as finished content for this step — a short lead, the " +
+      "figures as a markdown table where they are tabular, then what they mean. Do NOT show or " +
+      "mention the script: the reader is being handed results, not machinery." + AGENT_QUALITY + langRule },
+    { role: "user", content: "THE TASK:\n" + taskCtx.slice(0, 2500) + "\n\nTHIS STEP: " + st.title +
+      "\n\nREAL COMPUTED OUTPUT:\n" + computed },
+  ], "max", signal);
+}
+/* A CITE step. Every planner prompt in this file ORDERS the model to list "ONLY real sources
+   actually found in the research steps, never invented ones" — and an instruction cannot enforce
+   that, because a plausible-looking URL is precisely the thing a language model is best at
+   inventing. This step stops asking. It harvests every link the finished steps produced, FETCHES
+   each one, and writes the references section from the survivors only, reporting the rest as
+   unverified instead of laundering them into a bibliography that looks authoritative.
+   Same principle as the compute step: check it, don't trust it. */
+async function agentCiteStep(st, run, taskCtx, langRule, signal) {
+  const ar = state.lang === "ar";
+  const seen = new Set(), urls = [];
+  for (const s of run.steps) {
+    if (s.s !== "done" || !s.out) continue;
+    for (const raw of (String(s.out).match(/https?:\/\/[^\s)\]}"'<>]+/gi) || [])) {
+      /* Trailing punctuation belongs to the SENTENCE, not the URL — "see https://x.com/a." would
+         otherwise be fetched with the full stop attached and reported dead. */
+      const url = raw.replace(/[.,;:!?]+$/, "");
+      if (url.length > 12 && !seen.has(url)) { seen.add(url); urls.push(url); }
+    }
+  }
+  const picked = urls.slice(0, 14);     // a references list longer than this is not the failure mode
+  const checked = [];
+  /* 3 at a time: sequential made a 14-source report wait on 14 round trips, and this step is only
+     worth having if it is cheap enough to always run. */
+  for (let i = 0; i < picked.length && !signal.aborted; i += 3) {
+    const outs = await Promise.all(picked.slice(i, i + 3).map(async (url) => {
+      try { const d = await agentFetchUrl(url); return { url, ok: !!(d && d.text && d.text.trim()), title: (d && d.title) || "" }; }
+      catch (_) { return { url, ok: false, title: "" }; }
+    }));
+    checked.push(...outs);
+  }
+  const live = checked.filter((c) => c.ok), dead = checked.filter((c) => !c.ok);
+  run.stats.searches += live.length;
+  /* Nothing to verify → say so plainly. A deliverable with no sources is honest; a references
+     heading with nothing under it reads as a bug. */
+  if (!checked.length) {
+    return ar
+      ? "## المصادر والمراجع\n\nلم يعتمد هذا العمل على مصادر ويب خارجية — محتواه مبنيّ على المعرفة المتخصّصة في الخطوات السابقة."
+      : "## References\n\nThis work draws on no external web sources; its content is built from the specialist knowledge in the preceding steps.";
+  }
+  const body = live.length ? await agentCall([
+    { role: "system", content:
+      "You are Firas Agent writing the REFERENCES section. Every source below has ALREADY BEEN " +
+      "FETCHED AND CONFIRMED to resolve. Use ONLY these — never add, guess, complete or 'improve' " +
+      "a URL, and never invent an author, publisher or date that is not given. Number them exactly " +
+      "as listed, so the [1][2] markers already used in the text keep pointing at the right source. " +
+      "For each: the title as given, the URL, and one short line on what it supports." + langRule },
+    { role: "user", content: "THE TASK:\n" + taskCtx.slice(0, 2000) + "\n\nVERIFIED SOURCES:\n" +
+      live.map((c, i) => "[" + (i + 1) + "] " + (c.title ? c.title + " — " : "") + c.url).join("\n") },
+  ], "max", signal)
+  : (ar ? "## المصادر والمراجع\n\nلم يصمد أيّ من الروابط التي ظهرت أثناء البحث عند التحقّق، فلم تُدرَج."
+        : "## References\n\nNone of the links surfaced during research resolved when checked, so none are listed.");
+  /* Dead links are REPORTED, not hidden. A reader who can see that four links failed can judge the
+     report; one handed a clean list that silently dropped them cannot. */
+  const note = dead.length
+    ? "\n\n> " + (ar
+        ? "تعذّر التحقّق من " + dead.length + " رابط ورد أثناء البحث، فلم يُدرَج أعلاه."
+        : dead.length + " link(s) surfaced during research could not be verified and were left out above.")
+    : "";
+  return body + note;
+}
+/* Environment limits, NOT code faults. Pyodide ships the standard library only, so a perfectly
+   correct project that imports requests/flask/numpy dies at import — and "repairing" that would
+   mean rewriting good software into something worse to satisfy a sandbox the user will never run
+   it in. Same for a program that legitimately waits on input or serves forever: the timeout is the
+   harness's limit, not a bug. These are reported and left ALONE. */
+const PY_NOT_A_BUG = /ModuleNotFoundError|ImportError|No module named|EOFError|py timeout|OSError: \[Errno 138\]/i;
+/* SMOKE-TEST a Python project before it is handed over. Every other gate in this pipeline is the
+   model re-reading its own work; this one EXECUTES it, so "it runs" stops being an opinion.
+   Repairs at most twice, and if it still fails it puts the original files back — a smoke test that
+   damages working code is worse than no smoke test at all. */
+async function agentSmokeTestPython(run, task, langRule, sync, signal) {
+  const pySteps = run.steps.filter((s) => s.s === "done" && /\.py$/i.test(s.file || "") && s.out);
+  if (!pySteps.length) return null;
+  const snapshot = new Map(pySteps.map((s) => [s, s.out]));
+  const files = () => pySteps.map((s) => ({ path: s.file, content: stripToCode(s.out) }));
+  /* Entry point: an explicit __main__ guard is the real signal; a conventional name is the next
+     best; otherwise the first file, which at least proves the modules import. */
+  const pick = (all) => all.find((x) => /if\s+__name__\s*==\s*["']__main__["']/.test(x.content))
+    || all.find((x) => /^(main|app|run|__main__)\.py$/i.test((x.path.split("/").pop() || "")))
+    || all[0];
+  let report = null;
+  for (let round = 0; round < 3 && !signal.aborted; round++) {
+    const all = files(), entry = pick(all);
+    if (!entry || !entry.content) { report = null; break; }
+    const res = await runPythonInSandbox(entry.content, 15000, { files: all, filename: entry.path });
+    /* CHECK skipped BEFORE ok. The sandbox answers {ok:true, skipped:true} when it declined to run
+       at all — a third-party import it cannot provide, or an engine that would not load. Reading
+       that as a pass would stamp "it runs" on code that was never executed, which is a worse lie
+       than saying nothing. */
+    if (res && res.skipped) { report = { ok: false, skipped: true, entry: entry.path, reason: res.reason || "sandbox" }; break; }
+    if (res && res.ok) { report = { ok: true, entry: entry.path, repairs: round }; break; }
+    const err = String((res && res.err) || "").trim();
+    if (!err || PY_NOT_A_BUG.test(err)) { report = { ok: false, skipped: true, entry: entry.path, err: err.slice(0, 300) }; break; }
+    if (round === 2) { report = { ok: false, entry: entry.path, err: err.slice(0, 300) }; break; }
+    /* Blame the DEEPEST project file named in the traceback — the innermost frame is where the
+       fault is; the entry point is usually just the caller. The sandbox reports ABSOLUTE paths
+       (/home/pyodide/_firas_proj/lib.py) while a step's file is relative (lib.py), so the
+       containment test runs traceback-path-ends-with-step-file, never the reverse. */
+    const named = [...err.matchAll(/File "([^"]+)"/g)].map((m) => m[1]).reverse()
+      .find((p) => all.some((f) => p === f.path || p.endsWith("/" + f.path)));
+    const target = (named && pySteps.find((s) => named === s.file || named.endsWith("/" + s.file)))
+      || pySteps.find((s) => s.file === entry.path);
+    if (!target) { report = { ok: false, entry: entry.path, err: err.slice(0, 300) }; break; }
+    target.s = "run"; sync(false);
+    try {
+      const fixed = await agentCall([
+        { role: "system", content:
+          "You are Firas Agent REPAIRING one file of a Python project that FAILED TO RUN. Output the " +
+          "ENTIRE corrected file in ONE fenced code block — keep its public functions, CLI and " +
+          "behaviour, standard library only, no explanation and no commentary. Fix the reported " +
+          "error and anything else that would stop the project running." + langRule },
+        { role: "user", content: "THE PROJECT:\n" + task.slice(0, 1200) +
+          "\n\nALL PROJECT FILES:\n" + all.map((f) => "- " + f.path).join("\n") +
+          "\n\nIT WAS RUN FROM `" + entry.path + "` AND RAISED:\n" + err.slice(0, 1500) +
+          "\n\nFILE `" + target.file + "` — CURRENT VERSION:\n" + stripToCode(target.out).slice(0, 20000) +
+          "\n\nRETURN THE CORRECTED FILE." },
+      ], "max", signal);
+      const code = stripToCode(fixed).trim();
+      /* Guard against a TRUNCATED rewrite, not against a short file. An absolute floor here was a
+         real bug: the correct fix for a two-line helper is itself ~30 characters, so a flat
+         minimum silently threw the repair away and re-reported the same traceback every round.
+         Relative to what we already have is the honest test — a fix may legitimately be shorter
+         than the broken version, but not a fraction of it. */
+      const curLen = stripToCode(target.out).trim().length;
+      if (code.length >= Math.max(8, curLen * 0.4)) target.out = "```\n" + code + "\n```";
+    } catch (_) { /* keep what we have; the next round reports */ }
+    target.s = "done"; sync(true);
+  }
+  /* Never hand back something worse than what we were given. A run we could not get green is
+     restored to the model's own version — the user gets the code the agent wrote, not a half-
+     finished repair attempt on top of it. */
+  if (report && !report.ok && !report.skipped) {
+    for (const [s, out] of snapshot) s.out = out;
+    sync(true);
+  }
+  run._pyCheck = report;
+  return report;
 }
 async function agentWebSearch(q) {
   try {
@@ -18072,7 +18677,7 @@ async function runAgentTask(chat, aiMsg, task, replyLang, signal, onUpdate, ctx,
       ? "You are Firas Agent's ARCHITECT planning ONE COMPLETE single-file build, produced in SECTIONS that MERGE into a final file far larger and richer than any one-shot answer. SCALE the section count to the ambition: a small widget = 3-4 sections; a normal single-page app = 5-8 sections; a large, feature-rich single file = 9-12 sections. Order them: foundation & document skeleton → shared design tokens/base styles → EACH major section or feature as its own step → full styling/responsive polish → ALL JavaScript interactivity & state (split JS into 2-3 steps when the app is large). Never collapse a rich app into a few sections. Return ONLY valid JSON, titles in the user's language: {\"title\":\"…\",\"steps\":[{\"title\":\"…\",\"kind\":\"code\"}]}"
       : run._deck
       ? "You are Firas Agent's KEYNOTE DIRECTOR planning a PRESENTATION (a slide deck the user downloads as PowerPoint). Structure the talk as 3-6 STEPS, each a coherent SECTION of the presentation (e.g. 'المقدمة والسياق', 'المفهوم الأساسي', 'التطبيقات', 'الخلاصة والتوصيات') that will each produce several slides. Order it as a compelling narrative: hook/agenda → build-up sections → takeaways/close. Every step kind is 'write'. Return ONLY valid JSON, titles in the user's language: {\"title\":\"deck title\",\"steps\":[{\"title\":\"…\",\"kind\":\"write\"}]}"
-      : "You are Firas Agent's MASTER PLANNER for a rich non-code deliverable (course, booklet, chapter set, research report, exam/worksheet, essay, study guide, or answer to a hard question). First silently identify the SUBJECT (math | physics/chem/science | writing EN/AR | exam/quiz | general knowledge). SIZE the task: a small ask = 3-4 steps; a normal deliverable = 5-9 steps; a LARGE one (a full course/booklet/multi-topic report, or an exam with many questions) = 10-16 steps — scale to the real scope, NEVER cram a big syllabus into a few steps. Design a COHERENT ARCHITECTURE before content: a course/booklet is ordered pedagogically (concept & theory → fully worked examples → practice problems → a dedicated ANSWER KEY / solutions step); an exam/worksheet makes question groups their own steps PLUS a separate detailed model-answer step; an EXAM BANK (بنك أسئلة) is organized by TOPIC — each topic step contains its questions in graded difficulty tiers (سهل/متوسط/صعب with marks) — plus ONE final complete answer-key step covering every question; a STUDY PLAN (خطة دراسة/جدول مذاكرة) is ordered (goals & scope diagnosis → a full week-by-week AND day-by-day schedule as a real TABLE with subjects, durations and concrete tasks → per-phase steps with specific study techniques and resources → a final progress-tracking & revision-strategy step); a RESEARCH PAPER/REPORT is ordered (scope & key questions → evidence-gathering research steps → analysis → synthesis with inline citations [1][2] → a FINAL references step titled 'المصادر والمراجع'/'References' listing ONLY real sources actually found in the research steps, never invented ones). Every step = ONE substantial chunk of REAL content (a specific chapter, a named set of worked examples, questions 1-10) — never a vague activity like 'introduction' or 'explain the topic'. Choose each step's kind to match the work: research (needs fresh web facts) | solve (math/quantitative derivation) | draw (a figure/graph/diagram) | write (prose/answers/explanation) | code. Prefer 'solve' for anything with equations and 'draw' for anything that benefits from a figure. If this is an exam/worksheet/quiz, the FINAL step MUST be a complete ANSWER KEY with worked solutions. Return ONLY valid JSON, step titles in the user's language: {\"title\":\"short task title\",\"steps\":[{\"title\":\"…\",\"kind\":\"…\"}]}";
+      : "You are Firas Agent's MASTER PLANNER for a rich non-code deliverable (course, booklet, chapter set, research report, exam/worksheet, essay, study guide, or answer to a hard question). First silently identify the SUBJECT (math | physics/chem/science | writing EN/AR | exam/quiz | general knowledge). SIZE the task: a small ask = 3-4 steps; a normal deliverable = 5-9 steps; a LARGE one (a full course/booklet/multi-topic report, or an exam with many questions) = 10-16 steps — scale to the real scope, NEVER cram a big syllabus into a few steps. Design a COHERENT ARCHITECTURE before content: a course/booklet is ordered pedagogically (concept & theory → fully worked examples → practice problems → a dedicated ANSWER KEY / solutions step); an exam/worksheet makes question groups their own steps PLUS a separate detailed model-answer step; an EXAM BANK (بنك أسئلة) is organized by TOPIC — each topic step contains its questions in graded difficulty tiers (سهل/متوسط/صعب with marks) — plus ONE final complete answer-key step covering every question; a STUDY PLAN (خطة دراسة/جدول مذاكرة) is ordered (goals & scope diagnosis → a full week-by-week AND day-by-day schedule as a real TABLE with subjects, durations and concrete tasks → per-phase steps with specific study techniques and resources → a final progress-tracking & revision-strategy step); a RESEARCH PAPER/REPORT is ordered (scope & key questions → evidence-gathering research steps → analysis → synthesis with inline citations [1][2] → a FINAL references step of kind 'cite', titled 'المصادر والمراجع'/'References' — that kind FETCHES every link the earlier steps produced and keeps only the ones that actually resolve, so use it instead of writing a bibliography by hand). Every step = ONE substantial chunk of REAL content (a specific chapter, a named set of worked examples, questions 1-10) — never a vague activity like 'introduction' or 'explain the topic'. Choose each step's kind to match the work: research (needs fresh web facts) | solve (math/quantitative derivation done symbolically) | compute (results that must be CALCULATED — a real Python script is written and EXECUTED, and only its true output is reported: statistics over a dataset given in the task, financial/loan/tax tables, unit conversions, simulations, large or error-prone arithmetic, generated number tables) | draw (a figure/graph/diagram) | write (prose/answers/explanation) | code | cite (the references section — every link found earlier is FETCHED and only the ones that resolve are listed). Prefer 'solve' for a derivation the reader must follow line by line, and 'compute' whenever the ANSWER is a number or a table of numbers that would otherwise be estimated — a computed figure is verified, a written one is not. Prefer 'draw' for anything that benefits from a figure. Use 'cite' for the final references step of ANY deliverable that did web research; never hand-write a bibliography. If this is an exam/worksheet/quiz, the FINAL step MUST be a complete ANSWER KEY with worked solutions. Return ONLY valid JSON, step titles in the user's language: {\"title\":\"short task title\",\"steps\":[{\"title\":\"…\",\"kind\":\"…\"}]}";
   let plan = null;
   try {
     const raw = await agentCall([
@@ -18089,7 +18694,7 @@ async function runAgentTask(chat, aiMsg, task, replyLang, signal, onUpdate, ctx,
   const MAX_STEPS = run.mode === "project" ? 14 : run.mode === "codefile" ? 12 : (run._mega ? 24 : 16);
   run.steps = plan.steps.slice(0, MAX_STEPS).map((s) => ({
     title: String(s.title || "").slice(0, 160),
-    kind: /^(research|solve|draw|write|code)$/.test(s.kind) ? s.kind : (run.mode === "project" || run.mode === "codefile" ? "code" : "write"),
+    kind: /^(research|solve|draw|write|code|compute|cite)$/.test(s.kind) ? s.kind : (run.mode === "project" || run.mode === "codefile" ? "code" : "write"),
     file: run.mode === "project" ? String(s.file || "").replace(/[^\w./-]+/g, "-").replace(/^[/.]+/, "").slice(0, 80) : "",
     s: "todo", out: "",
   }));
@@ -18173,10 +18778,16 @@ async function runAgentTask(chat, aiMsg, task, replyLang, signal, onUpdate, ctx,
       usrTxt = "THE TASK:\n" + taskCtx.slice(0, 4500) + "\n\nFULL PLAN:\n" + planList + (prevCtx ? (KEYSTEP ? "\n\nTHE COMPLETED STEPS IN FULL — your step must cover EVERY item below, matching its exact numbering, skipping NOTHING:\n" : "\n\nALREADY COMPLETED (context — do not repeat):\n") + prevCtx : "") + (searchCtx ? "\n\nFRESH WEB RESULTS (cite [1][2] where used):\n" + searchCtx : "") + "\n\nEXECUTE STEP " + (i + 1) + " NOW: " + st.title;
     }
     try {
-      st.out = await agentCall([
-        { role: "system", content: sysTxt },
-        { role: "user", content: usrTxt },
-      ], stepTier(st.kind), signal);
+      /* A compute step runs its own two-pass pipeline (write script → EXECUTE it → narrate the
+         real output), so it bypasses the single generic call the other kinds share. */
+      st.out = st.kind === "compute"
+        ? await agentComputeStep(st, taskCtx, planList, prevOutline(), langRule, signal)
+        : st.kind === "cite"
+        ? await agentCiteStep(st, run, taskCtx, langRule, signal)
+        : await agentCall([
+            { role: "system", content: sysTxt },
+            { role: "user", content: usrTxt },
+          ], stepTier(st.kind), signal);
       st.s = "done";
       if (st.kind === "design") {
         run._design = st.out;   // every later file follows this spec
@@ -18340,18 +18951,26 @@ async function runAgentTask(chat, aiMsg, task, replyLang, signal, onUpdate, ctx,
   const ENHANCE_SYS = "You are Firas Agent's PRINCIPAL ENGINEER doing the final polish pass on a file that already works. Your job is to make it dramatically richer and more premium WITHOUT breaking or shrinking it. Rules: (1) OUTPUT A SUPERSET — the new file must contain everything the current one does, improved; never delete a feature, function, section, or piece of real content, and never truncate or stop mid-file. (2) PRESERVE EVERY PUBLIC CONTRACT — keep every id, class name, function name, exported symbol, route, and API shape byte-identical so sibling files keep working; follow the design system exactly. (3) ADD REAL DEPTH — expand thin sections with genuine content, refine spacing/typography, add tasteful animations and micro-interactions, handle edge cases and errors, and improve accessibility (labels, roles, focus, contrast). No lorem, no TODO, no placeholders. (4) VERIFY — before finishing, mentally trace the file end-to-end and confirm it is syntactically valid and behaves correctly. Output ONLY the complete, final file in ONE fenced code block, nothing else." + VISUAL_POLICY;
   if (run.mode === "project" && !signal.aborted) {
     run.phase = "enhance"; sync(false);
-    for (const st of run.steps) {
-      if (signal.aborted) break;
-      if (st.s !== "done" || !st.file || st.kind === "design" || /\.(md|txt|json)$/i.test(st.file)) continue;
+    /* One file at a time was the LONGER half of a big project: the build phase got a parallel
+       scheduler above, this one never did, so six files meant six Max calls end to end. Enhancing
+       is per-file independent — siblings are READ for their ids/classes and never written — so the
+       same proven two-lane staggered pattern applies here. Two lanes, not more: the engines'
+       per-minute limit is what caps this, not the work (three tripped 429s and made it slower). */
+    const enhOne = async (st) => {
+      if (signal.aborted) return;
+      if (st.s !== "done" || !st.file || st.kind === "design" || /\.(md|txt|json)$/i.test(st.file)) return;
       const cur = stripToCode(st.out);
       const lang = (st.file.split(".").pop() || "").toLowerCase();
       const langN = lang === "htm" ? "html" : lang;
       const looksComplete = codeLooksComplete(cur, langN);
       const thin = cur.length < 1200 || /\bTODO\b|\bFIXME\b|placeholder(?!\s*[:=])|lorem ipsum|\/\* *\.\.\. *\*\//i.test(cur);
-      if (looksComplete && !thin) continue;   // already good → don't waste a call / don't risk regressing a working file
+      if (looksComplete && !thin) return;   // already good → don't waste a call / don't risk regressing a working file
       st.s = "run"; sync(false);
       try {
-        const siblings = run.steps.filter((s) => s.s === "done" && s.file && s.file !== st.file && s.kind !== "design").map((s) => { const c = stripToCode(s.out); const ids = [...c.matchAll(/id=["']([\w-]+)["']/g)].map((m) => m[1]); const cls = [...c.matchAll(/class=["']([^"']+)["']/g)].flatMap((m) => m[1].split(/\s+/)).filter(Boolean); const fns = [...c.matchAll(/(?:function|const|let|var)\s+([A-Za-z_$][\w$]*)/g)].map((m) => m[1]); return "• " + s.file + " → ids[" + [...new Set(ids)].slice(0, 40).join(",") + "] classes[" + [...new Set(cls)].slice(0, 60).join(",") + "] symbols[" + [...new Set(fns)].slice(0, 40).join(",") + "]"; }).join("\n").slice(0, 4000);
+        /* "run" counts as well as "done": with two lanes a sibling may be mid-enhance, and dropping
+           it would silently shrink the cross-file contract exactly when it matters most. Its ids and
+           classes are already in st.out — enhancement only ADDS, never renames. */
+        const siblings = run.steps.filter((s) => (s.s === "done" || s.s === "run") && s.file && s.file !== st.file && s.kind !== "design").map((s) => { const c = stripToCode(s.out); const ids = [...c.matchAll(/id=["']([\w-]+)["']/g)].map((m) => m[1]); const cls = [...c.matchAll(/class=["']([^"']+)["']/g)].flatMap((m) => m[1].split(/\s+/)).filter(Boolean); const fns = [...c.matchAll(/(?:function|const|let|var)\s+([A-Za-z_$][\w$]*)/g)].map((m) => m[1]); return "• " + s.file + " → ids[" + [...new Set(ids)].slice(0, 40).join(",") + "] classes[" + [...new Set(cls)].slice(0, 60).join(",") + "] symbols[" + [...new Set(fns)].slice(0, 40).join(",") + "]"; }).join("\n").slice(0, 4000);
         const sys = (!looksComplete)
           ? "You are Firas Agent COMPLETING a file that was cut off. Output the ENTIRE finished file in ONE fenced code block, keeping all existing ids/classes/APIs, adding only what is missing to make it whole. Never stop mid-file."
           : ENHANCE_SYS;
@@ -18364,7 +18983,21 @@ async function runAgentTask(chat, aiMsg, task, replyLang, signal, onUpdate, ctx,
         if (code.length >= cur.length * 0.7 && codeLooksComplete(code, langN)) st.out = "```\n" + code + "\n```";
       } catch (_) { /* keep the original */ }
       st.s = "done"; sync(true);
-    }
+    };
+    const enhList = run.steps.slice();
+    let ep = 0; const ECONC = 2;
+    const eworker = async (w) => {
+      if (w) await new Promise((r) => setTimeout(r, w * 2500));   // offset lanes, same as the build scheduler
+      while (ep < enhList.length && !signal.aborted) { await enhOne(enhList[ep++]); }
+    };
+    await Promise.all(Array.from({ length: Math.min(ECONC, Math.max(1, enhList.length)) }, (_, w) => eworker(w)));
+  }
+  /* 4b) SMOKE-TEST — a Python project is EXECUTED before it is handed over, and repaired from its
+     own traceback if it crashes. Runs after ENHANCE so the files are final, and before ASSEMBLE so
+     a repair still reaches the download. Silent for every other stack: there is no sandbox here
+     for Node or Go, and a green Python run is the only "it runs" this app can honestly claim. */
+  if (run.mode === "project" && !signal.aborted) {
+    try { await agentSmokeTestPython(run, task, langRule, sync, signal); } catch (_) { /* never fail a mission over its own smoke test */ }
   }
   // 5) ASSEMBLE — merge sections into ONE polished file / collect the project's files
   if (run.mode === "codefile" && !signal.aborted && run.steps.some((s) => s.s === "done" && s.kind !== "design")) {
@@ -18631,9 +19264,9 @@ async function runAgentTask(chat, aiMsg, task, replyLang, signal, onUpdate, ctx,
     const shown = run._qaOpen.slice(0, 4).map((x) => "- " + String(x).slice(0, 180)).join("\n");
     run.final += ar
       ? ("\n\n⚠️ فحصتُ الناتج بتشغيله فعليًا، وبقيت " + n + " ملاحظة لم أتمكّن من إصلاحها:\n" + shown +
-         "\n\nاطلب مني «طوّره» لأحاول عليها من جديد.")
+         "\n\nاضغط «أصلح ما تبقّى» في البطاقة أعلاه لأعاود المحاولة عليها وحدها.")
       : ("\n\n⚠️ I ran the result and " + n + " issue(s) are still unresolved:\n" + shown +
-         "\n\nAsk me to \"improve it\" and I'll take another pass.");
+         "\n\nPress \"Fix what's left\" on the card above and I'll take another pass at just these.");
   }
   sync(true);
   return run;
@@ -19219,23 +19852,35 @@ function cwT() {
   return ar ? {
     home: "الرئيسية", newProj: "مشروع جديد", name: "اسم المشروع", create: "إنشاء", tpl: "القالب",
     heroT: "Firas Code", heroSub: "بيئة تطوير كاملة بالمتصفح — اكتب بيدك، والذكاء يعدّل معك جراحيًا",
-    recent: "مشاريعك بالقائمة الجانبية", run: "تحديث", zip: "ZIP", addFile: "ملف جديد",
+    recent: "مشاريعك بالقائمة الجانبية", run: "تحديث", zip: "ZIP", addFile: "ملف جديد", share: "مشاركة",
     preview: "معاينة", console: "كونسول", clearCon: "مسح", aiPh: "اطلب تعديلًا… «أضف وضعًا ليليًا» أو «صلّح الزر»", aiGo: "نفّذ",
     working: "يفكر ويعدّل…", diffT: "مراجعة التعديلات", newF: "جديد", editF: "تعديل", delF: "حذف",
     apply: "تطبيق المحدد", cancel: "إلغاء", applied: "طُبّقت التعديلات ✓", nothing: "لا تغييرات مقترحة",
     delFileC: "حذف الملف؟", fileName: "اسم الملف (مثل js/tools.js)", saved: "حُفظ ✓", aiFail: "تعذّر التعديل — جرّب ثانية",
     filesTab: "الملفات", editorTab: "المحرر", outTab: "النتيجة", replaceAll: "استبدال كامل للملف",
     chatTab: "دردشة", threadEmpty: "ابدأ محادثة مع فراس — اطلب تعديلًا أو ميزة وسيظهر الحوار هنا.", youLbl: "أنت", aiLbl: "فراس",
+    // Python run
+    runPy: "تشغيل", pyStart: "تشغيل", pyBusy: "يشغّل…", pyEmpty: "(انتهى التنفيذ بلا مخرجات)",
+    pyDone: "انتهى التنفيذ في",
+    pyThird: "هذا السكربت يستورد مكتبة خارجية غير متوفّرة داخل المتصفح — المتاح هنا مكتبة بايثون القياسية فقط (math, json, re, datetime, collections …).",
+    pyEngine: "تعذّر تحميل محرّك بايثون. تحقّق من اتصالك بالإنترنت ثم أعد المحاولة.",
+    pyTimeout: "أُوقف السكربت بعد تجاوزه الحدّ الزمني (١٥ ثانية) — غالبًا حلقة لا تنتهي. صفحتك ومشروعك بخير، والتشغيل التالي يحتاج ثوانيَ إضافية لإعادة تشغيل المحرّك.",
   } : {
     home: "Home", newProj: "New project", name: "Project name", create: "Create", tpl: "Template",
     heroT: "Firas Code", heroSub: "A full dev workspace in the browser — you type, the AI edits surgically with you",
-    recent: "Your projects live in the sidebar", run: "Refresh", zip: "ZIP", addFile: "New file",
+    recent: "Your projects live in the sidebar", run: "Refresh", zip: "ZIP", addFile: "New file", share: "Share",
     preview: "Preview", console: "Console", clearCon: "Clear", aiPh: "Ask for a change… \"add dark mode\" or \"fix the button\"", aiGo: "Run",
     working: "Thinking & editing…", diffT: "Review changes", newF: "new", editF: "edit", delF: "delete",
     apply: "Apply selected", cancel: "Cancel", applied: "Changes applied ✓", nothing: "No changes proposed",
     delFileC: "Delete this file?", fileName: "File name (e.g. js/tools.js)", saved: "Saved ✓", aiFail: "Couldn't edit — try again",
     filesTab: "Files", editorTab: "Editor", outTab: "Output", replaceAll: "Full file replacement",
     chatTab: "Chat", threadEmpty: "Start a conversation with Firas — ask for a change or a feature and the dialogue shows up here.", youLbl: "You", aiLbl: "Firas",
+    // Python run
+    runPy: "Run", pyStart: "Running", pyBusy: "Running…", pyEmpty: "(finished with no output)",
+    pyDone: "Finished in",
+    pyThird: "This script imports a third-party library, which isn't available in the browser — only the Python standard library runs here (math, json, re, datetime, collections …).",
+    pyEngine: "Couldn't load the Python engine. Check your connection and try again.",
+    pyTimeout: "Stopped after passing the 15-second limit — usually an endless loop. Your page and project are fine; the next run needs a few extra seconds to restart the engine.",
   };
 }
 function codeFilesOf(chat) {
@@ -19424,11 +20069,20 @@ function cwWireConsoleListener() {
     if (!d || d.__fcw !== 1) return;
     const pane = document.querySelector("#codeWorkspace .cw-console__list");
     if (!pane) return;
-    const row = document.createElement("div");
-    row.className = "cw-conrow cw-conrow--" + (d.t || "log");
-    row.textContent = d.m;
-    pane.appendChild(row);
-    pane.scrollTop = pane.scrollHeight;
+    /* While a Python run owns this pane, the preview iframe must not write into it. In a
+       project that has BOTH an index.html and a .py, the iframe reloads on every commit and
+       its console.log lines interleaved themselves between the traceback and the output the
+       user had just asked for. The error BUFFER below is still fed either way — cwAskAI and
+       the fix loop read it, and dropping a preview error from their view would be a real
+       regression. Only the visible row is withheld. */
+    const muted = cwState.conOwner === "py";
+    if (!muted) {
+      const row = document.createElement("div");
+      row.className = "cw-conrow cw-conrow--" + (d.t || "log");
+      row.textContent = d.m;
+      pane.appendChild(row);
+      pane.scrollTop = pane.scrollHeight;
+    }
     if (d.t === "error") {
       // Persist live runtime errors into a structured buffer so the fix loop / cwAskAI can read the ACTUAL
       // error before editing (the Claude Code move) — not just flash it once in the console tab.
@@ -20078,6 +20732,7 @@ async function cwDevelopGame(name, curFiles, desc, root, signal) {
     if (!files || !files.length) { clearDiff(); return null; }
     // 2) DEVELOP LOOP — probe + critique → targeted GROWTH pass → keep the best-scoring version.
     let best = files, bestScore = Infinity, busy = 0;
+    let prevSc = Infinity, prevGoalsKey = "", prevBulk = 0, flatRounds = 0;   // stagnation memory
     for (let round = 0; round < CW_GAME_ROUNDS && !sig.aborted && !ui.cancelled(); round++) {
       if (Date.now() - t0 > CW_GAME_BUDGET_MS) break;
       ui.note((ar ? "يفحص اللعبة — الجولة " : "Testing the game — round ") + (round + 1) + "/" + CW_GAME_ROUNDS + "…");
@@ -20087,6 +20742,16 @@ async function cwDevelopGame(name, curFiles, desc, root, signal) {
       if (sc < bestScore) { bestScore = sc; best = files; }
       if (!findings.length && !crit.missing.length) { best = files; break; }   // runs + rich → done
       const goals = findings.concat(crit.missing).slice(0, 8);
+      /* Same stagnation test as cwDevelopProject, but deliberately SLOWER to give up: the round
+         cap here is 8 and its comment says "quality over speed — keep developing longer for
+         stronger, bigger games", so one flat round is not enough evidence to quit on a game.
+         TWO consecutive dead rounds are. A game that is still growing or still scoring better
+         keeps every one of its eight rounds; only a run that has genuinely stalled stops early. */
+      const goalsKey = goals.join("|");
+      const bulk = files.map((f) => String(f.content || "")).join("").replace(/\s+/g, " ").length;
+      if (round > 0 && sc >= prevSc && goalsKey === prevGoalsKey && bulk < prevBulk * 1.15) { if (++flatRounds >= 2) break; }
+      else flatRounds = 0;
+      prevSc = sc; prevGoalsKey = goalsKey; prevBulk = bulk;
       const improve = (is3d ? "[لعبة ثلاثية الأبعاد بـ Three.js] " : "[لعبة] ") + String(desc).slice(0, 400) +
         "\n\nطوّر هذه اللعبة الآن: اجعلها تعمل فعلاً وتتحرّك، وأكبر وأمتع وأكثر احترافية. عالِج بدقّة كل النقاط التالية دون كسر ما يعمل:\n- " + goals.join("\n- ") +
         "\n\nاحتفظ بكل المعرّفات/الأصناف/الدوال المشتركة، وأخرج الملفات المعدّلة كاملة من البداية للنهاية.";
@@ -20216,6 +20881,10 @@ async function cwDevelopProject(name, curFiles, desc, root, signal, onReport) {
     if (!files || !files.length) { clearDiff(); return null; }
 
     let best = files, bestScore = Infinity, busy = 0;
+    /* Progress memory across rounds. bestScore was already computed every round and never once
+       consulted as a reason to stop: the only exit was a PERFECT score, so a round that changed
+       nothing measurable still bought a full plan + rebuild of every file. */
+    let prevSc = Infinity, prevGoalsKey = "", prevBulk = 0;
     for (let round = 0; round < CW_APP_ROUNDS && !sig.aborted && !ui.cancelled(); round++) {
       if (Date.now() - t0 > CW_APP_BUDGET_MS) break;
       ui.note((ar ? "يفحص المشروع — الجولة " : "Inspecting the project — round ") + (round + 1) + "/" + CW_APP_ROUNDS + "…");
@@ -20237,6 +20906,18 @@ async function cwDevelopProject(name, curFiles, desc, root, signal, onReport) {
       const goals = errs.concat(a11y.map((v) => "إمكانية الوصول: " + v)).concat(crit.missing).slice(0, 9);
       if (!goals.length) { best = files; report.remaining = []; break; }   // runs clean + rich → done
       report.remaining = goals.slice();
+      /* STOP when a round achieved nothing measurable. cwProjectCritique is deterministic regex, so
+         it re-emits "وسّع المشروع" for any project under CW_APP_BIG_CHARS — meaning the goal list
+         stays non-empty and round N+1 sends the SAME request that just failed to move anything.
+         Three independent signals must ALL be flat before we quit: the score did not improve, the
+         goal list is byte-identical, and the project did not grow by 15%. That third term is what
+         protects a project genuinely growing toward the size threshold with an unchanged goal list —
+         it keeps working. `best`/`bestScore` and the final scoring pass are untouched, so whatever
+         we return is chosen exactly as before; only the wasted rounds are gone. */
+      const goalsKey = goals.join("|");
+      const bulk = files.map((f) => String(f.content || "")).join("").replace(/\s+/g, " ").length;
+      if (round > 0 && sc >= prevSc && goalsKey === prevGoalsKey && bulk < prevBulk * 1.15) break;
+      prevSc = sc; prevGoalsKey = goalsKey; prevBulk = bulk;
 
       // ---- IMPROVE (targeted, grounded in what was observed) ----
       ui.note((ar ? "يطوّر المشروع — الجولة " : "Improving — round ") + (round + 1) + "…");
@@ -20713,10 +21394,20 @@ async function cwPlanBuild(name, curFiles, request, isEdit, ui, signal, resume) 
   const changes = built.slice();
   // Re-mark the recovered steps so the transcript shows them already done rather than replaying.
   for (let i = 0; i < plan.steps.length; i++) if (built.some((b) => b.path === plan.steps[i].file)) ui.mark(i);
-  for (let i = 0; i < plan.steps.length; i++) {
-    if (built.some((b) => b.path === plan.steps[i].file)) continue;   // finished in an earlier run
-    if (signal.aborted || ui.cancelled()) { cwStashResume(plan, built, request, isEdit, name); break; }
-    if (Date.now() - t0 > Math.min(CW_BUILD_BUDGET_MS + plan.steps.length * 30000, 600000)) break;   // budget scales with plan size; on timeout keep what's built and let the entry/coverage gate decide (graceful degradation, not a blind restart)
+  /* Firas Code built its files STRICTLY one at a time — up to eight files, each able to spend six
+     continuation round-trips finishing a big one. That single sequential loop, not the model, is
+     why a build felt endless. The Agent solved the same problem above: the entry .html goes first
+     ALONE so the shared ids/classes contract exists, then the rest run in two staggered lanes that
+     all read that contract. Two lanes because the engines rate-limit per minute — three made every
+     provider return 429 and the run got SLOWER, not faster.
+     `break` and `return null` cannot cross a lane boundary, so they become these two flags: stopAll
+     ends the run keeping what is built, bail discards it exactly as `return null` did. */
+  let stopAll = false, bail = false;
+  const buildOne = async (i) => {
+    if (stopAll || bail) return;
+    if (built.some((b) => b.path === plan.steps[i].file)) return;   // finished in an earlier run
+    if (signal.aborted || ui.cancelled()) { cwStashResume(plan, built, request, isEdit, name); stopAll = true; return; }
+    if (Date.now() - t0 > Math.min(CW_BUILD_BUDGET_MS + plan.steps.length * 30000, 600000)) { stopAll = true; return; }   // budget scales with plan size; on timeout keep what's built and let the entry/coverage gate decide (graceful degradation, not a blind restart)
     const st = plan.steps[i];
     ui.step(i, cwPlanT().building + " " + (i + 1) + "/" + plan.steps.length + " · " + st.file);
     const isWebFile = /\.(html?|css|jsx?|tsx?|vue|svelte)$/i.test(st.file);
@@ -20755,18 +21446,29 @@ async function cwPlanBuild(name, curFiles, request, isEdit, ui, signal, resume) 
     } catch (e) {
       // agentCall rejects when the signal fires mid-file — stash here too, or pressing Stop
       // during a build (the common case) would lose the plan and every finished file.
-      if (signal.aborted) { cwStashResume(plan, built, request, isEdit, name); break; }
-      if (isEngineBusyText(String((e && e.message) || e)) && ++busyStrikes >= CW_BUSY_STRIKES_MAX) return null;
-      continue;
+      if (signal.aborted) { cwStashResume(plan, built, request, isEdit, name); stopAll = true; return; }
+      if (isEngineBusyText(String((e && e.message) || e)) && ++busyStrikes >= CW_BUSY_STRIKES_MAX) { bail = true; return; }
+      return;
     }
-    if (!body) continue;
+    if (!body) return;
     const lang = /\.html?$/i.test(st.file) ? "html" : /\.css$/i.test(st.file) ? "css" : "js";
     const isExtractEdit = isEdit && /split|extract|move|decompose|استخراج|تقسيم|نقل|فصل/i.test(String(request || ""));
-    if (prevFile && !isExtractEdit && body.length < String(prevFile.content || "").length * 0.5 && !codeLooksComplete(body, lang)) continue;   // don't discard a legitimately-shrunk source file during an extract/split refactor
+    if (prevFile && !isExtractEdit && body.length < String(prevFile.content || "").length * 0.5 && !codeLooksComplete(body, lang)) return;   // don't discard a legitimately-shrunk source file during an extract/split refactor
     built.push({ path: st.file, content: body });
     changes.push({ path: st.file, content: body });
     ui.mark(i);
-  }
+  };
+  const order = plan.steps.map((_, i) => i);
+  const foundI = order.find((i) => /\.html?$/i.test(plan.steps[i].file));
+  if (foundI !== undefined) await buildOne(foundI);          // the contract file, alone and first
+  const restI = order.filter((i) => i !== foundI);
+  let bp = 0; const BCONC = 2;
+  const bworker = async (w) => {
+    if (w) await new Promise((r) => setTimeout(r, w * 2500));   // offset lanes, same as the Agent
+    while (bp < restI.length && !stopAll && !bail && !signal.aborted && !ui.cancelled()) await buildOne(restI[bp++]);
+  };
+  await Promise.all(Array.from({ length: Math.min(BCONC, Math.max(1, restI.length)) }, (_, w) => bworker(w)));
+  if (bail) return null;                                    // what `return null` meant inside the loop
   if (isEdit && changes.length) {
     // POST-BUILD WIRING CHECK — an extract-edit that adds a new .js/.css/module but forgets the
     // <script>/<link>/import is invisible until runtime (unstyled page, moved fn is undefined). Do a cheap
@@ -21030,9 +21732,128 @@ function cwRefreshPreview(root, chat) {
   let html = projPreviewHtml({ name: "p", files }) || "<!DOCTYPE html><html><body style='font-family:sans-serif;color:#888;display:grid;place-items:center;height:100vh'>" + (state.lang === "ar" ? "أضف ملف index.html للمعاينة" : "Add an index.html to preview") + "</body></html>";
   html = html.replace(/<head([^>]*)>/i, "<head$1>" + CW_CONSOLE_HOOK);
   if (html.indexOf(CW_CONSOLE_HOOK) === -1) html = CW_CONSOLE_HOOK + html;
-  const list = root.querySelector(".cw-console__list"); if (list) list.innerHTML = "";
-  const tab = root.querySelector(".cw-tab[data-tab=console]"); if (tab) tab.classList.remove("has-errors");
+  /* Clearing the console belongs to the PREVIEW — it resets the iframe's own captured logs.
+     A Python run writes into the SAME pane, and auto-reload re-runs this on a 900ms debounce
+     after any keystroke, so pressing Run and then touching the editor used to wipe the output
+     mid-read. Only clear what the preview itself put there. */
+  if (cwState.conOwner !== "py") {
+    const list = root.querySelector(".cw-console__list"); if (list) list.innerHTML = "";
+    const tab = root.querySelector(".cw-tab[data-tab=console]"); if (tab) tab.classList.remove("has-errors");
+  }
   ifr.srcdoc = html;
+}
+
+/* ══ FIRAS CODE — RUN PYTHON ═════════════════════════════════════════════════════════════════
+   The IDE could preview an index.html and do nothing else. Open a .py file and the Run button
+   silently re-rendered a preview that did not exist — an "in-browser dev environment" that
+   could not run a line of the language it was most often asked to write. Pyodide was already
+   here (runPythonInSandbox), but ONLY Firas Agent ever called it.
+
+   The rule is "run what you are looking at": a selected .py executes, anything else previews as
+   before. Only when a project has no HTML at all does the button fall back to that project's
+   entry .py, so a pure-Python project runs without first clicking the right file — and a web
+   project's Run behaves exactly as it always did.
+
+   The interpreter runs in a Worker (see pyWorkerRun), so the 15s deadline actually STOPS a
+   runaway loop instead of only reporting it. The editor is still committed to storage before
+   every run: on a machine with no Worker support the main-thread fallback is what executes,
+   and there the tab really can be held by a `while True:` until reload. */
+function cwPyEntry(chat) {
+  const { files } = codeFilesOf(chat);
+  if (!files.length) return null;
+  const sel = files[cwState.file];
+  if (sel && /\.py$/i.test(sel.path)) return sel;              // run what you are looking at
+  if (files.some((f) => /\.html?$/i.test(f.path))) return null; // a web project still previews
+  return files.find((f) => /(^|\/)(main|app|run|__main__)\.py$/i.test(f.path))
+      || files.find((f) => /\.py$/i.test(f.path))
+      || null;
+}
+/** Reuse the tab button's own handler rather than repeating what "show the console" means. */
+function cwShowConsole(root) {
+  const b = root.querySelector('.cw-tab[data-tab="console"]');
+  if (b && !b.classList.contains("is-active")) b.click();
+}
+/** `msg` marks a row as localized PROSE rather than program output — see the CSS note. */
+function cwConRow(root, cls, text, msg) {
+  const pane = root.querySelector(".cw-console__list");
+  if (!pane) return;
+  const row = document.createElement("div");
+  row.className = "cw-conrow cw-conrow--" + cls + (msg ? " is-msg" : "");
+  /* A console is LTR by decree (.cw-conrow sets direction:ltr) because stdout and tracebacks
+     are, and that is right for them. It is wrong for the app's OWN Arabic messages: an Arabic
+     sentence in an LTR paragraph gets its trailing punctuation and its Latin runs reordered —
+     "▶ تشغيل main.py" and the parenthesised module list in pyThird are exactly that shape.
+     dir=auto plus unicode-bidi:plaintext lets each message resolve its own direction. */
+  if (msg) row.dir = "auto";
+  row.textContent = String(text || "");
+  pane.appendChild(row);
+  pane.scrollTop = pane.scrollHeight;
+}
+/** The Run button reads "تشغيل / Run" on a Python file and "تحديث / Refresh" otherwise. */
+function cwSyncRunBtn(root, chat) {
+  const btn = root && root.querySelector(".cw-run");
+  if (!btn) return;
+  const L = cwT(), py = !!cwPyEntry(chat);
+  const lbl = btn.querySelector(".cw-run__lbl");
+  if (lbl) lbl.textContent = py ? L.runPy : L.run;
+  btn.classList.toggle("cw-run--py", py);
+  /* Moving off Python is the honest "that output is history" moment: from here the preview
+     owns the console again and may clear it. While the user is still ON a .py file, a stray
+     auto-reload must not touch what they just ran. */
+  if (!py) cwState.conOwner = "preview";
+}
+async function cwRunPython(root, chat) {
+  const btn = root.querySelector(".cw-run");
+  if (btn && btn.disabled) return;
+  cwCommitEdit(root, chat, false);          // never run text the user has typed but not committed
+  const entry = cwPyEntry(chat);
+  if (!entry) { cwRefreshPreview(root, chat); return; }
+  const L = cwT(), { files } = codeFilesOf(chat);
+  if (typeof cwIsPhone === "function" && cwIsPhone()) cwSetMob(root, "preview");
+  cwShowConsole(root);
+  cwState.conOwner = "py";                  // this output survives an auto-reload — see cwRefreshPreview
+  const list = root.querySelector(".cw-console__list");
+  if (list) list.innerHTML = "";
+  // The glyph is the row's own ::before marker — repeating it here is how "✓ ✓ انتهى" happened.
+  cwConRow(root, "run", L.pyStart + " " + entry.path, true);
+  const lbl = btn && btn.querySelector(".cw-run__lbl");
+  const wasLbl = lbl ? lbl.textContent : "";
+  if (btn) { btn.disabled = true; if (lbl) lbl.textContent = L.pyBusy; }
+  const t0 = Date.now();
+  let res;
+  try {
+    // Every .py in the project is written to the sandbox FS, so `import helpers` resolves.
+    res = await runPythonInSandbox(entry.content, 15000, { files, filename: entry.path });
+  } catch (e) {
+    res = { ok: false, out: "", err: String((e && e.message) || e) };
+  } finally {
+    if (btn) { btn.disabled = false; if (lbl) lbl.textContent = wasLbl; }
+  }
+  /* A skip is a real answer to "why did nothing happen", so it is SHOWN. The Agent deliberately
+     swallows the same two cases — it must not fail a build over an engine it could not load —
+     but a person who just pressed Run is owed the reason. */
+  if (res.skipped) {
+    cwConRow(root, "warn", res.reason === "engine" ? L.pyEngine : L.pyThird, true);
+    return;
+  }
+  if (res.out) cwConRow(root, "log", res.out.replace(/\s+$/, ""));
+  if (res.err) {
+    /* The harness that hosts the exec() is itself a frame in every traceback ("<exec>",
+       line 15) and it means nothing to the person who wrote the script — the frames that
+       matter are the ones in their own files. Dropped for display only; the Agent's debugger
+       still receives the raw traceback. */
+    const clean = res.err
+      .replace(/^ *File "<exec>".*\n(?: {4}.*\n)?/gm, "")
+      // Sibling modules live under the sandbox mount; the user knows them as "helpers.py".
+      .split(PY_PROJ_DIR + "/").join("")
+      .replace(/\s+$/, "");
+    // The timeout text is ours and localized; a traceback is program output and stays LTR.
+    const timedOut = /py timeout/i.test(res.err);
+    cwConRow(root, "error", timedOut ? L.pyTimeout : clean, timedOut);
+  } else if (!res.out) {
+    cwConRow(root, "info", L.pyEmpty, true);
+  }
+  if (!res.err) cwConRow(root, "ok", L.pyDone + " " + ((Date.now() - t0) / 1000).toFixed(1) + "s", true);
 }
 
 /* ══ FIRAS CODE — LIVE PREVIEW UPGRADES (device presets · auto-reload · reload · open-in-tab) ══ */
@@ -21179,6 +22000,8 @@ function cwUpdateStatus(root, chat, saveKind) {
   set(".cw-status__size", cwFmtSize(cur));
   set(".cw-status__tab", cwTabSize() + " " + T.spaces);
   set(".cw-status__eol", cwEolOf(cur));
+  // Selecting a file is what changes what Run would do, and this runs on every selection.
+  cwSyncRunBtn(root, chat);
   if (saveKind) cwSetSaveState(root, saveKind);
 }
 /* Mobile: switch which IDE pane fills the screen (files | code | preview | ai). CSS hides the nav >860px. */
@@ -21510,8 +22333,11 @@ async function renderCodeIDE(root, chat) {
         '<span class="cw-bar__name">' + escapeHtml(chat.title || "project") + "</span>" +
         '<span class="cw-bar__count"></span>' +
         '<span class="cw-bar__sp"></span>' +
+        // The label is a span so cwSyncRunBtn can flip it between Refresh and Run without
+        // rebuilding the button (and losing its listener) on every file selection.
         '<button type="button" class="cw-bar__btn cw-run">' +
-          '<span class="cw-bar__btn-ico" aria-hidden="true">' + ICONS.refresh + "</span>" + L.run +
+          '<span class="cw-bar__btn-ico" aria-hidden="true">' + ICONS.refresh + "</span>" +
+          '<span class="cw-run__lbl">' + L.run + "</span>" +
         "</button>" +
         // One-click "actually develop what you built": runs the full
         // run → critique → improve → keep-best loop over the CURRENT project.
@@ -21523,6 +22349,16 @@ async function renderCodeIDE(root, chat) {
         "</button>" +
         '<button type="button" class="cw-bar__btn cw-addfile">' +
           '<span class="cw-bar__btn-ico" aria-hidden="true">' + ICONS.filePlus + "</span>" + L.addFile +
+        "</button>" +
+        /* SHARE. Everything this needs already existed and had for months: /api/share stores a
+           snapshot of the chat's messages, a Firas Code project IS a chat whose first message
+           carries the ```firas-project block, and the public viewer (checkShareLink) already
+           calls buildProjectCard on exactly that block — file viewer and ZIP included. The one
+           missing piece was a way to ASK for it: shareActiveChat hangs off #shareChatBtn in the
+           app topbar, and the IDE covers the topbar. So sharing worked for chats and, in
+           practice, not for projects. */
+        '<button type="button" class="cw-bar__btn cw-share">' +
+          '<span class="cw-bar__btn-ico" aria-hidden="true">' + ICONS.external + "</span>" + L.share +
         "</button>" +
         '<button type="button" class="cw-bar__btn cw-zip">' +
           '<span class="cw-bar__btn-ico" aria-hidden="true">' + ICONS.download + "</span>" + L.zip +
@@ -21618,7 +22454,12 @@ async function renderCodeIDE(root, chat) {
   cwUpdateStatus(root, chat, "saved");
   // bar actions
   root.querySelector(".cw-bar__home").addEventListener("click", () => { cwCommitEdit(root, chat, false); state.activeId = null; cwState.renderedChat = ""; renderAll(); });
-  root.querySelector(".cw-run").addEventListener("click", () => cwCommitEdit(root, chat, true));
+  root.querySelector(".cw-run").addEventListener("click", () => {
+    if (cwPyEntry(chat)) { cwRunPython(root, chat); return; }
+    // Asking for a preview hands the console back to it, so the iframe's logs start clean.
+    cwState.conOwner = "preview";
+    cwCommitEdit(root, chat, true);
+  });
   const cwImproveBtn = root.querySelector(".cw-improve");
   if (cwImproveBtn) cwImproveBtn.addEventListener("click", () => cwRunImprove(root, chat));
   root.querySelector(".cw-snapbtn").addEventListener("click", () => cwOpenSnapshots(root, chat));
@@ -21701,6 +22542,18 @@ async function renderCodeIDE(root, chat) {
       else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
     }, true);
   }
+  root.querySelector(".cw-share").addEventListener("click", async (e) => {
+    const b = e.currentTarget;
+    if (b.disabled) return;
+    /* Commit FIRST. shareActiveChat snapshots what persistChat pushed, so without this the
+       link publishes the project as it was before the edit still sitting in the editor —
+       the single most confusing way for a share feature to be wrong. */
+    cwCommitEdit(root, chat, false);
+    /* The guest gate is shareActiveChat's own first line. Repeating it here would be a second
+       place to keep in step with how the app asks people to sign up. */
+    b.disabled = true;
+    try { await shareActiveChat(); } finally { b.disabled = false; }
+  });
   root.querySelector(".cw-zip").addEventListener("click", () => {
     cwCommitEdit(root, chat, false);
     const st = codeFilesOf(chat);
@@ -21733,7 +22586,7 @@ async function renderCodeIDE(root, chat) {
     if (th) { th.hidden = cwState.tab !== "chat"; if (cwState.tab === "chat") cwRenderThread(root, chat); }
     if (cwState.tab === "console") b.classList.remove("has-errors");
   }));
-  root.querySelector(".cw-conclear").addEventListener("click", () => { const l = root.querySelector(".cw-console__list"); if (l) l.innerHTML = ""; });
+  root.querySelector(".cw-conclear").addEventListener("click", () => { const l = root.querySelector(".cw-console__list"); if (l) l.innerHTML = ""; cwState.conOwner = "preview"; });
   // Ctrl/Cmd+S → save + refresh ; Ctrl+Enter → run ; Ctrl+K / Ctrl+P / Ctrl+Shift+P → command palette ;
   // Alt+↑/↓ → previous / next file (fast switching without touching the tree).
   root.addEventListener("keydown", (e) => {
@@ -22376,11 +23229,15 @@ function cwPalMark(text, marks) {
 function cwPaletteActions(root, chat) {
   const ar = state.lang === "ar";
   const T = ar
-    ? { run: "تحديث المعاينة", runH: "أعد تشغيل الكود", newf: "ملف جديد", newfH: "أنشئ ملفًا", zip: "تنزيل ZIP", zipH: "صدّر المشروع", ai: "اسأل الذكاء", aiH: "اطلب تعديلًا على الكود", prev: "عرض المعاينة", prevH: "تبويب المعاينة", con: "عرض الكونسول", conH: "تبويب الكونسول", clr: "مسح الكونسول", clrH: "أفرغ سجل الكونسول", theme: "تبديل السمة", themeD: "الوضع الليلي", themeL: "الوضع النهاري", themeH: "فاتح/داكن", save: "حفظ", saveH: "احفظ الملف الحالي", snap: "سجل النسخ", snapH: "النسخ والاسترجاع", home: "الرئيسية", homeH: "اخرج إلى القائمة", openf: "فتح", openfH: "انتقل إلى الملف" }
-    : { run: "Refresh preview", runH: "Re-run the code", newf: "New file", newfH: "Create a file", zip: "Download ZIP", zipH: "Export the project", ai: "Ask AI", aiH: "Request a code change", prev: "Show preview", prevH: "Preview tab", con: "Show console", conH: "Console tab", clr: "Clear console", clrH: "Empty the console log", theme: "Toggle theme", themeD: "Dark mode", themeL: "Light mode", themeH: "Light / dark", save: "Save", saveH: "Save the current file", snap: "Version history", snapH: "Snapshots & restore", home: "Home", homeH: "Back to project list", openf: "Open", openfH: "Jump to file" };
+    ? { run: "تحديث المعاينة", runH: "أعد تشغيل الكود", newf: "ملف جديد", newfH: "أنشئ ملفًا", zip: "تنزيل ZIP", zipH: "صدّر المشروع", ai: "اسأل الذكاء", aiH: "اطلب تعديلًا على الكود", prev: "عرض المعاينة", prevH: "تبويب المعاينة", con: "عرض الكونسول", conH: "تبويب الكونسول", clr: "مسح الكونسول", clrH: "أفرغ سجل الكونسول", theme: "تبديل السمة", themeD: "الوضع الليلي", themeL: "الوضع النهاري", themeH: "فاتح/داكن", save: "حفظ", saveH: "احفظ الملف الحالي", snap: "سجل النسخ", snapH: "النسخ والاسترجاع", home: "الرئيسية", homeH: "اخرج إلى القائمة", openf: "فتح", openfH: "انتقل إلى الملف", share: "مشاركة المشروع", shareH: "أنشئ رابطًا للقراءة فقط" }
+    : { run: "Refresh preview", runH: "Re-run the code", newf: "New file", newfH: "Create a file", zip: "Download ZIP", zipH: "Export the project", ai: "Ask AI", aiH: "Request a code change", prev: "Show preview", prevH: "Preview tab", con: "Show console", conH: "Console tab", clr: "Clear console", clrH: "Empty the console log", theme: "Toggle theme", themeD: "Dark mode", themeL: "Light mode", themeH: "Light / dark", save: "Save", saveH: "Save the current file", snap: "Version history", snapH: "Snapshots & restore", home: "Home", homeH: "Back to project list", openf: "Open", openfH: "Jump to file", share: "Share project", shareH: "Create a read-only link" };
   const click = (sel) => { const el = root.querySelector(sel); if (el) el.click(); };
   const actions = [
-    { id: "run", icon: "▶", label: T.run, hint: T.runH, run: () => click(".cw-run") },
+    // The Run action means two different things depending on the open file, so the palette
+    // must not keep promising "Refresh preview" while the button beside it says "تشغيل".
+    { id: "run", icon: "▶", label: cwPyEntry(chat) ? (ar ? "تشغيل بايثون" : "Run Python") : T.run,
+      hint: cwPyEntry(chat) ? (ar ? "نفّذ الملف المفتوح" : "Execute the open file") : T.runH, run: () => click(".cw-run") },
+    { id: "share", icon: "🔗", label: T.share, hint: T.shareH, run: () => click(".cw-share") },
     { id: "ai", icon: "⚡", label: T.ai, hint: T.aiH, run: () => { const i = root.querySelector(".cw-ai__in"); if (i) { i.focus(); i.select && i.select(); } } },
     { id: "newf", icon: "＋", label: T.newf, hint: T.newfH, run: () => click(".cw-addfile") },
     { id: "snap", icon: "🕑", label: T.snap, hint: T.snapH, run: () => cwOpenSnapshots(root, chat) },
@@ -22644,6 +23501,13 @@ function openShareSheet(link, ar, autoCopied) {
   if (os) os.addEventListener("click", () => { try { navigator.share({ title: "Firas AI", url: link }); } catch (_) {} });
 }
 
+/** True on the public read-only /?share=<id> page. The ONE test for it — see buildAgentCard,
+    which must not offer controls that need a session the visitor does not have and cannot get.
+    Do NOT test for a missing composer instead: cacheEls() and wireEvents() both run before
+    checkShareLink(), so els.input and els.sendBtn are populated on the share page too. */
+function isSharePage() {
+  try { return !!new URLSearchParams(location.search).get("share"); } catch (_) { return false; }
+}
 /* Public read-only viewer for /?share=<id> — no login needed. Renders with the SAME pipeline
    as the app (markdown + KaTeX + instant plots/tikz), plus a CTA to try Firas AI. */
 async function checkShareLink() {
@@ -22754,9 +23618,15 @@ async function init() {
       if (await resumeGuestIfActive()) return;
       showLanding();
     } else {
-      // Network/server error reaching auth: still show landing so the user can act.
+      /* Reaching auth failed for a reason that is NOT "no session". Still show the landing so
+         the visitor can act — but do NOT report every failure as a connection problem. A 500
+         from a misconfigured deploy ("server not configured — missing/invalid env: …") arrives
+         here WITH a .status and a precise message, and calling that "check your connection"
+         sends the owner hunting their wifi while the site is merely unconfigured. That mistake
+         is the whole reason this was hard to diagnose. Only a thrown fetch — no .status, no
+         response ever arrived — is the genuine connection case. */
       showLanding();
-      showToast(t().authNetworkError);
+      showToast(!(err && err.status) ? t().authNetworkError : ((err && err.message) || t().authGenericError));
     }
   }
 }
@@ -22991,6 +23861,7 @@ const BRAIN_ICON_FILES =
 const brainState = {
   docs: [],            // [{id,title,kind,unit,pages,indexed,ocr,chunks,chars,ts}]
   limits: null,
+  used: null,          // { docs, pagesToday } — both backends have always sent it; nothing read it
   loaded: false,
   busy: new Map(),     // tempId → { name, phase, done, total }
   off: new Set(),      // doc ids the user has DESELECTED
@@ -23022,6 +23893,7 @@ function brainT() {
     dropHere: "أفلت الملفات هنا", unsupported: "نوع ملف غير مدعوم",
     readFail: "تعذّرت قراءة الملف", noText: "ما لقيت نص في هذا الملف",
     limitDocs: "وصلت الحد الأقصى للمستندات", limitPages: "وصلت حدّ الصفحات اليومي",
+    usageDocs: "المستندات", usagePages: "صفحات اليوم", usageFull: "امتلأت المكتبة — احذف مستندًا لإضافة غيره",
     tooLarge: "الملف كبير جدًا", offHint: "مستبعد من البحث",
     noHits: "ما لقيت في مصادرك شيئًا يجاوب على هذا السؤال.",
     harvesting: (d, t) => "يمسح المستند… " + d + "/" + t,
@@ -23049,6 +23921,7 @@ function brainT() {
     dropHere: "Drop files here", unsupported: "Unsupported file type",
     readFail: "Couldn't read the file", noText: "No readable text in this file",
     limitDocs: "Document limit reached", limitPages: "Daily page limit reached",
+    usageDocs: "Documents", usagePages: "Pages today", usageFull: "Library is full — delete a document to add another",
     tooLarge: "File too large", offHint: "excluded from search",
     noHits: "I couldn't find anything in your sources that answers this.",
     harvesting: (d, t) => "Sweeping the document… " + d + "/" + t,
@@ -23862,6 +24735,7 @@ async function brainFetchDocs() {
     const d = await apiJson("/api/brain/docs");
     brainState.docs = (d && d.docs) || [];
     brainState.limits = (d && d.limits) || null;
+    brainState.used = (d && d.used) || null;
   } catch (e) {
     if (!(e && e.status === 403)) showToast(t().chatsLoadError);   // 403 → apiJson opened the sign-in prompt
   }
@@ -25426,7 +26300,29 @@ function brainRenderRail() {
   root.querySelector(".fb-bar__title").textContent = L.heroT;
   root.querySelector(".fb-bar__count").textContent = activeCount + "/" + docs.length;
   root.querySelector(".fb-rail__head span:first-child").textContent = L.srcHead;
-  root.querySelector(".fb-rail__count").textContent = String(docs.length);
+  /* USAGE, not just a count. Both backends have always answered /api/brain/docs with
+     `limits` and `used`; the rail showed a bare number, so the ceiling (20 documents for a
+     member, 3 for a guest) was invisible until an upload was refused. Showing "18/20" turns
+     a surprise 429 into something the user can see coming. */
+  {
+    const cap = brainState.limits && Number(brainState.limits.docs);
+    const el = root.querySelector(".fb-rail__count");
+    const has = Number.isFinite(cap) && cap > 0;
+    el.textContent = has ? docs.length + "/" + cap : String(docs.length);
+    el.classList.toggle("is-full", has && docs.length >= cap);
+    el.classList.toggle("is-near", has && docs.length < cap && docs.length >= cap - 1);
+    const pagesCap = brainState.limits && Number(brainState.limits.pagesPerDay);
+    const pagesUsed = brainState.used && Number(brainState.used.pagesToday);
+    const tip = [
+      has ? L.usageDocs + ": " + docs.length + "/" + cap : "",
+      // pagesPerDay is -1 on every paid plan — an uncapped number is not worth a line.
+      (Number.isFinite(pagesCap) && pagesCap > 0 && Number.isFinite(pagesUsed))
+        ? L.usagePages + ": " + pagesUsed + "/" + pagesCap : "",
+      has && docs.length >= cap ? L.usageFull : "",
+    ].filter(Boolean).join(" · ");
+    const head = root.querySelector(".fb-rail__head");
+    if (tip) head.setAttribute("title", tip); else head.removeAttribute("title");
+  }
   root.querySelector(".fb-up__btn span").textContent = L.add;
   const ocrLbl = root.querySelector(".fb-up__ocr span");
   if (ocrLbl) ocrLbl.textContent = L.ocrToggle;
