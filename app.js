@@ -2167,6 +2167,30 @@ function promoteAnswerToCode(content, lang) {
   };
   return "```firas-code " + JSON.stringify(meta) + "\n" + code + "\n```";
 }
+
+/* ── THE BOX APPEARS FROM THE FIRST FRAME, NOT AT THE END ──────────────────────────────
+   Two paths delivered code and they looked nothing alike. When detectCodeRequest recognised
+   the REQUEST, the source streamed straight into a code window. When it did not, the very
+   same answer scrolled past as chat text and only became a card at finalize — so the user
+   watched a wall of markup write itself, then jump into a box at the last moment.
+
+   This closes that gap without inventing a second opinion about what code is. It does NOT
+   hand-write a mid-stream heuristic: it virtually closes the still-open fence and puts the
+   answer-so-far through promoteAnswerToCode ITSELF. Being the same function, the two cannot
+   disagree about the same text, so a box that appears here can never be refused at finalize
+   and vanish under the user. It is re-checked every frame: if the answer goes on to open a
+   second fence, or trails off into real explanation, the gates stop passing and the box is
+   taken back the same way it arrived. */
+function midStreamCodePromotion(answer) {
+  const s = String(answer || "");
+  if (s.length < 200) return null;                 // perf floor only — the gates still decide
+  // The fence has to open at the top, after at most one throwaway line ("تفضّل، هذا موقعك:").
+  if (!/^\s*(?:[^\n]{0,160}\r?\n)?\s*```[A-Za-z0-9+#._-]*[ \t]*\r?\n/.test(s)) return null;
+  const opens = (s.match(/^[ \t]*```/gm) || []).length;
+  const probe = (opens % 2) ? (s.replace(/\s*$/, "") + "\n```") : s;   // close it virtually
+  const promoted = promoteAnswerToCode(probe, null);
+  return promoted ? parseCodeMeta(promoted) : null;
+}
 /** System prompt forcing raw, complete, single-file source (no fences/prose). */
 function codeSystemPrompt(spec) {
   const label = spec.label || "code";
@@ -2257,8 +2281,7 @@ function buildCodeCard(meta, lang, opts) {
       '<div class="code-card__actions"></div>' +
     "</div>" +
     '<div class="code-card__body"><pre><code class="code-card__code"></code></pre></div>' +
-    '<div class="code-card__foot" hidden></div>' +
-    '<div class="code-card__preview" hidden></div>';
+    '<div class="code-card__foot" hidden></div>';
   card.querySelector(".code-card__name").textContent = filename;
   card.querySelector(".code-card__lang").textContent = label;
   const actions = card.querySelector(".code-card__actions");
@@ -2271,39 +2294,36 @@ function buildCodeCard(meta, lang, opts) {
     const code = meta.code != null ? meta.code : "";
     card.querySelector(".code-card__code").textContent = code;
     card.querySelector(".code-card__count").textContent = codeLineCountText(code, lang);
-    wireCodeActions(card, meta, lang);
+    wireCodeActions(card, meta, lang, opts);
   }
   return card;
 }
-function wireCodeActions(card, meta, lang) {
+function wireCodeActions(card, meta, lang, opts) {
+  opts = opts || {};
   const ar = (lang || state.lang) === "ar";
   const actions = card.querySelector(".code-card__actions");
   const code = meta.code != null ? meta.code : (card.querySelector(".code-card__code").textContent || "");
   const filename = meta.filename || ("code." + (meta.ext || "txt"));
-  const isHtml = meta.lang === "html" || /\.html?$/i.test(filename);
-  const mkBtn = (icon, text, cls) => {
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "code-card__btn " + cls;
-    b.innerHTML = icon + "<span>" + escapeHtml(text) + "</span>";
-    return b;
-  };
-  if (isHtml) {
+  /* PREVIEW, FOR EVERY LANGUAGE THAT HAS ONE — not just HTML. Markdown, SVG, JSON, CSS and JS
+     render; Python actually runs. canPreviewCode returns false for the rest, and the button is
+     then not built at all: a Preview that opens an empty white box is worse than no Preview. */
+  const langTag = meta.lang || meta.ext || "";
+  if (canPreviewCode(langTag, code)) {
     const p = mkBtn(ICONS.preview, ar ? "معاينة" : "Preview", "js-preview");
-    p.addEventListener("click", () => toggleCodePreview(card, code, ar));
+    p.addEventListener("click", () => { openCodePreview(code, langTag); });
     actions.appendChild(p);
-    /* A FINISHED PAGE OPENS AS A PAGE, not as source. Someone who asked for a website wants
-       to click through the thing they asked for; source is what you look at second. The
-       preview was one tap away but shut by default, so the first thing every build showed
-       was a wall of markup — and a preview nobody opens reads as "there is no preview".
+    /* A FINISHED PAGE OPENS AS A PAGE. Someone who asked for a website wants to click through
+       the thing they asked for; source is what you look at second.
 
-       Gated on a COMPLETE document (doctype or <html>…</html>) so a fragment or a snippet,
-       which would render as a blank white box, still opens on its source. Deferred a frame
-       because toggleCodePreview reads .code-card__preview out of the card, which is not in
-       the document yet at this point. */
-    if (/<!doctype\s+html/i.test(code) || (/<html[\s>]/i.test(code) && /<\/html>/i.test(code))) {
+       Two gates, both load-bearing. A COMPLETE document, because a fragment renders as a blank
+       white box. And opts.fresh, because wireCodeActions runs on every buildCodeCard — including
+       a full thread re-render — and a full-screen panel that threw itself open for every
+       historical code card when you reopened an old chat would be intolerable. Only a generation
+       that just finished opens itself.
+       To stop pages auto-opening entirely, delete this if-block; the button still works. */
+    if (opts.fresh && (/<!doctype\s+html/i.test(code) || (/<html[\s>]/i.test(code) && /<\/html>/i.test(code)))) {
       requestAnimationFrame(() => {
-        try { if (card.isConnected && card.querySelector(".code-card__preview")) toggleCodePreview(card, code, ar); }
-        catch (_) {}
+        try { if (card.isConnected) openCodePreview(code, langTag); } catch (_) {}
       });
     }
   }
@@ -2337,35 +2357,10 @@ function wireCodeActions(card, meta, lang) {
     foot.appendChild(kf);
   }
 }
-/** Toggle a sandboxed live preview of HTML code (scripts run, but isolated from
-    our origin — no allow-same-origin, so it can't read our cookies/storage). */
-function toggleCodePreview(card, code, ar) {
-  const wrap = card.querySelector(".code-card__preview");
-  const btnLabel = card.querySelector(".js-preview span");
-  if (!wrap) return;
-  if (!wrap.hidden) {
-    wrap.hidden = true; wrap.innerHTML = "";
-    if (btnLabel) btnLabel.textContent = ar ? "معاينة" : "Preview";
-    return;
-  }
-  wrap.innerHTML = "";
-  const bar = document.createElement("div");
-  bar.className = "code-card__preview-bar";
-  const open = document.createElement("button");
-  open.type = "button"; open.className = "code-card__btn";
-  open.innerHTML = ICONS.external + "<span>" + escapeHtml(ar ? "فتح في تبويب" : "Open in tab") + "</span>";
-  open.addEventListener("click", () => { openCodeInTab(code, ar); });
-  bar.appendChild(open);
-  const frame = document.createElement("iframe");
-  frame.className = "code-card__frame";
-  frame.setAttribute("sandbox", "allow-scripts allow-modals allow-popups allow-forms allow-pointer-lock allow-downloads");
-  frame.setAttribute("title", "preview");
-  frame.srcdoc = code;
-  wrap.appendChild(bar);
-  wrap.appendChild(frame);
-  wrap.hidden = false;
-  if (btnLabel) btnLabel.textContent = ar ? "إخفاء" : "Hide";
-}
+/* The inline under-the-code preview (toggleCodePreview) lived here. It is gone: the code card
+   and a fenced block in chat now share ONE preview surface — the full-screen panel opened by
+   openCodePreview — instead of the same code getting two different previews depending on which
+   path produced it. .code-card__preview / .code-card__frame went with it. */
 /** Live-render streaming code into the message body (reusing one card so scroll
     position and DOM are preserved frame-to-frame). */
 function renderLiveCodeInto(mdEl, raw, spec, lang) {
@@ -2975,14 +2970,18 @@ function decorateMarkdown(container) {
       if (!ok) showToast(t().copyFailed);
       setTimeout(() => { copyBtn.innerHTML = `${ICONS.copy}<span>${t().copyCode}</span>`; }, 1400);
     });
-    // Live HTML preview — only for HTML code blocks (robust detection).
-    if (looksLikeHtml(lang, code.textContent)) {
+    /* Live preview for every language that has one. This used to be HTML-only while the code
+       CARD had its own, different, inline preview — so the same code got two different previews
+       depending on which path produced it. Both now call openCodePreview, so a fenced block in
+       chat and a finished code card behave identically. */
+    const blockLang = lang || "";
+    if (canPreviewCode(blockLang, code.textContent)) {
       const previewBtn = document.createElement("button");
       previewBtn.className = "code-block__copy code-preview-btn";
       previewBtn.type = "button";
       previewBtn.innerHTML = `${ICONS.preview}<span>${t().preview}</span>`;
       const codeText = code.textContent; // snapshot the source
-      previewBtn.addEventListener("click", () => openHtmlPreview(codeText));
+      previewBtn.addEventListener("click", () => { openCodePreview(codeText, blockLang); });
       head.appendChild(previewBtn);
     }
 
@@ -9951,10 +9950,298 @@ function ensureHtmlDocument(code) {
   return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'></head><body>" + c + "</body></html>";
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+   MULTI-LANGUAGE PREVIEW.
+
+   The Preview button existed for HTML and nothing else, so every other language
+   delivered a wall of source with nothing to look at. Everything below turns a code
+   string into a COMPLETE HTML document the sandboxed preview iframe can render — or
+   returns null, meaning "there is nothing to show here, hide the button".
+
+   The iframe is sandboxed WITHOUT allow-same-origin, so previewed code cannot reach
+   our cookies, storage or origin. It also cannot see our stylesheet, which is why the
+   theme below is emitted as LITERAL colour values instead of var(--token) references:
+   a var() reference resolves to nothing in there and the page renders unreadable.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/** The app's own palette, resolved to literals for use inside the preview iframe. */
+function previewTheme() {
+  const dark = document.documentElement.getAttribute("data-theme") !== "light";
+  return dark
+    ? { bg: "#262624", surface: "#30302E", text: "#ECEAE3", muted: "#A6A39A",
+        accent: "#57AE9C", hair: "#3A3A36", bad: "#E5877A", ok: "#8FBF6F" }
+    : { bg: "#FAF9F5", surface: "#FFFFFF", text: "#1A1A18", muted: "#6B6A63",
+        accent: "#237A68", hair: "#E6E4DA", bad: "#B4483A", ok: "#4A7A2E" };
+}
+
+/** A JS string literal safe to embed inside a <script> block.
+    JSON.stringify alone is NOT enough: a code string containing a literal "</script>"
+    would close the tag and break out into markup. Escaping every angle bracket to its
+    unicode form keeps the JSON string valid while leaving nothing for the HTML parser to
+    act on, so the payload can never escape the literal. */
+function previewJsString(s) {
+  return JSON.stringify(String(s == null ? "" : s)).replace(/</g, "\\u003c");
+}
+
+/** Arabic needs RTL and its own face. Uses the Unicode script property rather than a
+    hand-written codepoint range — a hand-rolled range always misses presentation forms. */
+function previewIsArabic(s) {
+  try { return /\p{Script=Arabic}/u.test(String(s || "")); } catch (_) { return false; }
+}
+
+/** Wrap preview body markup in a themed document. Used for everything EXCEPT raw HTML,
+    which is passed through untouched so the page renders exactly as authored. */
+function previewShell(body, opts) {
+  opts = opts || {};
+  const th = previewTheme();
+  const rtl = !!opts.rtl;
+  const pad = opts.pad === false ? "0" : "24px";
+  const fontAr = '"Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif';
+  const fontLat = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+  const mono = '"JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace';
+  return '<!doctype html><html lang="' + (rtl ? "ar" : "en") + '" dir="' + (rtl ? "rtl" : "ltr") + '">' +
+    '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    "<style>" +
+      "*,*::before,*::after{box-sizing:border-box}" +
+      "html,body{margin:0}" +
+      "body{background:" + th.bg + ";color:" + th.text + ";padding:" + pad + ";" +
+        "font-family:" + (rtl ? fontAr : fontLat) + ";font-size:15px;line-height:1.7;" +
+        "-webkit-text-size-adjust:100%}" +
+      "a{color:" + th.accent + "}" +
+      "code,pre,kbd,samp{font-family:" + mono + "}" +
+      "pre{background:" + th.surface + ";border:1px solid " + th.hair + ";border-radius:10px;" +
+        "padding:14px 16px;overflow:auto;direction:ltr;text-align:left}" +
+      ":not(pre)>code{background:" + th.surface + ";border:1px solid " + th.hair + ";" +
+        "border-radius:5px;padding:.12em .38em;font-size:.92em}" +
+      "table{border-collapse:collapse;width:100%;margin:1em 0}" +
+      "th,td{border:1px solid " + th.hair + ";padding:8px 11px;text-align:start}" +
+      "th{background:" + th.surface + "}" +
+      "blockquote{margin:1em 0;padding-inline-start:14px;border-inline-start:3px solid " +
+        th.accent + ";color:" + th.muted + "}" +
+      "hr{border:0;border-top:1px solid " + th.hair + ";margin:1.6em 0}" +
+      "img{max-width:100%;height:auto}" +
+      "h1,h2,h3,h4{line-height:1.3;margin:1.4em 0 .5em}" +
+      "h1{font-size:1.7em}h2{font-size:1.35em}h3{font-size:1.12em}" +
+      (opts.css || "") +
+    "</style></head><body>" + body + "</body></html>";
+}
+
+/* Which languages have a preview at all, and what kind. Anything absent from this map
+   shows no Preview button — better than a button that opens an empty white box. */
+const PREVIEW_KIND = {
+  html: "html", htm: "html", xhtml: "html",
+  svg: "svg",
+  md: "markdown", markdown: "markdown",
+  json: "json",
+  css: "css",
+  js: "js", javascript: "js", mjs: "js",
+  py: "python", python: "python",
+};
+
+/** Normalise a language tag to a preview kind, sniffing the code when the tag is absent
+    or wrong (models label a whole HTML document "code" often enough to matter). */
+function previewKindOf(lang, code) {
+  const l = String(lang || "").toLowerCase().replace(/^\./, "");
+  if (PREVIEW_KIND[l]) return PREVIEW_KIND[l];
+  const c = String(code || "").trim();
+  if (!c) return null;
+  if (/^<svg[\s>]/i.test(c) && /<\/svg>\s*$/i.test(c)) return "svg";
+  if (looksLikeHtml(l, c)) return "html";
+  return null;
+}
+
+/** Is there something worth previewing? Drives whether the button is rendered at all. */
+function canPreviewCode(lang, code) {
+  return !!previewKindOf(lang, code);
+}
+
+/** Build the preview document for `code`, or null when the language has no preview.
+    Python is NOT handled here — it is executed, not rendered; see openCodePreview. */
+function previewDocumentFor(code, lang) {
+  const src = String(code == null ? "" : code);
+  const kind = previewKindOf(lang, src);
+  const th = previewTheme();
+
+  if (kind === "html") return ensureHtmlDocument(src);
+
+  if (kind === "svg") {
+    /* Centred on a chequerboard so a transparent graphic stays visible instead of
+       blending into the background and reading as "the preview is broken". */
+    const board = "background-image:linear-gradient(45deg," + th.hair + " 25%,transparent 25%)," +
+      "linear-gradient(-45deg," + th.hair + " 25%,transparent 25%)," +
+      "linear-gradient(45deg,transparent 75%," + th.hair + " 75%)," +
+      "linear-gradient(-45deg,transparent 75%," + th.hair + " 75%);" +
+      "background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0";
+    return previewShell('<div class="wrap">' + src + "</div>", {
+      pad: false,
+      css: "body{display:grid;place-items:center;min-height:100vh;" + board + "}" +
+        ".wrap{max-width:94vw;max-height:94vh;display:grid;place-items:center}" +
+        ".wrap svg{max-width:94vw;max-height:94vh;height:auto}",
+    });
+  }
+
+  if (kind === "markdown") {
+    /* Rendered HERE, in the parent, not in the iframe. renderMarkdown already runs its
+       output through DOMPurify, and doing it here means the preview never depends on a
+       CDN reaching the sandbox — a blocked CDN inside the iframe would render blank. */
+    let body = "";
+    try { body = renderMarkdown(src); } catch (_) { body = "<pre>" + escapeHtml(src) + "</pre>"; }
+    return previewShell(body, { rtl: previewIsArabic(src) });
+  }
+
+  if (kind === "json") {
+    let pretty, err = "";
+    try { pretty = JSON.stringify(JSON.parse(src), null, 2); }
+    catch (e) { err = String((e && e.message) || e); pretty = src; }
+    const head = err
+      ? '<div class="bad">' + escapeHtml(err) + "</div>"
+      : '<div class="good">JSON صالح · valid JSON</div>';
+    return previewShell(head + "<pre>" + escapeHtml(pretty) + "</pre>", {
+      css: ".bad{color:" + th.bad + ";font-weight:600;margin-bottom:12px}" +
+           ".good{color:" + th.ok + ";font-weight:600;margin-bottom:12px}",
+    });
+  }
+
+  if (kind === "css") {
+    /* A stylesheet alone shows nothing, so it is applied to a small specimen page. The
+       sheet is injected as a TEXT NODE via script rather than pasted between <style> tags,
+       because a rule containing a literal "</style>" would break out into markup. */
+    const specimen =
+      '<article class="specimen">' +
+        "<h1>عنوان رئيسي · Heading One</h1>" +
+        "<p>فقرة نصية لمعاينة الخط والمسافات واللون. A paragraph of body text for type, spacing and colour.</p>" +
+        '<p><a href="#">رابط · a link</a> · <strong>عريض</strong> · <em>مائل</em> · <code>code</code></p>' +
+        '<p><button type="button">زر · Button</button> <input placeholder="حقل · input"></p>' +
+        "<ul><li>عنصر أول</li><li>عنصر ثانٍ</li></ul>" +
+        "<table><thead><tr><th>عمود</th><th>قيمة</th></tr></thead>" +
+        "<tbody><tr><td>أ</td><td>1</td></tr><tr><td>ب</td><td>2</td></tr></tbody></table>" +
+        '<div class="card box container wrapper">.card / .box / .container / .wrapper</div>' +
+      "</article>" +
+      previewScriptTag(
+        "(function(){var s=document.createElement('style');s.textContent=" +
+        previewJsString(src) + ";document.head.appendChild(s);})();"
+      );
+    return previewShell(specimen, { rtl: previewIsArabic(src) });
+  }
+
+  if (kind === "js") {
+    /* Runs the script with console output captured into a visible panel — a bare script
+       with no DOM writes would otherwise show an empty page and read as broken. The code
+       is passed as an escaped string literal and evaluated, so a literal "</script>"
+       inside it is inert. document/window are real here, so DOM snippets work too. */
+    const runner =
+      "(function(){" +
+      "var box=document.getElementById('__lines');" +
+      "function put(kind,args){var d=document.createElement('div');d.className='ln '+kind;" +
+      "d.textContent=Array.prototype.map.call(args,function(a){" +
+      "try{return typeof a==='string'?a:JSON.stringify(a,null,1);}catch(e){return String(a);}" +
+      "}).join(' ');box.appendChild(d);}" +
+      "['log','info','warn','error','debug'].forEach(function(k){var o=console[k];" +
+      "console[k]=function(){put(k,arguments);try{o.apply(console,arguments);}catch(e){}};});" +
+      "window.onerror=function(m,s,l){put('error',[m+'  (line '+l+')']);return false;};" +
+      "window.addEventListener('unhandledrejection',function(e){put('error',['Unhandled promise: '+e.reason]);});" +
+      "try{(0,eval)(" + previewJsString(src) + ");}catch(e){put('error',[String((e&&e.stack)||e)]);}" +
+      "if(!box.children.length)put('log',['(لا مخرجات · no console output)']);" +
+      "})();";
+    const body =
+      '<div id="__stage"></div>' +
+      '<div id="__con"><div class="hd">console</div><div id="__lines"></div></div>' +
+      previewScriptTag(runner);
+    const monoStack = '"JetBrains Mono", Consolas, monospace';
+    return previewShell(body, {
+      pad: false,
+      css: "body{display:flex;flex-direction:column;height:100vh;direction:ltr;text-align:left}" +
+        "#__stage{flex:1 1 auto;overflow:auto;padding:20px;min-height:0}" +
+        "#__con{flex:0 0 auto;max-height:52%;overflow:auto;border-top:1px solid " + th.hair +
+          ";background:" + th.surface + "}" +
+        "#__con .hd{position:sticky;top:0;background:" + th.surface + ";color:" + th.muted + ";" +
+          "font:600 11px/1 " + monoStack + ";letter-spacing:.09em;text-transform:uppercase;" +
+          "padding:9px 14px;border-bottom:1px solid " + th.hair + "}" +
+        "#__lines{padding:6px 0}" +
+        ".ln{font:13px/1.55 " + monoStack + ";padding:3px 14px;white-space:pre-wrap;word-break:break-word}" +
+        ".ln.error{color:" + th.bad + "}.ln.warn{color:#D9A441}" +
+        ".ln.debug,.ln.info{color:" + th.muted + "}",
+    });
+  }
+
+  return null;
+}
+
+/** Emit a <script> element without ever writing the literal closing tag in our own source
+    (which would terminate the enclosing script when this file is inlined) and without any
+    chance of the payload closing it either — the payload is already <-escaped. */
+function previewScriptTag(js) {
+  return "<" + "script>" + js + "<" + "/script>";
+}
+
+/** Render the result of a Python run as a terminal-style document. */
+function previewPythonResult(res, code) {
+  const th = previewTheme();
+  const monoStack = '"JetBrains Mono", Consolas, monospace';
+  let body = "";
+  if (res && res.skipped) {
+    body = '<div class="note">' +
+      (res.reason === "thirdparty"
+        ? "هذا الكود يحتاج مكتبات خارجية لا تعمل في المتصفح · needs third-party packages that cannot run in the browser"
+        : "محرّك بايثون غير متاح الآن · the Python engine is unavailable") + "</div>";
+  } else {
+    const out = String((res && res.out) || "");
+    const err = String((res && res.err) || "");
+    if (out) body += '<div class="hd">stdout</div><pre class="out">' + escapeHtml(out) + "</pre>";
+    if (err) body += '<div class="hd err">traceback</div><pre class="bad">' + escapeHtml(err) + "</pre>";
+    if (!out && !err) body = '<div class="note">(البرنامج انتهى بلا مخرجات · finished with no output)</div>';
+  }
+  return previewShell(body, {
+    css: "body{font-family:" + monoStack + "}" +
+      ".hd{color:" + th.muted + ";font:600 11px/1 " + monoStack + ";letter-spacing:.09em;" +
+        "text-transform:uppercase;margin:0 0 8px}" +
+      ".hd.err{color:" + th.bad + ";margin-top:18px}" +
+      "pre{white-space:pre-wrap;word-break:break-word}" +
+      "pre.bad{color:" + th.bad + ";border-color:" + th.bad + "}" +
+      ".note{color:" + th.muted + "}",
+  });
+}
+
+/** Open the preview for a code artifact, whatever its language.
+    HTML / SVG / Markdown / JSON / CSS / JS are RENDERED. Python is EXECUTED — a program's
+    honest preview is its output, not a picture of its source — using the same sandboxed
+    Pyodide worker the agent already runs code in.
+    Returns false when the language has no preview, so callers can skip the button. */
+async function openCodePreview(code, lang) {
+  const kind = previewKindOf(lang, code);
+  if (!kind) return false;
+
+  if (kind !== "python") {
+    const doc = previewDocumentFor(code, lang);
+    if (!doc) return false;
+    openHtmlPreview(doc);
+    return true;
+  }
+
+  /* The Pyodide engine is a multi-megabyte lazy download, so the panel opens IMMEDIATELY on
+     a running state and swaps in the result when it lands. Opening only after the run would
+     look like a dead button for as long as the engine takes to arrive. */
+  openHtmlPreview(previewShell(
+    '<div class="run"><span class="dot"></span>يشغّل بايثون… · running Python…</div>',
+    { css: ".run{display:flex;align-items:center;gap:10px;opacity:.75}" +
+           ".dot{inline-size:9px;block-size:9px;border-radius:50%;background:currentColor;" +
+           "animation:p 1s ease-in-out infinite}@keyframes p{0%,100%{opacity:.25}50%{opacity:1}}" }
+  ));
+  let res;
+  try { res = await runPythonInSandbox(String(code || ""), 15000, { filename: "preview.py" }); }
+  catch (e) { res = { ok: false, out: "", err: String((e && e.message) || e) }; }
+  // The user may have closed the panel while the engine booted — setDoc is absent then.
+  if (_previewState && _previewState.setDoc) _previewState.setDoc(previewPythonResult(res, code));
+  return true;
+}
+
 let _previewState = null;
 function openHtmlPreview(rawCode) {
   closeHtmlPreview();
-  const html = ensureHtmlDocument(rawCode);
+  /* `let`, not `const`: a preview that produces its document ASYNCHRONOUSLY (Python runs before
+     it can show anything) swaps the document in place via setDoc below. Refresh reads this same
+     binding, so after a swap it re-shows the RESULT rather than the running placeholder. */
+  let html = ensureHtmlDocument(rawCode);
 
   const overlay = document.createElement("div");
   overlay.className = "preview-overlay";
@@ -10016,7 +10303,10 @@ function openHtmlPreview(rawCode) {
 
   overlay.addEventListener("click", (e) => { if (e.target === overlay) closeHtmlPreview(); });
   document.addEventListener("keydown", _onPreviewKeydown, true);
-  _previewState = { overlay, lastFocus: document.activeElement };
+  _previewState = {
+    overlay, lastFocus: document.activeElement,
+    setDoc: (next) => { html = ensureHtmlDocument(next); iframe.srcdoc = html; },
+  };
   requestAnimationFrame(() => { overlay.classList.add("is-open"); closeBtn.focus(); });
 }
 function _onPreviewKeydown(e) {
@@ -11248,7 +11538,11 @@ async function streamAgentText(messages, tierKey, signal, onDelta) {
 function codeLooksComplete(code, lang) {
   const s = String(code || "").replace(/\s+$/, "");
   if (!s) return false;
-  const isHtml = lang === "html" || /<!doctype html|<html[\s>]/i.test(s);
+  /* Only sniff for HTML when the language is genuinely unknown. A Flask view that RETURNS an HTML
+     string contains "<html" and was being judged as an HTML document, so it could never satisfy
+     the "ends with </html>" rule and was re-generated as truncated on every single pass. */
+  const L = String(lang || "").toLowerCase();
+  const isHtml = L === "html" || L === "htm" || (!L && /<!doctype html|<html[\s>]/i.test(s));
   if (isHtml) return /<\/html>\s*$/i.test(s);
   // Count only STRUCTURAL braces: blank out strings, comments and regex literals on a
   // scratch copy first, so brace chars living inside text (e.g. a `"{ }"` in a string) don't
@@ -11260,10 +11554,26 @@ function codeLooksComplete(code, lang) {
     .replace(/"(?:\\.|[^\\"\n])*"/g, '""')                             // double-quoted strings
     .replace(/\/\/[^\n]*/g, " ")                                       // line comments
     .replace(/\/(?![*\/])(?:\\.|\[(?:\\.|[^\]\n])*\]|[^\\\/\n])+\/[gimsuy]*/g, "//"); // regex literals
-  const opens = (stripped.match(/\{/g) || []).length, closes = (stripped.match(/\}/g) || []).length;
-  // balanced braces AND ends on a real terminator: a closing bracket/semicolon, OR a full-line
-  // comment, OR a block-comment close (a truncated file ends mid-identifier, which none of these are).
-  return opens === closes && /(?:[}\);\]>]|\/\/[^\n]*|\*\/)\s*$/.test(s);
+  /* Count ALL THREE bracket families, not just braces. A file truncated in the middle of a call —
+     `db.execute(` — has perfectly balanced braces, so the old brace-only test called it COMPLETE
+     and shipped it. Parentheses and square brackets are where that truncation actually shows. */
+  const bal = (o, c) => (stripped.match(o) || []).length === (stripped.match(c) || []).length;
+  if (!bal(/\{/g, /\}/g) || !bal(/\(/g, /\)/g) || !bal(/\[/g, /\]/g)) return false;
+  /* The ending test has to depend on the language. Demanding a closing bracket or semicolon is
+     right for C-family and CSS, but Python, bash, SQL, YAML and Markdown finish perfectly well on
+     a bare value — `TIMEOUT = 30`, `echo done`, `## Notes` — and every one of those was being
+     called truncated, buying continuation round after continuation round for a file that was
+     already whole. For those languages, reject only what is unmistakably mid-expression. */
+  const TERMINATED = /^(?:js|javascript|jsx|mjs|cjs|ts|typescript|tsx|java|c|h|cc|cpp|hpp|cs|go|rust|rs|php|swift|kt|kotlin|scala|dart|css|scss|sass|less|json)$/i;
+  if (TERMINATED.test(String(lang || ""))) return /(?:[}\);\]>]|\/\/[^\n]*|\*\/)\s*$/.test(s);
+  const last = s.slice(s.lastIndexOf("\n") + 1).trim();
+  if (!last) return true;                                   // ends on a blank line → settled
+  if (/\\$/.test(last)) return false;                       // shell / make line continuation
+  if (/[,+\-*/%=<>!&|^~?:.]$/.test(last)) return false;     // dangling operator
+  if (/[([{]$/.test(last)) return false;                    // opened something and stopped
+  if (/\b(?:and|or|not|in|is|if|elif|else|for|while|return|import|from|def|class|with|as|lambda|then|do|case|select|where|join)$/i.test(last)) return false;
+  if (/:$/.test(last)) return false;                        // a Python block header with no body
+  return true;
 }
 /** Shared stub/placeholder detector. Scans a generated file body and returns an array of
     { line, snippet, kind } hits — the concrete definition of "placeholder" the other specs
@@ -12534,6 +12844,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
 
   let answer = "";
   let reasoning = "";
+  const thinkSplit = makeThinkSplitter();   // pulls inline <think> out of CONTENT as it streams
   let thinkingNode = null;
   let pendingRender = false;
   let finalized = false; // once true, the final decorated DOM must not be clobbered
@@ -12577,10 +12888,26 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       aiNode = node;
       const mdEl = aiNode.querySelector(".msg-ai__body .md");
       if (!mdEl) return;
+      /* Did the answer just reveal itself to be a code artifact? Asked every frame, and asked
+         by promoteAnswerToCode itself, so the mid-stream verdict and the finalize verdict can
+         never disagree. Skipped entirely for a file reply, whose content deliberately stays
+         out of the chat body. */
+      const autoBox = (codeReq || fileFmt) ? null : midStreamCodePromotion(answer);
       if (codeReq) {
         // Code request → stream the source live into a code window.
         lastPaintAt = now;
         renderLiveCodeInto(mdEl, answer, codeReq, replyLang);
+        setStreamingUI(mdEl, false);
+      } else if (autoBox) {
+        /* Boxed mid-stream. renderLiveCodeInto reuses one card frame to frame, so this keeps
+           painting into the SAME window the first frame created — no rebuild, no scroll jump.
+           _streamCache is cleared because the markdown cache describes DOM that no longer
+           exists; leaving it would let a later un-box append paragraphs UNDER the card
+           instead of replacing it. */
+        lastPaintAt = now;
+        lastRenderedAnswer = answer;
+        mdEl._streamCache = null;
+        renderLiveCodeInto(mdEl, autoBox.code, autoBox, replyLang);
         setStreamingUI(mdEl, false);
       } else if (answer !== lastRenderedAnswer) {
         // Only rebuild the body when the ANSWER text actually changed — a burst of
@@ -13048,7 +13375,13 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
           const json = JSON.parse(data);
           const delta = json.choices && json.choices[0] && json.choices[0].delta;
           if (!delta) continue;
-          if (delta.content) answer += delta.content;
+          /* Some engines write their chain of thought into CONTENT as <think>…</think> rather than
+             the reasoning channel, and they do it whether or not thinking was requested. Route it
+             where it belongs instead of deleting it: the Thinking panel still shows it when the
+             user has thinking on (aiTurnEl gates on msg.think), and the answer — the text that
+             becomes a code file — never carries it. Incremental by design: re-splitting the whole
+             accumulated answer on every chunk is exactly the O(n²) the paint path already fights. */
+          if (delta.content) { const sp = thinkSplit(delta.content); answer += sp.answer; reasoning += sp.thought; }
           if (delta.reasoning) reasoning += delta.reasoning;
           scheduleRender();
         } catch (_) { /* ignore malformed keep-alive lines */ }
@@ -13059,7 +13392,10 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
 
     // A reply with no answer content is a failure — even if the model emitted only
     // "thinking" (reasoning). Fall back instead of persisting a blank Firas turn.
-    if (!answer.trim()) throw new Error("empty stream");
+    /* Anything still held back was never a tag — take it before calling the reply empty, or a
+         stream ending on a bare "<" would silently lose its last bytes. */
+      { const f = thinkSplit.flush(); answer += f.answer; reasoning += f.thought; }
+      if (!answer.trim()) throw new Error("empty stream");
 
     // ENGINE-BUSY AUTO-RETRY: if the ENTIRE reply is one of the backend's engine-error sentences
     // (all rescue engines momentarily failed), retry ONCE automatically after a short pause —
@@ -13143,7 +13479,18 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
           const meta = { filename: codeReq.filename, lang: codeReq.lang, ext: codeReq.ext, label: codeReq.label };
           aiMsg.content = "```firas-code " + JSON.stringify(meta) + "\n" + tidyCodeArtifact(answer, codeReq.lang) + "\n```";
         } else {
-          aiMsg.content = scrubBacktrackFull(answer || "");
+          /* Stopped while the answer was already showing in a code box. Its fence is still
+             open, so promoteAnswerToCode refuses at finalize and the very card the user has
+             been watching fill up would vanish on the last frame. Ask the same authority that
+             opened the box to close it, and keep the partial file as a real card — with
+             Continue available, exactly like an aborted code REQUEST. */
+          const partial = midStreamCodePromotion(answer || "");
+          if (partial) {
+            const meta = { filename: partial.filename, lang: partial.lang, ext: partial.ext, label: partial.label };
+            aiMsg.content = "```firas-code " + JSON.stringify(meta) + "\n" + partial.code + "\n```";
+          } else {
+            aiMsg.content = scrubBacktrackFull(answer || "");
+          }
         }
         aiMsg.reasoning = reasoning;
         finalizeAi(aiMsg, chat);
@@ -13190,23 +13537,17 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
 function finalizeAi(aiMsg, chat) {
   const idx = chat && Array.isArray(chat.messages) ? chat.messages.indexOf(aiMsg) : -1;
 
-  // Persist first (independent of the view) so the result is saved even if the
-  // user navigated away. Don't store the offline fallback as a genuine turn.
-  if (chat) {
-    chat.updatedAt = Date.now();
-    if (!aiMsg.offline) persistChat(chat);
-  }
-  renderHistory(); // reflect updatedAt ordering in the sidebar
+  /* CONTENT PROMOTIONS RUN FIRST — before the save, and before the "not the active chat"
+     early-return below. They used to sit after both, which quietly cost two things:
 
-  // DOM work only when this chat is the active view.
-  if (activeChat() !== chat || idx < 0) return;
+       · the promoted ```firas-code block was never PERSISTED (persistChat ran first), so a
+         generated file came back after a reload as a plain fenced block — no card, no preview,
+         no download, no Continue;
+       · and if the user had navigated to another chat, finalizeAi returned before reaching the
+         promotion at all, so that turn was never promoted, in the view or on disk.
 
-  let aiNode = els.thread.querySelector(`.msg-ai[data-index="${idx}"]`);
-  // If the node isn't present (user returned mid-stream and the thread was rebuilt
-  // without it, or indices shifted), re-render the whole thread to recover.
-  if (!aiNode) { renderThread(chat); aiNode = els.thread.querySelector(`.msg-ai[data-index="${idx}"]`); }
-  if (!aiNode) return;
-
+     All three parsers are pure content functions with no DOM dependency, so moving them up is
+     free. */
   const vidMeta = parseVideoMeta(aiMsg.content);
   const imgMeta = parseImageMeta(aiMsg.content);
   let codeMeta = !imgMeta ? parseCodeMeta(aiMsg.content) : null;
@@ -13223,6 +13564,24 @@ function finalizeAi(aiMsg, chat) {
     const recovered = ooxmlToMarkdown(aiMsg.content);
     if (recovered && recovered.length > 40) { aiMsg.content = recovered; aiMsg.forceFmt = "docx"; }
   }
+
+  // Persist (independent of the view) so the result is saved even if the
+  // user navigated away. Don't store the offline fallback as a genuine turn.
+  if (chat) {
+    chat.updatedAt = Date.now();
+    if (!aiMsg.offline) persistChat(chat);
+  }
+  renderHistory(); // reflect updatedAt ordering in the sidebar
+
+  // DOM work only when this chat is the active view.
+  if (activeChat() !== chat || idx < 0) return;
+
+  let aiNode = els.thread.querySelector(`.msg-ai[data-index="${idx}"]`);
+  // If the node isn't present (user returned mid-stream and the thread was rebuilt
+  // without it, or indices shifted), re-render the whole thread to recover.
+  if (!aiNode) { renderThread(chat); aiNode = els.thread.querySelector(`.msg-ai[data-index="${idx}"]`); }
+  if (!aiNode) return;
+
   const fileFmt = !imgMeta && !codeMeta && aiMsg.content && aiMsg.content.trim() ? isFileStreamReply(aiMsg, chat) : null;
   const mdEl = aiNode.querySelector(".msg-ai__body .md");
   if (mdEl) {
@@ -13237,7 +13596,7 @@ function finalizeAi(aiMsg, chat) {
       // Code deliverable → swap the live streaming window for the finished card
       // (copy/download/preview), keeping the same code text.
       mdEl.innerHTML = "";
-      mdEl.appendChild(buildCodeCard(codeMeta, aiMsg.lang || state.lang));
+      mdEl.appendChild(buildCodeCard(codeMeta, aiMsg.lang || state.lang, { fresh: true }));
     } else if (fileFmt) {
       // File reply: don't fill the chat with raw content. Show only a collapsed
       // "view content" disclosure; the file card below carries the deliverable.
@@ -13458,19 +13817,84 @@ function splitSettledMarkdown(src) {
 
 /** Paint a streaming answer into `mdEl`, reusing the settled DOM. Returns the nodes that
     are actually new this frame, so only those need math typesetting. */
+/* ── INCREMENTAL TAIL PAINT ────────────────────────────────────────────────────────────
+   splitSettledMarkdown can only cut at a BLANK LINE, and a list, a table or one long
+   paragraph contains none — so for those the settled prefix is empty and the whole answer
+   is the live tail. Measured in the running app: a 14-item Arabic list replaced its <ol>
+   on all 20 frames of the stream, and an 1,800-character paragraph replaced its <p> on all
+   47. Destroying and rebuilding the block the user is reading is what makes streaming feel
+   like it stutters — and it drops any text selection inside it on every frame.
+
+   A source-level fix is not available: cutting a list in half renders two <ol> elements and
+   restarts the numbering, which is exactly what mdStartsFreshBlock exists to prevent. So the
+   fix is at the DOM level. Render the tail as before, then RECONCILE it against what is
+   already there instead of replacing it:
+
+     · identical node        → left completely alone
+     · innerHTML grew by a suffix → append just that suffix (the common case: text arrived)
+     · same tag, other change → recurse one level and reconcile the children, so a growing
+                                list only touches its last <li>, and a table its last <tr>
+     · anything else         → replace, exactly as before
+
+   Everything the old code did is still reachable through the last branch, so an input that
+   already painted well paints identically. ──────────────────────────────────────────────── */
+
+/** Reconcile `oldN` towards `newN` in place. Returns true when it was updated (the caller
+    keeps the existing node), false when the caller must replace it outright. */
+function reconcileStreamNode(oldN, newN, depth) {
+  if (!oldN || !newN || oldN.nodeType !== newN.nodeType) return false;
+  if (oldN.nodeType === 3) {                                  // text node
+    if (oldN.nodeValue !== newN.nodeValue) oldN.nodeValue = newN.nodeValue;
+    return true;
+  }
+  if (oldN.nodeType !== 1 || oldN.tagName !== newN.tagName) return false;
+  const a = oldN.innerHTML, b = newN.innerHTML;
+  if (a === b) return true;                                   // nothing changed inside
+  /* The prefix case. `a` is a serialization of live DOM, so it can never end mid-tag; if `b`
+     starts with it, the difference is whole nodes appended at the end and nothing already on
+     screen has to move. This is what makes a growing paragraph and a growing list cheap. */
+  if (b.length > a.length && b.startsWith(a)) {
+    oldN.insertAdjacentHTML("beforeend", b.slice(a.length));
+    return true;
+  }
+  if (depth <= 0) return false;
+  reconcileStreamChildren(oldN, newN.childNodes, depth - 1);
+  return true;
+}
+
+/** Walk `parent`'s children from `from` and bring them in line with `next`. */
+function reconcileStreamChildren(parent, next, depth, from) {
+  const start = from || 0;
+  const nextArr = [...next];
+  let i = 0;
+  for (; i < nextArr.length; i++) {
+    const cur = parent.childNodes[start + i];
+    if (!cur) { parent.appendChild(nextArr[i]); continue; }
+    if (!reconcileStreamNode(cur, nextArr[i], depth)) parent.replaceChild(nextArr[i], cur);
+  }
+  // The tail re-parsed into FEWER blocks than last frame — drop the leftovers.
+  while (parent.childNodes.length > start + nextArr.length) parent.removeChild(parent.lastChild);
+}
+
 function paintStreamingMarkdown(mdEl, src) {
   const [settled, tail] = splitSettledMarkdown(src);
   const cache = mdEl._streamCache;
 
-  /** Drop everything after the settled region, then append `md` rendered as its own blocks. */
+  /** Bring everything after the settled region in line with `md`, reusing the DOM that is
+      already there. This used to remove the whole tail and rebuild it, which meant the block
+      the user is reading was destroyed and recreated on every single frame. */
   const appendTail = (keep, mdSrc) => {
-    while (mdEl.childNodes.length > keep) mdEl.removeChild(mdEl.lastChild);
-    if (!mdSrc || !mdSrc.trim()) return [];
+    if (!mdSrc || !mdSrc.trim()) {
+      while (mdEl.childNodes.length > keep) mdEl.removeChild(mdEl.lastChild);
+      return [];
+    }
     const frag = document.createElement("div");
     frag.innerHTML = renderMarkdown(mdSrc);
-    const added = [...frag.childNodes];
-    added.forEach((n) => mdEl.appendChild(n));
-    return added.filter((n) => n.nodeType === 1);
+    reconcileStreamChildren(mdEl, frag.childNodes, 3, keep);
+    /* Every tail element is still reported as live this frame. Math typesetting keys off this
+       list, and a reconciled node can have gained a complete formula since the last pass, so
+       narrowing it to "nodes we replaced" would silently leave that formula un-typeset. */
+    return [...mdEl.childNodes].slice(keep).filter((n) => n.nodeType === 1);
   };
 
   if (cache && settled) {
@@ -13506,7 +13930,12 @@ function paintStreamingMarkdown(mdEl, src) {
     mdEl._streamCache = { settled, count };
     appendTail(count, tail);
   } else {
-    mdEl.innerHTML = renderMarkdown(src);
+    /* NO SETTLED PREFIX AT ALL. splitSettledMarkdown can only cut at a blank line, and a list,
+       a table and a single long paragraph contain none — so this branch, not the one above, is
+       what paints them, and it used to assign innerHTML and destroy the whole block on every
+       frame. Reconciling from index 0 gives those three the same incremental treatment
+       everything else already had. The cache stays null: there is genuinely nothing settled. */
+    appendTail(0, src);
     mdEl._streamCache = null;
   }
   return [mdEl];   // everything is new → typeset the whole element
@@ -17242,9 +17671,72 @@ function buildZip(files) {
   return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: "application/zip" });
 }
 /* Extract the code from a step output: the LARGEST fenced block (or the raw text when unfenced). */
+/* Reasoning models write their chain of thought into the CONTENT field as <think>…</think>, and
+   they do it whether or not `think` was requested — asking Ollama for think:false does not stop a
+   model that was trained to narrate inline. The edge function has a stripper for exactly this, but
+   it is wired to Cloudflare only, so every other engine's thinking arrived verbatim and landed
+   INSIDE generated files. This is the client-side net: one place, ahead of every code path.
+     · paired blocks are removed wherever they sit — a model may think again mid-answer
+     · a dangling </think> means the opener was lost to truncation: everything before it is thought
+     · a dangling <think> with no closer means the response never got to the answer
+   A literal "<think>" is not valid HTML and does not occur in real source, so this cannot eat code
+   the user actually wanted — and it runs BEFORE fence extraction, so a fence that survives is
+   returned untouched. */
+/* Streaming counterpart of stripThinkBlocks. Tokens arrive split at arbitrary points, so "<think>"
+   can be delivered as "<thi" + "nk>" — a per-chunk regex would miss it and leak the whole thought.
+   This keeps a tiny pending buffer, and holds bytes back ONLY when the tail is a genuine prefix of
+   an opening or closing think tag. That matters: generated code is full of "<" and stalling on
+   every one of them would visibly stutter the paint.
+   Returns the visible answer and the thought separately, so the caller can file each correctly. */
+function makeThinkSplitter() {
+  const OPEN = /<think(?:\s[^>]*)?>/i, CLOSE = /<\/think\s*>/i;
+  /* Two shapes of half-arrived tag: the name itself still coming in ("<thi"), and a complete
+     name whose attributes have not closed yet ("<think id=\"1"). Missing the second leaked a
+     whole thought when the stream happened to split inside the tag. */
+  const PARTIAL = (t) => /^<\/?t?h?i?n?k?$/i.test(t) || /^<\/?think[^>]*$/i.test(t);
+  let inside = false, pend = "";
+  const split = (tok) => {
+    let src = pend + String(tok || ""), answer = "", thought = "";
+    pend = "";
+    for (;;) {
+      const re = inside ? CLOSE : OPEN;
+      const m = re.exec(src);
+      if (m) {
+        if (inside) thought += src.slice(0, m.index); else answer += src.slice(0, m.index);
+        src = src.slice(m.index + m[0].length);
+        inside = !inside;
+        continue;
+      }
+      const lt = src.lastIndexOf("<");
+      if (lt !== -1 && PARTIAL(src.slice(lt))) {
+        if (inside) thought += src.slice(0, lt); else answer += src.slice(0, lt);
+        pend = src.slice(lt);
+      } else if (inside) thought += src; else answer += src;
+      break;
+    }
+    return { answer, thought };
+  };
+  /* Whatever is still held back at end of stream was never a tag — emit it rather than eat it. */
+  split.flush = () => { const t = pend; pend = ""; return inside ? { answer: "", thought: t } : { answer: t, thought: "" }; };
+  return split;
+}
+function stripThinkBlocks(s) {
+  let t = String(s || "").replace(/<think(?:\s[^>]*)?>[\s\S]*?<\/think\s*>/gi, "");
+  const orphanClose = t.search(/<\/think\s*>/i);
+  if (orphanClose !== -1) t = t.slice(t.indexOf(">", orphanClose) + 1);
+  const orphanOpen = t.search(/<think(?:\s[^>]*)?>/i);
+  if (orphanOpen !== -1) {
+    /* Keep any fenced code that appears AFTER the unclosed tag — a truncated think block followed
+       by the real answer is common; throwing the answer away would be worse than the leak. */
+    const after = t.slice(orphanOpen);
+    t = t.slice(0, orphanOpen) + (/```/.test(after) ? after.replace(/^<think(?:\s[^>]*)?>[^`]*/i, "") : "");
+  }
+  return t;
+}
 function stripToCode(out) {
   // Concatenate ALL fenced blocks in order (a step may legitimately emit several — e.g. markup + a
   // separate script); fall back to the raw text only when there are no fences.
+  out = stripThinkBlocks(out);
   const blocks = [...String(out || "").matchAll(/```[\w-]*\n([\s\S]*?)```/g)].map((m) => m[1].replace(/\s+$/, ""));
   if (!blocks.length) return String(out || "").trim();
   if (blocks.length === 1) return blocks[0].trim();
@@ -21361,7 +21853,12 @@ async function cwPlan(name, curFiles, request, isEdit, signal) {
       (cwIsGameRequest(request) ? (" THIS IS A GAME: design a REAL game architecture split into engine/loop, entities, input, and UI/HUD files (e.g. index.html + css/styles.css + js/engine.js (the requestAnimationFrame game loop + state) + js/entities.js + js/input.js + js/ui.js" + (cwIs3DRequest(request) ? ", and it is 3D — plan to load Three.js from " + THREE_CDN_URL + " and split js/world.js (scene/camera/renderer/lighting) + js/player.js (controls)" : "") + "). The plan MUST yield a genuinely playable, animated, substantial game — not a static demo.") : "") +
       " Use a CONVENTIONAL nested layout so the file tree has real structure: index.html stays at the project ROOT; put stylesheets under css/ (css/styles.css), scripts under js/ (js/app.js and any extra modules each as their own js/*.js file), images/icons/fonts under assets/, and any JSON/seed data under data/. Group every non-entry file into one of these folders — do NOT dump everything flat at the root." +
       " Return ONLY valid JSON, briefs in the user's language: {\"title\":\"short project name\",\"notes\":\"1-2 lines: architecture + tech choice\",\"steps\":[{\"file\":\"relative/path.ext\",\"does\":\"what it does + ids/classes/symbols it owns\"}],\"dels\":[]}");
-  const usr = "PROJECT: " + name + "\n\nCURRENT FILES:\n" + fileList + "\n\n" + (isEdit ? "EDIT REQUEST:\n" : "WHAT TO BUILD:\n") + String(request).slice(0, isEdit ? 1200 : 1800);
+    /* The architect runs ONCE and chooses the entire file list from this text, so it gets the whole
+       brief; the per-file builder below pays its share on every file and gets a large but smaller
+       window. Both were small enough (1,200 / 1,800) that a detailed request lost most of itself
+       before any model read it. Nothing here approaches the transport limit — sanitizeMessages'
+       200,000-char cut applies to chat PERSISTENCE, never to inference. */
+  const usr = "PROJECT: " + name + "\n\nCURRENT FILES:\n" + fileList + "\n\n" + (isEdit ? "EDIT REQUEST:\n" : "WHAT TO BUILD:\n") + String(request).slice(0, 24000);
   let plan = null, rawPlan = "";
   const parsePlan = (txt) => { try { const jm = String(txt || "").match(/\{[\s\S]*\}/); return jm ? JSON.parse(jm[0]) : null; } catch (_) { return null; } };
   const planOk = (p) => !!(p && Array.isArray(p.steps) && p.steps.some((s) => s && typeof s.file === "string" && s.file.trim()));
@@ -21416,7 +21913,7 @@ async function cwPlanBuild(name, curFiles, request, isEdit, ui, signal, resume) 
     const prevFile = curFiles.find((f) => f.path === st.file);
     const sys = "You are Firas Code building ONE FILE of a professional multi-file project. Output ONLY the COMPLETE, FINAL content of `" + st.file + "` in ONE fenced code block — no commentary, no omissions, never stop mid-file. Stay perfectly CONSISTENT with the plan and the other files (ids, classes, imports, paths, function names)." + cwBrain(isWebFile, request) + langRule;
     const builtTxt = built.map((b) => "===== " + b.path + " (built this run) =====\n" + String(b.content).slice(0, 1800)).join("\n\n").slice(0, Math.min(9000 + plan.steps.length * 1500, 30000));   // scale the feed-forward budget with the decomposition size so late files in a big project still see earlier context (paths/ids/symbols stay consistent)
-    const usr = (isEdit ? "EDIT REQUEST:\n" : "PROJECT GOAL:\n") + String(request).slice(0, 1800) + (plan.notes ? "\n\nARCHITECTURE NOTES:\n" + plan.notes : "") + "\n\nFULL PLAN:\n" + planList + (builtTxt ? "\n\nFILES ALREADY BUILT THIS RUN:\n" + builtTxt : "") + (contract ? "\n\nCROSS-FILE CONTRACT — reference these EXACT ids/classes/symbols siblings expose; only ADD new ones, never rename a shared one:\n" + contract : "") + (prevFile ? "\n\nCURRENT VERSION of `" + st.file + "` (EVOLVE it):\n" + String(prevFile.content || "").slice(0, 20000) : "") + "\n\nTHIS FILE'S JOB: " + st.does + "\n\nBUILD `" + st.file + "` NOW, COMPLETE start to end.";
+    const usr = (isEdit ? "EDIT REQUEST:\n" : "PROJECT GOAL:\n") + String(request).slice(0, 8000) + (plan.notes ? "\n\nARCHITECTURE NOTES:\n" + plan.notes : "") + "\n\nFULL PLAN:\n" + planList + (builtTxt ? "\n\nFILES ALREADY BUILT THIS RUN:\n" + builtTxt : "") + (contract ? "\n\nCROSS-FILE CONTRACT — reference these EXACT ids/classes/symbols siblings expose; only ADD new ones, never rename a shared one:\n" + contract : "") + (prevFile ? "\n\nCURRENT VERSION of `" + st.file + "` (EVOLVE it):\n" + String(prevFile.content || "").slice(0, 20000) : "") + "\n\nTHIS FILE'S JOB: " + st.does + "\n\nBUILD `" + st.file + "` NOW, COMPLETE start to end.";
     let body = "";
     try {
       const out = await agentCall([{ role: "system", content: sys }, { role: "user", content: usr }], "max", signal);
@@ -22703,7 +23200,16 @@ async function cwAnswerAboutProject(st, req, isWeb) {
 async function cwAskAI(chat, instruction) {
   const st = codeFilesOf(chat);
   const isWeb = st.files.some((f) => /\.html?$/.test(f.path));
-  const req = String(instruction).slice(0, 1200);
+  /* This used to cut EVERY in-IDE request at 1,200 characters, and `req` is the only copy that
+     travels onward — to the planner, the builder, the answerer, the repair pass, and back into the
+     input box. A detailed brief lost most of itself before any model saw it, which is exactly the
+     "it does not understand my prompt from beginning to end" complaint. Worse, the intent regexes
+     below read the same truncated string, so a request whose build verb sat past char 1,200 was
+     not even RECOGNISED as a build and fell to the wrong branch.
+     Raising it is safe: the 200,000-char transport cut lives in sanitizeMessages, which is wired
+     only to /api/chats persistence and never to /api/chat inference. 24,000 is ~6,000 words — far
+     past any real edit request, while still bounding a pathological paste. */
+  const req = String(instruction).slice(0, 24000);
   /* Firas Code DAILY QUOTA. This is the REAL hot path — every in-IDE "change my
      project" request runs a multi-call plan→build pipeline, and all of those
      calls set nomem:true, so /api/chat treats them as internal helpers and never

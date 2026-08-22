@@ -194,8 +194,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
    Kept as a real setting rather than deleted, because this is the ONE counter standing between
    a single runaway client and the shared upstream image pools (which have their own hard daily
    caps that cannot be raised from here). Set the env var to a positive number to bring a
-   ceiling back without a code change. */
-const IMAGE_DAILY_LIMIT = (() => { const n = parseInt(env("IMAGE_DAILY_LIMIT"), 10); return Number.isFinite(n) ? n : -1; })();
+/* Per-user daily image cap. DEFAULT 5 — Firas asked for a real ceiling again after a spell of
+   -1 (unmetered). This is the one counter standing between a single runaway client and the shared
+   upstream image pools, which have their own hard daily caps that cannot be raised from here.
+   The env var still wins, and -1 there still means unmetered, so the ceiling moves without a
+   code change. */
+const IMAGE_DAILY_LIMIT = (() => { const n = parseInt(env("IMAGE_DAILY_LIMIT"), 10); return Number.isFinite(n) ? n : 5; })();
 /* Same shape as IMAGE_DAILY_LIMIT above, and for the same reason. This used to be
    `Math.max(1, parseInt(env(…) || "10", 10) || 10)`, which had two independent faults:
    it defaulted to 10 instead of the -1 sentinel, and the Math.max(1, …) floor made

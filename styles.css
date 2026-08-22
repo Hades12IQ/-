@@ -3019,9 +3019,6 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
   content: "▋"; color: #58a6ff; animation: codeCaret 1s steps(1) infinite;
 }
 @keyframes codeCaret { 50% { opacity: 0; } }
-.code-card__preview { border-block-start: 1px solid rgba(255, 255, 255, 0.08); }
-.code-card__preview-bar { display: flex; justify-content: flex-end; padding: 6px 8px; background: #161b22; }
-.code-card__frame { inline-size: 100%; block-size: 420px; border: 0; display: block; background: #fff; }
 
 @media (max-width: 560px) {
   .file-card { max-inline-size: 100%; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
@@ -3043,19 +3040,24 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 .preview-overlay {
   position: fixed; inset: 0; z-index: var(--z-toast);
   display: grid; place-items: center;
-  padding: var(--space-4);
+  /* No padding: the panel below fills the viewport edge to edge. The backdrop colour stays for
+     the fade-in, and for the brief moment before the panel paints. */
+  padding: 0;
   background: rgba(0,0,0,0.46);
   opacity: 0; transition: opacity var(--dur-base) var(--ease-out);
 }
 .preview-overlay.is-open { opacity: 1; }
 .preview-panel {
-  inline-size: 100%; max-inline-size: 1040px;
-  block-size: min(86dvh, 860px);
+  /* GENUINELY FULL SCREEN. This was capped at 1040px wide and 86dvh tall, so "preview" showed a
+     1040-pixel letterbox of a page that was designed for a real viewport — a responsive layout
+     would even resolve to its TABLET breakpoint inside it and misrepresent the work. The header
+     bar keeps close / refresh / open-in-tab / download reachable, and Escape still closes. */
+  inline-size: 100%; max-inline-size: none;
+  block-size: 100dvh;
   display: flex; flex-direction: column;
   background: var(--color-surface);
-  border: var(--border-hairline) solid var(--color-border-hairline);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  border: 0;
+  border-radius: 0;
   overflow: hidden;
   transform: translateY(8px) scale(0.99);
   transition: transform var(--dur-base) var(--ease-out);
