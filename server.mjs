@@ -2699,10 +2699,26 @@ async function openaiImageResult(r, what, model) {
     return { reason: "http" };
   }
   const j = await r.json().catch(() => null);
-  const b64 = j && j.data && j.data[0] && j.data[0].b64_json;
-  if (!b64) { console.error("[firas] OpenAI " + what + " (" + model + ") returned no image"); return { reason: "empty" }; }
+  const d = (j && j.data && j.data[0]) || null;
   // Edits ask for JPEG (see editImageOpenAI); generations keep the default PNG.
-  return { buf: Buffer.from(b64, "base64"), mime: what === "edit" ? "image/jpeg" : "image/png" };
+  const mime = what === "edit" ? "image/jpeg" : "image/png";
+  if (d && d.b64_json) return { buf: Buffer.from(d.b64_json, "base64"), mime };
+  /* SOME MODELS ANSWER WITH A LINK, not the bytes. Reading only b64_json turned a perfectly
+     good 200 into "no image" — a working key that still failed all the way down the chain. */
+  if (d && d.url) {
+    try {
+      const img = await fetch(d.url);
+      if (img.ok) {
+        const buf = Buffer.from(await img.arrayBuffer());
+        if (buf.length) return { buf, mime: img.headers.get("content-type") || mime };
+      }
+      console.error("[firas] OpenAI " + what + " (" + model + ") image link returned HTTP " + img.status);
+    } catch (e) { console.error("[firas] OpenAI " + what + " (" + model + ") image link failed: " + ((e && e.message) || e)); }
+    return { reason: "link" };
+  }
+  console.error("[firas] OpenAI " + what + " (" + model + ") returned no image; payload keys: " +
+    (d ? Object.keys(d).join(",") : "no data[]"));
+  return { reason: "empty" };
 }
 
 /* EVERY RUNG IS TRIED IN THIS REQUEST, not one rung per request.

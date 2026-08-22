@@ -2589,9 +2589,28 @@ async function openaiImageResult(r, what, model) {
     return { reason: "http" };
   }
   const j = await r.json().catch(() => null);
-  const b64 = j && j.data && j.data[0] && j.data[0].b64_json;
-  if (!b64) { console.error("[firas] OpenAI " + what + " (" + model + ") returned no image"); return { reason: "empty" }; }
-  return { bytes: b64ToBytes(b64), mime: what === "edit" ? "image/jpeg" : "image/png", b64 };
+  const d = (j && j.data && j.data[0]) || null;
+  const mime = what === "edit" ? "image/jpeg" : "image/png";
+  if (d && d.b64_json) return { bytes: b64ToBytes(d.b64_json), mime, b64: d.b64_json };
+  /* SOME MODELS ANSWER WITH A LINK, not the bytes. Reading only b64_json turned a perfectly
+     good 200 into "no image", which is how a working key still ended at the bottom of the
+     chain in "image generation failed" — and why a probe that checked only the HTTP status
+     reported everything was fine. */
+  if (d && d.url) {
+    try {
+      const img = await fetch(d.url);
+      if (img.ok) {
+        const bytes = new Uint8Array(await img.arrayBuffer());
+        if (bytes.length) return { bytes, mime: img.headers.get("content-type") || mime, b64: b64FromBytes(bytes) };
+      }
+      console.error("[firas] OpenAI " + what + " (" + model + ") image link returned HTTP " + img.status);
+    } catch (e) { console.error("[firas] OpenAI " + what + " (" + model + ") image link failed: " + ((e && e.message) || e)); }
+    return { reason: "link" };
+  }
+  // Neither shape: say WHAT came back, so a third one is diagnosable instead of silent.
+  console.error("[firas] OpenAI " + what + " (" + model + ") returned no image; payload keys: " +
+    (d ? Object.keys(d).join(",") : "no data[]"));
+  return { reason: "empty" };
 }
 
 /* EVERY RUNG IS TRIED IN THIS REQUEST, not one rung per request.
@@ -4279,19 +4298,34 @@ export default async (request, context) => {
             signal: ac.signal,
           });
           const body = await r.text().catch(() => "");
-          let note = "";
-          try { note = (JSON.parse(body).error || {}).message || ""; } catch (_) { note = body.slice(0, 200); }
-          out.openai.tried.push({ model, status: r.status, ok: r.ok, error: r.ok ? "" : note.slice(0, 300) });
-          if (r.ok) break;                     // this rung works; no need to spend another probe
+          let note = "", shape = "";
+          try {
+            const j = JSON.parse(body);
+            note = (j.error || {}).message || "";
+            /* CHECK THE PAYLOAD, NOT JUST THE STATUS. The first version of this probe stopped at
+               r.ok and reported "OpenAI works" while the real path was getting a 200 whose body it
+               could not read — which sent us looking for the fault everywhere except here. */
+            const d = j.data && j.data[0];
+            shape = d ? Object.keys(d).join(",") : "no data[]";
+          } catch (_) { note = body.slice(0, 200); shape = "unparseable"; }
+          const usable = r.ok && /b64_json|url/.test(shape);
+          out.openai.tried.push({
+            model, status: r.status, ok: r.ok, usable, payload: shape,
+            error: r.ok ? (usable ? "" : "200 but the body carries no image we can read") : note.slice(0, 300),
+          });
+          if (usable) break;                   // this rung genuinely works
         } catch (e) {
           out.openai.tried.push({ model, status: 0, ok: false, error: "request failed: " + ((e && e.message) || e) });
         } finally { clearTimeout(to); }
       }
 
-      const good = out.openai.tried.find((t) => t.ok);
+      const good = out.openai.tried.find((t) => t.usable);
       const first = out.openai.tried[0] || {};
+      const okButUnreadable = out.openai.tried.find((t) => t.ok && !t.usable);
       out.verdict = good
-        ? ("OpenAI works on " + good.model + ". If pictures still fail, the fault is after this point.")
+        ? ("OpenAI works on " + good.model + " (payload: " + good.payload + "). If pictures still fail, the fault is after this point.")
+        : okButUnreadable
+        ? ("OpenAI accepted the request on " + okButUnreadable.model + " but returned a body with no readable image. Payload keys: " + okButUnreadable.payload)
         : first.status === 401 ? "The key is rejected (401). It is wrong, revoked, or from a different organisation."
         : first.status === 403 ? "The key is refused (403) — most often a Restricted key without the Images permission."
         : first.status === 429 ? "Rate limited or out of credit (429). Read the error text below."
