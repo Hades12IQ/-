@@ -2525,6 +2525,7 @@ function openaiImageMaxCost() {
   return worst || openaiImageCost("1024x1024", OPENAI_IMAGE_QUALITY);
 }
 const OPENAI_EDIT_KEEP = Number(env("OPENAI_EDIT_KEEP") ?? 20);   // stored edits kept per user
+const OPENAI_IMAGE_TIMEOUT_MS = Number(env("OPENAI_IMAGE_TIMEOUT_MS") ?? 25000);
 let _openaiImagesOff = false;
 let _oaiSpend = { usd: 0, at: 0 };
 
@@ -2627,7 +2628,12 @@ async function generateImageOpenAI(prompt, w, h) {
   if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return null;
   for (const model of OPENAI_IMAGE_MODELS) {
     const ac = new AbortController();
-    const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 120000);
+    /* EDGE-SAFE, not generous. An edge function has a wall-clock budget of its own and 120s was
+       far beyond it: a slow render did not fail here, it got the whole function killed by the
+       platform - taking Cloudflare and every other engine in the chain down with it, which is how
+       a working key still produced no picture at all. Aborting early leaves the rest of the chain
+       time to answer. */
+    const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, OPENAI_IMAGE_TIMEOUT_MS);
     let out = null;
     try {
       const r = await fetch("https://api.openai.com/v1/images/generations", {
@@ -2660,7 +2666,7 @@ async function editImageOpenAI(prompt, bytes, mime) {
   if (!bytes || !bytes.length) return null;
   for (const model of OPENAI_IMAGE_MODELS) {
     const ac = new AbortController();
-    const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 180000);
+    const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, OPENAI_IMAGE_TIMEOUT_MS + 10000);   // edits run a little longer
     let out = null;
     try {
       const fd = new FormData();
@@ -4286,44 +4292,54 @@ export default async (request, context) => {
         return json(out);
       }
 
-      // Probe every rung so a wrong model name is named, not merely implied.
+      /* Probe at BOTH qualities and TIME them. The cheap probe already proved the key, the model
+         and the payload are all fine — 920,368 characters of base64 came back. So the fault is
+         after the response, and the two things that differ between this probe and the real path
+         are how long the call takes and how big the answer is. Both are now measured, because an
+         edge function has a wall-clock budget and a slow medium-quality render can exceed it
+         while a fast low-quality one never does. */
       for (const model of OPENAI_IMAGE_MODELS) {
-        const ac = new AbortController();
-        const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 60000);
-        try {
-          const r = await fetch("https://api.openai.com/v1/images/generations", {
-            method: "POST",
-            headers: { "content-type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
-            body: JSON.stringify({ model, prompt: "a single grey dot", size: "1024x1024", quality: "low", n: 1 }),
-            signal: ac.signal,
-          });
-          const body = await r.text().catch(() => "");
-          let note = "", shape = "", imageLen = 0;
+        let settled = false;
+        for (const q of [OPENAI_IMAGE_QUALITY, "low"]) {
+          const ac = new AbortController();
+          const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 60000);
+          const t0 = Date.now();
           try {
-            const j = JSON.parse(body);
-            note = (j.error || {}).message || "";
-            /* CHECK THE VALUE, NOT JUST THE KEY. Naming the keys was still not enough: "b64_json
-               is present" and "b64_json holds a picture" are different claims and only the second
-               one means anything. Deliberately no regular expression here — the previous version
-               used one and shipped with corrupted escape bytes inside it, so it matched nothing
-               and called a perfectly good response unreadable. A plain length check cannot rot
-               that way. */
-            const d = (j.data && j.data[0]) || null;
-            shape = d ? Object.keys(d).join(",") : "no data[]";
-            const v = d ? (d.b64_json || d.url || "") : "";
-            imageLen = String(v).length;
-          } catch (_) { note = body.slice(0, 200); shape = "unparseable"; }
-          const usable = r.ok && imageLen > 100;
-          out.openai.tried.push({
-            model, status: r.status, ok: r.ok, usable, payload: shape, imageChars: imageLen,
-            error: r.ok
-              ? (usable ? "" : "200 and the keys look right, but the image value is " + imageLen + " characters")
-              : note.slice(0, 300),
-          });
-          if (usable) break;                   // this rung genuinely works
-        } catch (e) {
-          out.openai.tried.push({ model, status: 0, ok: false, error: "request failed: " + ((e && e.message) || e) });
-        } finally { clearTimeout(to); }
+            const r = await fetch("https://api.openai.com/v1/images/generations", {
+              method: "POST",
+              headers: { "content-type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
+              body: JSON.stringify({ model, prompt: "a single grey dot", size: "1024x1024", quality: q, n: 1 }),
+              signal: ac.signal,
+            });
+            const body = await r.text().catch(() => "");
+            const ms = Date.now() - t0;
+            let note = "", shape = "", imageLen = 0;
+            try {
+              const j = JSON.parse(body);
+              note = (j.error || {}).message || "";
+              const d = (j.data && j.data[0]) || null;
+              shape = d ? Object.keys(d).join(",") : "no data[]";
+              const v = d ? (d.b64_json || d.url || "") : "";
+              imageLen = String(v).length;
+            } catch (_) { note = body.slice(0, 200); shape = "unparseable"; }
+            const usable = r.ok && imageLen > 100;
+            out.openai.tried.push({
+              model, quality: q, status: r.status, ok: r.ok, usable,
+              payload: shape, imageChars: imageLen, approxKB: Math.round(imageLen * 0.75 / 1024), ms,
+              error: r.ok
+                ? (usable ? "" : "200 and the keys look right, but the image value is " + imageLen + " characters")
+                : note.slice(0, 300),
+            });
+            if (usable && q === OPENAI_IMAGE_QUALITY) { settled = true; break; }
+            if (usable) { settled = true; break; }
+          } catch (e) {
+            out.openai.tried.push({
+              model, quality: q, status: 0, ok: false, usable: false,
+              ms: Date.now() - t0, error: "request failed: " + ((e && e.message) || e),
+            });
+          } finally { clearTimeout(to); }
+        }
+        if (settled) break;
       }
 
       const good = out.openai.tried.find((t) => t.usable);
