@@ -2569,84 +2569,108 @@ async function openaiImageMark(userId, slot) {
   try { await dbPut(`oaiQuota/${dbKey(userId)}/${serverDay()}/${dbKey(slot)}`, true); } catch (_) {}
 }
 
-async function openaiImageResult(r, what) {
+/* WHICH RUNG FAILED, AND WHY. Returns the picture, or a REASON so the caller knows whether to
+   try the next model or give up: "model" means this name is not one this account can use and the
+   next rung is worth a try; anything else means trying another name will not help. */
+async function openaiImageResult(r, what, model) {
   if (!r.ok) {
     const txt = (await r.text().catch(() => "")).slice(0, 400);
-    /* A model name this account cannot use is a CONFIGURATION fault, not a money fault: retire
-       that rung so the next request starts on the one below it, and leave the budget alone. */
     if ((r.status === 400 || r.status === 404) && /model/i.test(txt)) {
-      const dead = openaiPickImageModel();
-      if (OPENAI_IMAGE_MODELS.length > 1 && !_oaiModelDead.has(dead)) {
-        _oaiModelDead.add(dead);
-        console.warn("[firas] OpenAI image model " + dead + " unavailable - dropping to " + openaiPickImageModel());
-      }
-      return null;
+      console.warn("[firas] OpenAI image model " + model + " rejected: " + txt);
+      return { reason: "model" };
     }
-    if (r.status === 401) openaiImagesExhausted("HTTP 401 - the API key is not valid");
-    else if (r.status === 402) openaiImagesExhausted("HTTP 402");
-    else if (r.status === 429 && /insufficient_quota|billing|exceeded your current quota/i.test(txt)) {
+    if (r.status === 401) { openaiImagesExhausted("HTTP 401 - the API key is not valid"); return { reason: "auth" }; }
+    if (r.status === 402) { openaiImagesExhausted("HTTP 402"); return { reason: "money" }; }
+    if (r.status === 429 && /insufficient_quota|billing|exceeded your current quota/i.test(txt)) {
       openaiImagesExhausted("HTTP 429 insufficient_quota");
-    } else console.error("[firas] OpenAI " + what + " HTTP " + r.status + ": " + txt);
-    return null;
+      return { reason: "money" };
+    }
+    console.error("[firas] OpenAI " + what + " (" + model + ") HTTP " + r.status + ": " + txt);
+    return { reason: "http" };
   }
   const j = await r.json().catch(() => null);
   const b64 = j && j.data && j.data[0] && j.data[0].b64_json;
-  if (!b64) return null;
+  if (!b64) { console.error("[firas] OpenAI " + what + " (" + model + ") returned no image"); return { reason: "empty" }; }
   return { bytes: b64ToBytes(b64), mime: what === "edit" ? "image/jpeg" : "image/png", b64 };
 }
 
+/* EVERY RUNG IS TRIED IN THIS REQUEST, not one rung per request.
+
+   The first version remembered a rejected model in a module-level set and let the NEXT request
+   start lower. That is fine on a long-lived server and useless HERE, where an isolate is born and
+   discarded around a single request: the memory dies with it, so a wrong first name is retried
+   forever and the working one below it is never reached. Looping costs one extra fast call the
+   first time and always lands on a model that works.
+
+   Only a "model" verdict continues to the next rung — a billing or auth failure means no other
+   name will help either, so it stops rather than burning the whole ladder. */
 async function generateImageOpenAI(prompt, w, h) {
   if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return null;
-  const ac = new AbortController();
-  const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 120000);
-  try {
-    const r = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { "content-type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
-      body: JSON.stringify({
-        model: openaiPickImageModel(),
-        prompt: String(prompt || "").slice(0, 4000),
-        size: openaiImageSize(w, h),
-        quality: OPENAI_IMAGE_QUALITY,
-        n: 1,
-      }),
-      signal: ac.signal,
-    });
-    return await openaiImageResult(r, "image");
-  } catch (_) { return null; }
-  finally { clearTimeout(to); }
+  for (const model of OPENAI_IMAGE_MODELS) {
+    const ac = new AbortController();
+    const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 120000);
+    let out = null;
+    try {
+      const r = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
+        body: JSON.stringify({
+          model,
+          prompt: String(prompt || "").slice(0, 4000),
+          size: openaiImageSize(w, h),
+          quality: OPENAI_IMAGE_QUALITY,
+          n: 1,
+        }),
+        signal: ac.signal,
+      });
+      out = await openaiImageResult(r, "image", model);
+    } catch (e) { out = { reason: "network" }; }
+    finally { clearTimeout(to); }
+    if (out && out.bytes) { _oaiModelDead.delete(model); return out; }
+    if (!out || out.reason !== "model") return null;
+    _oaiModelDead.add(model);
+  }
+  console.error("[firas] no OpenAI image model accepted: " + OPENAI_IMAGE_MODELS.join(", "));
+  return null;
 }
 
+/** EDIT an existing picture from an instruction. The one thing no other engine here can do —
+    they all generate from text alone. Walks the same ladder, for the same reason. */
 async function editImageOpenAI(prompt, bytes, mime) {
   if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return null;
   if (!bytes || !bytes.length) return null;
-  const ac = new AbortController();
-  const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 180000);
-  try {
-    const fd = new FormData();
-    fd.append("model", openaiPickImageModel());
-    fd.append("prompt", String(prompt || "").slice(0, 4000));
-    fd.append("quality", OPENAI_IMAGE_QUALITY);
-    fd.append("n", "1");
-    // JPEG so the result is small enough to keep in the database and serve back by key.
-    fd.append("output_format", "jpeg");
-    fd.append("output_compression", "85");
-    const type = /jpe?g/i.test(mime || "") ? "image/jpeg" : /webp/i.test(mime || "") ? "image/webp" : "image/png";
-    const ext = type === "image/jpeg" ? "jpg" : type === "image/webp" ? "webp" : "png";
-    fd.append("image", new Blob([bytes], { type }), "source." + ext);
-    const r = await fetch("https://api.openai.com/v1/images/edits", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + OPENAI_API_KEY },   // FormData sets its own boundary
-      body: fd,
-      signal: ac.signal,
-    });
-    return await openaiImageResult(r, "edit");
-  } catch (_) { return null; }
-  finally { clearTimeout(to); }
+  for (const model of OPENAI_IMAGE_MODELS) {
+    const ac = new AbortController();
+    const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 180000);
+    let out = null;
+    try {
+      const fd = new FormData();
+      fd.append("model", model);
+      fd.append("prompt", String(prompt || "").slice(0, 4000));
+      fd.append("quality", OPENAI_IMAGE_QUALITY);
+      fd.append("n", "1");
+      // JPEG so the result is small enough to keep in the database and serve back by key.
+      fd.append("output_format", "jpeg");
+      fd.append("output_compression", "85");
+      const type = /jpe?g/i.test(mime || "") ? "image/jpeg" : /webp/i.test(mime || "") ? "image/webp" : "image/png";
+      const ext = type === "image/jpeg" ? "jpg" : type === "image/webp" ? "webp" : "png";
+      fd.append("image", new Blob([bytes], { type }), "source." + ext);
+      const r = await fetch("https://api.openai.com/v1/images/edits", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + OPENAI_API_KEY },
+        body: fd,
+        signal: ac.signal,
+      });
+      out = await openaiImageResult(r, "edit", model);
+    } catch (e) { out = { reason: "network" }; }
+    finally { clearTimeout(to); }
+    if (out && out.bytes) { _oaiModelDead.delete(model); return out; }
+    if (!out || out.reason !== "model") return null;
+    _oaiModelDead.add(model);
+  }
+  return null;
 }
 
-/** Keep the stored edits bounded. The index holds only timestamps, so pruning never reads the
-    pictures themselves — one small read, then a delete for anything past the keep-count. */
 async function oaiEditStore(userId, key, b64, mime) {
   const uid = dbKey(userId);
   try {

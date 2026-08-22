@@ -13236,8 +13236,14 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       aiMsg.reasoning = "";
       finalizeAi(aiMsg, chat);
       if (quota && quota.ok && typeof quota.remaining === "number") {
-        // This creation will use one slot once it loads → show the post-creation count.
-        showToast(imageRemainingText(replyLang, { ...quota, remaining: Math.max(0, quota.remaining - 1) }));
+        /* Only once the picture ACTUALLY arrives. This fired the moment the card was created, so
+           a generation that then failed still announced that a slot had gone — while the server,
+           correctly, had charged nothing. The count said 4 of 5 and the picture never came. */
+        const tell = () => showToast(imageRemainingText(replyLang, { ...quota, remaining: Math.max(0, quota.remaining - 1) }));
+        const qnode = liveNode();
+        const qimg = qnode && qnode.querySelector(".image-card__img");
+        if (qimg) qimg.addEventListener("load", tell, { once: true });
+        else tell();
       }
       return; // the `finally` cleans up the stream
     }

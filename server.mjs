@@ -2677,94 +2677,114 @@ function openaiImageAllowed(user, slot) {
   return OPENAI_IMAGE_DAILY < 0 || user.oaiImgCids.length < OPENAI_IMAGE_DAILY;
 }
 
-/** Shared response handling: read the body once, turn a billing failure into a permanent stop. */
-async function openaiImageResult(r, what) {
+/* WHICH RUNG FAILED, AND WHY. Returns the picture, or a REASON so the caller knows whether to
+   try the next model or give up: "model" means this name is not one this account can use and the
+   next rung is worth a try; anything else means trying another name will not help. */
+async function openaiImageResult(r, what, model) {
   if (!r.ok) {
     const txt = (await r.text().catch(() => "")).slice(0, 400);
-    /* A model name this account cannot use is a CONFIGURATION fault, not a money fault: retire
-       that rung so the next request starts on the one below it, and leave the budget alone. */
+    // A name this account cannot use is a CONFIGURATION fault, not a money fault.
     if ((r.status === 400 || r.status === 404) && /model/i.test(txt)) {
-      const dead = openaiPickImageModel();
-      if (OPENAI_IMAGE_MODELS.length > 1 && !_oaiModelDead.has(dead)) {
-        _oaiModelDead.add(dead);
-        console.warn("[firas] OpenAI image model " + dead + " unavailable - dropping to " + openaiPickImageModel());
-      }
-      return null;
+      console.warn("[firas] OpenAI image model " + model + " rejected: " + txt);
+      return { reason: "model" };
     }
-    if (r.status === 401) openaiImagesExhausted("HTTP 401 - the API key is not valid");
-    else if (r.status === 402) openaiImagesExhausted("HTTP 402");
-    else if (r.status === 429 && /insufficient_quota|billing|exceeded your current quota/i.test(txt)) {
+    if (r.status === 401) { openaiImagesExhausted("HTTP 401 - the API key is not valid"); return { reason: "auth" }; }
+    if (r.status === 402) { openaiImagesExhausted("HTTP 402"); return { reason: "money" }; }
+    if (r.status === 429 && /insufficient_quota|billing|exceeded your current quota/i.test(txt)) {
       openaiImagesExhausted("HTTP 429 insufficient_quota");
-    } else {
-      // A plain 429 is rate limiting, not bankruptcy — leave the engine on and use the next one.
-      console.error("[firas] OpenAI " + what + " HTTP " + r.status + ": " + txt);
+      return { reason: "money" };
     }
-    return null;
+    // A plain 429 is rate limiting, not bankruptcy — leave the engine on.
+    console.error("[firas] OpenAI " + what + " (" + model + ") HTTP " + r.status + ": " + txt);
+    return { reason: "http" };
   }
   const j = await r.json().catch(() => null);
   const b64 = j && j.data && j.data[0] && j.data[0].b64_json;
-  if (!b64) { console.error("[firas] OpenAI " + what + " returned no image"); return null; }
+  if (!b64) { console.error("[firas] OpenAI " + what + " (" + model + ") returned no image"); return { reason: "empty" }; }
   // Edits ask for JPEG (see editImageOpenAI); generations keep the default PNG.
   return { buf: Buffer.from(b64, "base64"), mime: what === "edit" ? "image/jpeg" : "image/png" };
 }
 
-/** Generate. Returns {buf, mime} or null — null means "use the next engine", never an error. */
+/* EVERY RUNG IS TRIED IN THIS REQUEST, not one rung per request.
+
+   The first version remembered a rejected model in a module-level set and let the NEXT request
+   start lower. That is fine on a long-lived server and useless on the edge, where an isolate is
+   born and discarded around a single request: the memory dies with it, so a wrong first name is
+   retried forever and the working one below it is never reached. Looping here costs one extra
+   fast call the first time and always lands on a model that works.
+
+   Only a "model" verdict continues to the next rung. A billing or auth failure means no other
+   name will help either, so it stops immediately rather than burning the whole ladder. */
 async function generateImageOpenAI(prompt, w, h) {
   if (openaiImageBudgetLeft() < openaiImageMaxCost()) return null;
-  const ac = new AbortController();
-  const to = setTimeout(() => ac.abort(), 120_000);   // gpt-image at medium is not fast
-  try {
-    const r = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
-      body: JSON.stringify({
-        model: openaiPickImageModel(),
-        prompt: String(prompt || "").slice(0, 4000),
-        size: openaiImageSize(w, h),
-        quality: OPENAI_IMAGE_QUALITY,
-        n: 1,
-      }),
-      signal: ac.signal,
-    });
-    return await openaiImageResult(r, "image");
-  } catch (_) { return null; }
-  finally { clearTimeout(to); }
+  for (const model of OPENAI_IMAGE_MODELS) {
+    const ac = new AbortController();
+    const to = setTimeout(() => ac.abort(), 120_000);   // gpt-image at medium is not fast
+    let out = null;
+    try {
+      const r = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
+        body: JSON.stringify({
+          model,
+          prompt: String(prompt || "").slice(0, 4000),
+          size: openaiImageSize(w, h),
+          quality: OPENAI_IMAGE_QUALITY,
+          n: 1,
+        }),
+        signal: ac.signal,
+      });
+      out = await openaiImageResult(r, "image", model);
+    } catch (e) { out = { reason: "network" }; }
+    finally { clearTimeout(to); }
+    if (out && out.buf) { _oaiModelDead.delete(model); return out; }
+    if (!out || out.reason !== "model") return null;      // another name will not help
+    _oaiModelDead.add(model);                             // remembered for this process too
+  }
+  console.error("[firas] no OpenAI image model in the ladder was accepted: " + OPENAI_IMAGE_MODELS.join(", "));
+  return null;
 }
 
 /** EDIT an existing picture from an instruction — "make the sky purple", "remove the car".
-    This is the one thing no other engine in the chain can do: Cloudflare, Gemini, Hugging Face
-    and pollinations all generate from text alone, so an edit request could only ever be
-    answered with a description of the image or a brand-new picture that ignored it. */
+    This is the one thing no other engine in the chain can do: they all generate from text alone,
+    so an edit request could only ever be answered with a description of the picture. Walks the
+    same ladder as generation, for the same reason. */
 async function editImageOpenAI(prompt, imageBuf, mime) {
   if (openaiImageBudgetLeft() < openaiImageMaxCost()) return null;
   if (!imageBuf || !imageBuf.length) return null;
-  const ac = new AbortController();
-  const to = setTimeout(() => ac.abort(), 180_000);   // edits are slower than generations
-  try {
-    const fd = new FormData();
-    fd.append("model", openaiPickImageModel());
-    fd.append("prompt", String(prompt || "").slice(0, 4000));
-    fd.append("quality", OPENAI_IMAGE_QUALITY);
-    fd.append("n", "1");
-    /* JPEG, not PNG. An edited 1024px PNG is ~1.5 MB; the same picture as a quality-85 JPEG is
-       nearer 200 KB. That matters because the edge backend has no disk and has to keep the
-       result in the database to serve it back, and it costs nothing visible on a photo edit. */
-    fd.append("output_format", "jpeg");
-    fd.append("output_compression", "85");
-    /* The API infers the type from the filename as well as the blob, so both are set — a
-       mismatch there is rejected as "invalid image" with no useful message. */
-    const type = /jpe?g/i.test(mime || "") ? "image/jpeg" : /webp/i.test(mime || "") ? "image/webp" : "image/png";
-    const ext = type === "image/jpeg" ? "jpg" : type === "image/webp" ? "webp" : "png";
-    fd.append("image", new Blob([imageBuf], { type }), "source." + ext);
-    const r = await fetch("https://api.openai.com/v1/images/edits", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + OPENAI_API_KEY },   // no Content-Type: FormData sets the boundary
-      body: fd,
-      signal: ac.signal,
-    });
-    return await openaiImageResult(r, "edit");
-  } catch (_) { return null; }
-  finally { clearTimeout(to); }
+  for (const model of OPENAI_IMAGE_MODELS) {
+    const ac = new AbortController();
+    const to = setTimeout(() => ac.abort(), 180_000);   // edits are slower than generations
+    let out = null;
+    try {
+      const fd = new FormData();
+      fd.append("model", model);
+      fd.append("prompt", String(prompt || "").slice(0, 4000));
+      fd.append("quality", OPENAI_IMAGE_QUALITY);
+      fd.append("n", "1");
+      /* JPEG, not PNG. An edited 1024px PNG is ~1.5 MB; the same picture at quality 85 is nearer
+         200 KB, which is what lets the edge keep it in the database and serve it back by key. */
+      fd.append("output_format", "jpeg");
+      fd.append("output_compression", "85");
+      /* The API infers the type from the filename as well as the blob, and a mismatch there is
+         rejected as a bare "invalid image" with nothing to debug. */
+      const type = /jpe?g/i.test(mime || "") ? "image/jpeg" : /webp/i.test(mime || "") ? "image/webp" : "image/png";
+      const ext = type === "image/jpeg" ? "jpg" : type === "image/webp" ? "webp" : "png";
+      fd.append("image", new Blob([imageBuf], { type }), "source." + ext);
+      const r = await fetch("https://api.openai.com/v1/images/edits", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + OPENAI_API_KEY },   // FormData sets its own boundary
+        body: fd,
+        signal: ac.signal,
+      });
+      out = await openaiImageResult(r, "edit", model);
+    } catch (e) { out = { reason: "network" }; }
+    finally { clearTimeout(to); }
+    if (out && out.buf) { _oaiModelDead.delete(model); return out; }
+    if (!out || out.reason !== "model") return null;
+    _oaiModelDead.add(model);
+  }
+  return null;
 }
 
 async function generateImageCloudflare(prompt, w, h) {
