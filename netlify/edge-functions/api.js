@@ -4298,20 +4298,27 @@ export default async (request, context) => {
             signal: ac.signal,
           });
           const body = await r.text().catch(() => "");
-          let note = "", shape = "";
+          let note = "", shape = "", imageLen = 0;
           try {
             const j = JSON.parse(body);
             note = (j.error || {}).message || "";
-            /* CHECK THE PAYLOAD, NOT JUST THE STATUS. The first version of this probe stopped at
-               r.ok and reported "OpenAI works" while the real path was getting a 200 whose body it
-               could not read — which sent us looking for the fault everywhere except here. */
-            const d = j.data && j.data[0];
+            /* CHECK THE VALUE, NOT JUST THE KEY. Naming the keys was still not enough: "b64_json
+               is present" and "b64_json holds a picture" are different claims and only the second
+               one means anything. Deliberately no regular expression here — the previous version
+               used one and shipped with corrupted escape bytes inside it, so it matched nothing
+               and called a perfectly good response unreadable. A plain length check cannot rot
+               that way. */
+            const d = (j.data && j.data[0]) || null;
             shape = d ? Object.keys(d).join(",") : "no data[]";
+            const v = d ? (d.b64_json || d.url || "") : "";
+            imageLen = String(v).length;
           } catch (_) { note = body.slice(0, 200); shape = "unparseable"; }
-          const usable = r.ok && /b64_json|url/.test(shape);
+          const usable = r.ok && imageLen > 100;
           out.openai.tried.push({
-            model, status: r.status, ok: r.ok, usable, payload: shape,
-            error: r.ok ? (usable ? "" : "200 but the body carries no image we can read") : note.slice(0, 300),
+            model, status: r.status, ok: r.ok, usable, payload: shape, imageChars: imageLen,
+            error: r.ok
+              ? (usable ? "" : "200 and the keys look right, but the image value is " + imageLen + " characters")
+              : note.slice(0, 300),
           });
           if (usable) break;                   // this rung genuinely works
         } catch (e) {
