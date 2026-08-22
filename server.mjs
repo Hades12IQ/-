@@ -2575,7 +2575,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
    a clean 400 in under a second — nothing like the silent hang an unhosted Ollama model causes —
    so the cost of guessing wrong here is one fast failure, and it is remembered so only the first
    request pays it. Comma-separated, strongest first. */
-const OPENAI_IMAGE_MODELS = String(process.env.OPENAI_IMAGE_MODEL || "gpt-image-2,gpt-image-1")
+const OPENAI_IMAGE_MODELS = String(process.env.OPENAI_IMAGE_MODEL || "gpt-image-2")
   .split(",").map((m) => m.trim()).filter(Boolean);
 const _oaiModelDead = new Set();
 function openaiPickImageModel() {

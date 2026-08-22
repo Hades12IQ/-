@@ -62,7 +62,41 @@ async function dbPut(path, value, token) {
   if (!r.ok) throw new Error("db put " + r.status + " " + (await r.text()).slice(0, 200));
 }
 
-/** One OpenAI attempt, with the long budget. Returns { b64, mime } or { reason, detail }. */
+/** Read one OpenAI image reply. Returns { b64, mime } or { reason, detail } — never throws. */
+async function parseImageReply(r, model) {
+  const text = await r.text();
+  if (!r.ok) {
+    let msg = text.slice(0, 300);
+    try { msg = (JSON.parse(text).error || {}).message || msg; } catch { /* keep the raw text */ }
+    const modelFault = (r.status === 400 || r.status === 404) && /model/i.test(msg);
+    return { reason: modelFault ? "model" : "http", status: r.status, detail: model + ": " + msg };
+  }
+  let j = null; try { j = JSON.parse(text); } catch { /* handled below */ }
+  const d = (j && j.data && j.data[0]) || null;
+  if (d && d.b64_json) return { b64: d.b64_json, mime: "image/png" };
+  /* Some models answer with a link rather than the bytes. */
+  if (d && d.url) {
+    const img = await fetch(d.url);
+    if (img.ok) {
+      const buf = Buffer.from(await img.arrayBuffer());
+      if (buf.length) return { b64: buf.toString("base64"), mime: img.headers.get("content-type") || "image/png" };
+    }
+    return { reason: "link", detail: "image link returned HTTP " + img.status };
+  }
+  return { reason: "empty", detail: "payload keys: " + (d ? Object.keys(d).join(",") : "no data[]") };
+}
+
+/** Trust the BYTES, not the label: a JPEG announced as png comes back as a bare "invalid image". */
+function sniffImageType(buf) {
+  if (buf.length > 12) {
+    if (buf[0] === 0xFF && buf[1] === 0xD8) return "image/jpeg";
+    if (buf[0] === 0x89 && buf[1] === 0x50) return "image/png";
+    if (buf.slice(0, 4).toString("ascii") === "RIFF" && buf.slice(8, 12).toString("ascii") === "WEBP") return "image/webp";
+  }
+  return "image/png";
+}
+
+/** Make a new picture from a description. */
 async function render(model, prompt, size, quality) {
   const ac = new AbortController();
   const to = setTimeout(() => { try { ac.abort(); } catch { /* already gone */ } }, RENDER_TIMEOUT_MS);
@@ -73,30 +107,46 @@ async function render(model, prompt, size, quality) {
       body: JSON.stringify({ model, prompt: String(prompt || "").slice(0, 4000), size, quality, n: 1 }),
       signal: ac.signal,
     });
-    const text = await r.text();
-    if (!r.ok) {
-      let msg = text.slice(0, 300);
-      try { msg = (JSON.parse(text).error || {}).message || msg; } catch { /* keep the raw text */ }
-      const modelFault = (r.status === 400 || r.status === 404) && /model/i.test(msg);
-      return { reason: modelFault ? "model" : "http", status: r.status, detail: msg };
-    }
-    let j = null; try { j = JSON.parse(text); } catch { /* handled below */ }
-    const d = (j && j.data && j.data[0]) || null;
-    if (d && d.b64_json) return { b64: d.b64_json, mime: "image/png" };
-    /* Some models answer with a link rather than the bytes. */
-    if (d && d.url) {
-      const img = await fetch(d.url);
-      if (img.ok) {
-        const buf = Buffer.from(await img.arrayBuffer());
-        if (buf.length) return { b64: buf.toString("base64"), mime: img.headers.get("content-type") || "image/png" };
-      }
-      return { reason: "link", detail: "image link returned HTTP " + img.status };
-    }
-    return { reason: "empty", detail: "payload keys: " + (d ? Object.keys(d).join(",") : "no data[]") };
+    return await parseImageReply(r, model);
   } catch (e) {
     return { reason: ac.signal.aborted ? "timeout" : "network", detail: String((e && e.message) || e) };
   } finally { clearTimeout(to); }
 }
+
+/** Change an existing picture from an instruction. Same 11-minute budget as a fresh render —
+    an edit is a full re-render internally and is no faster, which is exactly why it belongs
+    here rather than inside an edge function's stopwatch. */
+async function renderEdit(model, prompt, srcB64, quality) {
+  const ac = new AbortController();
+  const to = setTimeout(() => { try { ac.abort(); } catch { /* already gone */ } }, RENDER_TIMEOUT_MS);
+  try {
+    const buf = Buffer.from(String(srcB64 || ""), "base64");
+    if (!buf.length) return { reason: "empty", detail: "the source picture was unreadable" };
+    const type = sniffImageType(buf);
+    const ext = type === "image/jpeg" ? "jpg" : type === "image/webp" ? "webp" : "png";
+    const fd = new FormData();
+    fd.append("model", model);
+    fd.append("prompt", String(prompt || "").slice(0, 4000));
+    fd.append("quality", quality);
+    fd.append("n", "1");
+    // JPEG so the result is small enough to keep in the database and serve back by key.
+    fd.append("output_format", "jpeg");
+    fd.append("output_compression", "85");
+    fd.append("image", new Blob([buf], { type }), "source." + ext);
+    const r = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + OPENAI_API_KEY },   // FormData sets its own boundary
+      body: fd,
+      signal: ac.signal,
+    });
+    const out = await parseImageReply(r, model);
+    if (out.b64) out.mime = "image/jpeg";
+    return out;
+  } catch (e) {
+    return { reason: ac.signal.aborted ? "timeout" : "network", detail: String((e && e.message) || e) };
+  } finally { clearTimeout(to); }
+}
+
 
 export default async (req) => {
   if (!INTERNAL_SECRET || req.headers.get("x-firas-internal") !== INTERNAL_SECRET) {
@@ -121,19 +171,29 @@ export default async (req) => {
   };
   await save({ phase: "running" });
 
-  const models = String(job.models || "gpt-image-2,gpt-image-1").split(",").map((m) => m.trim()).filter(Boolean);
+  const models = String(job.models || "gpt-image-2").split(",").map((m) => m.trim()).filter(Boolean);
   const started = Date.now();
   let last = null;
 
+  /* An EDIT and a fresh render take the same road from here: same models, same budget, same
+     storage, same charge. Internally an edit IS a re-render, so it is no faster and belongs on
+     this side of the clock rather than inside an edge function's stopwatch. */
+  const isEdit = job.kind === "edit";
+
   for (const model of models) {
-    const out = await render(model, job.prompt, job.size || "1024x1024", job.quality || "medium");
+    const out = isEdit
+      ? await renderEdit(model, job.prompt, job.src, job.quality || "medium")
+      : await render(model, job.prompt, job.size || "1024x1024", job.quality || "medium");
     if (out.b64) {
       /* The picture is stored where the edge already serves finished images from, so the browser
          asks for it with the same /api/image?key= it uses for an edit. */
       try { await dbPut(`imgEdits/${userId}/${jobId}`, { b64: out.b64, mime: out.mime }, token); }
       catch (e) { await save({ phase: "fail", error: "could not store the picture: " + ((e && e.message) || e) }); return new Response("ok"); }
+      /* The source picture has done its work and is megabytes wide — drop it rather than
+         leaving a copy of every edited photo sitting in the job record forever. */
+      if (isEdit) job.src = null;
       await save({
-        phase: "done", key: jobId, model, quality: job.quality || "medium",
+        phase: "done", key: jobId, model, quality: job.quality || "medium", kind: job.kind || "image",
         ms: Date.now() - started, bytes: Math.round(out.b64.length * 0.75),
       });
       return new Response("ok");
@@ -143,6 +203,7 @@ export default async (req) => {
     if (out.reason !== "model") break;
   }
 
+  if (isEdit) job.src = null;
   await save({
     phase: "fail",
     error: (last && (last.detail || last.reason)) || "no image",

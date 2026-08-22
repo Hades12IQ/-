@@ -2470,7 +2470,7 @@ const OPENAI_API_KEY = env("OPENAI_API_KEY") || "";
    a clean 400 in under a second — nothing like the silent hang an unhosted Ollama model causes —
    so the cost of guessing wrong here is one fast failure, and it is remembered so only the first
    request pays it. Comma-separated, strongest first. */
-const OPENAI_IMAGE_MODELS = String(env("OPENAI_IMAGE_MODEL") || "gpt-image-2,gpt-image-1")
+const OPENAI_IMAGE_MODELS = String(env("OPENAI_IMAGE_MODEL") || "gpt-image-2")
   .split(",").map((m) => m.trim()).filter(Boolean);
 const _oaiModelDead = new Set();
 function openaiPickImageModel() {
@@ -2637,9 +2637,10 @@ async function openaiImageResult(r, what, model) {
 async function generateImageOpenAI(prompt, w, h) {
   if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return null;
   const size = openaiImageSize(w, h);
-  const wanted = String(OPENAI_IMAGE_QUALITY || "medium").toLowerCase();
-  // The configured quality first, then low as the fast retry — unless low IS the configured one.
-  const qualities = wanted === "low" ? ["low"] : [wanted, "low"];
+  /* ONE quality, the configured one. The drop to low existed only because an edge function
+     could not wait for a medium render; the background runner can, so a picture is never quietly
+     downgraded to beat a stopwatch any more. */
+  const qualities = [String(OPENAI_IMAGE_QUALITY || "medium").toLowerCase()];
 
   for (const model of OPENAI_IMAGE_MODELS) {
     let modelRejected = false;
@@ -4329,7 +4330,7 @@ export default async (request, context) => {
          while a fast low-quality one never does. */
       for (const model of OPENAI_IMAGE_MODELS) {
         let settled = false;
-        for (const q of [OPENAI_IMAGE_QUALITY, "low"]) {
+        for (const q of [OPENAI_IMAGE_QUALITY]) {
           const ac = new AbortController();
           const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 60000);
           const t0 = Date.now();
@@ -4411,6 +4412,11 @@ export default async (request, context) => {
       const w = Math.min(1280, Math.max(256, parseInt((b && b.w), 10) || 1024));
       const h = Math.min(1280, Math.max(256, parseInt((b && b.h), 10) || 1024));
       const size = openaiImageSize(w, h);
+      /* An attached picture turns this into an EDIT. Same road from here — same allowance, same
+         ceiling, same storage — because an edit IS a re-render internally and costs the same. */
+      const srcB64 = String((b && b.image) || "").replace(/^data:[^,]*,/, "");
+      const isEdit = srcB64.length > 0;
+      if (isEdit && srcB64.length > 27000000) return json({ error: "bad_image" }, 400);
 
       if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return json({ error: "no_budget" }, 503);
 
@@ -4423,13 +4429,19 @@ export default async (request, context) => {
         return json({ error: "daily_limit", limit: IMAGE_DAILY_LIMIT }, 429);
       }
 
-      const jobId = slot;                       // same picture asked for twice reuses the job
+      /* Keyed on the source as well, so editing two different pictures with the same words
+         cannot collide - and asking for the same edit twice still reuses the finished one. */
+      const jobId = isEdit
+        ? await imgSlotKey("edit|" + prompt, 0, 0, await imgSlotKey(srcB64.slice(0, 200000), 0, 0, ""))
+        : slot;
       const already = await oaiEditLoad(user.id, jobId);
       if (already) return json({ ok: true, jobId, phase: "done", key: jobId });
 
       await dbPut(`imgJobs/${dbKey(user.id)}/${dbKey(jobId)}`, {
         id: jobId, prompt, size, quality: OPENAI_IMAGE_QUALITY,
         models: OPENAI_IMAGE_MODELS.join(","),
+        kind: isEdit ? "edit" : "image",
+        src: isEdit ? srcB64 : null,          // the runner drops this the moment it is done with it
         phase: "queued", createdAt: Date.now(), updatedAt: Date.now(),
       });
       // Fire and forget — the runner answers immediately and keeps going without us.

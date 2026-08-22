@@ -1837,21 +1837,19 @@ function detectImageEditRequest(text) {
     the chat card can point at, or an object describing WHY it could not be done — the caller
     turns that into a sentence rather than silently falling back to a description. */
 async function requestImageEdit(prompt, b64, mime, signal) {
+  /* An edit goes down the SAME background pipeline as a fresh render. Internally an edit is a
+     full re-render and takes just as long, so it needs the same fifteen-minute budget rather
+     than an edge function's stopwatch — which is what used to make it give up. */
+  const key = await requestImageJob(prompt, 1024, 1024, signal, b64);
+  if (key) return { key };
+  /* The job route refuses for exactly one reason worth naming to the user: the daily allowance.
+     Everything else is a render that did not produce a picture. */
   try {
-    const r = await fetch("/api/image/edit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
-      body: JSON.stringify({ prompt: String(prompt || "").slice(0, 1000), image: b64, mime: mime || "image/png" }),
-      signal,
-    });
-    if (r.ok) {
-      const j = await r.json().catch(() => null);
-      if (j && j.ok && j.key) return { key: j.key };
-    }
-    const j = await r.json().catch(() => null);
-    return { error: (j && j.error) || ("http_" + r.status), limit: j && j.limit };
-  } catch (_) { return { error: "network" }; }
+    const probe = await fetch("/api/image/quota", { method: "POST", credentials: "same-origin" });
+    const q = probe.ok ? await probe.json().catch(() => null) : null;
+    if (q && q.ok === false) return { error: "daily_limit", limit: q.limit };
+  } catch (_) { /* fall through to the generic message */ }
+  return { error: "edit_failed" };
 }
 
 /** What to say when an edit could not be performed. Never pretends it worked. */
@@ -1956,14 +1954,16 @@ function stripImageMetaBlock(s) {
     Resolves to a cache key the image card points at, or null when the job path is not available
     (no background secret, no database, no key) — the caller then falls back to the direct URL and
     behaves exactly as it did before. */
-async function requestImageJob(prompt, w, h, signal) {
+async function requestImageJob(prompt, w, h, signal, srcB64) {
   let start = null;
   try {
     const r = await fetch("/api/image/job", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({ prompt: String(prompt || "").slice(0, 1000), w, h }),
+      body: JSON.stringify(srcB64
+        ? { prompt: String(prompt || "").slice(0, 1000), w, h, image: srcB64 }
+        : { prompt: String(prompt || "").slice(0, 1000), w, h }),
       signal,
     });
     if (!r.ok) return null;                       // 503 = not configured, 429 = out of allowance
