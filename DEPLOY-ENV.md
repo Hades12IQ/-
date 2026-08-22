@@ -114,7 +114,25 @@ Without one of these, signup links are never delivered.
 
 ---
 
-## 6. Model choice — leave alone unless you know the model exists
+## 6. Model choice — a LADDER, safe to aim at the strongest model
+
+Every `OLLAMA_MODEL_*` value accepts a **comma-separated list, strongest first**. The first rung
+that is actually answering is the one used:
+
+```
+OLLAMA_MODEL_MAX="deepseek-v3.1:671b-cloud,qwen3-coder:480b-cloud,gpt-oss:120b-cloud"
+```
+
+A model name the cloud does not host does **not** return 404 — it accepts the request and goes
+silent. That used to hang the tier for five minutes and take the rescue chain down with it, which
+is why this section used to say "leave alone unless you know the model exists". It no longer
+applies: a rung that sends nothing within `OLLAMA_FIRST_BYTE_MS` is abandoned, marked unavailable
+for `OLLAMA_MODEL_DEAD_MS`, and skipped — so exactly ONE request pays the timeout and everything
+after it goes straight to the next rung. The mark expires on its own, so the tier climbs back the
+moment the cloud starts hosting that model. No redeploy, no code change.
+
+**So: put the best model you have access to at the front of the list, and leave a known-good one
+at the back.** A wrong guess costs one slow answer, not a broken tier.
 
 | Variable | Default |
 |---|---|
@@ -123,6 +141,8 @@ Without one of these, signup links are never delivered.
 | `OLLAMA_MODEL_ULTRA` | `qwen3-coder:480b-cloud` |
 | `OLLAMA_MODEL_MAX` | `qwen3-coder:480b-cloud` |
 | `OLLAMA_MODEL_MAX_FALLBACK` | `gpt-oss:120b-cloud` |
+| `OLLAMA_FIRST_BYTE_MS` | `45000` — how long a rung may stay silent before it is dropped |
+| `OLLAMA_MODEL_DEAD_MS` | `1800000` — how long a silent model stays skipped (30 min) |
 | `OLLAMA_MODEL_VISION` | `gemma3:27b-cloud` |
 | `OLLAMA_HOST` | `https://ollama.com` |
 | `GEMINI_TEXT_MODEL` | `gemini-2.5-flash,gemini-flash-latest` |

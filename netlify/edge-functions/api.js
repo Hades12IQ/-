@@ -184,6 +184,30 @@ function sniffImageMime(b) { if (!b || b.length < 4) return "image/jpeg"; if (b[
    back as "I couldn't reach the service" with nothing kept. Silence is what indicates a dead
    upstream, so every chunk rearms the clock; UPSTREAM_MAX_MS is the runaway backstop. */
 const UPSTREAM_IDLE_MS = Number(env("REQUEST_IDLE_TIMEOUT_MS")) || Number(env("REQUEST_TIMEOUT_MS")) || 300000;
+/* FIRST-BYTE DEADLINE + MODEL LADDER — mirrors server.mjs; see the long note there.
+   In short: a model name the cloud does not host does NOT 404, it accepts and goes silent, so a
+   tier pointed at a stronger model sat mute until the request died. The 12s head-timeout below
+   does not catch it, because the headers arrive normally and it is the BODY that never comes.
+   Past this deadline the attempt is abandoned, the model is marked unavailable, and the caller's
+   rescue chain answers. Every OLLAMA_MODEL_* setting takes a comma-separated ladder, strongest
+   first, so the tier self-heals downward and climbs back when the mark expires. */
+const OLLAMA_FIRST_BYTE_MS = Number(env("OLLAMA_FIRST_BYTE_MS")) || 45000;
+const MODEL_DEAD_MS = Number(env("OLLAMA_MODEL_DEAD_MS")) || 1800000;
+const _modelDead = new Map();
+function modelMarkDead(model) {
+  if (!model) return;
+  _modelDead.set(model, Date.now() + MODEL_DEAD_MS);
+}
+function modelLadder(value, fallback) {
+  const list = String(value == null || value === "" ? fallback : value)
+    .split(",").map((m) => m.trim()).filter(Boolean);
+  return list.length ? list : [String(fallback)];
+}
+function pickModel(ladder) {
+  const now = Date.now();
+  for (const m of ladder) if (now >= (_modelDead.get(m) || 0)) return m;
+  return ladder[0];
+}
 const UPSTREAM_MAX_MS = Number(env("REQUEST_MAX_MS")) || 1800000; // 30 min hard ceiling
 
 const COOKIE_NAME = "firas_session";
@@ -611,15 +635,15 @@ const ANN_VID_OK = (s) => typeof s === "string" &&
 const TIERS = {
   // EVERY tier has a fallbackModel on a DIFFERENT hosted pool, so a busy/saturated primary degrades
   // to a working model instead of surfacing "The Firas AI engine is busy".
-  mini:  { model: env("OLLAMA_MODEL_MINI")  || "gpt-oss:120b-cloud",     temperature: 0.5, num_predict: 16384,  fallbackModel: "qwen3-coder:480b-cloud" },
-  pro:   { model: env("OLLAMA_MODEL_PRO")   || "gpt-oss:120b-cloud",     temperature: 0.7, num_predict: 131072, fallbackModel: "qwen3-coder:480b-cloud" },
+  mini:  { models: modelLadder(env("OLLAMA_MODEL_MINI"),  "gpt-oss:120b-cloud"),     get model() { return pickModel(this.models); }, temperature: 0.5, num_predict: 16384,  fallbackModel: "qwen3-coder:480b-cloud" },
+  pro:   { models: modelLadder(env("OLLAMA_MODEL_PRO"),   "gpt-oss:120b-cloud"),     get model() { return pickModel(this.models); }, temperature: 0.7, num_predict: 131072, fallbackModel: "qwen3-coder:480b-cloud" },
   /* ultra is the CODE tier and had HALF the ceiling of the chat tier (65536 vs pro's
      131072), which is backwards: a chat answer stops when the point is made, but a
      single-file build has a hard floor — it is only useful if it reaches </html>. An
      ambitious brief (a Three.js globe with real geometry, shaders, country data and UI)
      runs to thousands of lines, and the budget was the binding constraint long before
      the model ran out of things to say. Raised to match pro. */
-  ultra: { model: env("OLLAMA_MODEL_ULTRA") || "qwen3-coder:480b-cloud", temperature: 0.8, num_predict: 131072, fallbackModel: "gpt-oss:120b-cloud" },
+  ultra: { models: modelLadder(env("OLLAMA_MODEL_ULTRA"), "qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.8, num_predict: 131072, fallbackModel: "gpt-oss:120b-cloud" },
   // Max = strongest general/reasoning model (671B), gated by a per-user daily cap.
   // Env-overridable so the model can be swapped without a redeploy if Ollama's
   // cloud catalog rotates. fallbackModel degrades to a known-good hosted model
@@ -628,7 +652,7 @@ const TIERS = {
      every document build, i.e. exactly the work that needs the most room. The budget, not the
      model, was ending a ten-problem PDF early. Matched to pro/ultra; Ollama clamps to what the
      chosen model actually supports, so raising it cannot error. */
-  max:   { model: env("OLLAMA_MODEL_MAX") || "qwen3-coder:480b-cloud", temperature: 0.7, num_predict: 131072, fallbackModel: env("OLLAMA_MODEL_MAX_FALLBACK") || "gpt-oss:120b-cloud", capped: false },
+  max:   { models: modelLadder(env("OLLAMA_MODEL_MAX"),   "qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.7, num_predict: 131072, fallbackModel: env("OLLAMA_MODEL_MAX_FALLBACK") || "gpt-oss:120b-cloud", capped: false },
 };
 // Vision model. The edge ALWAYS talks to Ollama cloud, which does NOT host the
 // local-only qwen2.5vl — so use a CLOUD-hosted multimodal model. gemma3:27b-cloud
@@ -1756,6 +1780,20 @@ async function streamOllamaInto(enc, messages, tier, think, signal, modelOverrid
   const t = TIERS[tier]; const model = modelOverride || t.model;
   const thinkVal = think ? (/gpt-oss/i.test(model) ? "high" : true) : false;
   const reqBody = JSON.stringify({ model, messages, stream: true, think: thinkVal, options: { temperature: t.temperature, num_predict: t.num_predict } });
+  /* The 12s head-timeout below covers only the RESPONSE HEADERS. A model the cloud does not host
+     returns 200 immediately and then never writes a body, so the timeout passes and the reader
+     below waits forever. This deadline covers the first BYTE, which is the thing that actually
+     proves the model is alive. */
+  let firstByte = false, starved = false;
+  const fbAc = new AbortController();
+  const fbTimer = setTimeout(() => {
+    if (firstByte) return;
+    starved = true;
+    modelMarkDead(model);
+    try { fbAc.abort("first-byte"); } catch (_) {}
+  }, OLLAMA_FIRST_BYTE_MS);
+  const settle = () => { clearTimeout(fbTimer); };
+
   let upstream = null;
   // FAST-FAIL: short backoff + a 12s head-timeout per try. When the Ollama pool is saturated we
   // abandon it in ~2-3s and let a fast provider (Gemini) answer. A QUOTA hit (429/402/403) marks
@@ -1773,6 +1811,7 @@ async function streamOllamaInto(enc, messages, tier, think, signal, modelOverrid
       const ht = setTimeout(() => { try { hc.abort(); } catch (_) {} }, 12000);
       const onOuter = () => { try { hc.abort(); } catch (_) {} };
       try { signal.addEventListener("abort", onOuter, { once: true }); } catch (_) {}
+      try { fbAc.signal.addEventListener("abort", onOuter, { once: true }); } catch (_) {}
       try {
         upstream = await fetch(OLLAMA_CHAT_URL, { method: "POST", headers, body: reqBody, signal: hc.signal });
       } finally { clearTimeout(ht); try { signal.removeEventListener("abort", onOuter); } catch (_) {} }
@@ -1785,14 +1824,15 @@ async function streamOllamaInto(enc, messages, tier, think, signal, modelOverrid
         if (OLLAMA_KEYS.some((k) => k !== olKey && Date.now() >= (_olCooldown.get(k) || 0))) continue;   // fresh key → no backoff
         break;   // NO healthy key left → bail now; the rescue chain (Gemini → CF → OpenRouter → pollinations) answers fast
       }
-    } catch (e) { if (signal.aborted) return true; upstream = null; }
+    } catch (e) { if (starved) { settle(); return false; } if (signal.aborted) { settle(); return true; } upstream = null; }
     if (attempt < attemptsMax - 1) await new Promise((r) => setTimeout(r, (was429 ? BACKOFF_429 : BACKOFF)[Math.min(attempt, 1)]));
   }
-  if (!upstream) return false; // unreachable -> caller falls back
+  if (!upstream) { settle(); return false; } // unreachable -> caller falls back
   const reader = upstream.body.getReader(); let buffer = "";
   try {
     while (true) {
       const { done, value } = await reader.read();
+      if (starved) { settle(); try { reader.cancel(); } catch (_) {} return false; }
       if (done) break;
       buffer += td.decode(value, { stream: true });
       let nl;
@@ -1803,14 +1843,23 @@ async function streamOllamaInto(enc, messages, tier, think, signal, modelOverrid
         const msg = obj.message || {};
         const content = msg.content || "";
         const reasoning = think ? (msg.thinking || "") : "";
-        if (content || reasoning) { const f = sseFrame(content, reasoning); if (f) enc(f); }
-        if (obj.done) return true;
+        if (content || reasoning) {
+          if (!firstByte) { firstByte = true; clearTimeout(fbTimer); }   // it spoke
+          const f = sseFrame(content, reasoning); if (f) enc(f);
+        }
+        if (obj.done) { settle(); return true; }
       }
     }
     const tail = buffer.trim();
     if (tail) { try { const obj = JSON.parse(tail); const msg = obj.message || {}; const r = think ? (msg.thinking || "") : ""; if (msg.content || r) { const f = sseFrame(msg.content || "", r); if (f) enc(f); } } catch (_) {} }
+    settle();
     return true;
-  } catch (e) { if (signal.aborted) return true; return true; }
+  } catch (e) {
+    settle();
+    // Nothing was written yet, so the caller can still rescue cleanly.
+    if (starved || (!firstByte && !signal.aborted)) return false;
+    return true;
+  }
 }
 
 // Streaming <think>…</think> stripper for reasoning models (qwq / deepseek-r1): suppress the

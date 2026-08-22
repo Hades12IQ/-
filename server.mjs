@@ -52,6 +52,55 @@ const FALLBACK_MODEL = "openai";
    UPSTREAM_MAX_MS is the runaway backstop and is deliberately far above any real answer. */
 const UPSTREAM_IDLE_MS = Number(process.env.REQUEST_IDLE_TIMEOUT_MS) || Number(process.env.REQUEST_TIMEOUT_MS) || 300_000;
 const UPSTREAM_MAX_MS = Number(process.env.REQUEST_MAX_MS) || 1_800_000; // 30 min hard ceiling
+/* FIRST-BYTE DEADLINE — separate from the silence clock above, and the reason a stronger model
+   is safe to point a tier at.
+
+   UPSTREAM_IDLE_MS measures SILENCE and is five minutes, which is right for a model that IS
+   generating: a long build pauses between tokens and must not be cut. It is badly wrong for a
+   model that will never speak at all. A model name Ollama Cloud does not host does not answer
+   404 — it accepts the request and holds the connection open. So the tier sat mute for five
+   minutes and then the whole request died, rescue chain included, because every upstream shared
+   one AbortController. That is what "Max hung" was when this tier was last pointed at a bigger
+   model, and it is the only thing that made upgrading risky.
+
+   A hosted model that is working emits its first token in seconds. Past this deadline the
+   attempt is abandoned and the caller's rescue chain answers on a still-live signal. */
+const OLLAMA_FIRST_BYTE_MS = Number(process.env.OLLAMA_FIRST_BYTE_MS) || 45_000;
+
+/* MODEL LADDER — how a tier gets to run the STRONGEST model without betting the tier on it.
+
+   Every OLLAMA_MODEL_* setting accepts a COMMA-SEPARATED list, strongest first:
+
+     OLLAMA_MODEL_MAX="deepseek-v3.1:671b-cloud,qwen3-coder:480b-cloud,gpt-oss:120b-cloud"
+
+   The first entry that is actually answering is used. A model that takes the first-byte deadline
+   without speaking — which is what an un-hosted name does — is marked dead for MODEL_DEAD_MS and
+   skipped, so exactly ONE request pays the timeout and every request after it goes straight to
+   the next rung. The mark expires on its own, so the moment the cloud starts hosting that model
+   the tier climbs back up with no redeploy and no code change.
+
+   This is what makes "point it at the best model" a safe instruction instead of a gamble: a name
+   that turns out not to exist costs one slow answer, not a broken tier. */
+const MODEL_DEAD_MS = Number(process.env.OLLAMA_MODEL_DEAD_MS) || 1_800_000;   // 30 min
+const _modelDead = new Map();                                 // model name -> ms timestamp it may be retried
+function modelMarkDead(model) {
+  if (!model) return;
+  _modelDead.set(model, Date.now() + MODEL_DEAD_MS);
+  console.warn("[firas] model " + model + " marked unavailable for " +
+    Math.round(MODEL_DEAD_MS / 60000) + " min - the tier drops to its next rung");
+}
+/** Split a setting into a ladder. Empty entries are dropped so a trailing comma is harmless. */
+function modelLadder(value, fallback) {
+  const list = String(value == null || value === "" ? fallback : value)
+    .split(",").map((m) => m.trim()).filter(Boolean);
+  return list.length ? list : [String(fallback)];
+}
+/** The highest rung not currently marked dead; the top rung if every one of them is. */
+function pickModel(ladder) {
+  const now = Date.now();
+  for (const m of ladder) if (now >= (_modelDead.get(m) || 0)) return m;
+  return ladder[0];
+}
 
 // Ollama API KEY POOL. Set OLLAMA_API_KEY (+ OLLAMA_HOST=https://ollama.com) to use Ollama's
 // HOSTED cloud API. Each free key has a WEEKLY quota — when one key hits its limit (429/402/403)
@@ -252,15 +301,15 @@ function cfLastUserText(messages) {
 const TIERS = {
   // EVERY tier has a fallbackModel on a DIFFERENT hosted pool, so a busy primary degrades to a
   // working model instead of surfacing "The Firas AI engine is busy".
-  mini:  { model: process.env.OLLAMA_MODEL_MINI  || "gpt-oss:120b-cloud", temperature: 0.5, num_predict: 16384,  fallbackModel: "qwen3-coder:480b-cloud" },
-  pro:   { model: process.env.OLLAMA_MODEL_PRO   || "gpt-oss:120b-cloud", temperature: 0.7, num_predict: 131072, fallbackModel: "qwen3-coder:480b-cloud" },
+  mini:  { models: modelLadder(process.env.OLLAMA_MODEL_MINI,  "gpt-oss:120b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.5, num_predict: 16384,  fallbackModel: "qwen3-coder:480b-cloud" },
+  pro:   { models: modelLadder(process.env.OLLAMA_MODEL_PRO,   "gpt-oss:120b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.7, num_predict: 131072, fallbackModel: "qwen3-coder:480b-cloud" },
   /* ultra is the CODE tier and had HALF the ceiling of the chat tier (65536 vs pro's
      131072), which is backwards: a chat answer stops when the point is made, but a
      single-file build has a hard floor — it is only useful if it reaches </html>. An
      ambitious brief (a Three.js globe with real geometry, shaders, country data and UI)
      runs to thousands of lines, and the budget was the binding constraint long before
      the model ran out of things to say. Raised to match pro. */
-  ultra: { model: process.env.OLLAMA_MODEL_ULTRA || "qwen3-coder:480b-cloud", temperature: 0.8, num_predict: 131072, fallbackModel: "gpt-oss:120b-cloud" },
+  ultra: { models: modelLadder(process.env.OLLAMA_MODEL_ULTRA, "qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.8, num_predict: 131072, fallbackModel: "gpt-oss:120b-cloud" },
   // Max = strongest general/reasoning model (671B), gated by a per-user daily cap.
   // Env-overridable so the model swaps without a redeploy if Ollama's cloud catalog
   // rotates. fallbackModel degrades to a known-good hosted model (gpt-oss) before the
@@ -271,7 +320,7 @@ const TIERS = {
      before the model has said anything unusual, so the budget, not the model, was ending the
      document early and delivering two problems out of ten. Matched to pro/ultra; Ollama clamps
      to whatever the chosen model actually supports, so raising it cannot error. */
-  max:   { model: process.env.OLLAMA_MODEL_MAX || "qwen3-coder:480b-cloud", temperature: 0.7, num_predict: 131072, fallbackModel: process.env.OLLAMA_MODEL_MAX_FALLBACK || "gpt-oss:120b-cloud", capped: false },
+  max:   { models: modelLadder(process.env.OLLAMA_MODEL_MAX,   "qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.7, num_predict: 131072, fallbackModel: process.env.OLLAMA_MODEL_MAX_FALLBACK || "gpt-oss:120b-cloud", capped: false },
 };
 
 // Vision/multimodal model — used automatically when a request carries images.
@@ -2013,6 +2062,25 @@ async function streamOllama(res, messages, tier, think, signal, modelOverride) {
   // Retry transient failures with REAL backoff before any bytes are streamed — a brief
   // 429/503 on the hosted pool clears within a second or two. A QUOTA hit (429/402/403 on a
   // hosted key) marks that key limited and jumps IMMEDIATELY to the next key in the pool.
+  /* A controller OF OUR OWN, chained to the caller's. The caller's signal covers the whole
+     request and is what the rescue chain runs on, so this attempt must never abort it — it
+     aborts only itself, and returns false so the chain takes over with a live signal. */
+  const ac = new AbortController();
+  if (signal) {
+    if (signal.aborted) return true;                       // client already gone
+    signal.addEventListener("abort", () => { try { ac.abort("caller"); } catch (_) {} }, { once: true });
+  }
+  let firstByte = false, starved = false;
+  let fbTimer = setTimeout(() => {
+    if (firstByte) return;
+    starved = true;
+    modelMarkDead(model);
+    console.warn("[firas] ollama model " + model + " sent nothing in " +
+      Math.round(OLLAMA_FIRST_BYTE_MS / 1000) + "s - abandoning it for the rescue chain");
+    try { ac.abort("first-byte"); } catch (_) {}
+  }, OLLAMA_FIRST_BYTE_MS);
+  const settle = () => { clearTimeout(fbTimer); };
+
   let upstream = null;
   let lastErr = null;
   let was429 = false;
@@ -2026,7 +2094,7 @@ async function streamOllama(res, messages, tier, think, signal, modelOverride) {
         method: "POST",
         headers: ollamaHeaders(olKey),
         body,
-        signal,
+        signal: ac.signal,
       });
       if (upstream.ok && upstream.body) break;
       const st = upstream.status;
@@ -2044,7 +2112,9 @@ async function streamOllama(res, messages, tier, think, signal, modelOverride) {
       // a non-OK HTTP status from Ollama itself is not a "connect" failure;
       // retry then give up — the caller decides the fallback.
     } catch (e) {
-      if (signal.aborted) return true; // client gone; nothing to do
+      // Starved on the first byte -> NOT handled: return false so the rescue chain answers.
+      if (starved) { settle(); return false; }
+      if (signal && signal.aborted) { settle(); return true; }   // client gone; nothing to do
       lastErr = e;
       upstream = null;
     }
@@ -2053,6 +2123,7 @@ async function streamOllama(res, messages, tier, think, signal, modelOverride) {
 
   if (!upstream) {
     // Could not reach Ollama at all -> let caller fall back.
+    settle();
     console.error("[firas] ollama unreachable:", (lastErr && lastErr.message) || lastErr);
     return false;
   }
@@ -2079,8 +2150,12 @@ async function streamOllama(res, messages, tier, think, signal, modelOverride) {
         const content = msg.content || "";
         // Drop thinking entirely when think is off.
         const reasoning = think ? msg.thinking || "" : "";
-        if (content || reasoning) sseWrite(res, content, reasoning);
+        if (content || reasoning) {
+          if (!firstByte) { firstByte = true; clearTimeout(fbTimer); }   // it spoke: the generous silence clock takes over
+          sseWrite(res, content, reasoning);
+        }
         if (obj.done) {
+          settle();
           sseDone(res);
           return true;
         }
@@ -2096,10 +2171,14 @@ async function streamOllama(res, messages, tier, think, signal, modelOverride) {
         if (msg.content || reasoning) sseWrite(res, msg.content || "", reasoning);
       } catch { /* ignore */ }
     }
+    settle();
     sseDone(res);
     return true;
   } catch (e) {
-    if (signal.aborted) return true;
+    settle();
+    // Nothing was ever written, so falling back is still clean.
+    if (starved || (!firstByte && !(signal && signal.aborted))) return false;
+    if (signal && signal.aborted) return true;
     // Stream broke mid-flight — we've already sent headers, so we can't cleanly
     // fall back; close out gracefully.
     console.error("[firas] ollama stream error:", (e && e.message) || e);
