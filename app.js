@@ -1813,6 +1813,70 @@ function buildVideoCard(meta, lang) {
   return card;
 }
 
+/** Does this ask for the ATTACHED picture to be CHANGED, rather than described?
+
+    The distinction is the whole feature. "ما هذا؟" and "اشرح الصورة" are vision questions and
+    must keep going to the vision model; "اجعل السماء بنفسجية" and "احذف السيارة" are edits, and
+    until now they were answered with a paragraph about the picture instead of the picture.
+    Only ever consulted when an image is actually attached, so a plain chat sentence containing
+    "غيّر" can never reach it. */
+function detectImageEditRequest(text) {
+  const s = String(text || "").trim();
+  if (!s) return false;
+  // An explicit description/analysis request wins even if it also contains a change verb.
+  if (/^(?:ما|ماذا|شنو|شو|وش|من|كم|أين|اين|هل|لماذا|ليش|كيف)\b/i.test(s)) return false;
+  if (/\b(?:what|who|where|when|why|how|describe|explain|analyz|analys|read|translate|caption|identify)\b/i.test(s)) return false;
+  if (/اشرح|وصف|صف\s|حلّل|حلل|اقرأ|اقرا|ترجم|ما\s*هذا|ما\s*هي|عمّا|تعرّف/i.test(s)) return false;
+
+  const ar = /عدّل|عدل\b|غيّر|غير\b|بدّل|بدل\b|حوّل|حول\b|اجعل|خلّي|خلي\b|اضف|أضف|ضيف|احذف|امسح|شيل|أزل|ازل\b|لوّن|لون\b|اقصص|قصّ|كبّر|صغّر|دوّر|اقلب|نظّف|حسّن|طوّر|ارفع\s*(?:الدقة|الجودة)|زد\s|انقص|استبدل|ابدل|اضبط|صحّح|رتّب|املأ|فرّغ|اجعلها|خليها|سوّيها|سويها/i;
+  const en = /\b(?:edit|change|modify|alter|make (?:it|the|this)|turn (?:it|the|this)|add|remove|delete|erase|replace|swap|recolou?r|colou?r|crop|rotate|flip|resize|upscale|enhance|retouch|fix|clean up|blur|brighten|darken|convert)\b/i;
+  return ar.test(s) || en.test(s);
+}
+
+/** Send the attached picture and the instruction to the edit endpoint. Resolves to a cache key
+    the chat card can point at, or an object describing WHY it could not be done — the caller
+    turns that into a sentence rather than silently falling back to a description. */
+async function requestImageEdit(prompt, b64, mime, signal) {
+  try {
+    const r = await fetch("/api/image/edit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ prompt: String(prompt || "").slice(0, 1000), image: b64, mime: mime || "image/png" }),
+      signal,
+    });
+    if (r.ok) {
+      const j = await r.json().catch(() => null);
+      if (j && j.ok && j.key) return { key: j.key };
+    }
+    const j = await r.json().catch(() => null);
+    return { error: (j && j.error) || ("http_" + r.status), limit: j && j.limit };
+  } catch (_) { return { error: "network" }; }
+}
+
+/** What to say when an edit could not be performed. Never pretends it worked. */
+function imageEditErrorText(err, lang) {
+  const ar = lang === "ar";
+  switch (err && err.error) {
+    case "daily_limit":
+      return ar
+        ? ("بلغت حدّك اليومي من تعديل الصور" + (err.limit >= 0 ? " (" + err.limit + " في اليوم)" : "") + ". جرّب غدًا.")
+        : ("You have reached your daily image-editing limit" + (err.limit >= 0 ? " (" + err.limit + "/day)" : "") + ". Try again tomorrow.");
+    case "edit_unavailable":
+      return ar
+        ? "تعديل الصور غير متاح حاليًا — المحرّك الذي يقوم به نفد رصيده. توليد صور جديدة ما زال يعمل."
+        : "Image editing is unavailable right now — the engine that performs it is out of credit. Generating new images still works.";
+    case "signin_required":
+      return ar ? "سجّل الدخول لتعديل الصور." : "Sign in to edit images.";
+    case "bad_image":
+      return ar ? "تعذّرت قراءة الصورة المرفقة." : "That attached image could not be read.";
+    default:
+      return ar
+        ? "تعذّر تعديل الصورة. حاول مرة أخرى، أو صِف التعديل بتفصيل أوضح."
+        : "The image could not be edited. Try again, or describe the change more specifically.";
+  }
+}
+
 function detectImageRequest(text) {
   const s = String(text || "");
   if (!s.trim()) return false;
@@ -1883,6 +1947,9 @@ function stripImageMetaBlock(s) {
   return String(s == null ? "" : s).replace(/```firas-image\s*[\s\S]*?```/i, "").trim();
 }
 function imageUrl(meta) {
+  /* An EDITED image already exists on disk — it is addressed by its cache key, not regenerated
+     from a prompt. That is what makes it survive a reload without being remade or recharged. */
+  if (meta.key) return "/api/image?key=" + encodeURIComponent(meta.key);
   const w = meta.w || 1024, h = meta.h || 1024;
   return "/api/image?prompt=" + encodeURIComponent(meta.prompt) + "&w=" + w + "&h=" + h +
     (meta.seed ? "&seed=" + meta.seed : "") +
@@ -13019,6 +13086,45 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
     // A vision turn (the user attached images) must NOT be treated as image
     // generation — answer about the image instead.
     const imgHasAttachments = imgUser && Array.isArray(imgUser.images) && imgUser.images.length > 0;
+
+    /* AN ATTACHED PICTURE PLUS A CHANGE INSTRUCTION → actually change it.
+
+       Checked BEFORE video and image generation, because it is the narrowest reading of the turn:
+       there is a picture in hand and the sentence asks for it to be different. Everything else
+       about an attachment — "ما هذا؟", "اشرح", "اقرأ النص" — still goes to the vision model, which
+       is what detectImageEditRequest exists to separate. Before this, an edit request had nowhere
+       to go: every engine in the chain generates from text alone, so the honest best it could do
+       was describe the photo back. */
+    if (imgHasAttachments && !fileFmt && !codeReq && (state.mode !== "plan" || planExecuting) &&
+        imgUser && detectImageEditRequest(imgUser.content)) {
+      if (isGuest()) {
+        clearTimeout(timeoutId);
+        finalized = true;
+        const gtr = t();
+        aiMsg.content = "**" + gtr.guestImageTitle + "**\n\n" + gtr.guestImageBody;
+        aiMsg.reasoning = "";
+        finalizeAi(aiMsg, chat);
+        setTimeout(() => openSignUpPrompt("image"), 250);
+        return;
+      }
+      const enode = liveNode(); const emd = enode && enode.querySelector(".msg-ai__body .md");
+      if (emd) emd.innerHTML = buildImageLoadingHtml(replyLang);
+      const editPrompt = String(imgUser.content || "").slice(0, 1000);
+      const out = await requestImageEdit(editPrompt, imgUser.images[0], "", signal);
+      if (signal.aborted) { clearTimeout(timeoutId); return; }
+      clearTimeout(timeoutId);
+      finalized = true;
+      if (out && out.key) {
+        // The edited picture lives in the server cache; the card points at it by key.
+        aiMsg.content = "```firas-image\n" + JSON.stringify({ prompt: editPrompt, key: out.key }) + "\n```";
+      } else {
+        // Never answer a failed edit with a description of the picture — say what happened.
+        aiMsg.content = imageEditErrorText(out, replyLang);
+      }
+      aiMsg.reasoning = "";
+      finalizeAi(aiMsg, chat);
+      return;
+    }
     /* VIDEO REQUESTS. Checked before images: video is the narrower intent and by far the more
        expensive one — a clip spends a slice of a shared daily GPU allowance that only resets
        once a day, so it must never be entered by accident. */

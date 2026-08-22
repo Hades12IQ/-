@@ -2454,6 +2454,156 @@ async function cfTryAccount(acct, prompt, w, h) {
 // Round-robin across pooled accounts (spreads load), skipping any in 429 cooldown and
 // falling over to the next on failure. Returns {bytes,mime} or null.
 let _cfNext = 0;
+/* ── OPENAI IMAGES (edge) — mirrors server.mjs; see the long note there ────────────────────
+   Two differences forced by the environment, both deliberate:
+
+   · There is no disk here, so the spend total lives in the database and an EDITED picture is
+     stored there too — which is why edits are asked for as compressed JPEG (~200 KB) rather
+     than the default PNG (~1.5 MB). Generated pictures are streamed straight back and stored
+     nowhere, exactly as the other engines already are.
+   · The spend total is cached in the isolate for a minute. A stale read can let a little extra
+     through, which is fine: the dollar ceiling is the SOFT guard. The hard one is OpenAI's own
+     billing error, which switches the engine off for the life of the isolate.
+   ──────────────────────────────────────────────────────────────────────────────────────────── */
+const OPENAI_API_KEY = env("OPENAI_API_KEY") || "";
+const OPENAI_IMAGE_MODEL = env("OPENAI_IMAGE_MODEL") || "gpt-image-1";
+const OPENAI_IMAGE_QUALITY = env("OPENAI_IMAGE_QUALITY") || "medium";
+const OPENAI_IMAGE_DAILY = Number(env("OPENAI_IMAGE_DAILY") ?? 2);
+const OPENAI_IMAGE_BUDGET_USD = Number(env("OPENAI_IMAGE_BUDGET_USD") ?? 60);
+const OPENAI_IMAGE_COST_USD = Number(env("OPENAI_IMAGE_COST_USD") ?? 0.05);
+const OPENAI_EDIT_KEEP = Number(env("OPENAI_EDIT_KEEP") ?? 20);   // stored edits kept per user
+let _openaiImagesOff = false;
+let _oaiSpend = { usd: 0, at: 0 };
+
+async function openaiImageSpent() {
+  if (Date.now() - _oaiSpend.at < 60000) return _oaiSpend.usd;
+  let usd = 0;
+  try { usd = Number(await dbGet("spend/openaiImageUsd")) || 0; } catch (_) { usd = _oaiSpend.usd; }
+  _oaiSpend = { usd, at: Date.now() };
+  return usd;
+}
+async function openaiImageBudgetLeft() {
+  if (_openaiImagesOff || !OPENAI_API_KEY) return 0;
+  return Math.max(0, OPENAI_IMAGE_BUDGET_USD - (await openaiImageSpent()));
+}
+async function openaiImageCharge() {
+  const next = (await openaiImageSpent()) + OPENAI_IMAGE_COST_USD;
+  _oaiSpend = { usd: next, at: Date.now() };
+  try { await dbPut("spend/openaiImageUsd", next); } catch (_) {}
+}
+function openaiImagesExhausted(reason) {
+  if (_openaiImagesOff) return;
+  _openaiImagesOff = true;
+  console.warn("[firas] OpenAI images disabled (" + reason + ") - falling back to Cloudflare");
+}
+function openaiImageSize(w, h) {
+  const ratio = (Number(w) || 1024) / (Number(h) || 1024);
+  if (ratio > 1.2) return "1536x1024";
+  if (ratio < 0.84) return "1024x1536";
+  return "1024x1024";
+}
+/** Today's premium images for a user, as { slot: true } — same day-scoped shape as imgQuota. */
+async function oaiImgDayNode(userId) {
+  try { return (await dbGet(`oaiQuota/${dbKey(userId)}/${serverDay()}`)) || {}; } catch (_) { return {}; }
+}
+async function openaiImageAllowed(userId, slot) {
+  if ((await openaiImageBudgetLeft()) < OPENAI_IMAGE_COST_USD) return false;
+  const node = await oaiImgDayNode(userId);
+  if (slot in node) return true;                                   // same picture again — free
+  return OPENAI_IMAGE_DAILY < 0 || Object.keys(node).length < OPENAI_IMAGE_DAILY;
+}
+async function openaiImageMark(userId, slot) {
+  try { await dbPut(`oaiQuota/${dbKey(userId)}/${serverDay()}/${dbKey(slot)}`, true); } catch (_) {}
+}
+
+async function openaiImageResult(r, what) {
+  if (!r.ok) {
+    const txt = (await r.text().catch(() => "")).slice(0, 400);
+    if (r.status === 401) openaiImagesExhausted("HTTP 401 - the API key is not valid");
+    else if (r.status === 402) openaiImagesExhausted("HTTP 402");
+    else if (r.status === 429 && /insufficient_quota|billing|exceeded your current quota/i.test(txt)) {
+      openaiImagesExhausted("HTTP 429 insufficient_quota");
+    } else console.error("[firas] OpenAI " + what + " HTTP " + r.status + ": " + txt);
+    return null;
+  }
+  const j = await r.json().catch(() => null);
+  const b64 = j && j.data && j.data[0] && j.data[0].b64_json;
+  if (!b64) return null;
+  return { bytes: b64ToBytes(b64), mime: what === "edit" ? "image/jpeg" : "image/png", b64 };
+}
+
+async function generateImageOpenAI(prompt, w, h) {
+  if ((await openaiImageBudgetLeft()) < OPENAI_IMAGE_COST_USD) return null;
+  const ac = new AbortController();
+  const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 120000);
+  try {
+    const r = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: { "content-type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
+      body: JSON.stringify({
+        model: OPENAI_IMAGE_MODEL,
+        prompt: String(prompt || "").slice(0, 4000),
+        size: openaiImageSize(w, h),
+        quality: OPENAI_IMAGE_QUALITY,
+        n: 1,
+      }),
+      signal: ac.signal,
+    });
+    return await openaiImageResult(r, "image");
+  } catch (_) { return null; }
+  finally { clearTimeout(to); }
+}
+
+async function editImageOpenAI(prompt, bytes, mime) {
+  if ((await openaiImageBudgetLeft()) < OPENAI_IMAGE_COST_USD) return null;
+  if (!bytes || !bytes.length) return null;
+  const ac = new AbortController();
+  const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 180000);
+  try {
+    const fd = new FormData();
+    fd.append("model", OPENAI_IMAGE_MODEL);
+    fd.append("prompt", String(prompt || "").slice(0, 4000));
+    fd.append("quality", OPENAI_IMAGE_QUALITY);
+    fd.append("n", "1");
+    // JPEG so the result is small enough to keep in the database and serve back by key.
+    fd.append("output_format", "jpeg");
+    fd.append("output_compression", "85");
+    const type = /jpe?g/i.test(mime || "") ? "image/jpeg" : /webp/i.test(mime || "") ? "image/webp" : "image/png";
+    const ext = type === "image/jpeg" ? "jpg" : type === "image/webp" ? "webp" : "png";
+    fd.append("image", new Blob([bytes], { type }), "source." + ext);
+    const r = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + OPENAI_API_KEY },   // FormData sets its own boundary
+      body: fd,
+      signal: ac.signal,
+    });
+    return await openaiImageResult(r, "edit");
+  } catch (_) { return null; }
+  finally { clearTimeout(to); }
+}
+
+/** Keep the stored edits bounded. The index holds only timestamps, so pruning never reads the
+    pictures themselves — one small read, then a delete for anything past the keep-count. */
+async function oaiEditStore(userId, key, b64, mime) {
+  const uid = dbKey(userId);
+  try {
+    await dbPut(`imgEdits/${uid}/${dbKey(key)}`, { b64, mime: mime || "image/jpeg" });
+    await dbPut(`imgEditsIndex/${uid}/${dbKey(key)}`, Date.now());
+    const idx = (await dbGet(`imgEditsIndex/${uid}`)) || {};
+    const keys = Object.keys(idx).sort((a, b) => (idx[a] || 0) - (idx[b] || 0));
+    for (const old of keys.slice(0, Math.max(0, keys.length - OPENAI_EDIT_KEEP))) {
+      try { await dbDelete(`imgEdits/${uid}/${old}`); await dbDelete(`imgEditsIndex/${uid}/${old}`); } catch (_) {}
+    }
+  } catch (_) { /* the picture was still returned to the caller; only re-opening it is lost */ }
+}
+async function oaiEditLoad(userId, key) {
+  try {
+    const rec = await dbGet(`imgEdits/${dbKey(userId)}/${dbKey(key)}`);
+    if (rec && rec.b64) return { bytes: b64ToBytes(rec.b64), mime: rec.mime || "image/jpeg" };
+  } catch (_) {}
+  return null;
+}
+
 async function generateImageCloudflare(prompt, w, h) {
   const n = CF_ACCOUNTS.length;
   if (!n) return null;
@@ -3983,6 +4133,65 @@ export default async (request, context) => {
       return new Response(body, { headers: { "Content-Type": "video/mp4", "Cache-Control": "public, max-age=86400" } });
     }
 
+    /* EDIT AN EXISTING PICTURE. Every other engine here generates from text alone, so before
+       this an edit request could only be answered by describing the photo back. The result is
+       stored (as compressed JPEG) and handed back as a key, so the chat card is an ordinary
+       /api/image URL that survives a reload. Spends from the same two-a-day allowance and the
+       same dollar ceiling as a generated image — an edit is not cheaper than a generation. */
+    if (path === "/api/image/edit" && method === "POST") {
+      const user = await currentUser(context);
+      if (!user) {
+        if (await currentGuest(context)) return json({ error: "signin_required", feature: "image" }, 403);
+        return new Response("auth required", { status: 401 });
+      }
+      if (rateLimited("imgedit:" + user.id, 30, 60000)) return new Response("rate limited", { status: 429 });
+
+      let body = null;
+      try { body = await request.json(); } catch (_) {}
+      const prompt = String((body && body.prompt) || "").trim().slice(0, 1000);
+      const rawB64 = String((body && body.image) || "").replace(/^data:[^,]*,/, "");
+      if (!prompt || !rawB64) return json({ error: "bad_request" }, 400);
+
+      let src = null;
+      try { src = b64ToBytes(rawB64); } catch (_) { src = null; }
+      if (!src || !src.length || src.length > 20000000) return json({ error: "bad_image" }, 400);
+      /* Trust the BYTES, not the label: a JPEG announced as png comes back as a bare
+         "invalid image" with nothing to debug. */
+      const sniffed = src.length > 12
+        ? (src[0] === 0xFF && src[1] === 0xD8 ? "image/jpeg"
+          : (src[0] === 0x89 && src[1] === 0x50 ? "image/png"
+            : (String.fromCharCode(...src.slice(0, 4)) === "RIFF" && String.fromCharCode(...src.slice(8, 12)) === "WEBP" ? "image/webp" : "image/png")))
+        : "image/png";
+
+      // Keyed on the SOURCE BYTES plus the instruction, so the same edit twice is free.
+      const srcHash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", src)))
+        .map((b) => b.toString(16).padStart(2, "0")).join("");
+      const key = await imgSlotKey("edit|" + OPENAI_IMAGE_MODEL + "|" + OPENAI_IMAGE_QUALITY + "|" + prompt, 0, 0, srcHash);
+
+      const already = await oaiEditLoad(user.id, key);
+      if (already) return json({ ok: true, key, cached: true });
+
+      // Editing exists ONLY on OpenAI. Say so plainly rather than quietly returning a picture
+      // that ignored the instruction — that is the failure this feature exists to remove.
+      if (!OPENAI_API_KEY || (await openaiImageBudgetLeft()) < OPENAI_IMAGE_COST_USD) {
+        return json({ error: "edit_unavailable" }, 503);
+      }
+      if (!(await openaiImageAllowed(user.id, key))) return json({ error: "daily_limit", limit: OPENAI_IMAGE_DAILY }, 429);
+      const day = serverDay();
+      const node = await imgDayNode(user.id);
+      if (IMAGE_DAILY_LIMIT >= 0 && !(key in node) && Object.keys(node).length >= IMAGE_DAILY_LIMIT) {
+        return json({ error: "daily_limit", limit: IMAGE_DAILY_LIMIT }, 429);
+      }
+
+      const out = await editImageOpenAI(prompt, src, sniffed);
+      if (!out || !out.bytes || !out.bytes.length) return json({ error: "edit_failed" }, 502);
+
+      await openaiImageCharge();
+      await oaiEditStore(user.id, key, out.b64, out.mime);
+      await openaiImageMark(user.id, key);
+      try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(key)}`, true); } catch (_) {}
+      return json({ ok: true, key });
+    }
     if (path === "/api/image" && method === "GET") {
       const user = await currentUser(context);
       if (!user) {
@@ -3991,6 +4200,15 @@ export default async (request, context) => {
         return new Response("auth required", { status: 401 });
       }
       if (rateLimited("img:" + user.id, 240, 60000)) return new Response("rate limited", { status: 429 });
+      /* A finished EDIT is addressed by key: it already exists and was already charged, so this
+         is a pure read. That is what lets an edited picture sit in the chat as an ordinary
+         <img src> and survive a reload without being remade or recharged. */
+      const editKey = (url.searchParams.get("key") || "").replace(/[^a-f0-9]/g, "").slice(0, 64);
+      if (editKey) {
+        const hit = await oaiEditLoad(user.id, editKey);
+        if (!hit) return new Response("not found", { status: 404 });
+        return new Response(hit.bytes, { headers: { "Content-Type": hit.mime, "Cache-Control": "private, max-age=86400" } });
+      }
       const prompt = (url.searchParams.get("prompt") || "").trim().slice(0, 1000);
       if (!prompt) return new Response("no prompt", { status: 400 });
       /* The cid parsing that used to live here is GONE, not merely unused. It existed to
@@ -4020,7 +4238,22 @@ export default async (request, context) => {
       const slot = await imgSlotKey(prompt, w, h, seed);
       const isNew = !(slot in node);
       if (IMAGE_DAILY_LIMIT >= 0 && isNew && Object.keys(node).length >= IMAGE_DAILY_LIMIT) return new Response("daily limit reached", { status: 429 });
-      // Cloudflare Workers AI (FREE FLUX.2, ~65/day) FIRST → great quality + in-image text,
+      /* OpenAI gpt-image FIRST — the sharpest engine, and the one being paid for. Three gates,
+         all of which must pass: a key, money left against the ceiling, and one of this user's
+         two premium images for the day. Any failure returns null and Cloudflare answers, so this
+         can only make the result better, never break the request. */
+      if (OPENAI_API_KEY && await openaiImageAllowed(user.id, slot)) {
+        try {
+          const oai = await generateImageOpenAI(prompt, w, h);
+          if (oai && oai.bytes && oai.bytes.length) {
+            await openaiImageCharge();
+            await openaiImageMark(user.id, slot);
+            if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
+            return new Response(oai.bytes, { headers: { "Content-Type": oai.mime, "Cache-Control": "public, max-age=86400" } });
+          }
+        } catch (_) { /* fall through to Cloudflare */ }
+      }
+      // Cloudflare Workers AI (FREE FLUX.2, ~65/day) → great quality + in-image text,
       // no per-image cost, no user login. Falls through to Puter when its daily quota is gone.
       try {
         const cf = await generateImageCloudflare(prompt, w, h);

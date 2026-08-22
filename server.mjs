@@ -516,6 +516,10 @@ function normalizeDb(parsed) {
     // Public share snapshots (read-only chat pages at /?share=<id>).
     shares: (parsed && parsed.shares && typeof parsed.shares === "object" && !Array.isArray(parsed.shares)) ? parsed.shares : {},
     secret: parsed && typeof parsed.secret === "string" ? parsed.secret : "",
+    /* Running OpenAI image spend, in dollars. Whitelisted here on purpose: normalizeDb drops
+       anything it does not name, so without this line the budget would reset to zero on every
+       restart and the ceiling would never actually be reached. */
+    openaiImageUsd: Number(parsed && parsed.openaiImageUsd) || 0,
   };
 }
 
@@ -2550,6 +2554,159 @@ async function cfTryAccount(acct, prompt, w, h) {
 
 // Try each pooled account in turn; skip those in 429 cooldown. Returns {buf,mime} or null.
 let _cfNext = 0; // round-robin cursor → spreads load across accounts (not always account #1)
+/* ── OPENAI IMAGES — the sharpest engine, on a budget that cannot overrun ──────────────────
+   Firas bought credit on OpenAI directly and wants it used for pictures. Two things make that
+   safe to wire in as the FIRST engine rather than a nice-to-have:
+
+   1. A HARD SPEND CEILING, tracked in the DB so it survives restarts. Money is finite here in a
+      way none of the other engines are — Cloudflare, Gemini, Hugging Face and pollinations all
+      fail free, this one fails expensive. The estimate is a guard, not the truth: the truth is
+      OpenAI's own billing error, and the moment it says the account is out, the engine is
+      switched off for the life of the process and every request falls to Cloudflare.
+   2. A PER-USER DAILY ALLOWANCE of two. One person cannot spend everyone else's credit, and the
+      existing five-a-day image cap still applies on top — so images three, four and five of the
+      day come from the free chain exactly as they do today.
+
+   Nothing here degrades if the key is absent: no key means the function returns null on its
+   first line and the chain is what it was before.
+   ──────────────────────────────────────────────────────────────────────────────────────────── */
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
+// medium: Firas's choice. low is ~4x cheaper and visibly softer; high is ~4x dearer and would
+// empty the account in a few hundred pictures.
+const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || "medium";
+const OPENAI_IMAGE_DAILY = Number(process.env.OPENAI_IMAGE_DAILY ?? 2);
+const OPENAI_IMAGE_BUDGET_USD = Number(process.env.OPENAI_IMAGE_BUDGET_USD ?? 60);
+/* What one medium 1024px image is assumed to cost. This only drives the SOFT guard — set it
+   high and the engine retires early, set it low and OpenAI's own 429 stops it instead. It is a
+   deliberate over-estimate so the ceiling is hit before the account is. */
+const OPENAI_IMAGE_COST_USD = Number(process.env.OPENAI_IMAGE_COST_USD ?? 0.05);
+let _openaiImagesOff = false;   // flipped by OpenAI itself saying the credit is gone
+
+function openaiImageSpent() { return Number(DB.openaiImageUsd) || 0; }
+function openaiImageBudgetLeft() {
+  if (_openaiImagesOff || !OPENAI_API_KEY) return 0;
+  return Math.max(0, OPENAI_IMAGE_BUDGET_USD - openaiImageSpent());
+}
+function openaiImageCharge() {
+  DB.openaiImageUsd = openaiImageSpent() + OPENAI_IMAGE_COST_USD;
+  persist();
+  if (DB.openaiImageUsd >= OPENAI_IMAGE_BUDGET_USD) {
+    console.warn("[firas] OpenAI image budget of $" + OPENAI_IMAGE_BUDGET_USD +
+      " reached - images now come from Cloudflare");
+  }
+}
+/** Called when OPENAI says the money is gone. Permanent for this process: retrying a dead
+    account on every image would add a slow, certain failure in front of every picture. */
+function openaiImagesExhausted(reason) {
+  if (_openaiImagesOff) return;
+  _openaiImagesOff = true;
+  console.warn("[firas] OpenAI images disabled (" + reason + ") - falling back to Cloudflare");
+}
+
+/** gpt-image only accepts a fixed set of sizes; pick the one matching the requested shape. */
+function openaiImageSize(w, h) {
+  const ratio = (Number(w) || 1024) / (Number(h) || 1024);
+  if (ratio > 1.2) return "1536x1024";
+  if (ratio < 0.84) return "1024x1536";
+  return "1024x1024";
+}
+
+/** Reset the per-day OpenAI allowance. Deliberately a SEPARATE counter from imgCids: the
+    five-a-day total and the two-a-day premium allowance are different budgets. */
+function oaiImgRollDay(user) {
+  const today = serverDay();
+  if (user.oaiImgDay !== today) { user.oaiImgDay = today; user.oaiImgCids = []; return; }
+  if (!Array.isArray(user.oaiImgCids)) user.oaiImgCids = [];
+}
+/** May this user still spend a premium image today, and is there money for it? */
+function openaiImageAllowed(user, slot) {
+  if (openaiImageBudgetLeft() < OPENAI_IMAGE_COST_USD) return false;
+  oaiImgRollDay(user);
+  if (user.oaiImgCids.includes(slot)) return true;               // same picture again — no new spend
+  return OPENAI_IMAGE_DAILY < 0 || user.oaiImgCids.length < OPENAI_IMAGE_DAILY;
+}
+
+/** Shared response handling: read the body once, turn a billing failure into a permanent stop. */
+async function openaiImageResult(r, what) {
+  if (!r.ok) {
+    const txt = (await r.text().catch(() => "")).slice(0, 400);
+    if (r.status === 401) openaiImagesExhausted("HTTP 401 - the API key is not valid");
+    else if (r.status === 402) openaiImagesExhausted("HTTP 402");
+    else if (r.status === 429 && /insufficient_quota|billing|exceeded your current quota/i.test(txt)) {
+      openaiImagesExhausted("HTTP 429 insufficient_quota");
+    } else {
+      // A plain 429 is rate limiting, not bankruptcy — leave the engine on and use the next one.
+      console.error("[firas] OpenAI " + what + " HTTP " + r.status + ": " + txt);
+    }
+    return null;
+  }
+  const j = await r.json().catch(() => null);
+  const b64 = j && j.data && j.data[0] && j.data[0].b64_json;
+  if (!b64) { console.error("[firas] OpenAI " + what + " returned no image"); return null; }
+  // Edits ask for JPEG (see editImageOpenAI); generations keep the default PNG.
+  return { buf: Buffer.from(b64, "base64"), mime: what === "edit" ? "image/jpeg" : "image/png" };
+}
+
+/** Generate. Returns {buf, mime} or null — null means "use the next engine", never an error. */
+async function generateImageOpenAI(prompt, w, h) {
+  if (openaiImageBudgetLeft() < OPENAI_IMAGE_COST_USD) return null;
+  const ac = new AbortController();
+  const to = setTimeout(() => ac.abort(), 120_000);   // gpt-image at medium is not fast
+  try {
+    const r = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
+      body: JSON.stringify({
+        model: OPENAI_IMAGE_MODEL,
+        prompt: String(prompt || "").slice(0, 4000),
+        size: openaiImageSize(w, h),
+        quality: OPENAI_IMAGE_QUALITY,
+        n: 1,
+      }),
+      signal: ac.signal,
+    });
+    return await openaiImageResult(r, "image");
+  } catch (_) { return null; }
+  finally { clearTimeout(to); }
+}
+
+/** EDIT an existing picture from an instruction — "make the sky purple", "remove the car".
+    This is the one thing no other engine in the chain can do: Cloudflare, Gemini, Hugging Face
+    and pollinations all generate from text alone, so an edit request could only ever be
+    answered with a description of the image or a brand-new picture that ignored it. */
+async function editImageOpenAI(prompt, imageBuf, mime) {
+  if (openaiImageBudgetLeft() < OPENAI_IMAGE_COST_USD) return null;
+  if (!imageBuf || !imageBuf.length) return null;
+  const ac = new AbortController();
+  const to = setTimeout(() => ac.abort(), 180_000);   // edits are slower than generations
+  try {
+    const fd = new FormData();
+    fd.append("model", OPENAI_IMAGE_MODEL);
+    fd.append("prompt", String(prompt || "").slice(0, 4000));
+    fd.append("quality", OPENAI_IMAGE_QUALITY);
+    fd.append("n", "1");
+    /* JPEG, not PNG. An edited 1024px PNG is ~1.5 MB; the same picture as a quality-85 JPEG is
+       nearer 200 KB. That matters because the edge backend has no disk and has to keep the
+       result in the database to serve it back, and it costs nothing visible on a photo edit. */
+    fd.append("output_format", "jpeg");
+    fd.append("output_compression", "85");
+    /* The API infers the type from the filename as well as the blob, so both are set — a
+       mismatch there is rejected as "invalid image" with no useful message. */
+    const type = /jpe?g/i.test(mime || "") ? "image/jpeg" : /webp/i.test(mime || "") ? "image/webp" : "image/png";
+    const ext = type === "image/jpeg" ? "jpg" : type === "image/webp" ? "webp" : "png";
+    fd.append("image", new Blob([imageBuf], { type }), "source." + ext);
+    const r = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + OPENAI_API_KEY },   // no Content-Type: FormData sets the boundary
+      body: fd,
+      signal: ac.signal,
+    });
+    return await openaiImageResult(r, "edit");
+  } catch (_) { return null; }
+  finally { clearTimeout(to); }
+}
+
 async function generateImageCloudflare(prompt, w, h) {
   const n = CF_ACCOUNTS.length;
   if (!n) return null;
@@ -2754,6 +2911,97 @@ async function generateVideoHF(prompt, seconds, seed, signal) {
   return null;
 }
 
+/* EDIT AN EXISTING PICTURE.
+
+   Every other engine in the chain generates from text alone, so until now "make the sky purple"
+   on an attached photo could only be answered by describing the photo or by inventing a new one
+   that ignored it. gpt-image's edit endpoint is the only thing here that can actually take the
+   picture in and give the picture back changed.
+
+   The result is stored in the same disk cache the generator uses and handed back as a KEY, so the
+   chat card is an ordinary /api/image URL: it survives a reload, costs nothing to re-open, and
+   needs no new rendering path. It spends from the same two-a-day allowance and the same dollar
+   ceiling as a generated image — an edit is not cheaper than a generation. */
+async function handleImageEdit(req, res) {
+  const user = currentUser(req);
+  if (!user) {
+    if (currentGuest(req)) {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ error: "signin_required", feature: "image" }));
+    }
+    res.writeHead(401); return res.end("auth required");
+  }
+  if (rateLimited("imgedit:" + user.id, 30, 60_000)) { res.writeHead(429); return res.end("rate limited"); }
+
+  let body;
+  try { body = await readJson(req, 26_000_000); } catch (_) { body = null; }
+  const prompt = String((body && body.prompt) || "").trim().slice(0, 1000);
+  const b64 = String((body && body.image) || "").replace(/^data:[^,]*,/, "");
+  const mime = String((body && body.mime) || "image/png");
+  if (!prompt || !b64) { res.writeHead(400, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ error: "bad_request" })); }
+
+  let src;
+  try { src = Buffer.from(b64, "base64"); } catch (_) { src = null; }
+  /* Trust the BYTES, not the label. The client sends raw base64 with no mime attached, and a
+     JPEG announced as png comes back from the API as a bare "invalid image" with nothing to
+     debug. The three magic numbers below cover everything the attachment tray can produce. */
+  const sniffed = src && src.length > 12
+    ? (src[0] === 0xFF && src[1] === 0xD8 ? "image/jpeg"
+      : (src[0] === 0x89 && src[1] === 0x50 ? "image/png"
+        : (src.slice(0, 4).toString("ascii") === "RIFF" && src.slice(8, 12).toString("ascii") === "WEBP" ? "image/webp" : "")))
+    : "";
+  if (!src || !src.length || src.length > 20_000_000) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ error: "bad_image" }));
+  }
+
+  /* Keyed on the SOURCE BYTES plus the instruction, so asking for the same edit on the same
+     picture twice is free and returns the identical result rather than paying again. */
+  const key = crypto.createHash("sha1")
+    .update("edit|" + OPENAI_IMAGE_MODEL + "|" + OPENAI_IMAGE_QUALITY + "|" + prompt + "|" +
+            crypto.createHash("sha1").update(src).digest("hex"))
+    .digest("hex");
+
+  const already = imgCacheGet(key);
+  if (already) {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ ok: true, key, cached: true }));
+  }
+
+  // Editing exists ONLY on OpenAI. Say so plainly rather than silently returning a picture that
+  // ignored the instruction — that is the failure this feature was added to remove.
+  if (!OPENAI_API_KEY || openaiImageBudgetLeft() < OPENAI_IMAGE_COST_USD) {
+    res.writeHead(503, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ error: "edit_unavailable" }));
+  }
+  if (!openaiImageAllowed(user, key)) {
+    res.writeHead(429, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ error: "daily_limit", limit: OPENAI_IMAGE_DAILY }));
+  }
+  imgRollDay(user);
+  if (IMAGE_DAILY_LIMIT >= 0 && !user.imgCids.includes(key) && user.imgCids.length >= IMAGE_DAILY_LIMIT) {
+    res.writeHead(429, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ error: "daily_limit", limit: IMAGE_DAILY_LIMIT }));
+  }
+
+  const out = await editImageOpenAI(prompt, src, sniffed || mime);
+  if (!out || !out.buf || !out.buf.length) {
+    res.writeHead(502, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ error: "edit_failed" }));
+  }
+
+  console.log("[firas] image EDITED by OpenAI (" + OPENAI_IMAGE_MODEL + "/" + OPENAI_IMAGE_QUALITY +
+    ", $" + openaiImageSpent().toFixed(2) + " of $" + OPENAI_IMAGE_BUDGET_USD + " used)");
+  openaiImageCharge();
+  await imgCacheSet(key, out.buf, out.mime);
+  if (!user.oaiImgCids.includes(key)) user.oaiImgCids.push(key);
+  if (!user.imgCids.includes(key)) user.imgCids.push(key);
+  persist();
+
+  res.writeHead(200, { "Content-Type": "application/json" });
+  return res.end(JSON.stringify({ ok: true, key }));
+}
+
 async function handleImage(req, res) {
   // Require a session so the proxy can't be used as an anonymous, unmetered relay
   // to pollinations. Authed reloads of saved images still carry the cookie, so
@@ -2785,6 +3033,18 @@ async function handleImage(req, res) {
     for (let i = 0; i < pk.length; i++) hsh = ((hsh << 5) - hsh + pk.charCodeAt(i)) | 0;
     cid = "auto" + (hsh >>> 0).toString(36);
   }
+  /* A finished EDIT is served by key. The picture already exists on disk and was charged when
+     it was made, so this is a pure read — that is what lets an edited image sit in the chat as an
+     ordinary <img src> and survive a reload with no re-spend. */
+  const editKey = (u.searchParams.get("key") || "").replace(/[^a-f0-9]/g, "").slice(0, 64);
+  if (editKey) {
+    const hit = imgCacheGet(editKey);
+    if (hit) {
+      res.writeHead(200, { "Content-Type": hit.mime, "Cache-Control": "public, max-age=86400" });
+      return res.end(hit.buf);
+    }
+    res.writeHead(404); return res.end("not found");
+  }
   imgRollDay(user);
   const w = Math.min(1280, Math.max(256, parseInt(u.searchParams.get("w"), 10) || 1024));
   const h = Math.min(1280, Math.max(256, parseInt(u.searchParams.get("h"), 10) || 1024));
@@ -2810,6 +3070,30 @@ async function handleImage(req, res) {
     if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
     res.writeHead(200, { "Content-Type": cached.mime, "Cache-Control": "public, max-age=86400" });
     return res.end(cached.buf);
+  }
+  /* -1) OpenAI gpt-image FIRST — the sharpest engine, and the one Firas is paying for.
+     Three gates stand in front of it and ALL of them must pass, otherwise this is skipped
+     silently and the chain below runs exactly as it did before:
+       · a key is configured,
+       · the account still has budget (a running total kept in the DB, plus OpenAI's own
+         billing error, which switches the engine off permanently),
+       · and this user has one of their two premium images left today.
+     A failure here is never an error to the client: it returns null and Cloudflare answers. */
+  if (OPENAI_API_KEY && openaiImageAllowed(user, slot)) {
+    try {
+      const oai = await generateImageOpenAI(prompt, w, h);
+      if (oai && oai.buf && oai.buf.length) {
+        console.log("[firas] image served by OpenAI (" + OPENAI_IMAGE_MODEL + "/" + OPENAI_IMAGE_QUALITY +
+          ", $" + openaiImageSpent().toFixed(2) + " of $" + OPENAI_IMAGE_BUDGET_USD + " used)");
+        openaiImageCharge();
+        if (!user.oaiImgCids.includes(slot)) { user.oaiImgCids.push(slot); }
+        await imgCacheSet(ckey, oai.buf, oai.mime);
+        if (isNew) { user.imgCids.push(slot); }
+        persist();
+        res.writeHead(200, { "Content-Type": oai.mime, "Cache-Control": "public, max-age=86400" });
+        return res.end(oai.buf);
+      }
+    } catch (_) { /* fall through to Cloudflare */ }
   }
   // 0) Cloudflare Workers AI (FREE FLUX.2, ~65/day) → PRIMARY: great quality + in-image
   // text at NO per-image cost and no user login. Falls through to Puter when its daily
@@ -5627,6 +5911,7 @@ const server = http.createServer(async (req, res) => {
     // ---- Image generation (keyless, server-proxied pollinations) ----
     if (route === "/api/image/quota" && method === "POST") return await handleImageQuota(req, res);
     if (route === "/api/image" && method === "GET") return await handleImage(req, res);
+    if (route === "/api/image/edit" && method === "POST") return await handleImageEdit(req, res);
     if (route === "/api/video/quota" && method === "GET") return await handleVideoQuota(req, res);
     if (route === "/api/video" && method === "GET") return await handleVideo(req, res);
 

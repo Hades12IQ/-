@@ -114,6 +114,34 @@ Without one of these, signup links are never delivered.
 
 ---
 
+## 5b. Images — OpenAI first, on a budget that cannot overrun
+
+Set `OPENAI_API_KEY` and gpt-image becomes the FIRST image engine, ahead of Cloudflare. It is
+also the only engine that can **edit** a picture you attach ("اجعل السماء بنفسجية", "remove the
+car") — every other engine generates from text alone.
+
+Three independent guards stand in front of the money, and all three must pass:
+
+| Variable | Default | What it does |
+|---|---|---|
+| `OPENAI_API_KEY` | *(none)* | absent → the whole path is skipped and nothing changes |
+| `OPENAI_IMAGE_DAILY` | `2` | premium images **per user per day**; images 3-5 come from the free chain |
+| `OPENAI_IMAGE_BUDGET_USD` | `60` | hard ceiling on total spend; past it, everything falls to Cloudflare |
+| `OPENAI_IMAGE_COST_USD` | `0.05` | assumed cost of one image — drives the ceiling, deliberately over-estimated |
+| `OPENAI_IMAGE_QUALITY` | `medium` | `low` is ~4x cheaper and visibly softer, `high` ~4x dearer |
+| `OPENAI_IMAGE_MODEL` | `gpt-image-1` | |
+| `OPENAI_EDIT_KEEP` | `20` | edited pictures kept per user (edge only — they live in the DB there) |
+
+The ceiling is the SOFT guard; the hard one is OpenAI's own billing error. A `402`, a `401`, or a
+`429 insufficient_quota` switches the engine off immediately and permanently, and every image
+after that comes from Cloudflare — no redeploy, no intervention, no failed requests.
+
+Spend is recorded at `openaiImageUsd` (file DB) / `spend/openaiImageUsd` (Firebase), so restarting
+does not reset it. To give the account more money, raise `OPENAI_IMAGE_BUDGET_USD`; to start the
+count again, set that field back to 0.
+
+---
+
 ## 6. Model choice — a LADDER, safe to aim at the strongest model
 
 Every `OLLAMA_MODEL_*` value accepts a **comma-separated list, strongest first**. The first rung
