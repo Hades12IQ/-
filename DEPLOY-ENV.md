@@ -127,10 +127,23 @@ Three independent guards stand in front of the money, and all three must pass:
 | `OPENAI_API_KEY` | *(none)* | absent → the whole path is skipped and nothing changes |
 | `OPENAI_IMAGE_DAILY` | `2` | premium images **per user per day**; images 3-5 come from the free chain |
 | `OPENAI_IMAGE_BUDGET_USD` | `60` | hard ceiling on total spend; past it, everything falls to Cloudflare |
-| `OPENAI_IMAGE_COST_USD` | `0.05` | assumed cost of one image — drives the ceiling, deliberately over-estimated |
-| `OPENAI_IMAGE_QUALITY` | `medium` | `low` is ~4x cheaper and visibly softer, `high` ~4x dearer |
-| `OPENAI_IMAGE_MODEL` | `gpt-image-1` | |
+| `OPENAI_IMAGE_PRICES` | *(built-in table)* | JSON `{quality:{size:usd}}` — only needed if OpenAI changes its prices |
+| `OPENAI_IMAGE_QUALITY` | `medium` | see the table below |
+| `OPENAI_IMAGE_MODEL` | `gpt-image-2,gpt-image-1` | comma-separated, newest first; an unavailable one retires itself |
 | `OPENAI_EDIT_KEEP` | `20` | edited pictures kept per user (edge only — they live in the DB there) |
+
+Spend is counted at OpenAI's **published per-image prices**, not an average — price moves with
+quality *and* shape, and not in the direction you would guess:
+
+| Quality | 1024×1024 | 1024×1536 | 1536×1024 | what $60 buys |
+|---|---|---|---|---|
+| low | $0.006 | $0.005 | $0.005 | ~10,000-12,000 |
+| **medium** | **$0.053** | **$0.041** | **$0.041** | **~1,132-1,463** |
+| high | $0.211 | $0.165 | $0.165 | ~284-363 |
+
+At the default two-a-day, medium quality gives one user roughly **566-731 days**. Anything the
+table does not recognise is charged at the dearest price in it — an unknown case must over-charge
+the guard, never under-charge it.
 
 The ceiling is the SOFT guard; the hard one is OpenAI's own billing error. A `402`, a `401`, or a
 `429 insufficient_quota` switches the engine off immediately and permanently, and every image

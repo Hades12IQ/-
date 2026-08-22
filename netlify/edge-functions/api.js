@@ -2466,11 +2466,64 @@ let _cfNext = 0;
      billing error, which switches the engine off for the life of the isolate.
    ──────────────────────────────────────────────────────────────────────────────────────────── */
 const OPENAI_API_KEY = env("OPENAI_API_KEY") || "";
-const OPENAI_IMAGE_MODEL = env("OPENAI_IMAGE_MODEL") || "gpt-image-1";
+/* The newest model first, with a fallback behind it. A name OpenAI does not serve comes back as
+   a clean 400 in under a second — nothing like the silent hang an unhosted Ollama model causes —
+   so the cost of guessing wrong here is one fast failure, and it is remembered so only the first
+   request pays it. Comma-separated, strongest first. */
+const OPENAI_IMAGE_MODELS = String(env("OPENAI_IMAGE_MODEL") || "gpt-image-2,gpt-image-1")
+  .split(",").map((m) => m.trim()).filter(Boolean);
+const _oaiModelDead = new Set();
+function openaiPickImageModel() {
+  return OPENAI_IMAGE_MODELS.find((m) => !_oaiModelDead.has(m)) || OPENAI_IMAGE_MODELS[0];
+}
 const OPENAI_IMAGE_QUALITY = env("OPENAI_IMAGE_QUALITY") || "medium";
 const OPENAI_IMAGE_DAILY = Number(env("OPENAI_IMAGE_DAILY") ?? 2);
 const OPENAI_IMAGE_BUDGET_USD = Number(env("OPENAI_IMAGE_BUDGET_USD") ?? 60);
-const OPENAI_IMAGE_COST_USD = Number(env("OPENAI_IMAGE_COST_USD") ?? 0.05);
+/* WHAT ONE PICTURE ACTUALLY COSTS — OpenAI's published per-image prices, not an estimate.
+
+   The first version of this guard used one flat figure for every picture. That is wrong in both
+   directions at once, because price moves with quality AND shape, and not in the direction you
+   would guess: a square medium image costs $0.053 while the taller and wider ones cost $0.041,
+   so a flat $0.05 over-charged every portrait and under-charged every square. Under-charging is
+   the one that matters — it lets real spend run past a ceiling that thinks it still has room.
+
+   Prices are per image, US dollars, GPT Image 2. Override the whole table with
+   OPENAI_IMAGE_PRICES as JSON if OpenAI changes them; the shape is {quality:{size:usd}}. */
+const OPENAI_IMAGE_PRICES = (() => {
+  const dflt = {
+    low:    { "1024x1024": 0.006, "1024x1536": 0.005, "1536x1024": 0.005 },
+    medium: { "1024x1024": 0.053, "1024x1536": 0.041, "1536x1024": 0.041 },
+    high:   { "1024x1024": 0.211, "1024x1536": 0.165, "1536x1024": 0.165 },
+  };
+  try {
+    const raw = env("OPENAI_IMAGE_PRICES");
+    if (raw) { const o = JSON.parse(raw); if (o && typeof o === "object") return o; }
+  } catch (_) {}
+  return dflt;
+})();
+
+/** Cost of one picture at the quality and size it will actually be made at. Falls back to the
+    dearest price in the table when something is unrecognised — an unknown case must over-charge
+    the guard, never under-charge it. */
+function openaiImageCost(size, quality) {
+  const q = String(quality || OPENAI_IMAGE_QUALITY).toLowerCase();
+  const row = OPENAI_IMAGE_PRICES[q];
+  const cost = row && row[size];
+  if (typeof cost === "number" && cost > 0) return cost;
+  let worst = 0;
+  for (const r of Object.values(OPENAI_IMAGE_PRICES)) {
+    for (const v of Object.values(r || {})) if (typeof v === "number" && v > worst) worst = v;
+  }
+  return worst || 0.25;
+}
+/** The dearest picture this configuration can produce — what "is there room for one more?"
+    has to be measured against, since the size is not known until the request is shaped. */
+function openaiImageMaxCost() {
+  const row = OPENAI_IMAGE_PRICES[String(OPENAI_IMAGE_QUALITY).toLowerCase()] || {};
+  let worst = 0;
+  for (const v of Object.values(row)) if (typeof v === "number" && v > worst) worst = v;
+  return worst || openaiImageCost("1024x1024", OPENAI_IMAGE_QUALITY);
+}
 const OPENAI_EDIT_KEEP = Number(env("OPENAI_EDIT_KEEP") ?? 20);   // stored edits kept per user
 let _openaiImagesOff = false;
 let _oaiSpend = { usd: 0, at: 0 };
@@ -2486,8 +2539,8 @@ async function openaiImageBudgetLeft() {
   if (_openaiImagesOff || !OPENAI_API_KEY) return 0;
   return Math.max(0, OPENAI_IMAGE_BUDGET_USD - (await openaiImageSpent()));
 }
-async function openaiImageCharge() {
-  const next = (await openaiImageSpent()) + OPENAI_IMAGE_COST_USD;
+async function openaiImageCharge(cost) {
+  const next = (await openaiImageSpent()) + cost;
   _oaiSpend = { usd: next, at: Date.now() };
   try { await dbPut("spend/openaiImageUsd", next); } catch (_) {}
 }
@@ -2507,7 +2560,7 @@ async function oaiImgDayNode(userId) {
   try { return (await dbGet(`oaiQuota/${dbKey(userId)}/${serverDay()}`)) || {}; } catch (_) { return {}; }
 }
 async function openaiImageAllowed(userId, slot) {
-  if ((await openaiImageBudgetLeft()) < OPENAI_IMAGE_COST_USD) return false;
+  if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return false;
   const node = await oaiImgDayNode(userId);
   if (slot in node) return true;                                   // same picture again — free
   return OPENAI_IMAGE_DAILY < 0 || Object.keys(node).length < OPENAI_IMAGE_DAILY;
@@ -2519,6 +2572,16 @@ async function openaiImageMark(userId, slot) {
 async function openaiImageResult(r, what) {
   if (!r.ok) {
     const txt = (await r.text().catch(() => "")).slice(0, 400);
+    /* A model name this account cannot use is a CONFIGURATION fault, not a money fault: retire
+       that rung so the next request starts on the one below it, and leave the budget alone. */
+    if ((r.status === 400 || r.status === 404) && /model/i.test(txt)) {
+      const dead = openaiPickImageModel();
+      if (OPENAI_IMAGE_MODELS.length > 1 && !_oaiModelDead.has(dead)) {
+        _oaiModelDead.add(dead);
+        console.warn("[firas] OpenAI image model " + dead + " unavailable - dropping to " + openaiPickImageModel());
+      }
+      return null;
+    }
     if (r.status === 401) openaiImagesExhausted("HTTP 401 - the API key is not valid");
     else if (r.status === 402) openaiImagesExhausted("HTTP 402");
     else if (r.status === 429 && /insufficient_quota|billing|exceeded your current quota/i.test(txt)) {
@@ -2533,7 +2596,7 @@ async function openaiImageResult(r, what) {
 }
 
 async function generateImageOpenAI(prompt, w, h) {
-  if ((await openaiImageBudgetLeft()) < OPENAI_IMAGE_COST_USD) return null;
+  if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return null;
   const ac = new AbortController();
   const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 120000);
   try {
@@ -2541,7 +2604,7 @@ async function generateImageOpenAI(prompt, w, h) {
       method: "POST",
       headers: { "content-type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
       body: JSON.stringify({
-        model: OPENAI_IMAGE_MODEL,
+        model: openaiPickImageModel(),
         prompt: String(prompt || "").slice(0, 4000),
         size: openaiImageSize(w, h),
         quality: OPENAI_IMAGE_QUALITY,
@@ -2555,13 +2618,13 @@ async function generateImageOpenAI(prompt, w, h) {
 }
 
 async function editImageOpenAI(prompt, bytes, mime) {
-  if ((await openaiImageBudgetLeft()) < OPENAI_IMAGE_COST_USD) return null;
+  if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return null;
   if (!bytes || !bytes.length) return null;
   const ac = new AbortController();
   const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 180000);
   try {
     const fd = new FormData();
-    fd.append("model", OPENAI_IMAGE_MODEL);
+    fd.append("model", openaiPickImageModel());
     fd.append("prompt", String(prompt || "").slice(0, 4000));
     fd.append("quality", OPENAI_IMAGE_QUALITY);
     fd.append("n", "1");
@@ -4166,14 +4229,14 @@ export default async (request, context) => {
       // Keyed on the SOURCE BYTES plus the instruction, so the same edit twice is free.
       const srcHash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", src)))
         .map((b) => b.toString(16).padStart(2, "0")).join("");
-      const key = await imgSlotKey("edit|" + OPENAI_IMAGE_MODEL + "|" + OPENAI_IMAGE_QUALITY + "|" + prompt, 0, 0, srcHash);
+      const key = await imgSlotKey("edit|" + openaiPickImageModel() + "|" + OPENAI_IMAGE_QUALITY + "|" + prompt, 0, 0, srcHash);
 
       const already = await oaiEditLoad(user.id, key);
       if (already) return json({ ok: true, key, cached: true });
 
       // Editing exists ONLY on OpenAI. Say so plainly rather than quietly returning a picture
       // that ignored the instruction — that is the failure this feature exists to remove.
-      if (!OPENAI_API_KEY || (await openaiImageBudgetLeft()) < OPENAI_IMAGE_COST_USD) {
+      if (!OPENAI_API_KEY || (await openaiImageBudgetLeft()) < openaiImageMaxCost()) {
         return json({ error: "edit_unavailable" }, 503);
       }
       if (!(await openaiImageAllowed(user.id, key))) return json({ error: "daily_limit", limit: OPENAI_IMAGE_DAILY }, 429);
@@ -4186,7 +4249,9 @@ export default async (request, context) => {
       const out = await editImageOpenAI(prompt, src, sniffed);
       if (!out || !out.bytes || !out.bytes.length) return json({ error: "edit_failed" }, 502);
 
-      await openaiImageCharge();
+      /* Priced at the dearest size for this quality: the API picks the output shape from the
+         source picture, so the exact one is not known here and the guard must not under-count. */
+      await openaiImageCharge(openaiImageMaxCost());
       await oaiEditStore(user.id, key, out.b64, out.mime);
       await openaiImageMark(user.id, key);
       try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(key)}`, true); } catch (_) {}
@@ -4246,7 +4311,8 @@ export default async (request, context) => {
         try {
           const oai = await generateImageOpenAI(prompt, w, h);
           if (oai && oai.bytes && oai.bytes.length) {
-            await openaiImageCharge();
+            // Priced at the size actually requested — square and portrait do not cost the same.
+            await openaiImageCharge(openaiImageCost(openaiImageSize(w, h), OPENAI_IMAGE_QUALITY));
             await openaiImageMark(user.id, slot);
             if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
             return new Response(oai.bytes, { headers: { "Content-Type": oai.mime, "Cache-Control": "public, max-age=86400" } });
