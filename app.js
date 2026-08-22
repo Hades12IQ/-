@@ -1815,22 +1815,64 @@ function buildVideoCard(meta, lang) {
 
 /** Does this ask for the ATTACHED picture to be CHANGED, rather than described?
 
-    The distinction is the whole feature. "ما هذا؟" and "اشرح الصورة" are vision questions and
-    must keep going to the vision model; "اجعل السماء بنفسجية" and "احذف السيارة" are edits, and
-    until now they were answered with a paragraph about the picture instead of the picture.
-    Only ever consulted when an image is actually attached, so a plain chat sentence containing
-    "غيّر" can never reach it. */
+    A FAST PATH ONLY. The verdict belongs to classifyAttachedImageIntent below — this exists so an
+    unmistakable instruction does not pay for a model call. It may say yes; it never says no.
+
+    The version this replaces used \b as a word boundary around Arabic verbs — عدل\b, غير\b,
+    بدل\b, حول\b — and in JavaScript \b is defined on ASCII word characters only. An Arabic letter
+    is not one, so none of those alternatives could ever match anything at all. "عدّلها",
+    "عدل الصورة" and "غير الخلفية" all fell straight through to a chat reply explaining that the
+    assistant cannot edit pictures. Every \b is gone; the letters are matched directly. */
 function detectImageEditRequest(text) {
   const s = String(text || "").trim();
   if (!s) return false;
-  // An explicit description/analysis request wins even if it also contains a change verb.
-  if (/^(?:ما|ماذا|شنو|شو|وش|من|كم|أين|اين|هل|لماذا|ليش|كيف)\b/i.test(s)) return false;
-  if (/\b(?:what|who|where|when|why|how|describe|explain|analyz|analys|read|translate|caption|identify)\b/i.test(s)) return false;
-  if (/اشرح|وصف|صف\s|حلّل|حلل|اقرأ|اقرا|ترجم|ما\s*هذا|ما\s*هي|عمّا|تعرّف/i.test(s)) return false;
-
-  const ar = /عدّل|عدل\b|غيّر|غير\b|بدّل|بدل\b|حوّل|حول\b|اجعل|خلّي|خلي\b|اضف|أضف|ضيف|احذف|امسح|شيل|أزل|ازل\b|لوّن|لون\b|اقصص|قصّ|كبّر|صغّر|دوّر|اقلب|نظّف|حسّن|طوّر|ارفع\s*(?:الدقة|الجودة)|زد\s|انقص|استبدل|ابدل|اضبط|صحّح|رتّب|املأ|فرّغ|اجعلها|خليها|سوّيها|سويها/i;
+  const ar = /عدّل|عدل|غيّر|غير|بدّل|بدل|حوّل|حول|اجعل|خلّي|خلي|اضف|أضف|ضيف|احذف|امسح|شيل|أزل|ازل|لوّن|لون|اقصص|قصّ|كبّر|صغّر|دوّر|اقلب|نظّف|حسّن|طوّر|استبدل|ابدل|اضبط|صحّح|رتّب|زيّن|موّه|فتّح|غمّق/;
   const en = /\b(?:edit|change|modify|alter|make (?:it|the|this)|turn (?:it|the|this)|add|remove|delete|erase|replace|swap|recolou?r|colou?r|crop|rotate|flip|resize|upscale|enhance|retouch|fix|clean up|blur|brighten|darken|convert)\b/i;
   return ar.test(s) || en.test(s);
+}
+
+/** "edit" | "ask" — what to do with an attached picture, decided by the MODEL.
+
+    The point of asking rather than pattern-matching: a pattern only knows the phrasings somebody
+    thought to write down, and it fails SILENTLY when it is wrong — the user gets a polite chat
+    answer saying the assistant cannot change pictures, while the code that changes pictures sits
+    right there unused. "تقدر تغير الكلام الي بهاي الصورة؟" is a perfectly ordinary way to ask for
+    an edit and no reasonable regex was ever going to catch it.
+
+    Cheap: mini tier, one word out, cached per message, and skipped entirely when the fast path
+    above already recognised the instruction. Fails safe — an unreachable classifier answers
+    "ask", which is the behaviour that existed before any of this. */
+const _imgIntentCache = new Map();
+async function classifyAttachedImageIntent(text, signal) {
+  const t = String(text || "").trim();
+  if (!t) return "ask";
+  if (detectImageEditRequest(t)) return "edit";        // unmistakable — no need to pay for a call
+  if (t.length > 600) return "ask";                    // a brief that long is context, not an edit
+  if (_imgIntentCache.has(t)) return _imgIntentCache.get(t);
+
+  let verdict = "ask";
+  try {
+    const raw = await callAgentText([
+      { role: "system", content:
+        "The user has ATTACHED a picture and written a message about it. Decide what they want " +
+        "done with the picture. Answer with exactly one word: edit or ask.\n" +
+        "edit — they want a CHANGED version of the picture produced. Any alteration counts: " +
+        "replace or remove or add something, change the wording written in it, change the " +
+        "background, recolour it, restyle it, make it night, crop it, clean it up, improve it. " +
+        "Asking whether you CAN change it is also edit.\n" +
+        "ask — they want information ABOUT the picture: describe it, explain it, read or " +
+        "translate the text in it, identify something, answer a question about it, or use it as " +
+        "context for a different task such as writing code or a document.\n" +
+        "Any language, any dialect. Reply with the single word only." },
+      { role: "user", content: t.slice(0, 600) },
+    ], "mini", signal);
+    if (/\bedit\b/i.test(String(raw || ""))) verdict = "edit";
+  } catch (_) {
+    /* Never a gate that can strand a request: unreachable means the old behaviour. */
+    verdict = "ask";
+  }
+  _imgIntentCache.set(t, verdict);
+  return verdict;
 }
 
 /** Send the attached picture and the instruction to the edit endpoint. Resolves to a cache key
@@ -1842,6 +1884,7 @@ async function requestImageEdit(prompt, b64, mime, signal) {
      than an edge function's stopwatch — which is what used to make it give up. */
   const key = await requestImageJob(prompt, 1024, 1024, signal, b64);
   if (key) return { key };
+  if (_lastImageJobError) return { error: _lastImageJobError };
   /* The job route refuses for exactly one reason worth naming to the user: the daily allowance.
      Everything else is a render that did not produce a picture. */
   try {
@@ -1868,6 +1911,16 @@ function imageEditErrorText(err, lang) {
       return ar ? "سجّل الدخول لتعديل الصور." : "Sign in to edit images.";
     case "bad_image":
       return ar ? "تعذّرت قراءة الصورة المرفقة." : "That attached image could not be read.";
+    case "background_unconfigured":
+      return ar
+        ? "تعديل الصور يحتاج إعداد المُشغّل الخلفي (INTERNAL_JOB_SECRET و FIREBASE_SERVICE_ACCOUNT في Netlify). أضِفهما ثم أعد المحاولة."
+        : "Image editing needs the background runner configured (INTERNAL_JOB_SECRET and FIREBASE_SERVICE_ACCOUNT in Netlify).";
+    case "openai_unconfigured":
+      return ar ? "مفتاح OpenAI غير مضبوط، وهو المحرّك الوحيد الذي يعدّل الصور."
+                : "The OpenAI key is not set, and it is the only engine that can edit a picture.";
+    case "no_budget":
+      return ar ? "نفد رصيد الصور المخصّص. ارفع السقف في الإعدادات لمواصلة التعديل."
+                : "The image budget is spent. Raise the ceiling to keep editing.";
     default:
       return ar
         ? "تعذّر تعديل الصورة. حاول مرة أخرى، أو صِف التعديل بتفصيل أوضح."
@@ -1954,7 +2007,9 @@ function stripImageMetaBlock(s) {
     Resolves to a cache key the image card points at, or null when the job path is not available
     (no background secret, no database, no key) — the caller then falls back to the direct URL and
     behaves exactly as it did before. */
+let _lastImageJobError = "";
 async function requestImageJob(prompt, w, h, signal, srcB64) {
+  _lastImageJobError = "";
   let start = null;
   try {
     const r = await fetch("/api/image/job", {
@@ -1966,7 +2021,14 @@ async function requestImageJob(prompt, w, h, signal, srcB64) {
         : { prompt: String(prompt || "").slice(0, 1000), w, h }),
       signal,
     });
-    if (!r.ok) return null;                       // 503 = not configured, 429 = out of allowance
+    if (!r.ok) {
+      /* Keep the reason. A generic "it did not work" is the same sentence whether the background
+         runner is unconfigured, the allowance is spent or the render failed — and telling those
+         apart by guesswork has already cost hours. */
+      const j = await r.json().catch(() => null);
+      _lastImageJobError = (j && j.error) || ("http_" + r.status);
+      return null;
+    }
     start = await r.json();
   } catch (_) { return null; }
   if (!start || !start.jobId) return null;
@@ -1986,7 +2048,7 @@ async function requestImageJob(prompt, w, h, signal, srcB64) {
       if (!p.ok) continue;
       const j = await p.json();
       if (j.phase === "done" && j.key) return j.key;
-      if (j.phase === "fail") { console.error("[firas] image job failed:", j.error || j.reason); return null; }
+      if (j.phase === "fail") { _lastImageJobError = j.error || j.reason || "render_failed"; console.error("[firas] image job failed:", _lastImageJobError); return null; }
     } catch (_) { /* a dropped poll is not a failed render — keep waiting */ }
   }
   return null;
@@ -13140,8 +13202,12 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
        is what detectImageEditRequest exists to separate. Before this, an edit request had nowhere
        to go: every engine in the chain generates from text alone, so the honest best it could do
        was describe the photo back. */
+    /* The verdict is the MODEL's, not a pattern's. A pattern only knows the phrasings someone
+       thought to write down and it fails silently when it is wrong — which is how "تقدر تغير
+       الكلام الي بهاي الصورة؟" got a chat reply saying the assistant cannot change pictures,
+       while the code that changes pictures sat right there unused. */
     if (imgHasAttachments && !fileFmt && !codeReq && (state.mode !== "plan" || planExecuting) &&
-        imgUser && detectImageEditRequest(imgUser.content)) {
+        imgUser && (await classifyAttachedImageIntent(imgUser.content, signal)) === "edit") {
       if (isGuest()) {
         clearTimeout(timeoutId);
         finalized = true;

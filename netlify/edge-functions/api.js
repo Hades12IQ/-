@@ -4313,6 +4313,15 @@ export default async (request, context) => {
           switchedOff: _openaiImagesOff,
         },
         dailyAllowance: OPENAI_IMAGE_DAILY,
+        /* The background runner is what lets a picture take minutes instead of seconds. Without
+           BOTH of these the job route answers 503, the client falls back to the direct path, and
+           editing is not possible at all - so it is worth saying out loud rather than leaving it
+           to be deduced from a failure. */
+        backgroundRunner: {
+          secret: !!INTERNAL_JOB_SECRET,
+          database: !!FIREBASE_DB_URL,
+          ready: !!(INTERNAL_JOB_SECRET && FIREBASE_DB_URL),
+        },
       };
       try { out.budget.spent = await openaiImageSpent(); } catch (e) { out.budget.spent = "unreadable: " + (e && e.message); }
       try { out.budget.left = await openaiImageBudgetLeft(); } catch (_) {}
