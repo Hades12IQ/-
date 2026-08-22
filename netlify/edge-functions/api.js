@@ -4533,6 +4533,8 @@ export default async (request, context) => {
         id: jobId, prompt, size, quality: OPENAI_IMAGE_QUALITY,
         models: OPENAI_IMAGE_MODELS.join(","),
         engine: IMAGE_ENGINE,
+        // gpt-image takes a pixel size, Gemini takes a ratio — carry both, let the runner pick.
+        aspect: size === "1536x1024" ? "4:3" : size === "1024x1536" ? "3:4" : "1:1",
         kind: isEdit ? "edit" : "image",
         src: isEdit ? srcB64 : null,          // the runner drops this the moment it is done with it
         phase: "queued", createdAt: Date.now(), updatedAt: Date.now(),

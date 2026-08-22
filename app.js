@@ -2053,6 +2053,29 @@ async function requestImageJob(prompt, w, h, signal, srcB64) {
   }
   return null;
 }
+/** What SHAPE should this picture be?
+
+    Every image was 1024x1024 because that is what the client hard-coded, and a square is the one
+    shape with no larger option: gpt-image caps a square at 1024 while the wide and tall shapes go
+    to 1536 on their long edge — bigger AND cheaper ($0.165 against $0.211 at high). So a banner
+    asked for as a square was paying more for fewer pixels.
+
+    A heuristic rather than a model call, deliberately: the cost of being wrong is a picture in a
+    shape the user did not expect, not a failure, and it is not worth a round-trip on every image.
+    Falls back to square, which is right for the most common request here — a logo. */
+function pickImageShape(text) {
+  const s = String(text || "");
+  const wide = /لافتة|لافته|بانر|غلاف|كفر|خلفية|خلفيه|ويلبيبر|مشهد|منظر|بانوراما|شريط علوي|هيدر|واجهة|واجهه|\b(?:banner|cover|header|hero|wallpaper|background|landscape|panorama|scene|thumbnail|widescreen)\b/i;
+  const tall = /بوستر|ملصق|ستوري|قصة|بورتريه|بروفايل|جوال|موبايل|كتاب|غلاف كتاب|\b(?:poster|story|portrait|vertical|phone|mobile|book cover|flyer|reel|tiktok)\b/i;
+  // A logo, icon, avatar, sticker or stamp is square by nature — checked first so "غلاف" inside
+  // a logo request does not drag it sideways.
+  const square = /لوغو|لوقو|شعار|أيقونة|ايقونة|رمز|ستيكر|ملصق دائري|أفاتار|افاتار|بروفايل بيك|ختم|\b(?:logo|icon|avatar|emblem|badge|sticker|monogram|favicon|profile pic)\b/i;
+  if (square.test(s)) return { w: 1024, h: 1024, aspect: "1:1" };
+  if (tall.test(s)) return { w: 1024, h: 1536, aspect: "3:4" };
+  if (wide.test(s)) return { w: 1536, h: 1024, aspect: "4:3" };
+  return { w: 1024, h: 1024, aspect: "1:1" };
+}
+
 function imageUrl(meta) {
   /* An EDITED image already exists on disk — it is addressed by its cache key, not regenerated
      from a prompt. That is what makes it survive a reload without being remade or recharged. */
@@ -13348,11 +13371,14 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
          another engine because a timer ran out. If it is not available — no background secret, no
          database, no key — this returns null and the direct URL below is used exactly as before. */
       let jobKey = null;
-      try { jobKey = await requestImageJob(prompt, 1024, 1024, signal); } catch (_) {}
+      /* The shape follows the request rather than always being square — a banner asked for as
+         a square was paying MORE for FEWER pixels (1024 capped, against 1536 on the long edge). */
+      const shape = pickImageShape(imgUser.content);
+      try { jobKey = await requestImageJob(prompt, shape.w, shape.h, signal); } catch (_) {}
       if (signal.aborted) return;
       aiMsg.content = "```firas-image\n" + JSON.stringify(
         jobKey ? { prompt: prompt, key: jobKey }
-               : { prompt: prompt, w: 1024, h: 1024, seed: imgSeed, cid: imgCid }
+               : { prompt: prompt, w: shape.w, h: shape.h, seed: imgSeed, cid: imgCid }
       ) + "\n```";
       aiMsg.reasoning = "";
       finalizeAi(aiMsg, chat);

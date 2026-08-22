@@ -164,29 +164,43 @@ const GEMINI_IMAGE_MODELS = String(process.env.GEMINI_IMAGE_MODEL ||
   .split(",").map((m) => m.trim()).filter(Boolean);
 
 /** One Gemini image attempt. Returns { b64, mime } or { reason, detail }. */
-async function renderGemini(model, prompt, srcB64) {
+async function renderGemini(model, prompt, srcB64, aspect, withConfig) {
   const ac = new AbortController();
   const to = setTimeout(() => { try { ac.abort(); } catch { /* already gone */ } }, RENDER_TIMEOUT_MS);
   try {
     /* An attached picture rides in the SAME parts array as the instruction — that is how Gemini
        edits: it is given the picture and told what to change, rather than a separate endpoint. */
-    const parts = [{ text: String(prompt || "").slice(0, 4000) }];
+    const shapeWord = aspect === "4:3" ? " Compose it as a WIDE landscape image."
+      : aspect === "3:4" ? " Compose it as a TALL portrait image."
+      : aspect === "1:1" ? " Compose it as a SQUARE image." : "";
+    const parts = [{ text: String(prompt || "").slice(0, 4000) + shapeWord }];
     if (srcB64) {
       const buf = Buffer.from(String(srcB64), "base64");
       if (buf.length) parts.unshift({ inlineData: { mimeType: sniffImageType(buf), data: String(srcB64) } });
     }
+    /* The aspect ratio is asked for TWICE, in two different registers: once as a structured
+       field, and once in plain words inside the prompt. The field is the one that actually binds,
+       but its exact name is not something to bet the engine on - so `withConfig` false retries
+       without it, and the words in the prompt still carry the intent. */
+    const body = { contents: [{ parts }] };
+    if (withConfig && aspect) body.generationConfig = { imageConfig: { aspectRatio: aspect } };
     const r = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent",
       {
         method: "POST",
         headers: { "content-type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
-        body: JSON.stringify({ contents: [{ parts }] }),
+        body: JSON.stringify(body),
         signal: ac.signal,
       });
     const text = await r.text();
     if (!r.ok) {
       let msg = text.slice(0, 300);
       try { msg = (JSON.parse(text).error || {}).message || msg; } catch { /* keep the raw text */ }
+      /* An unknown field comes back as a 400 naming it. That is a REQUEST fault, not a model
+         fault, and the caller retries once without the config rather than skipping the rung. */
+      if (r.status === 400 && withConfig && /aspect|imageConfig|generationConfig|unknown name|invalid json/i.test(msg)) {
+        return { reason: "config", detail: model + ": " + msg };
+      }
       const nameFault = (r.status === 404 || r.status === 400) && /model|not found|not supported/i.test(msg);
       return { reason: nameFault ? "model" : "http", status: r.status, detail: model + ": " + msg };
     }
@@ -246,7 +260,9 @@ export default async (req) => {
      and not a code change. */
   if ((job.engine || "gemini") === "gemini" && GEMINI_API_KEY) {
     for (const gm of GEMINI_IMAGE_MODELS) {
-      const out = await renderGemini(gm, job.prompt, isEdit ? job.src : null);
+      let out = await renderGemini(gm, job.prompt, isEdit ? job.src : null, job.aspect, true);
+      // The structured aspect field was refused — same model, same rung, just without it.
+      if (out.reason === "config") out = await renderGemini(gm, job.prompt, isEdit ? job.src : null, job.aspect, false);
       if (out.b64) {
         try { await dbPut(`imgEdits/${userId}/${jobId}`, { b64: out.b64, mime: out.mime }, token); }
         catch (e) { await save({ phase: "fail", error: "could not store the picture: " + ((e && e.message) || e) }); return new Response("ok"); }
