@@ -4341,11 +4341,20 @@ export default async (request, context) => {
          so each candidate is probed and the winner is named. A rejection here is a NAME problem
          and says so; a 200 that answers with prose instead of pixels is a refusal, which is a
          different thing again and also worth distinguishing. */
+      /* THE PROBE MUST OUTLIVE ITSELF. The first version gave every rung 60 seconds, which is
+         several times the edge function's own budget - so the diagnostic crashed with "the edge
+         function timed out" and told us nothing. Ironically that IS the finding this whole page
+         exists to explain, but a tool that dies proving its own point is still a broken tool.
+         A hard total budget, and any rung not reached says so rather than being silently absent. */
+      const DIAG_TOTAL_MS = 22000, DIAG_PROBE_MS = 9000;
+      const diagStarted = Date.now();
+      const diagLeft = () => DIAG_TOTAL_MS - (Date.now() - diagStarted);
       out.gemini = { engine: IMAGE_ENGINE, key: !!GEMINI_API_KEY, models: GEMINI_IMAGE_MODELS, tried: [] };
       if (GEMINI_API_KEY) {
         for (const gm of GEMINI_IMAGE_MODELS) {
+          if (diagLeft() < 3000) { out.gemini.tried.push({ model: gm, skipped: "ran out of probe time" }); continue; }
           const ac = new AbortController();
-          const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 60000);
+          const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, Math.min(DIAG_PROBE_MS, diagLeft()));
           const t0 = Date.now();
           try {
             const r = await fetch(
@@ -4382,6 +4391,11 @@ export default async (request, context) => {
             out.gemini.tried.push({ model: gm, status: 0, ok: false, usable: false, ms: Date.now() - t0, error: String((e && e.message) || e) });
           } finally { clearTimeout(to); }
         }
+        /* An abort at 9 seconds says the model is slower than this probe waits - nothing more.
+           Reporting that as "broken" would send us chasing the wrong thing again. */
+        out.gemini.tried.forEach((t) => {
+          if (!t.usable && !t.skipped && t.status === 0) t.note = "no answer within the probe window - slow, not necessarily broken";
+        });
         const gwin = out.gemini.tried.find((t) => t.usable);
         out.gemini.verdict = gwin
           ? ("Nano Banana works on " + gwin.model + " (" + gwin.ms + "ms). This is the engine drawing your pictures.")
@@ -4389,6 +4403,7 @@ export default async (request, context) => {
       } else {
         out.gemini.verdict = "GEMINI_API_KEY is not visible to the edge function.";
       }
+      out.probeMs = Date.now() - diagStarted;
 
       if (!OPENAI_API_KEY) {
         out.verdict = "OPENAI_API_KEY is not visible to the edge function. Check the variable name and that its scope includes Edge Functions, then redeploy.";
@@ -4404,8 +4419,9 @@ export default async (request, context) => {
       for (const model of OPENAI_IMAGE_MODELS) {
         let settled = false;
         for (const q of [OPENAI_IMAGE_QUALITY]) {
+          if (diagLeft() < 3000) { out.openai.tried.push({ model, quality: q, skipped: "ran out of probe time" }); continue; }
           const ac = new AbortController();
-          const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 60000);
+          const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, Math.min(DIAG_PROBE_MS, diagLeft()));
           const t0 = Date.now();
           try {
             const r = await fetch("https://api.openai.com/v1/images/generations", {
