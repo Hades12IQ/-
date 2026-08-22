@@ -128,7 +128,7 @@ Three independent guards stand in front of the money, and all three must pass:
 | `OPENAI_IMAGE_DAILY` | `2` | premium images **per user per day**; images 3-5 come from the free chain |
 | `OPENAI_IMAGE_BUDGET_USD` | `60` | hard ceiling on total spend; past it, everything falls to Cloudflare |
 | `OPENAI_IMAGE_PRICES` | *(built-in table)* | JSON `{quality:{size:usd}}` — only needed if OpenAI changes its prices |
-| `OPENAI_IMAGE_QUALITY` | `medium` | see the table below |
+| `OPENAI_IMAGE_QUALITY` | `high` | see the table below |
 | `OPENAI_IMAGE_MODEL` | `gpt-image-2,gpt-image-1` | comma-separated, newest first; an unavailable one retires itself |
 | `OPENAI_EDIT_KEEP` | `20` | edited pictures kept per user (edge only — they live in the DB there) |
 
@@ -138,10 +138,10 @@ quality *and* shape, and not in the direction you would guess:
 | Quality | 1024×1024 | 1024×1536 | 1536×1024 | what $60 buys |
 |---|---|---|---|---|
 | low | $0.006 | $0.005 | $0.005 | ~10,000-12,000 |
-| **medium** | **$0.053** | **$0.041** | **$0.041** | **~1,132-1,463** |
-| high | $0.211 | $0.165 | $0.165 | ~284-363 |
+| medium | $0.053 | $0.041 | $0.041 | ~1,132-1,463 |
+| **high** | **$0.211** | **$0.165** | **$0.165** | **~284-363** |
 
-At the default two-a-day, medium quality gives one user roughly **566-731 days**. Anything the
+At the default two-a-day, high quality gives one user roughly **142-181 days**. Dropping to medium roughly quadruples that, and low multiplies it by about thirty-five. Anything the
 table does not recognise is charged at the dearest price in it — an unknown case must over-charge
 the guard, never under-charge it.
 

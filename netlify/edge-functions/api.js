@@ -2476,7 +2476,7 @@ const _oaiModelDead = new Set();
 function openaiPickImageModel() {
   return OPENAI_IMAGE_MODELS.find((m) => !_oaiModelDead.has(m)) || OPENAI_IMAGE_MODELS[0];
 }
-const OPENAI_IMAGE_QUALITY = env("OPENAI_IMAGE_QUALITY") || "medium";
+const OPENAI_IMAGE_QUALITY = env("OPENAI_IMAGE_QUALITY") || "high";
 const OPENAI_IMAGE_DAILY = Number(env("OPENAI_IMAGE_DAILY") ?? 2);
 const OPENAI_IMAGE_BUDGET_USD = Number(env("OPENAI_IMAGE_BUDGET_USD") ?? 60);
 /* WHAT ONE PICTURE ACTUALLY COSTS — OpenAI's published per-image prices, not an estimate.
@@ -2640,7 +2640,7 @@ async function generateImageOpenAI(prompt, w, h) {
   /* ONE quality, the configured one. The drop to low existed only because an edge function
      could not wait for a medium render; the background runner can, so a picture is never quietly
      downgraded to beat a stopwatch any more. */
-  const qualities = [String(OPENAI_IMAGE_QUALITY || "medium").toLowerCase()];
+  const qualities = [String(OPENAI_IMAGE_QUALITY || "high").toLowerCase()];
 
   for (const model of OPENAI_IMAGE_MODELS) {
     let modelRejected = false;

@@ -182,8 +182,8 @@ export default async (req) => {
 
   for (const model of models) {
     const out = isEdit
-      ? await renderEdit(model, job.prompt, job.src, job.quality || "medium")
-      : await render(model, job.prompt, job.size || "1024x1024", job.quality || "medium");
+      ? await renderEdit(model, job.prompt, job.src, job.quality || "high")
+      : await render(model, job.prompt, job.size || "1024x1024", job.quality || "high");
     if (out.b64) {
       /* The picture is stored where the edge already serves finished images from, so the browser
          asks for it with the same /api/image?key= it uses for an edit. */
@@ -193,7 +193,7 @@ export default async (req) => {
          leaving a copy of every edited photo sitting in the job record forever. */
       if (isEdit) job.src = null;
       await save({
-        phase: "done", key: jobId, model, quality: job.quality || "medium", kind: job.kind || "image",
+        phase: "done", key: jobId, model, quality: job.quality || "high", kind: job.kind || "image",
         ms: Date.now() - started, bytes: Math.round(out.b64.length * 0.75),
       });
       return new Response("ok");
