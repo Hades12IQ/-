@@ -148,6 +148,67 @@ async function renderEdit(model, prompt, srcB64, quality) {
 }
 
 
+/* NANO BANANA (Gemini image) — the primary engine, with gpt-image behind it.
+
+   Firas's Google AI Pro subscription opens Nano Banana Pro through AI Studio, and its selling
+   point is the exact thing that has been wrong in every Arabic logo so far: text rendered inside
+   the picture, in non-Latin scripts. So it goes first and gpt-image becomes the fallback. If it
+   disappoints, IMAGE_ENGINE=openai puts things back the way they were — one variable, no redeploy.
+
+   The model id is a LADDER rather than a guess. Google's marketing name is "Nano Banana Pro" and
+   the API id is not something to assume; the ladder tries each candidate and uses the first the
+   account actually accepts, so a wrong name costs one fast 404 instead of a broken engine. */
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const GEMINI_IMAGE_MODELS = String(process.env.GEMINI_IMAGE_MODEL ||
+  "gemini-3-pro-image-preview,gemini-3-pro-image,gemini-2.5-flash-image")
+  .split(",").map((m) => m.trim()).filter(Boolean);
+
+/** One Gemini image attempt. Returns { b64, mime } or { reason, detail }. */
+async function renderGemini(model, prompt, srcB64) {
+  const ac = new AbortController();
+  const to = setTimeout(() => { try { ac.abort(); } catch { /* already gone */ } }, RENDER_TIMEOUT_MS);
+  try {
+    /* An attached picture rides in the SAME parts array as the instruction — that is how Gemini
+       edits: it is given the picture and told what to change, rather than a separate endpoint. */
+    const parts = [{ text: String(prompt || "").slice(0, 4000) }];
+    if (srcB64) {
+      const buf = Buffer.from(String(srcB64), "base64");
+      if (buf.length) parts.unshift({ inlineData: { mimeType: sniffImageType(buf), data: String(srcB64) } });
+    }
+    const r = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+        body: JSON.stringify({ contents: [{ parts }] }),
+        signal: ac.signal,
+      });
+    const text = await r.text();
+    if (!r.ok) {
+      let msg = text.slice(0, 300);
+      try { msg = (JSON.parse(text).error || {}).message || msg; } catch { /* keep the raw text */ }
+      const nameFault = (r.status === 404 || r.status === 400) && /model|not found|not supported/i.test(msg);
+      return { reason: nameFault ? "model" : "http", status: r.status, detail: model + ": " + msg };
+    }
+    let j = null; try { j = JSON.parse(text); } catch { /* handled below */ }
+    const cands = (j && j.candidates) || [];
+    for (const c of cands) {
+      const ps = (c && c.content && c.content.parts) || [];
+      for (const p of ps) {
+        const inl = p.inlineData || p.inline_data;
+        if (inl && inl.data) return { b64: inl.data, mime: inl.mimeType || inl.mime_type || "image/png" };
+      }
+    }
+    /* A refusal comes back as 200 with prose instead of pixels — worth naming, because it is not
+       the same thing as an engine being broken. */
+    const said = cands[0] && cands[0].content && cands[0].content.parts &&
+      cands[0].content.parts.map((p) => p.text).filter(Boolean).join(" ").slice(0, 200);
+    return { reason: "empty", detail: said ? "answered with text: " + said : "no image in the reply" };
+  } catch (e) {
+    return { reason: ac.signal.aborted ? "timeout" : "network", detail: String((e && e.message) || e) };
+  } finally { clearTimeout(to); }
+}
+
 export default async (req) => {
   if (!INTERNAL_SECRET || req.headers.get("x-firas-internal") !== INTERNAL_SECRET) {
     return new Response("forbidden", { status: 403 });
@@ -179,6 +240,29 @@ export default async (req) => {
      storage, same charge. Internally an edit IS a re-render, so it is no faster and belongs on
      this side of the clock rather than inside an edge function's stopwatch. */
   const isEdit = job.kind === "edit";
+
+  /* NANO BANANA FIRST when it is the chosen engine, gpt-image behind it. Whichever runs, the
+     result is stored and charged identically, so switching engines is a one-variable decision
+     and not a code change. */
+  if ((job.engine || "gemini") === "gemini" && GEMINI_API_KEY) {
+    for (const gm of GEMINI_IMAGE_MODELS) {
+      const out = await renderGemini(gm, job.prompt, isEdit ? job.src : null);
+      if (out.b64) {
+        try { await dbPut(`imgEdits/${userId}/${jobId}`, { b64: out.b64, mime: out.mime }, token); }
+        catch (e) { await save({ phase: "fail", error: "could not store the picture: " + ((e && e.message) || e) }); return new Response("ok"); }
+        if (isEdit) job.src = null;
+        await save({
+          phase: "done", key: jobId, engine: "gemini", model: gm, quality: "n/a",
+          kind: job.kind || "image", ms: Date.now() - started,
+          bytes: Math.round(out.b64.length * 0.75),
+        });
+        return new Response("ok");
+      }
+      last = out;
+      if (out.reason !== "model") break;   // only a bad NAME is worth the next rung
+    }
+    // Gemini could not do it — fall through to gpt-image rather than failing the job.
+  }
 
   for (const model of models) {
     const out = isEdit

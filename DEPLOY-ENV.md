@@ -124,6 +124,8 @@ Three independent guards stand in front of the money, and all three must pass:
 
 | Variable | Default | What it does |
 |---|---|---|
+| `IMAGE_ENGINE` | `gemini` | `gemini` draws with Nano Banana and keeps gpt-image behind it; `openai` swaps them |
+| `GEMINI_IMAGE_MODEL` | a ladder | comma-separated Nano Banana candidates, first accepted wins — `/api/image/diag` names it |
 | `OPENAI_API_KEY` | *(none)* | absent → the whole path is skipped and nothing changes |
 | `OPENAI_IMAGE_DAILY` | `2` | premium images **per user per day**; images 3-5 come from the free chain |
 | `OPENAI_IMAGE_BUDGET_USD` | `60` | hard ceiling on total spend; past it, everything falls to Cloudflare |

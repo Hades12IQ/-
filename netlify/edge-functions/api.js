@@ -2525,7 +2525,17 @@ function openaiImageMaxCost() {
   return worst || openaiImageCost("1024x1024", OPENAI_IMAGE_QUALITY);
 }
 const OPENAI_EDIT_KEEP = Number(env("OPENAI_EDIT_KEEP") ?? 20);   // stored edits kept per user
-const OPENAI_IMAGE_TIMEOUT_MS = Number(env("OPENAI_IMAGE_TIMEOUT_MS") ?? 18000);   // first try; the low-quality retry gets 60% of this on top
+const OPENAI_IMAGE_TIMEOUT_MS = Number(env("OPENAI_IMAGE_TIMEOUT_MS") ?? 18000);
+/* WHICH ENGINE DRAWS THE PICTURE. "gemini" puts Nano Banana first with gpt-image behind it,
+   "openai" puts it back the other way round. One variable, no redeploy, no code change - the
+   whole point being that trying an engine should not be a commitment. */
+const IMAGE_ENGINE = String(env("IMAGE_ENGINE") || "gemini").toLowerCase();
+/* A LADDER, not a guess. "Nano Banana Pro" is a marketing name and its API id is not something
+   to assume; each candidate is tried and the first the account accepts is used, so a wrong name
+   costs one fast 404 rather than a dead engine. /api/image/diag reports which one won. */
+const GEMINI_IMAGE_MODELS = String(env("GEMINI_IMAGE_MODEL") ||
+  "gemini-3-pro-image-preview,gemini-3-pro-image,gemini-2.5-flash-image")
+  .split(",").map((m) => m.trim()).filter(Boolean);   // first try; the low-quality retry gets 60% of this on top
 let _openaiImagesOff = false;
 let _oaiSpend = { usd: 0, at: 0 };
 
@@ -4326,6 +4336,60 @@ export default async (request, context) => {
       try { out.budget.spent = await openaiImageSpent(); } catch (e) { out.budget.spent = "unreadable: " + (e && e.message); }
       try { out.budget.left = await openaiImageBudgetLeft(); } catch (_) {}
 
+      /* WHICH NANO BANANA ID DOES THIS ACCOUNT ACTUALLY ACCEPT? Asked rather than assumed - the
+         product name is "Nano Banana Pro" and the API id behind it is not something to guess at,
+         so each candidate is probed and the winner is named. A rejection here is a NAME problem
+         and says so; a 200 that answers with prose instead of pixels is a refusal, which is a
+         different thing again and also worth distinguishing. */
+      out.gemini = { engine: IMAGE_ENGINE, key: !!GEMINI_API_KEY, models: GEMINI_IMAGE_MODELS, tried: [] };
+      if (GEMINI_API_KEY) {
+        for (const gm of GEMINI_IMAGE_MODELS) {
+          const ac = new AbortController();
+          const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 60000);
+          const t0 = Date.now();
+          try {
+            const r = await fetch(
+              "https://generativelanguage.googleapis.com/v1beta/models/" + gm + ":generateContent",
+              {
+                method: "POST",
+                headers: { "content-type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+                body: JSON.stringify({ contents: [{ parts: [{ text: "a single grey dot" }] }] }),
+                signal: ac.signal,
+              });
+            const body = await r.text().catch(() => "");
+            const ms = Date.now() - t0;
+            let note = "", imageLen = 0, said = "";
+            try {
+              const j = JSON.parse(body);
+              note = (j.error || {}).message || "";
+              for (const c of (j.candidates || [])) {
+                for (const p of ((c.content && c.content.parts) || [])) {
+                  const inl = p.inlineData || p.inline_data;
+                  if (inl && inl.data) imageLen = Math.max(imageLen, String(inl.data).length);
+                  if (p.text) said += p.text;
+                }
+              }
+            } catch (_) { note = body.slice(0, 200); }
+            out.gemini.tried.push({
+              model: gm, status: r.status, ok: r.ok, usable: r.ok && imageLen > 100,
+              imageChars: imageLen, ms,
+              error: r.ok
+                ? (imageLen > 100 ? "" : (said ? "answered with text, not a picture: " + said.slice(0, 160) : "200 with no image"))
+                : note.slice(0, 240),
+            });
+            if (r.ok && imageLen > 100) break;
+          } catch (e) {
+            out.gemini.tried.push({ model: gm, status: 0, ok: false, usable: false, ms: Date.now() - t0, error: String((e && e.message) || e) });
+          } finally { clearTimeout(to); }
+        }
+        const gwin = out.gemini.tried.find((t) => t.usable);
+        out.gemini.verdict = gwin
+          ? ("Nano Banana works on " + gwin.model + " (" + gwin.ms + "ms). This is the engine drawing your pictures.")
+          : "No Gemini image model in the ladder produced a picture - see the errors, then set GEMINI_IMAGE_MODEL to a name this account accepts.";
+      } else {
+        out.gemini.verdict = "GEMINI_API_KEY is not visible to the edge function.";
+      }
+
       if (!OPENAI_API_KEY) {
         out.verdict = "OPENAI_API_KEY is not visible to the edge function. Check the variable name and that its scope includes Edge Functions, then redeploy.";
         return json(out);
@@ -4412,7 +4476,10 @@ export default async (request, context) => {
         return new Response("auth required", { status: 401 });
       }
       if (rateLimited("imgjob:" + user.id, 20, 60000)) return new Response("rate limited", { status: 429 });
-      if (!OPENAI_API_KEY) return json({ error: "openai_unconfigured" }, 503);
+      // Either engine is enough to accept the job; the runner falls between them as needed.
+      if (!OPENAI_API_KEY && !(IMAGE_ENGINE === "gemini" && GEMINI_API_KEY)) {
+        return json({ error: "openai_unconfigured" }, 503);
+      }
       if (!INTERNAL_JOB_SECRET) return json({ error: "background_unconfigured" }, 503);
 
       let b = null; try { b = await request.json(); } catch (_) {}
@@ -4449,6 +4516,7 @@ export default async (request, context) => {
       await dbPut(`imgJobs/${dbKey(user.id)}/${dbKey(jobId)}`, {
         id: jobId, prompt, size, quality: OPENAI_IMAGE_QUALITY,
         models: OPENAI_IMAGE_MODELS.join(","),
+        engine: IMAGE_ENGINE,
         kind: isEdit ? "edit" : "image",
         src: isEdit ? srcB64 : null,          // the runner drops this the moment it is done with it
         phase: "queued", createdAt: Date.now(), updatedAt: Date.now(),
