@@ -2129,7 +2129,7 @@ const PROMOTE_EXT = {
   php: "php", ruby: "rb", rb: "rb", go: "go", rust: "rs", rs: "rs", swift: "swift",
   kotlin: "kt", sql: "sql", sh: "sh", bash: "sh",
 };
-function promoteAnswerToCode(content, lang) {
+function promoteAnswerToCode(content, lang, opts) {
   const s = String(content || "");
   if (!s.trim()) return null;
   // Never touch a reply that already carries a structured block of its own.
@@ -2142,12 +2142,23 @@ function promoteAnswerToCode(content, lang) {
   const tag = (/^```([A-Za-z0-9+#._-]*)/.exec(block) || [])[1] || "";
   const code = block.replace(/^```[A-Za-z0-9+#._-]*\s*\r?\n/, "").replace(/\r?\n```$/, "");
 
-  // GATE 2 — the block IS the answer, and nothing but a throwaway line surrounds it.
-  // Strict, because promoting REPLACES the message: the fence has to be the entire content for
-  // parseCodeMeta (anchored ^...$) to see it, so whatever prose was there is discarded. Dropping
-  // "تفضّل، هذا موقعك:" costs nothing; dropping a paragraph of explanation would be data loss.
-  const prose = s.replace(block, "").replace(/\s+/g, " ").trim();
-  if (prose.length > 160 || prose.length > code.length * 0.12) return null;
+  /* GATE 2 — the block IS the answer, and nothing but a throwaway line surrounds it.
+     Strict for ONE reason, stated plainly: promoting REPLACES the message, the fence has to be
+     the entire content for parseCodeMeta (anchored ^...$) to see it, and so any prose around it
+     is discarded. Dropping "تفضّل، هذا موقعك:" costs nothing; dropping a paragraph of
+     explanation would be data loss.
+
+     opts.keepOutro removes that reason instead of arguing with it: the surrounding prose is
+     carried in the meta and rendered above and below the card, so nothing is lost and the gate
+     no longer has to refuse. It is used for ONE case — a reply already showing in a code box,
+     where refusing here would tear that box down on the last frame, which is worse than the
+     late box this whole path exists to prevent. Ordinary replies still take the strict gate. */
+  const at = s.indexOf(block);
+  const intro = s.slice(0, at).trim();
+  const outro = s.slice(at + block.length).trim();
+  const prose = (intro + " " + outro).replace(/\s+/g, " ").trim();
+  const keepOutro = !!(opts && opts.keepOutro);
+  if (!keepOutro && (prose.length > 160 || prose.length > code.length * 0.12)) return null;
 
   // GATE 3 — a COMPLETE, runnable artifact, not a fragment.
   const key = tag.toLowerCase();
@@ -2165,6 +2176,12 @@ function promoteAnswerToCode(content, lang) {
     ext,
     label: resolved === "html" ? "HTML" : resolved.toUpperCase(),
   };
+  /* Carried INSIDE the meta JSON rather than beside the block, so the persisted format and its
+     anchored parseCodeMeta regex are untouched and the prose survives a reload with the card. */
+  if (keepOutro) {
+    if (intro) meta.intro = intro;
+    if (outro) meta.outro = outro;
+  }
   return "```firas-code " + JSON.stringify(meta) + "\n" + code + "\n```";
 }
 
@@ -2298,12 +2315,35 @@ function buildCodeCard(meta, lang, opts) {
   }
   return card;
 }
+
+/** Render a code deliverable into `host`: the prose that framed it, then the card, then the
+    prose that followed. meta.intro / meta.outro are only present when the reply was promoted
+    with keepOutro — an ordinary promotion still carries the card alone, exactly as before. */
+function appendCodeCard(host, meta, lang, opts) {
+  const addProse = (text) => {
+    if (!text || !String(text).trim()) return;
+    const d = document.createElement("div");
+    d.className = "md";
+    d.innerHTML = renderMarkdown(String(text));
+    host.appendChild(d);
+  };
+  addProse(meta && meta.intro);
+  host.appendChild(buildCodeCard(meta, lang, opts));
+  addProse(meta && meta.outro);
+}
+
 function wireCodeActions(card, meta, lang, opts) {
   opts = opts || {};
   const ar = (lang || state.lang) === "ar";
   const actions = card.querySelector(".code-card__actions");
   const code = meta.code != null ? meta.code : (card.querySelector(".code-card__code").textContent || "");
   const filename = meta.filename || ("code." + (meta.ext || "txt"));
+  const mkBtn = (icon, text, cls) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "code-card__btn " + cls;
+    b.innerHTML = icon + "<span>" + escapeHtml(text) + "</span>";
+    return b;
+  };
   /* PREVIEW, FOR EVERY LANGUAGE THAT HAS ONE — not just HTML. Markdown, SVG, JSON, CSS and JS
      render; Python actually runs. canPreviewCode returns false for the rest, and the button is
      then not built at all: a Preview that opens an empty white box is worse than no Preview. */
@@ -2315,13 +2355,16 @@ function wireCodeActions(card, meta, lang, opts) {
     /* A FINISHED PAGE OPENS AS A PAGE. Someone who asked for a website wants to click through
        the thing they asked for; source is what you look at second.
 
-       Two gates, both load-bearing. A COMPLETE document, because a fragment renders as a blank
-       white box. And opts.fresh, because wireCodeActions runs on every buildCodeCard — including
+       Two gates, both load-bearing. codeLooksComplete, because a document is only a page once
+       it CLOSES: a build stopped by the token cap still carries <!doctype html> on line 1, and
+       testing for that alone threw a full-screen panel over a page whose body was never written
+       — the ordinary outcome of every large HTML build. And opts.fresh, because wireCodeActions
+       runs on every buildCodeCard — including
        a full thread re-render — and a full-screen panel that threw itself open for every
        historical code card when you reopened an old chat would be intolerable. Only a generation
        that just finished opens itself.
        To stop pages auto-opening entirely, delete this if-block; the button still works. */
-    if (opts.fresh && (/<!doctype\s+html/i.test(code) || (/<html[\s>]/i.test(code) && /<\/html>/i.test(code)))) {
+    if (opts.fresh && codeLooksComplete(code, "html") && /<html[\s>]|<!doctype\s+html/i.test(code)) {
       requestAnimationFrame(() => {
         try { if (card.isConnected) openCodePreview(code, langTag); } catch (_) {}
       });
@@ -5863,7 +5906,7 @@ function aiTurnEl(msg, index) {
   } else if (vidMeta) {
     md.appendChild(buildVideoCard(vidMeta, lang)); // generated video
   } else if (codeMeta) {
-    md.appendChild(buildCodeCard(codeMeta, lang)); // code deliverable (copy/download/preview)
+    appendCodeCard(md, codeMeta, lang); // code deliverable (copy/download/preview), plus any prose it carried
   } else if (fileFmt) {
     // File reply: collapsed "view content" disclosure; the file card carries it.
     md.appendChild(buildFileDisclosure(msg.content || ""));
@@ -10214,7 +10257,9 @@ async function openCodePreview(code, lang) {
   if (kind !== "python") {
     const doc = previewDocumentFor(code, lang);
     if (!doc) return false;
-    openHtmlPreview(doc);
+    /* Only a genuine HTML document may reach the un-sandboxed "open in new tab" — every other
+       kind here is a wrapper WE generated around model source, and that tab is same-origin. */
+    openHtmlPreview(doc, { allowOpenInTab: kind === "html" });
     return true;
   }
 
@@ -10226,7 +10271,7 @@ async function openCodePreview(code, lang) {
     { css: ".run{display:flex;align-items:center;gap:10px;opacity:.75}" +
            ".dot{inline-size:9px;block-size:9px;border-radius:50%;background:currentColor;" +
            "animation:p 1s ease-in-out infinite}@keyframes p{0%,100%{opacity:.25}50%{opacity:1}}" }
-  ));
+  ), { allowOpenInTab: false });
   let res;
   try { res = await runPythonInSandbox(String(code || ""), 15000, { filename: "preview.py" }); }
   catch (e) { res = { ok: false, out: "", err: String((e && e.message) || e) }; }
@@ -10236,7 +10281,8 @@ async function openCodePreview(code, lang) {
 }
 
 let _previewState = null;
-function openHtmlPreview(rawCode) {
+function openHtmlPreview(rawCode, opts) {
+  opts = opts || {};
   closeHtmlPreview();
   /* `let`, not `const`: a preview that produces its document ASYNCHRONOUSLY (Python runs before
      it can show anything) swaps the document in place via setDoc below. Refresh reads this same
@@ -10286,7 +10332,17 @@ function openHtmlPreview(rawCode) {
   iframe.srcdoc = html;
 
   const refreshBtn = mkTool(ICONS.refresh, t().previewRefresh, () => { iframe.srcdoc = html; });
-  const openBtn = mkTool(ICONS.external, t().previewOpen, () => {
+  /* OPEN IN NEW TAB IS NOT A SANDBOX. openCodeInTab writes into window.open("", "_blank"),
+     and an about:blank document INHERITS THE OPENER'S ORIGIN — so whatever runs in that tab
+     runs as the app, with the session cookie and localStorage in reach. (Its blob fallback is
+     same-origin too; only the panel's iframe, which has no allow-same-origin, is isolated.)
+
+     That was tolerable while the button only ever received the user's own HTML. It is not
+     tolerable for the documents previewDocumentFor GENERATES: the JavaScript one evaluates
+     model-authored source by design, which would turn one click into arbitrary code execution
+     on an authenticated origin. So the button is offered only for a real HTML document — the
+     exact reach it had before multi-language preview existed. */
+  const openBtn = opts.allowOpenInTab === false ? null : mkTool(ICONS.external, t().previewOpen, () => {
     openCodeInTab(html, state.lang === "ar");
   });
   const dlBtn = mkTool(ICONS.download, t().previewDownload, () => {
@@ -10295,7 +10351,7 @@ function openHtmlPreview(rawCode) {
   const closeBtn = mkTool(ICONS.close, t().previewClose, closeHtmlPreview);
   closeBtn.classList.add("preview-tool--close");
 
-  tools.append(refreshBtn, openBtn, dlBtn, closeBtn);
+  tools.append(...[refreshBtn, openBtn, dlBtn, closeBtn].filter(Boolean));
   header.appendChild(tools);
   panel.append(header, iframe);
   overlay.appendChild(panel);
@@ -12850,6 +12906,12 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
   let finalized = false; // once true, the final decorated DOM must not be clobbered
   let lastPaintAt = 0;          // time floor: full markdown+KaTeX re-render ≤ ~7x/sec (O(n²) otherwise)
   let lastRenderedAnswer = null; // skip the heavy body re-render when only "thinking" tokens arrived
+  /* Once a reply has been shown in a code box it STAYS in one. The gates are not monotonic —
+     GATE 2 stops passing the moment trailing prose runs past 160 characters, which is one or
+     two Arabic sentences — so without this latch a box could sit on screen for seconds and then
+     be torn down, which is worse than the late box the box-from-the-start work set out to fix.
+     finalizeAi honours the latch with keepOutro, so the explanation renders under the card. */
+  let boxLatched = null;
 
   // Resolve the LIVE node for this streaming message in the current thread. When
   // the user is viewing this chat, re-find by index (the thread may have been
@@ -12892,7 +12954,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
          by promoteAnswerToCode itself, so the mid-stream verdict and the finalize verdict can
          never disagree. Skipped entirely for a file reply, whose content deliberately stays
          out of the chat body. */
-      const autoBox = (codeReq || fileFmt) ? null : midStreamCodePromotion(answer);
+      const autoBox = (codeReq || fileFmt) ? null : (midStreamCodePromotion(answer) || boxLatched);
       if (codeReq) {
         // Code request → stream the source live into a code window.
         lastPaintAt = now;
@@ -12907,6 +12969,8 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
         lastPaintAt = now;
         lastRenderedAnswer = answer;
         mdEl._streamCache = null;
+        boxLatched = autoBox;                 // terminal: this reply is a code deliverable now
+        aiMsg._boxLatched = true;             // read once by finalizeAi, then deleted
         renderLiveCodeInto(mdEl, autoBox.code, autoBox, replyLang);
         setStreamingUI(mdEl, false);
       } else if (answer !== lastRenderedAnswer) {
@@ -13484,7 +13548,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
              been watching fill up would vanish on the last frame. Ask the same authority that
              opened the box to close it, and keep the partial file as a real card — with
              Continue available, exactly like an aborted code REQUEST. */
-          const partial = midStreamCodePromotion(answer || "");
+          const partial = midStreamCodePromotion(answer || "") || boxLatched;
           if (partial) {
             const meta = { filename: partial.filename, lang: partial.lang, ext: partial.ext, label: partial.label };
             aiMsg.content = "```firas-code " + JSON.stringify(meta) + "\n" + partial.code + "\n```";
@@ -13555,9 +13619,15 @@ function finalizeAi(aiMsg, chat) {
      guesses wrong the build still happens, it just lands as a fenced block in the chat with no
      preview and no download. Ask the ANSWER instead — see promoteAnswerToCode. */
   if (!imgMeta && !codeMeta) {
-    const promoted = promoteAnswerToCode(aiMsg.content, aiMsg.lang || state.lang);
+    /* A reply that was ALREADY showing in a code box promotes with keepOutro. Without it, an
+       explanation longer than 160 characters after the fence makes this refuse, and the card the
+       user has been watching fill up is destroyed on the very last frame — the opposite of what
+       boxing early was for. With it, the card stays and the explanation renders beneath it. */
+    const promoted = promoteAnswerToCode(aiMsg.content, aiMsg.lang || state.lang,
+                                         aiMsg._boxLatched ? { keepOutro: true } : null);
     if (promoted) { aiMsg.content = promoted; codeMeta = parseCodeMeta(aiMsg.content); }
   }
+  if (aiMsg._boxLatched) delete aiMsg._boxLatched;   // view state — must never reach persistChat
   /* Same idea one step further: the model answered a "make me a Word file" with hand-written
      OOXML. Recover the text and let it become a real .docx card instead of a wall of XML. */
   if (!imgMeta && !codeMeta && looksLikeOoxml(aiMsg.content)) {
@@ -13596,7 +13666,7 @@ function finalizeAi(aiMsg, chat) {
       // Code deliverable → swap the live streaming window for the finished card
       // (copy/download/preview), keeping the same code text.
       mdEl.innerHTML = "";
-      mdEl.appendChild(buildCodeCard(codeMeta, aiMsg.lang || state.lang, { fresh: true }));
+      appendCodeCard(mdEl, codeMeta, aiMsg.lang || state.lang, { fresh: true });
     } else if (fileFmt) {
       // File reply: don't fill the chat with raw content. Show only a collapsed
       // "view content" disclosure; the file card below carries the deliverable.
