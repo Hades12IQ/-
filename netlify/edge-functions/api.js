@@ -4225,6 +4225,80 @@ export default async (request, context) => {
        stored (as compressed JPEG) and handed back as a key, so the chat card is an ordinary
        /api/image URL that survives a reload. Spends from the same two-a-day allowance and the
        same dollar ceiling as a generated image — an edit is not cheaper than a generation. */
+    /* WHY DID THE PICTURE FAIL? Open /api/image/diag while signed in and it says so.
+
+       Image generation walks five engines and only reports the last line of the chain — "image
+       generation failed" — which is true and useless: it cannot tell you whether no engine is
+       configured, or one is configured and refusing, or the money ran out. Edge function logs
+       are the other way to find out, and they are awkward to reach and easy to point at the
+       wrong place. This asks each engine what it thinks and hands back the answer.
+
+       It makes ONE real OpenAI call, the cheapest size at the cheapest quality, and does NOT
+       charge it against the budget or the daily allowance — it is a probe, not a picture. No
+       key or secret is ever included in the reply; only whether one is present, and whatever
+       error text the provider returned. */
+    if (path === "/api/image/diag" && method === "GET") {
+      const user = await currentUser(context);
+      if (!user) return new Response("auth required", { status: 401 });
+      if (rateLimited("imgdiag:" + user.id, 6, 60000)) return new Response("rate limited", { status: 429 });
+
+      const out = {
+        configured: {
+          openai: !!OPENAI_API_KEY,
+          cloudflare: CF_ACCOUNTS.length,
+          puter: !!PUTER_AUTH_TOKEN,
+          gemini: !!GEMINI_API_KEY,
+          huggingface: !!HF_API_KEY,
+        },
+        openai: { models: OPENAI_IMAGE_MODELS, quality: OPENAI_IMAGE_QUALITY, tried: [] },
+        budget: {
+          ceiling: OPENAI_IMAGE_BUDGET_USD,
+          spent: null,
+          left: null,
+          switchedOff: _openaiImagesOff,
+        },
+        dailyAllowance: OPENAI_IMAGE_DAILY,
+      };
+      try { out.budget.spent = await openaiImageSpent(); } catch (e) { out.budget.spent = "unreadable: " + (e && e.message); }
+      try { out.budget.left = await openaiImageBudgetLeft(); } catch (_) {}
+
+      if (!OPENAI_API_KEY) {
+        out.verdict = "OPENAI_API_KEY is not visible to the edge function. Check the variable name and that its scope includes Edge Functions, then redeploy.";
+        return json(out);
+      }
+
+      // Probe every rung so a wrong model name is named, not merely implied.
+      for (const model of OPENAI_IMAGE_MODELS) {
+        const ac = new AbortController();
+        const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 60000);
+        try {
+          const r = await fetch("https://api.openai.com/v1/images/generations", {
+            method: "POST",
+            headers: { "content-type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
+            body: JSON.stringify({ model, prompt: "a single grey dot", size: "1024x1024", quality: "low", n: 1 }),
+            signal: ac.signal,
+          });
+          const body = await r.text().catch(() => "");
+          let note = "";
+          try { note = (JSON.parse(body).error || {}).message || ""; } catch (_) { note = body.slice(0, 200); }
+          out.openai.tried.push({ model, status: r.status, ok: r.ok, error: r.ok ? "" : note.slice(0, 300) });
+          if (r.ok) break;                     // this rung works; no need to spend another probe
+        } catch (e) {
+          out.openai.tried.push({ model, status: 0, ok: false, error: "request failed: " + ((e && e.message) || e) });
+        } finally { clearTimeout(to); }
+      }
+
+      const good = out.openai.tried.find((t) => t.ok);
+      const first = out.openai.tried[0] || {};
+      out.verdict = good
+        ? ("OpenAI works on " + good.model + ". If pictures still fail, the fault is after this point.")
+        : first.status === 401 ? "The key is rejected (401). It is wrong, revoked, or from a different organisation."
+        : first.status === 403 ? "The key is refused (403) — most often a Restricted key without the Images permission."
+        : first.status === 429 ? "Rate limited or out of credit (429). Read the error text below."
+        : (first.status === 400 || first.status === 404) ? "No model name in the ladder was accepted. Set OPENAI_IMAGE_MODEL to a name this account can use."
+        : "OpenAI could not be reached. See the error text below.";
+      return json(out);
+    }
     if (path === "/api/image/edit" && method === "POST") {
       const user = await currentUser(context);
       if (!user) {
