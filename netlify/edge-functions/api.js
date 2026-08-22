@@ -2525,7 +2525,7 @@ function openaiImageMaxCost() {
   return worst || openaiImageCost("1024x1024", OPENAI_IMAGE_QUALITY);
 }
 const OPENAI_EDIT_KEEP = Number(env("OPENAI_EDIT_KEEP") ?? 20);   // stored edits kept per user
-const OPENAI_IMAGE_TIMEOUT_MS = Number(env("OPENAI_IMAGE_TIMEOUT_MS") ?? 25000);
+const OPENAI_IMAGE_TIMEOUT_MS = Number(env("OPENAI_IMAGE_TIMEOUT_MS") ?? 18000);   // first try; the low-quality retry gets 60% of this on top
 let _openaiImagesOff = false;
 let _oaiSpend = { usd: 0, at: 0 };
 
@@ -2614,45 +2614,74 @@ async function openaiImageResult(r, what, model) {
   return { reason: "empty" };
 }
 
-/* EVERY RUNG IS TRIED IN THIS REQUEST, not one rung per request.
+/* THE PICTURE COMES FROM OPENAI, OR IT DOES NOT COME FROM OPENAI AT ALL — but it is never lost to
+   a clock. Two ladders are walked here, not one.
 
-   The first version remembered a rejected model in a module-level set and let the NEXT request
-   start lower. That is fine on a long-lived server and useless HERE, where an isolate is born and
-   discarded around a single request: the memory dies with it, so a wrong first name is retried
-   forever and the working one below it is never reached. Looping costs one extra fast call the
-   first time and always lands on a model that works.
+   MODEL ladder, walked inside this request. Remembering a rejected model for the NEXT request is
+   useless on the edge, where an isolate is born and discarded around a single call: the memory
+   dies with it, so a wrong first name is retried forever and the working one below is never
+   reached. Only a "model" verdict moves down a rung — a billing or auth failure means no other
+   name helps either.
 
-   Only a "model" verdict continues to the next rung — a billing or auth failure means no other
-   name will help either, so it stops rather than burning the whole ladder. */
+   QUALITY ladder, for the clock. The probe proved the key, the model and the payload are all
+   fine: 920,368 characters of real base64 came back at low quality, inside one edge request.
+   Medium renders take considerably longer, and an edge function has a wall-clock budget it does
+   not get to negotiate — so a medium render that overruns is not a slow success, it is a dead
+   request that takes every engine below it down with it. Rather than hand a slow medium over to
+   Cloudflare, which is how a working OpenAI key kept producing a FLUX picture with mangled Arabic
+   in it, we drop to low ON OPENAI and deliver that. Same engine, same text rendering, a fifth of
+   the wait, and a ninth of the price.
+
+   The quality that actually produced the picture is returned, so the caller charges for what it
+   got rather than what it asked for. */
 async function generateImageOpenAI(prompt, w, h) {
   if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return null;
+  const size = openaiImageSize(w, h);
+  const wanted = String(OPENAI_IMAGE_QUALITY || "medium").toLowerCase();
+  // The configured quality first, then low as the fast retry — unless low IS the configured one.
+  const qualities = wanted === "low" ? ["low"] : [wanted, "low"];
+
   for (const model of OPENAI_IMAGE_MODELS) {
-    const ac = new AbortController();
-    /* EDGE-SAFE, not generous. An edge function has a wall-clock budget of its own and 120s was
-       far beyond it: a slow render did not fail here, it got the whole function killed by the
-       platform - taking Cloudflare and every other engine in the chain down with it, which is how
-       a working key still produced no picture at all. Aborting early leaves the rest of the chain
-       time to answer. */
-    const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, OPENAI_IMAGE_TIMEOUT_MS);
-    let out = null;
-    try {
-      const r = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: { "content-type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
-        body: JSON.stringify({
-          model,
-          prompt: String(prompt || "").slice(0, 4000),
-          size: openaiImageSize(w, h),
-          quality: OPENAI_IMAGE_QUALITY,
-          n: 1,
-        }),
-        signal: ac.signal,
-      });
-      out = await openaiImageResult(r, "image", model);
-    } catch (e) { out = { reason: "network" }; }
-    finally { clearTimeout(to); }
-    if (out && out.bytes) { _oaiModelDead.delete(model); return out; }
-    if (!out || out.reason !== "model") return null;
+    let modelRejected = false;
+    for (let qi = 0; qi < qualities.length; qi++) {
+      const quality = qualities[qi];
+      /* The first attempt gets most of the budget; the retry gets what is left, so the two of
+         them together still finish inside the function's lifetime. */
+      const budgetMs = qi === 0 ? OPENAI_IMAGE_TIMEOUT_MS : Math.max(8000, Math.round(OPENAI_IMAGE_TIMEOUT_MS * 0.6));
+      const ac = new AbortController();
+      const to = setTimeout(() => { try { ac.abort(); } catch (_) {} }, budgetMs);
+      const t0 = Date.now();
+      let out = null;
+      try {
+        const r = await fetch("https://api.openai.com/v1/images/generations", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
+          body: JSON.stringify({ model, prompt: String(prompt || "").slice(0, 4000), size, quality, n: 1 }),
+          signal: ac.signal,
+        });
+        out = await openaiImageResult(r, "image", model);
+      } catch (e) {
+        out = { reason: ac.signal.aborted ? "slow" : "network" };
+      } finally { clearTimeout(to); }
+
+      if (out && out.bytes) {
+        _oaiModelDead.delete(model);
+        console.log("[firas] OpenAI image " + model + "/" + quality + " " + size +
+          " in " + (Date.now() - t0) + "ms");
+        out.quality = quality;                 // charge for what was made, not what was asked
+        return out;
+      }
+      if (out && out.reason === "model") { modelRejected = true; break; }   // try the next model
+      // Too slow, or a transient failure: drop a quality rung and try again on the SAME model.
+      if (out && (out.reason === "slow" || out.reason === "network" || out.reason === "http")) {
+        console.warn("[firas] OpenAI " + model + "/" + quality + " gave up after " +
+          (Date.now() - t0) + "ms (" + out.reason + ")" +
+          (qi + 1 < qualities.length ? " - retrying at " + qualities[qi + 1] : ""));
+        continue;
+      }
+      return null;                              // auth or money: nothing else will help
+    }
+    if (!modelRejected) return null;            // this model was reachable and still gave nothing
     _oaiModelDead.add(model);
   }
   console.error("[firas] no OpenAI image model accepted: " + OPENAI_IMAGE_MODELS.join(", "));
@@ -4467,7 +4496,9 @@ export default async (request, context) => {
           const oai = await generateImageOpenAI(prompt, w, h);
           if (oai && oai.bytes && oai.bytes.length) {
             // Priced at the size actually requested — square and portrait do not cost the same.
-            await openaiImageCharge(openaiImageCost(openaiImageSize(w, h), OPENAI_IMAGE_QUALITY));
+            // Charged at the quality that was actually produced: a medium request that fell back to low
+            // costs low, and the ceiling stays honest.
+            await openaiImageCharge(openaiImageCost(openaiImageSize(w, h), oai.quality || OPENAI_IMAGE_QUALITY));
             await openaiImageMark(user.id, slot);
             if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
             return new Response(oai.bytes, { headers: { "Content-Type": oai.mime, "Cache-Control": "public, max-age=86400" } });
