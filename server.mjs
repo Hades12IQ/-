@@ -339,7 +339,11 @@ const TIERS = {
      ambitious brief (a Three.js globe with real geometry, shaders, country data and UI)
      runs to thousands of lines, and the budget was the binding constraint long before
      the model ran out of things to say. Raised to match pro. */
-  ultra: { models: modelLadder(process.env.OLLAMA_MODEL_ULTRA, "kimi-k2.7-code:cloud,glm-5.1:cloud,minimax-m3:cloud,qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.8, num_predict: 131072, fallbackModel: "gpt-oss:120b-cloud" },
+  /* TEMPERATURE 0.35, NOT 0.8. This is the code tier, and high temperature buys variety — which
+     in prose is character and in code is invented APIs, inconsistent structure and a build that
+     does not run. The model here is purpose-built for programming; 0.8 was spending its precision
+     on randomness nobody asked for. Chat keeps its warmth on the pro tier where it belongs. */
+  ultra: { models: modelLadder(process.env.OLLAMA_MODEL_ULTRA, "kimi-k2.7-code:cloud,glm-5.1:cloud,minimax-m3:cloud,qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.35, num_predict: 131072, fallbackModel: "gpt-oss:120b-cloud" },
   // Max = strongest general/reasoning model (671B), gated by a per-user daily cap.
   // Env-overridable so the model swaps without a redeploy if Ollama's cloud catalog
   // rotates. fallbackModel degrades to a known-good hosted model (gpt-oss) before the
@@ -350,7 +354,10 @@ const TIERS = {
      before the model has said anything unusual, so the budget, not the model, was ending the
      document early and delivering two problems out of ten. Matched to pro/ultra; Ollama clamps
      to whatever the chosen model actually supports, so raising it cannot error. */
-  max:   { models: modelLadder(process.env.OLLAMA_MODEL_MAX,   "kimi-k3:cloud,nemotron-3-ultra:cloud,glm-5.2:cloud,qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.7, num_predict: 131072, fallbackModel: process.env.OLLAMA_MODEL_MAX_FALLBACK || "gpt-oss:120b-cloud", capped: false },
+  /* TEMPERATURE 0.5. The Agent runs long chains where every step is the input to the next, so a
+     wrong turn early is not one bad sentence — it is the rest of the mission built on top of it.
+     Reliability beats flair here in a way it does not in ordinary chat. */
+  max:   { models: modelLadder(process.env.OLLAMA_MODEL_MAX,   "kimi-k3:cloud,nemotron-3-ultra:cloud,glm-5.2:cloud,qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.5, num_predict: 131072, fallbackModel: process.env.OLLAMA_MODEL_MAX_FALLBACK || "gpt-oss:120b-cloud", capped: false },
 };
 
 // Vision/multimodal model — used automatically when a request carries images.
