@@ -17875,6 +17875,38 @@ const LIVE_JITTER_LEAD = 0.2;
 const LIVE_BARGE_RMS = 0.055;
 const LIVE_BARGE_FRAMES = 2;         // consecutive loud frames — one door slam is not a sentence
 
+/* THE VOICE. The accent complaint — English that sounds Russian — is not the model: 3.1 Flash
+   Live is a native-audio model, and native-audio models pick the language themselves and refuse
+   an explicit languageCode. What IS settable is which of the thirty prebuilt voices speaks, and
+   they differ enormously in how they handle a language that is not English.
+
+   I cannot judge an accent by reading a spec, so this is a CHOICE rather than a verdict: a
+   sensible default, and a list the owner can move through by ear. Applied at setup, so a change
+   takes effect on the next call rather than mid-sentence. */
+const LIVE_VOICES = [
+  "Charon", "Sulafat", "Achird", "Sadaltager", "Vindemiatrix", "Umbriel", "Algieba", "Despina",
+  "Erinome", "Iapetus", "Schedar", "Gacrux", "Achernar", "Zephyr", "Puck", "Kore", "Aoede",
+  "Callirrhoe", "Autonoe", "Enceladus", "Leda", "Orus", "Fenrir", "Alnilam", "Rasalgethi",
+  "Laomedeia", "Algenib", "Pulcherrima", "Zubenelgenubi", "Sadachbia",
+];
+const LS_LIVE_VOICE = "firas_live_voice";
+function liveVoice() {
+  try {
+    const v = localStorage.getItem(LS_LIVE_VOICE);
+    if (v && LIVE_VOICES.includes(v)) return v;
+  } catch (_) {}
+  return "Charon";
+}
+/** Change the calling voice. Exposed on window so it can be changed without a redeploy:
+      firasSetVoice("Sulafat")   — then start a new call and listen. */
+function firasSetVoice(name) {
+  if (!LIVE_VOICES.includes(name)) { console.warn("[firas] voices: " + LIVE_VOICES.join(", ")); return false; }
+  try { localStorage.setItem(LS_LIVE_VOICE, name); } catch (_) {}
+  try { showToast("Voice: " + name); } catch (_) {}
+  return true;
+}
+try { window.firasSetVoice = firasSetVoice; window.FIRAS_VOICES = LIVE_VOICES; } catch (_) {}
+
 const liveCall = {
   ws: null, capCtx: null, playCtx: null, stream: null, node: null, srcNode: null,
   playAt: 0, playing: [], open: false, ending: false,
@@ -18089,7 +18121,31 @@ async function liveTryStart() {
       ws.send(JSON.stringify({
         setup: {
           model: "models/" + (tok.model || "gemini-3.1-flash-live-preview"),
-          generationConfig: { responseModalities: ["AUDIO"] },
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            /* Which of the thirty prebuilt voices speaks. NOT pinned by the token — the mint
+               fieldMask names only model and responseModalities, so this comes from here and can
+               be changed without touching the server. */
+            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: liveVoice() } } },
+          },
+          /* IT CAN LOOK THINGS UP NOW. Without this the model answers a question about today
+             from memory, or refuses; with it, it searches mid-call and answers from what it
+             found. Confirmed against the API discovery document: Tool.googleSearch. */
+          tools: [{ googleSearch: {} }],
+          /* STOP IT FLINCHING AT EVERY SOUND. With nothing set, detection defaults to eager,
+             which is what made a cough or the model's own voice count as the caller starting to
+             speak. LOW start sensitivity needs more convincing before it calls something speech;
+             300ms of prefix padding means a click cannot commit a turn; 800ms of silence means a
+             breath mid-sentence is not mistaken for the end of one. Field names and enum values
+             taken from the discovery document, not from a prose example. */
+          realtimeInputConfig: {
+            automaticActivityDetection: {
+              startOfSpeechSensitivity: "START_SENSITIVITY_LOW",
+              endOfSpeechSensitivity: "END_SENSITIVITY_LOW",
+              prefixPaddingMs: 300,
+              silenceDurationMs: 800,
+            },
+          },
           systemInstruction: { parts: [{ text:
             "You are Firas, on a live voice call. SPEAK, do not lecture: short conversational " +
             "turns, the way a person actually talks on the phone. Never read markdown, never say " +
@@ -18097,7 +18153,14 @@ async function liveTryStart() {
             "unless asked. Answer in the SAME language and the SAME dialect the caller uses — if " +
             "they speak Iraqi Arabic, answer in Iraqi Arabic, not Modern Standard. The interface " +
             "language is " + lang + ", but the CALLER decides. If you are interrupted, stop " +
-            "immediately and listen." }] },
+            "immediately and listen. " +
+            "YOU CAN SEARCH THE WEB. When a question needs current information — news, prices, " +
+            "scores, what happened today, anything you are unsure of — SAY SO FIRST, in one short " +
+            "sentence, in the caller's own language and dialect: in Iraqi Arabic something like " +
+            "\u0644\u062d\u0638\u0629\u060c \u0623\u062f\u0648\u0651\u0631\u0644\u0643 \u0639\u0644\u0649 \u0627\u0644\u0645\u0648\u0636\u0648\u0639, in English something like " +
+            "\"one second, let me look that up\". Then search, then answer with what you found. " +
+            "Never go silent while searching — a silent line sounds like a dropped call. " +
+            "Say the answer, not the URLs." }] },
         },
       }));
     };
