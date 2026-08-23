@@ -15,10 +15,12 @@
 ---------------------------------------------------------------------------- */
 const CONFIG = { BACKEND_URL: "/api/chat", DEFAULT_TIER: "pro" };
 
-// Live voice CALL (spoken back-and-forth) is temporarily disabled/hidden while it's
-// being reworked. Voice DICTATION (mic → text) is unaffected and stays fully on.
-// Flip this to true to bring the live call back — no other change needed.
-const VOICE_CALL_ENABLED = false;
+/* Live voice CALL (spoken back-and-forth). This was switched OFF while the call was being
+   reworked, and the rework is what shipped: the call now runs on the Live API, where the model
+   hears the caller directly instead of reading a transcript, and can be interrupted. The old
+   three-hop path is still here and still takes the call wherever the live engine cannot run.
+   Voice DICTATION (mic → text) was never affected by this flag. */
+const VOICE_CALL_ENABLED = true;
 
 const TRANSPORT_ENDPOINT = "https://text.pollinations.ai/openai";
 
