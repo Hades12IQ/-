@@ -28,6 +28,43 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
    ceiling so a stuck render is recorded as failed rather than vanishing without a trace. */
 const RENDER_TIMEOUT_MS = Number(process.env.OPENAI_IMAGE_JOB_TIMEOUT_MS) || 11 * 60 * 1000;
 
+/* THE MONEY GUARD LIVES HERE NOW. The edge used to refuse a job outright when the OpenAI
+   balance was low, which was wrong once Nano Banana became the first engine: a spent OpenAI
+   balance was turning away jobs that were never going to cost anything. That refusal is gone,
+   so the ceiling has to be enforced at the only place that actually spends — right before the
+   gpt-image loop, after Gemini has had its turn and failed. Same ledger key as the edge
+   (spend/openaiImageUsd) and the same default prices, so the two agree on what has been spent. */
+const OPENAI_IMAGE_BUDGET_USD = Number(process.env.OPENAI_IMAGE_BUDGET_USD ?? 60);
+const OPENAI_IMAGE_PRICES = (() => {
+  const dflt = {
+    low:    { "1024x1024": 0.006, "1024x1536": 0.005, "1536x1024": 0.005 },
+    medium: { "1024x1024": 0.053, "1024x1536": 0.041, "1536x1024": 0.041 },
+    high:   { "1024x1024": 0.211, "1024x1536": 0.165, "1536x1024": 0.165 },
+  };
+  try {
+    const raw = process.env.OPENAI_IMAGE_PRICES;
+    if (raw) { const o = JSON.parse(raw); if (o && typeof o === "object") return o; }
+  } catch { /* keep the defaults */ }
+  return dflt;
+})();
+/** An unrecognised size or quality must OVER-charge the guard, never under-charge it. */
+function openaiImageCost(size, quality) {
+  const row = OPENAI_IMAGE_PRICES[String(quality || "high").toLowerCase()];
+  const cost = row && row[size];
+  if (typeof cost === "number" && cost > 0) return cost;
+  let worst = 0;
+  for (const r of Object.values(OPENAI_IMAGE_PRICES)) {
+    for (const v of Object.values(r || {})) if (typeof v === "number" && v > worst) worst = v;
+  }
+  return worst || 0.25;
+}
+async function openaiSpentUsd(token) {
+  try { return Number(await dbGet("spend/openaiImageUsd", token)) || 0; } catch { return 0; }
+}
+async function openaiChargeUsd(token, cost) {
+  try { await dbPut("spend/openaiImageUsd", (await openaiSpentUsd(token)) + cost, token); } catch { /* the render already happened */ }
+}
+
 async function fbToken() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT || "";
   if (!raw) return null;
@@ -230,7 +267,10 @@ export default async (req) => {
   let body = {}; try { body = await req.json(); } catch { /* keep {} */ }
   const { jobId, userId } = body;
   if (!jobId || !userId) return new Response("bad request", { status: 400 });
-  if (!OPENAI_API_KEY) return new Response("no key", { status: 500 });
+  /* EITHER engine is enough to run a job. This used to demand an OpenAI key before doing
+     anything, which meant an unfunded or missing OpenAI account killed jobs that were never
+     going to touch OpenAI — Nano Banana is the FIRST engine below and costs nothing. */
+  if (!OPENAI_API_KEY && !GEMINI_API_KEY) return new Response("no key", { status: 500 });
 
   const token = await fbToken();
   if (!token) return new Response("no db", { status: 500 });
@@ -280,6 +320,17 @@ export default async (req) => {
     // Gemini could not do it — fall through to gpt-image rather than failing the job.
   }
 
+  /* Past this line the pictures cost real money, so the ceiling is checked HERE — the only
+     point at which anything is actually about to be spent. */
+  const jobCost = openaiImageCost(job.size || "1024x1024", job.quality || "high");
+  if (!OPENAI_API_KEY || (await openaiSpentUsd(token)) + jobCost > OPENAI_IMAGE_BUDGET_USD) {
+    await save({
+      phase: "fail",
+      error: (last && last.error) || "the image engine could not produce this picture",
+    });
+    return new Response("ok");
+  }
+
   for (const model of models) {
     const out = isEdit
       ? await renderEdit(model, job.prompt, job.src, job.quality || "high")
@@ -292,8 +343,15 @@ export default async (req) => {
       /* The source picture has done its work and is megabytes wide — drop it rather than
          leaving a copy of every edited photo sitting in the job record forever. */
       if (isEdit) job.src = null;
+      /* CHARGE THE LEDGER. Nothing on this path did, which meant every picture the background
+         runner made on gpt-image was free as far as spend/openaiImageUsd was concerned — the
+         balance could drain to nothing while the guard above still read zero spent and happily
+         approved the next one. Charged after the picture is safely stored, so a storage failure
+         is never billed to a user who did not get a picture. */
+      await openaiChargeUsd(token, jobCost);
       await save({
-        phase: "done", key: jobId, model, quality: job.quality || "high", kind: job.kind || "image",
+        phase: "done", key: jobId, engine: "openai", model, quality: job.quality || "high",
+        kind: job.kind || "image", usd: jobCost,
         ms: Date.now() - started, bytes: Math.round(out.b64.length * 0.75),
       });
       return new Response("ok");

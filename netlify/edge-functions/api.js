@@ -2650,8 +2650,14 @@ function openaiImageSize(w, h) {
 async function oaiImgDayNode(userId) {
   try { return (await dbGet(`oaiQuota/${dbKey(userId)}/${serverDay()}`)) || {}; } catch (_) { return {}; }
 }
+/** THE DAILY ALLOWANCE, AND NOTHING ELSE.
+
+    This used to answer "no" when the OpenAI balance was low — conflating "you have used your
+    five pictures today" with "the owner is out of credit", and reporting both to the user as
+    daily_limit. Since Nano Banana runs first and free, that reading turned an OpenAI billing
+    state into a false claim that the user had spent an allowance they had not touched. The
+    allowance is per user per day and engine-agnostic; affordability is decided at spend time. */
 async function openaiImageAllowed(userId, slot) {
-  if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return false;
   const node = await oaiImgDayNode(userId);
   if (slot in node) return true;                                   // same picture again — free
   return OPENAI_IMAGE_DAILY < 0 || Object.keys(node).length < OPENAI_IMAGE_DAILY;
@@ -4590,7 +4596,13 @@ export default async (request, context) => {
       const isEdit = srcB64.length > 0;
       if (isEdit && srcB64.length > 27000000) return json({ error: "bad_image" }, 400);
 
-      if ((await openaiImageBudgetLeft()) < openaiImageMaxCost()) return json({ error: "no_budget" }, 503);
+      /* NO PRE-EMPTIVE REFUSAL ON OPENAI MONEY. Nano Banana is the first engine and costs
+         nothing, so a spent OpenAI balance must not be able to turn away a job it was never
+         going to pay for. The balance is still enforced — but where the money is actually
+         about to be spent, in the runner, after Gemini has had its turn and failed. */
+      if (!GEMINI_API_KEY && (await openaiImageBudgetLeft()) < openaiImageMaxCost()) {
+        return json({ error: "no_budget" }, 503);
+      }
 
       // Both allowances: the premium two-a-day and the overall five-a-day.
       const slot = await imgSlotKey(prompt, w, h, "");
