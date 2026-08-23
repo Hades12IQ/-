@@ -1779,8 +1779,13 @@ async function classifyTurnIntent(text, ctx, signal) {
   ctx = ctx || {};
   if (!t) return "chat";
 
+  /* THE KEY MUST COVER EVERYTHING THE MODEL IS SHOWN. It was cut at 600 characters while the
+     request below is sent at 6000, so two long briefs that opened with the same paragraph and
+     diverged after it shared one verdict — and a long brief with a shared preamble is exactly
+     the shape of the requests this layer exists to read. Keyed on the same slice that is sent,
+     so a cache hit means the model genuinely saw the same message. */
   const key = (ctx.hasAttachedImage ? "A" : "") + (ctx.hasPriorImage ? "P" : "") +
-              (ctx.product || "ai") + "|" + t.slice(0, 600);
+              (ctx.product || "ai") + "|" + t.slice(0, 6000);
   if (_turnIntentCache.has(key)) return _turnIntentCache.get(key);
 
   const situation =
