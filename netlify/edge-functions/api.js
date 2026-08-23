@@ -746,7 +746,13 @@ function sessionParts(payload) {
   const i = payload.lastIndexOf("|v");
   if (i <= 0) return { id: payload, ver: 0 };
   const v = payload.slice(i + 2);
-  if (!/^d+$/.test(v)) return { id: payload, ver: 0 };
+  /* A LOST BACKSLASH LOCKED PEOPLE OUT OF THEIR ACCOUNTS. This read /^d+$/ - matching the
+     LETTER d, never a digit - so on production every "userId|vN" payload failed the test and was
+     handed back whole as the id. The lookup key then became "userIdvN", no such user existed, and
+     the session was rejected. /api/auth/reset bumps sessVer and mints exactly that payload, so
+     anyone who completed a password reset was permanently locked out - and resetting again only
+     raised the version. server.mjs:672 always had it right; production did not. */
+  if (!/^\d+$/.test(v)) return { id: payload, ver: 0 };
   return { id: payload.slice(0, i), ver: parseInt(v, 10) };
 }
 async function signUserId(userId, ver) {
@@ -4653,8 +4659,17 @@ export default async (request, context) => {
       /* Charged HERE, once, when the finished picture is first seen — not when the job was
          queued. A render that failed costs nothing, which is the same rule the synchronous
          path follows. */
+      /* THE RUNNER OWNS THE MONEY; THIS ROUTE OWNS THE ALLOWANCE.
+
+         This used to charge the OpenAI ledger for every finished job at gpt-image prices, without
+         asking WHICH engine drew the picture. Once Nano Banana became the first engine, that meant
+         every FREE Gemini render billed $0.211 against a $60 ceiling - roughly 285 free pictures
+         would have killed the paid image feature site-wide - and every genuine gpt-image render was
+         billed twice, once here and once by the runner that actually spent the money.
+
+         Only the runner knows which engine ran, so only the runner charges. The allowance mark
+         stays here and is idempotent, as a second line of defence behind the runner marking it. */
       if (job.phase === "done" && !job.charged) {
-        await openaiImageCharge(openaiImageCost(job.size || "1024x1024", job.quality || OPENAI_IMAGE_QUALITY));
         await openaiImageMark(user.id, id);
         try { await dbPut(`imgQuota/${dbKey(user.id)}/${serverDay()}/${dbKey(id)}`, true); } catch (_) {}
         job.charged = true;

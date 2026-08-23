@@ -58,6 +58,34 @@ function openaiImageCost(size, quality) {
   }
   return worst || 0.25;
 }
+/* THE DAILY ALLOWANCE IS MARKED WHERE THE PICTURE IS MADE, NOT WHERE IT IS COLLECTED.
+
+   The queue endpoint CHECKED the allowance and the poll endpoint MARKED it, so a client that
+   queued jobs and simply never polled consumed no allowance at all - while the pictures were
+   still rendered, still stored, and still retrievable afterwards by key. Marking it here, at the
+   moment a render actually succeeds, is not something a client can decline to do.
+
+   Same day boundary as the edge (QUOTA_TZ_OFFSET_MINUTES, default +180) or the two would disagree
+   about when "today" ends and the mark would land in a bucket nothing reads. */
+const QUOTA_TZ_OFFSET_MINUTES = (() => {
+  const v = parseInt(process.env.QUOTA_TZ_OFFSET_MINUTES, 10);
+  return Number.isFinite(v) ? v : 180;
+})();
+function serverDay(d) {
+  const ms = (d instanceof Date ? d.getTime() : (typeof d === "number" ? d : Date.now())) + QUOTA_TZ_OFFSET_MINUTES * 60000;
+  const x = new Date(ms);
+  return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, "0")}-${String(x.getUTCDate()).padStart(2, "0")}`;
+}
+/** Same sanitiser the edge applies before any Firebase path segment. */
+function dbKey(s) { return String(s == null ? "" : s).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 128); }
+/** Mark one picture against BOTH daily counters the edge reads. Best-effort: a picture that was
+    made and stored must never be thrown away because a counter write failed. */
+async function markDailyImage(token, userId, jobId) {
+  const day = serverDay();
+  const u = dbKey(userId), j = dbKey(jobId);
+  try { await dbPut(`imgQuota/${u}/${day}/${j}`, true, token); } catch { /* best effort */ }
+  try { await dbPut(`oaiQuota/${u}/${day}/${j}`, true, token); } catch { /* best effort */ }
+}
 async function openaiSpentUsd(token) {
   try { return Number(await dbGet("spend/openaiImageUsd", token)) || 0; } catch { return 0; }
 }
@@ -307,6 +335,7 @@ export default async (req) => {
         try { await dbPut(`imgEdits/${userId}/${jobId}`, { b64: out.b64, mime: out.mime }, token); }
         catch (e) { await save({ phase: "fail", error: "could not store the picture: " + ((e && e.message) || e) }); return new Response("ok"); }
         if (isEdit) job.src = null;
+        await markDailyImage(token, userId, jobId);
         await save({
           phase: "done", key: jobId, engine: "gemini", model: gm, quality: "n/a",
           kind: job.kind || "image", ms: Date.now() - started,
@@ -349,6 +378,7 @@ export default async (req) => {
          approved the next one. Charged after the picture is safely stored, so a storage failure
          is never billed to a user who did not get a picture. */
       await openaiChargeUsd(token, jobCost);
+      await markDailyImage(token, userId, jobId);
       await save({
         phase: "done", key: jobId, engine: "openai", model, quality: job.quality || "high",
         kind: job.kind || "image", usd: jobCost,
