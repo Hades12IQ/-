@@ -17859,11 +17859,27 @@ const LIVE_WS_BASE = "wss://generativelanguage.googleapis.com/ws/" +
 const LIVE_IN_RATE = 16000;    // what the API requires: raw 16-bit PCM, mono, little-endian
 const LIVE_OUT_RATE = 24000;   // what it sends back
 const LIVE_IDLE_HANGUP_MS = 45000;   // a forgotten open microphone is a bill, not a conversation
+/* HOW MUCH AUDIO GOES IN ONE MESSAGE. The worklet hands us a 128-sample block, which at 48kHz is
+   2.7 milliseconds — sending one WebSocket message per block is ~370 messages a second, each with
+   JSON framing and base64 expansion around a few hundred bytes of payload. Batching to 100ms cuts
+   that to ten, and gives the far-side voice detector a sensible unit to reason about. */
+const LIVE_FRAME_MS = 100;
+/* HOW FAR AHEAD PLAYBACK RUNS. Chunks arrive in bursts over a network; scheduling each one at
+   "now" means every gap between bursts is an audible seam — the reported "says a word, cuts, says
+   a word". A fifth of a second of lead absorbs ordinary jitter and costs nothing a listener can
+   perceive. */
+const LIVE_JITTER_LEAD = 0.2;
+/* WHAT COUNTS AS THE USER INTERRUPTING, while the model is talking. Below this, a frame is
+   treated as room noise or the model's own voice leaking back in, and silence is sent in its
+   place. Deliberately not zero: the whole reported fault is that ANY sound cut the model off. */
+const LIVE_BARGE_RMS = 0.055;
+const LIVE_BARGE_FRAMES = 2;         // consecutive loud frames — one door slam is not a sentence
 
 const liveCall = {
   ws: null, capCtx: null, playCtx: null, stream: null, node: null, srcNode: null,
   playAt: 0, playing: [], open: false, ending: false,
   lastVoiceAt: 0, idleTimer: 0, hardTimer: 0, onEnd: null, wsWhy: "",
+  acc: null, accLen: 0, loudRun: 0, turnOpen: false, drainTimer: 0,
 };
 
 /* WHY DID IT FALL BACK? Until now the live engine failed the same way for six different
@@ -17946,19 +17962,43 @@ function livePlayChunk(b64) {
   const src = ctx.createBufferSource();
   src.buffer = buf;
   src.connect(ctx.destination);
-  /* A small lead so the first packet is not scheduled in the past on a device whose clock has
-     already moved on by the time we get here. */
+  /* A REAL JITTER BUFFER. The cursor only ever moves forward, and when it has fallen behind it
+     restarts a fifth of a second AHEAD of now rather than at now. Scheduling at now means any
+     packet that arrives even slightly late lands in the past and is dropped or clipped, which is
+     exactly what a word cut in half sounds like. */
   const now = ctx.currentTime;
-  if (liveCall.playAt < now) liveCall.playAt = now + 0.06;
+  if (liveCall.playAt < now + 0.02) liveCall.playAt = now + LIVE_JITTER_LEAD;
   src.start(liveCall.playAt);
   liveCall.playAt += buf.duration;
   liveCall.playing.push(src);
   src.onended = () => {
     const i = liveCall.playing.indexOf(src);
     if (i >= 0) liveCall.playing.splice(i, 1);
-    if (!liveCall.playing.length && liveCall.open && !liveCall.ending) callSetPhase("listening", "");
+    liveMaybeListening();
   };
   callSetPhase("speaking", "");
+}
+
+/** Are we currently playing the model back? Measured from the schedule, not from the queue
+    length: between two network bursts the queue is briefly empty while the model is very much
+    still mid-sentence. */
+function liveIsSpeaking() {
+  const ctx = liveCall.playCtx;
+  if (!ctx) return false;
+  return liveCall.playing.length > 0 || ctx.currentTime < liveCall.playAt - 0.03;
+}
+
+/** Say "listening" only when the model has actually FINISHED — the turn is closed AND everything
+    scheduled has been heard. This used to fire whenever the playback queue drained, which happens
+    between bursts mid-sentence, and produced the reported flicker: speaks, says listening,
+    speaks, says listening. */
+function liveMaybeListening() {
+  clearTimeout(liveCall.drainTimer);
+  liveCall.drainTimer = setTimeout(() => {
+    if (!liveCall.open || liveCall.ending) return;
+    if (liveCall.turnOpen || liveIsSpeaking()) return;
+    callSetPhase("listening", "");
+  }, 160);
 }
 
 /** Barge-in. The model reports that the caller started talking over it; everything already
@@ -17966,6 +18006,8 @@ function livePlayChunk(b64) {
 function liveFlushPlayback() {
   for (const s of liveCall.playing.splice(0)) { try { s.stop(); } catch (_) {} }
   liveCall.playAt = 0;
+  liveCall.loudRun = 0;
+  clearTimeout(liveCall.drainTimer);
 }
 
 function liveTeardown() {
@@ -18072,19 +18114,59 @@ async function liveTryStart() {
         liveCall.lastVoiceAt = Date.now();
         /* Audio only starts flowing once the server has accepted the setup — sending before
            that is discarded, and the first thing the caller says is exactly what must not be. */
+        const frameSamples = Math.round(liveCall.capCtx.sampleRate * LIVE_FRAME_MS / 1000);
+        liveCall.acc = new Float32Array(frameSamples);
+        liveCall.accLen = 0;
+        liveCall.loudRun = 0;
         liveCall.node.port.onmessage = (e) => {
           if (!liveCall.open || call.muted) return;
-          const f32 = e.data;
-          let peak = 0;
-          for (let i = 0; i < f32.length; i += 8) { const a = f32[i] < 0 ? -f32[i] : f32[i]; if (a > peak) peak = a; }
-          if (peak > 0.02) liveCall.lastVoiceAt = Date.now();
-          const pcm = liveTo16k(f32, liveCall.capCtx.sampleRate);
-          try {
-            ws.send(JSON.stringify({ realtimeInput: { audio: {
-              mimeType: "audio/pcm;rate=" + LIVE_IN_RATE,
-              data: liveB64(new Uint8Array(pcm.buffer)),
-            } } }));
-          } catch (_) {}
+          const blk = e.data;
+          /* Accumulate into whole frames instead of sending every 128-sample block. */
+          let off = 0;
+          while (off < blk.length) {
+            const room = liveCall.acc.length - liveCall.accLen;
+            const take = Math.min(room, blk.length - off);
+            liveCall.acc.set(blk.subarray(off, off + take), liveCall.accLen);
+            liveCall.accLen += take; off += take;
+            if (liveCall.accLen < liveCall.acc.length) break;
+
+            const frame = liveCall.acc;
+            let sum = 0;
+            for (let i = 0; i < frame.length; i += 4) sum += frame[i] * frame[i];
+            const rms = Math.sqrt(sum / (frame.length / 4));
+            if (rms > 0.02) liveCall.lastVoiceAt = Date.now();
+
+            /* THE MODEL MUST NOT INTERRUPT ITSELF. While its own voice is coming out of the
+               speakers, that voice reaches the microphone; echo cancellation reduces it but does
+               not remove it, and the far side hears it as the caller starting to talk. It then
+               stops, starts a new turn, and gets cut off in the same way — which is the reported
+               "speaks a word, cuts, replies twice, cuts again".
+
+               So while we are playing back, a frame only goes out if it is genuinely LOUD, and
+               loud twice in a row, which a leaked voice at speaker level is not and a person
+               deliberately talking over the reply is. Everything else is replaced by silence
+               rather than dropped: the stream has to stay continuous or the far-side detector
+               loses its sense of when a turn ended. */
+            let out = frame;
+            if (liveIsSpeaking()) {
+              if (rms >= LIVE_BARGE_RMS) liveCall.loudRun++;
+              else liveCall.loudRun = 0;
+              if (liveCall.loudRun < LIVE_BARGE_FRAMES) out = null;
+            } else {
+              liveCall.loudRun = 0;
+            }
+
+            const pcm = out
+              ? liveTo16k(out, liveCall.capCtx.sampleRate)
+              : new Int16Array(Math.floor(frame.length * LIVE_IN_RATE / liveCall.capCtx.sampleRate));
+            try {
+              ws.send(JSON.stringify({ realtimeInput: { audio: {
+                mimeType: "audio/pcm;rate=" + LIVE_IN_RATE,
+                data: liveB64(new Uint8Array(pcm.buffer)),
+              } } }));
+            } catch (_) {}
+            liveCall.accLen = 0;
+          }
         };
         callSetPhase("listening", "");
         done(true);
@@ -18094,13 +18176,16 @@ async function liveTryStart() {
       const sc = m.serverContent;
       if (sc) {
         /* Barge-in comes as its own flag, before any further audio. */
-        if (sc.interrupted) { liveFlushPlayback(); callSetPhase("listening", ""); return; }
+        if (sc.interrupted) { liveCall.turnOpen = false; liveFlushPlayback(); callSetPhase("listening", ""); return; }
         const parts = (sc.modelTurn && sc.modelTurn.parts) || [];
+        if (parts.length) liveCall.turnOpen = true;
         for (const p of parts) {
           const d = p.inlineData;
           if (d && d.data && /audio/i.test(d.mimeType || "")) livePlayChunk(d.data);
         }
-        if (sc.turnComplete && !liveCall.playing.length) callSetPhase("listening", "");
+        /* turnComplete means the model has stopped GENERATING, not that the caller has finished
+           HEARING it — several seconds of audio can still be scheduled ahead. */
+        if (sc.turnComplete || sc.generationComplete) { liveCall.turnOpen = false; liveMaybeListening(); }
       }
       /* The server warns before it closes a session that has reached its limit. */
       if (m.goAway) { liveEnd(); }
