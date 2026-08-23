@@ -1062,6 +1062,23 @@ function fileFormatMeta(fmt) {
   }
 }
 
+/** The document format for a user message — the CLASSIFIER's verdict when it has one, the pattern
+    only when it does not.
+
+    Both directions matter. The pattern used to MISS "Create a professional mathematics PDF"
+    because three words sat between the verb and the format, so a PDF request became a chat turn
+    and then a code card. It would equally have CLAIMED "build me a landing page that shows our
+    PDF reports", which is a website. Loosening it fixes one and breaks the other; reading the
+    sentence fixes both. */
+function resolvedFileFormat(m) {
+  if (!m) return null;
+  const k = m.intent;
+  if (k && k !== "unavailable") {
+    return turnIntentIsDocument(k) ? k : null;   // it read the whole message; that is the answer
+  }
+  return detectFileRequest(m.content, { hasAttachment: msgHasAttachment(m) });
+}
+
 /** The file format requested for the user message that precedes assistant `index`. */
 function requestedFormatForAssistant(chat, index) {
   if (!chat || !Array.isArray(chat.messages)) return null;
@@ -1069,7 +1086,7 @@ function requestedFormatForAssistant(chat, index) {
     const m = chat.messages[i];
     /* An ATTACHMENT is the strongest evidence that a format word names the INPUT: with a PDF
        in hand, "لخص الملف" wants a summary in the chat, not a second PDF. */
-    if (m.role === "user") return detectFileRequest(m.content, { hasAttachment: msgHasAttachment(m) });
+    if (m.role === "user") return resolvedFileFormat(m);
   }
   return null;
 }
@@ -1712,6 +1729,119 @@ const MEDIA_MAYBE = new RegExp(
 const MATH_FIGURE_RE = /y\s*=|f\s*\(\s*x\s*\)|رسم\s*بياني|الكراف|الغراف|\bgraph\b|\bplot\b|دال[ةه]|منحن[يى]|\bfunction\b|معادلة|\b(?:sin|cos|tan|cot|sec|csc|exp|log|ln|lg|sqrt|cbrt|arctan|arcsin|arccos|sinh|cosh|tanh)\s*\(|مثلث|\bمربع\b|مستطيل|\bدائرة\b|قطع\s*مكافئ|\bparabola\b|متجه|\bvector\b|إحداثي|احداثي/i;
 
 /** "video" | "image" | "none" — the model's call, cached per message text. */
+/* ────────────────────────────────────────────────────────────────────────────────────────────
+   ONE AUTHORITY ON WHAT A TURN IS FOR.
+
+   Routing here was decided by looking for words. That fails in both directions and both were
+   reported by the owner with real examples:
+
+     · A message whose actual request was "translate my text to English" contained the word صورة
+       somewhere inside it, and came back as a generated picture. The classifier had read the whole
+       message and correctly answered "none" — and was then OVERRULED, because the routing line
+       read `(mediaIntent === "image" || detectImageRequest(text))`. That `||` is the whole bug:
+       understanding and pattern-matching were given equal votes, so the pattern always won the
+       cases it was wrong about.
+
+     · "Create a professional mathematics PDF titled…" produced index.html. outputFormatTarget
+       needs the format word within about one word of the request verb, and there were three
+       ("a professional mathematics") in between. Measured: "create a PDF about X" resolves, and
+       "create a professional mathematics PDF" does not. Describing what you want more precisely
+       made it LESS likely to be understood — and "سوي لي تقرير وورد", an ordinary Arabic
+       sentence, misses for the same reason.
+
+   Widening the patterns cannot fix this. Loosening the distance so "create a professional
+   mathematics PDF" resolves also makes "build me a landing page that shows our PDF reports"
+   resolve — a website, claimed as a document. The failure is not that the patterns are too tight
+   or too loose; it is that a pattern cannot tell what a sentence is ASKING FOR.
+
+   So the model decides, and it reads the whole message to do it. The patterns keep two jobs and
+   lose the third: they may decide whether it is worth SPENDING a call (the gate), and they answer
+   when the model cannot be reached (the fallback). They no longer get a vote against an answer
+   the model already gave.
+   ──────────────────────────────────────────────────────────────────────────────────────────── */
+
+/** Every deliverable this app can produce. The classifier answers with exactly one of these. */
+const TURN_KINDS = ["chat", "image", "edit-image", "video", "pdf", "docx", "pptx", "xlsx", "csv", "code"];
+
+const _turnIntentCache = new Map();
+
+/** What is this turn asking to be PRODUCED?
+
+    Returns one of TURN_KINDS, or "unavailable" when the model could not be reached — which is the
+    ONLY circumstance in which a caller may fall back to the old pattern checks.
+
+    `ctx` carries what the situation already knows: whether a picture is attached, whether the last
+    assistant turn produced one, and which product the user is standing in. The model is told these
+    rather than left to guess, because "make it darker" means completely different things with and
+    without a picture on the table. */
+async function classifyTurnIntent(text, ctx, signal) {
+  const t = String(text || "").trim();
+  ctx = ctx || {};
+  if (!t) return "chat";
+
+  const key = (ctx.hasAttachedImage ? "A" : "") + (ctx.hasPriorImage ? "P" : "") +
+              (ctx.product || "ai") + "|" + t.slice(0, 600);
+  if (_turnIntentCache.has(key)) return _turnIntentCache.get(key);
+
+  const situation =
+    (ctx.hasAttachedImage ? "The user HAS ATTACHED a picture to this message.\n"
+      : ctx.hasPriorImage ? "The previous assistant turn produced a picture, which is on screen.\n"
+      : "There is no picture in play.\n") +
+    (ctx.product === "code"
+      ? "The user is inside a CODE EDITOR that builds websites and web apps.\n"
+      : "The user is in an ordinary chat.\n");
+
+  let verdict = "unavailable";
+  try {
+    const raw = await callAgentText([
+      { role: "system", content:
+        "You route one message to whatever should PRODUCE its answer. Read the WHOLE message and " +
+        "decide what the user is ASKING YOU TO MAKE. Reply with exactly one word from this list " +
+        "and nothing else:\n" +
+        "chat, image, edit-image, video, pdf, docx, pptx, xlsx, csv, code\n\n" +
+        "DECIDE FROM THE REQUEST, NOT FROM WORDS THAT APPEAR IN IT. A message can mention a " +
+        "picture, a file or a website while asking for something else entirely. If someone writes " +
+        "a long text and asks you to translate it, that is chat — even if the text they pasted is " +
+        "about photography, even if it contains the words image or صورة. Ask yourself only: when " +
+        "I finish, what does the user expect to be holding?\n\n" +
+        "chat        an answer, an explanation, a translation, a rewrite, a summary, code shown " +
+        "inline to read, questions or problems answered in the conversation. This is the default " +
+        "and by far the most common. Choose it whenever nothing is being MANUFACTURED.\n" +
+        "image       they want a picture generated: a logo, a poster, an illustration, artwork.\n" +
+        "edit-image  a picture is in play and they want it CHANGED — recoloured, something added " +
+        "or removed, the background replaced, the text in it altered. Only ever valid when a " +
+        "picture is attached or on screen.\n" +
+        "video       they want a moving clip generated.\n" +
+        "pdf / docx / pptx / xlsx / csv  they want a FILE of that kind produced and handed over — " +
+        "a document to read, a report, a deck of slides, a spreadsheet. The giveaway is that the " +
+        "deliverable is a file they will download, not an answer they will read here. Pick the " +
+        "exact format they named; if they clearly want a document but name no format, answer pdf.\n" +
+        "code        they want software built or changed: a website, a web app, a page, a game, a " +
+        "component, a script. A website ABOUT documents is still code. A page that GENERATES pdfs " +
+        "is still code.\n\n" +
+        "Any language, any dialect, any length. Reply with the single word only." },
+      { role: "user", content: situation + "\nMESSAGE:\n" + t.slice(0, 6000) },
+    ], "mini", signal);
+
+    const w = String(raw || "").toLowerCase();
+    /* Longest first, so "edit-image" is not swallowed by "image". */
+    for (const k of ["edit-image", "image", "video", "pptx", "xlsx", "docx", "csv", "pdf", "code", "chat"]) {
+      if (w.includes(k)) { verdict = k; break; }
+    }
+    if (verdict === "edit-image" && !ctx.hasAttachedImage && !ctx.hasPriorImage) verdict = "image";
+  } catch (_) {
+    verdict = "unavailable";               // the caller may consult the old patterns, and only then
+  }
+
+  if (verdict !== "unavailable") _turnIntentCache.set(key, verdict);
+  return verdict;
+}
+
+/** The document formats, so callers can test membership without repeating the list. */
+function turnIntentIsDocument(kind) {
+  return kind === "pdf" || kind === "docx" || kind === "pptx" || kind === "xlsx" || kind === "csv";
+}
+
 const _mediaIntentCache = new Map();
 async function classifyMediaIntent(text, signal) {
   const t = String(text || "").trim();
@@ -2076,6 +2206,42 @@ function pickImageShape(text) {
   return { w: 1024, h: 1024, aspect: "1:1" };
 }
 
+/** The picture this chat JUST generated, if the last thing said was one.
+
+    "اجعل السماء بنفسجية" straight after a generation is obviously about that picture, but nothing
+    was attached — so it fell through to a chat answer explaining what the assistant could do,
+    while the picture sat one message above it. This closes that.
+
+    Only the LAST turn counts, deliberately. Scanning further back would mean a sentence containing
+    "غيّر" half an hour later silently re-edits a picture nobody was talking about any more. */
+function lastGeneratedImageMeta(chat) {
+  if (!chat || !Array.isArray(chat.messages)) return null;
+  for (let i = chat.messages.length - 1; i >= 0; i--) {
+    const m = chat.messages[i];
+    if (!m || m.role !== "assistant") continue;
+    return parseImageMeta(m.content);      // the newest assistant turn, and only that one
+  }
+  return null;
+}
+
+/** Read a generated picture back as base64 so it can be sent as the SOURCE of an edit.
+    Same-origin, so this is a cache hit in practice — the browser already has the bytes. */
+async function imageMetaToB64(meta, signal) {
+  try {
+    const r = await fetch(imageUrl(meta), { credentials: "same-origin", signal });
+    if (!r.ok) return null;
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    if (!bytes.length) return null;
+    /* Chunked so a megabyte-sized picture does not blow the argument limit of
+       String.fromCharCode, which takes every byte as a separate argument. */
+    let s = "";
+    for (let i = 0; i < bytes.length; i += 8192) {
+      s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    }
+    return btoa(s);
+  } catch (_) { return null; }
+}
+
 function imageUrl(meta) {
   /* An EDITED image already exists on disk — it is addressed by its cache key, not regenerated
      from a prompt. That is what makes it survive a reload without being remade or recharged. */
@@ -2089,14 +2255,40 @@ function resolveImageName(meta) {
   const n = String(meta.prompt || "image").replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim().slice(0, 50) || "firas-image";
   return n + ".png";
 }
-function buildImageLoadingHtml(lang) {
-  const txt = escapeHtml(lang === "ar" ? "يتم توليد الصورة…" : "Generating image…");
-  return '<div class="image-card is-loading"><div class="image-card__frame"><div class="image-card__loader">' +
-    '<span class="image-card__spin" aria-hidden="true"></span><span class="image-card__loadtext">' + txt + "</span></div></div></div>";
+/** The waiting state. A picture at high quality takes real minutes now that the background runner
+    holds the clock, so this is on screen long enough to be looked at — a shimmering square was not
+    good enough for that. An aperture closing and opening, a slow drift of light behind it, and a
+    sweep crossing the frame: motion that reads as WORK BEING DONE rather than a page that hung. */
+function imageLoaderMarkup(lang) {
+  const ar = lang === "ar";
+  const txt = escapeHtml(ar ? "يرسم الصورة" : "Painting your image");
+  return '<div class="image-card__loader">' +
+      '<div class="imgload">' +
+        '<div class="imgload__aura" aria-hidden="true"></div>' +
+        '<div class="imgload__iris" aria-hidden="true">' +
+          '<i></i><i></i><i></i><i></i><i></i><i></i>' +
+          '<span class="imgload__pupil"></span>' +
+        "</div>" +
+        '<div class="imgload__sweep" aria-hidden="true"></div>' +
+        '<div class="imgload__label">' + txt +
+          '<span class="imgload__dots" aria-hidden="true"><i></i><i></i><i></i></span>' +
+        "</div>" +
+      "</div>" +
+    "</div>";
 }
-/** Build the image result card: framed image (with a generating effect while it
-    loads) + a caption + a download button. Re-derives the URL from `meta` so it
-    survives reloads. */
+
+function buildImageLoadingHtml(lang) {
+  return '<div class="image-card is-loading"><div class="image-card__frame">' +
+    imageLoaderMarkup(lang) + "</div></div>";
+}
+
+/** Build the image result card: framed image (with the generating effect while it loads) and a
+    download button. Re-derives the URL from `meta` so it survives reloads.
+
+    NO CAPTION. It used to print the prompt under the picture — and after the rewriter turned the
+    request into a long English prompt, that line was a wall of machine text nobody wrote and
+    nobody wanted to read, sitting under their own picture. The prompt still travels in `meta`
+    (the alt text and the download filename both come from it); it is simply not on display. */
 function buildImageCard(meta, lang) {
   lang = lang || state.lang;
   const url = imageUrl(meta);
@@ -2105,26 +2297,32 @@ function buildImageCard(meta, lang) {
   card.className = "image-card is-loading";
   card.innerHTML =
     '<div class="image-card__frame">' +
-      '<div class="image-card__loader"><span class="image-card__spin" aria-hidden="true"></span>' +
-        '<span class="image-card__loadtext">' + escapeHtml(ar ? "يتم توليد الصورة…" : "Generating image…") + "</span></div>" +
-      '<img class="image-card__img" alt="' + escapeHtml(String(meta.prompt).slice(0, 120)) + '" />' +
+      imageLoaderMarkup(lang) +
+      '<img class="image-card__img" alt="' + escapeHtml(String(meta.prompt || "").slice(0, 120)) + '" />' +
     "</div>" +
     '<div class="image-card__bar">' +
-      '<span class="image-card__cap" dir="auto">' + escapeHtml(String(meta.prompt).slice(0, 80)) + "</span>" +
-      '<button type="button" class="image-card__dl" hidden>' + ICONS.download + "<span>" + escapeHtml(ar ? "تحميل" : "Download") + "</span></button>" +
+      '<button type="button" class="image-card__dl" hidden>' + ICONS.download +
+        "<span>" + escapeHtml(ar ? "تحميل" : "Download") + "</span></button>" +
     "</div>";
   const img = card.querySelector(".image-card__img");
   const dl = card.querySelector(".image-card__dl");
   img.addEventListener("load", () => { card.classList.remove("is-loading"); card.classList.add("is-done"); dl.hidden = false; });
   img.addEventListener("error", () => {
     card.classList.remove("is-loading"); card.classList.add("is-error");
-    const lt = card.querySelector(".image-card__loadtext"); if (lt) lt.textContent = ar ? "تعذّر توليد الصورة" : "Image generation failed";
+    const lt = card.querySelector(".imgload__label");
+    if (lt) lt.textContent = ar ? "تعذّر توليد الصورة" : "Image generation failed";
   });
   img.src = url;
   dl.addEventListener("click", async (e) => {
     e.stopPropagation();
-    try { const r = await fetch(url); const b = await r.blob(); downloadBlob(b, resolveImageName(meta)); }
-    catch (_) { window.open(url, "_blank", "noopener"); }
+    /* The ORIGINAL bytes, not what is on screen. The <img> is laid out inside a bounded frame, so
+       reading it from the DOM or a canvas would hand back the displayed size; fetching the same
+       URL returns the full-resolution file the engine produced, untouched and un-recompressed. */
+    try {
+      const r = await fetch(url, { credentials: "same-origin" });
+      if (!r.ok) throw new Error("http " + r.status);
+      downloadBlob(await r.blob(), resolveImageName(meta));
+    } catch (_) { window.open(url, "_blank", "noopener"); }
   });
   return card;
 }
@@ -5186,19 +5384,21 @@ function hideLanding() {
 ---------------------------------------------------------------------------- */
 function applyThink() {
   if (els.thinkToggle) {
-    // On Max, thinking is disabled — always render the toggle OFF (clicking it shows the
-    // "can't use thinking in Max" message), so the UI matches the actual behavior.
-    const effectiveOn = state.think && state.tier !== "max";
+    /* Max thinks now. It was blocked here on the grounds that thinking could be steered into
+       breaking the tier's limits — a judgement made when Max ran a model that did not reason
+       natively. It now runs kimi-k3, which reasons as a matter of course, so the block bought
+       nothing except a toggle that was visible, pressable, and inert: the owner pressed it
+       repeatedly and never once saw a thought. A control that cannot do what it says is worse
+       than no control. */
+    const effectiveOn = state.think;
     els.thinkToggle.classList.toggle("is-on", effectiveOn);
     els.thinkToggle.setAttribute("aria-checked", effectiveOn ? "true" : "false");
-    els.thinkToggle.title = state.tier === "max" ? t().thinkMaxBlocked : (state.think ? t().thinkOn : t().thinkOff);
+    els.thinkToggle.title = state.think ? t().thinkOn : t().thinkOff;
   }
   updateToolsBadge();
 }
 function setThink(on) {
-  // Thinking is disabled on Firas Max (it can be steered to break the safety limits).
-  // Keep the toggle present, but refuse to turn it ON and explain why.
-  if (on && state.tier === "max") { showToast(t().thinkMaxBlocked); return; }
+
   state.think = !!on;
   localStorage.setItem(LS_THINK, String(state.think));
   applyThink();
@@ -11004,6 +11204,40 @@ const STEM_HARD_RULE =
   "only a finished, correct problem and its clean solution, never a broken attempt or a mid-solution correction; " +
   "discard anything you cannot solve cleanly). ANSWER-KEY CORRECTNESS — verify every published final answer by an INDEPENDENT check (back-substitution, a units/dimensional check, or a limiting/special case) before writing it; a hard problem shipped with a wrong answer key is a FAILURE, so if an answer will not verify cleanly replace the problem with one whose answer does.";
 
+/* HARD IS NOT ONE THING. The STEM rule above defines difficulty the way a physicist would — more
+   steps, trickier substitutions, layered calculation — and then applies it to "mathematics,
+   physics, chemistry or any quantitative science". Two of the subjects this app is actually used
+   for fall outside that sentence, and a rule that does not name them does not reach them:
+
+     · BIOLOGY is not a quantitative science in that sense, so it was never covered at all — and
+       "make it harder" in biology does not mean more arithmetic, it means mechanism, evidence and
+       experimental interpretation instead of recall.
+     · ENGLISH GRAMMAR was not mentioned anywhere. Difficulty there is subtlety, not length: the
+       structures that native speakers get wrong, not longer sentences with the same tense in them.
+
+   So each gets difficulty defined in ITS OWN terms. Written to sit alongside STEM_HARD_RULE, not
+   to replace it — a chemistry question still gets the quantitative treatment above. */
+const SUBJECT_HARD_RULE =
+  " BIOLOGY — DIFFICULTY MEANS MECHANISM, NOT MEMORY: when you generate biology questions or " +
+  "explanations and the user did not ask for an easy level, never ask what a thing is CALLED. Ask " +
+  "why it happens, what would break if one step were removed, what an experiment's data implies, " +
+  "what phenotype a described mutation produces and through which pathway, how a pedigree or a " +
+  "cross resolves, how two systems interact under a specific stress. Set them at International " +
+  "Biology Olympiad and first-year-medical calibre: real experimental scenarios, figures and data " +
+  "to interpret, genetics that needs working out rather than reciting, and reasoning chains from " +
+  "molecular event to whole-organism consequence. Textbook definition-recall is a FAILURE." +
+  " ENGLISH — DIFFICULTY MEANS SUBTLETY, NOT LENGTH: for grammar and language questions, target " +
+  "the structures competent speakers actually get wrong — inversion after negative adverbials, " +
+  "subjunctive and unreal past, reduced and non-defining relative clauses, participle clauses and " +
+  "dangling modifiers, cleft and fronting for emphasis, aspect distinctions carrying real meaning " +
+  "changes, modality of deduction in past time, phrasal-verb separability, articles with abstract " +
+  "and generic reference, and the shifts required in reported speech. Pitch it at C1-C2, Cambridge " +
+  "Proficiency and university-entrance calibre. A question whose answer is 'go/goes' is a FAILURE." +
+  " EVERY SUBJECT — ALWAYS CORRECT, ALWAYS NEW: difficulty is never bought with ambiguity. Every " +
+  "item must have one defensible answer you have verified yourself before showing it, and must be " +
+  "built by you for this moment — not a classic, not a reworded exercise from a book or the " +
+  "internet, and never a repeat of something you already gave in this conversation.";
+
 /* ANSWER THE CURRICULUM.
    Reported by the owner: asking about human evolution returned "sorry, I can't answer that".
    Nothing in this app asks for that — there is no refusal instruction anywhere in the prompt
@@ -11392,7 +11626,7 @@ function buildMessages(tier, conversation, replyLang) {
          count instruction buried between the science-rigor block and the code block is the
          first thing to lose an argument with "be concise". Last position is the one the model
          weighs most, and this rule is the one whose failure the user actually notices. */
-      content: model.persona + productRule + identityRule + langRule + mathRule + accuracyRule + NO_NEEDLESS_REFUSAL + SCIENCE_RIGOR + NEVER_RAW_FILE_FORMAT + codeRule + genLevelRule + STEM_HARD_RULE + imageRule + tikzRule+ (planning ? "" : buildRule + engineerRule) + finishRule,
+      content: model.persona + productRule + identityRule + langRule + mathRule + accuracyRule + NO_NEEDLESS_REFUSAL + SCIENCE_RIGOR + NEVER_RAW_FILE_FORMAT + codeRule + genLevelRule + STEM_HARD_RULE + SUBJECT_HARD_RULE + imageRule + tikzRule+ (planning ? "" : buildRule + engineerRule) + finishRule,
     };
   }
 
@@ -11443,7 +11677,7 @@ function buildMessages(tier, conversation, replyLang) {
   // files and must NOT mention buttons — the app generates the file itself.
   const lastUser = [...conversation].reverse().find((m) => m.role === "user");
   // Skip file steering during a voice call — spoken replies must stay plain text.
-  const fileFmt = (lastUser && !state.callMode) ? detectFileRequest(lastUser.content, { hasAttachment: msgHasAttachment(lastUser) }) : null;
+  const fileFmt = (lastUser && !state.callMode) ? resolvedFileFormat(lastUser) : null;
   const fileTurnSystem = fileFmt ? { role: "system", content: fileGuidance(fileFmt) } : null;
 
   const history = conversation.map((m) => {
@@ -11670,7 +11904,7 @@ function authorSys(fmt, lang) {
     "than requested is a FAILED task. SOLUTIONS INLINE (hard rule): when the request asks for solutions, put each item's " +
     "COMPLETE worked step-by-step solution IMMEDIATELY after that item (problem 1 → its solution → problem 2 → its " +
     "solution …, e.g. '**الحل:**' / '**Solution:**'), ending in an exact verified final answer — NEVER defer solutions " +
-    "to a separate section at the end. EXAM-PAPER EXCEPTION & CONVENTIONS (امتحان/اختبار/كويز/ورقة أسئلة — or any request for a set of numbered questions presented as a paper): produce a REAL official exam paper, not a plain list — (1) HEADER: an Arabic paper opens with 'بسم الله الرحمن الرحيم' centered on its own line, then a small bordered info table the teacher can fill (المدرسة / المادة / الصف / الزمن / الدرجة الكلية — use the user's values when given, else a writable blank like $\\underline{\\hspace{3cm}}$), then ONE instructions line (e.g. 'أجب عن جميع الأسئلة'); an English paper uses School / Subject / Grade / Time / Total Marks. (2) VARIETY: unless the user fixed the question types, MIX formats across the paper — multiple-choice with four options (أ/ب/ج/د or A-D), true/false (صح أم خطأ), fill-in-the-blank, short answer, and multi-step problems/essay — grouped into PART sections labelled by type ('أولاً: اختر الإجابة الصحيحة' …), while numbering the questions themselves CONTINUOUSLY 1..N across the WHOLE paper (never restarting per section) and keeping the total count EXACTLY as requested. (3) MARKS: end EVERY question with its mark in parentheses ('(٥ درجات)' / '(5 marks)') and make all marks SUM EXACTLY to the stated total. (4) DIFFICULTY GRADING: order from accessible to hard — roughly 30% easy, 40% medium, 30% challenging — so the paper genuinely discriminates. (5) Close the questions with a centered '— انتهت الأسئلة —' / '— End of Questions —' line. (6) ANSWER-KEY OVERRIDE (exam papers only — this overrides the inline-solutions rule): do NOT put solutions between the questions; AFTER the end-of-questions line add ONE separate section '## نموذج الإجابة' / '## Answer Key' giving, for EVERY question in order, a clearly labelled worked solution ('حل السؤال 1' / 'Solution 1') with the reasoning and the exact verified final answer (for multiple-choice: the correct letter AND a one-line justification)." + " VERIFY BEFORE YOU WRITE (accuracy gate — the reader sees ONE clean correct answer): for EVERY numeric, algebraic or symbolic result in the document, re-derive it a SECOND independent way BEFORE you write it — back-substitute the solution into the original equation, differentiate an antiderivative back to the integrand, re-check units and dimensions, or test a limiting/special case; commit a value ONLY once both routes agree, and present each final answer exactly once (boxed as $\\boxed{…}$, or alone after 'الإجابة النهائية:' / 'Final answer:'). NEVER show a wrong first attempt, a crossed-out line, or ANY visible self-correction ('مهلا' / 'انتظر' / 'wait' / 'let me redo' …) — all checking is silent and private, and each solution reads clean from its first line to its last. DO NOT FABRICATE SCIENTIFIC DATA: never invent a specific statistic, physical constant, reaction/thermodynamic value, date, measurement or citation you are not confident of — give a correct standard value or state it qualitatively rather than manufacture a precise-looking but wrong figure." + STEM_HARD_RULE + SCIENCE_RIGOR + " DEPTH & COMPLETENESS — never shallow: develop each section with real substance (well-developed paragraphs and/or a full worked list or table, not one thin line), use a clean NESTED heading hierarchy (## for main sections, ### for their sub-parts) without skipping levels, and make sure the document has a genuine introduction, at least three substantive body sections, and a real closing — a bullet-only skeleton is a FAILED document. ORGANIZATION — make it VERY tidy and easy to scan: a consistent heading hierarchy, related content " +
+    "to a separate section at the end. EXAM-PAPER EXCEPTION & CONVENTIONS (امتحان/اختبار/كويز/ورقة أسئلة — or any request for a set of numbered questions presented as a paper): produce a REAL official exam paper, not a plain list — (1) HEADER: an Arabic paper opens with 'بسم الله الرحمن الرحيم' centered on its own line, then a small bordered info table the teacher can fill (المدرسة / المادة / الصف / الزمن / الدرجة الكلية — use the user's values when given, else a writable blank like $\\underline{\\hspace{3cm}}$), then ONE instructions line (e.g. 'أجب عن جميع الأسئلة'); an English paper uses School / Subject / Grade / Time / Total Marks. (2) VARIETY: unless the user fixed the question types, MIX formats across the paper — multiple-choice with four options (أ/ب/ج/د or A-D), true/false (صح أم خطأ), fill-in-the-blank, short answer, and multi-step problems/essay — grouped into PART sections labelled by type ('أولاً: اختر الإجابة الصحيحة' …), while numbering the questions themselves CONTINUOUSLY 1..N across the WHOLE paper (never restarting per section) and keeping the total count EXACTLY as requested. (3) MARKS: end EVERY question with its mark in parentheses ('(٥ درجات)' / '(5 marks)') and make all marks SUM EXACTLY to the stated total. (4) DIFFICULTY GRADING: order from accessible to hard — roughly 30% easy, 40% medium, 30% challenging — so the paper genuinely discriminates. (5) Close the questions with a centered '— انتهت الأسئلة —' / '— End of Questions —' line. (6) ANSWER-KEY OVERRIDE (exam papers only — this overrides the inline-solutions rule): do NOT put solutions between the questions; AFTER the end-of-questions line add ONE separate section '## نموذج الإجابة' / '## Answer Key' giving, for EVERY question in order, a clearly labelled worked solution ('حل السؤال 1' / 'Solution 1') with the reasoning and the exact verified final answer (for multiple-choice: the correct letter AND a one-line justification)." + " VERIFY BEFORE YOU WRITE (accuracy gate — the reader sees ONE clean correct answer): for EVERY numeric, algebraic or symbolic result in the document, re-derive it a SECOND independent way BEFORE you write it — back-substitute the solution into the original equation, differentiate an antiderivative back to the integrand, re-check units and dimensions, or test a limiting/special case; commit a value ONLY once both routes agree, and present each final answer exactly once (boxed as $\\boxed{…}$, or alone after 'الإجابة النهائية:' / 'Final answer:'). NEVER show a wrong first attempt, a crossed-out line, or ANY visible self-correction ('مهلا' / 'انتظر' / 'wait' / 'let me redo' …) — all checking is silent and private, and each solution reads clean from its first line to its last. DO NOT FABRICATE SCIENTIFIC DATA: never invent a specific statistic, physical constant, reaction/thermodynamic value, date, measurement or citation you are not confident of — give a correct standard value or state it qualitatively rather than manufacture a precise-looking but wrong figure." + STEM_HARD_RULE + SUBJECT_HARD_RULE + SCIENCE_RIGOR + " DEPTH & COMPLETENESS — never shallow: develop each section with real substance (well-developed paragraphs and/or a full worked list or table, not one thin line), use a clean NESTED heading hierarchy (## for main sections, ### for their sub-parts) without skipping levels, and make sure the document has a genuine introduction, at least three substantive body sections, and a real closing — a bullet-only skeleton is a FAILED document. ORGANIZATION — make it VERY tidy and easy to scan: a consistent heading hierarchy, related content " +
     "grouped together, uniform spacing (NO orphan lines, NO stray punctuation on its own line), and — for an exam/worksheet — " +
     "clean question numbering with its parts (A/B/C…) and marks, each figure placed right beside the item it belongs to. " +
     "IMAGES: when the task provides REAL IMAGE URLS, embed EACH one at a contextually fitting spot as ![short description](URL) " +
@@ -13072,11 +13306,26 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
   document.addEventListener("visibilitychange", onVis);
 
   // Snapshot the thinking pref for THIS reply. When off, no Thinking panel.
-  // Max NEVER thinks (disabled there — see setThink), even if the pref was left on
-  // from another tier, so it can't be steered into breaking its limits.
-  const thinkAllowed = tier.key !== "max";
+  // Every tier may think; see applyThink for why Max no longer is the exception.
+  const thinkAllowed = true;
   const wantThinking = state.think && tier.showThinking && thinkAllowed;
   aiMsg.think = state.think && thinkAllowed;
+
+  /* ONE VERDICT FOR THE WHOLE TURN, taken before any router looks at the message. Everything
+     below reads THIS instead of pattern-matching the sentence for itself, so the routers cannot
+     disagree with each other and none of them can overrule it. Stored on the user message so the
+     synchronous readers further down (requestedFormatForAssistant, and the rerender path) see the
+     same answer without asking again. */
+  const lastUserTurn = [...convo].reverse().find((m) => m.role === "user");
+  const turnKind = lastUserTurn
+    ? await classifyTurnIntent(lastUserTurn.content, {
+        hasAttachedImage: !!(lastUserTurn.images && lastUserTurn.images.length),
+        hasPriorImage: !!lastGeneratedImageMeta(chat),
+        product: state.product,
+      }, signal)
+    : "chat";
+  if (lastUserTurn && turnKind !== "unavailable") lastUserTurn.intent = turnKind;
+  if (signal.aborted) { clearTimeout(timeoutId); return; }
 
   // Snapshot whether THIS reply should be masked as a streaming file (so the chat
   // shows a calm loader, not a wall of raw document text/code).
@@ -13091,7 +13340,12 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
   const codeTrigger = planExecuting
     ? ([...convo].reverse().find((m) => m.role === "user" && detectCodeRequest(m.content)) || lastUserForCode)
     : lastUserForCode;
-  const codeReq = (!fileFmt && (state.mode !== "plan" || planExecuting) && codeTrigger)
+  /* A turn the classifier positively identified as a document or a picture is not a build, no
+     matter what the build pattern thinks of the words in it. This is the direction that was
+     broken: "Create a professional mathematics PDF" produced index.html. */
+  const kindBlocksCode = turnIntentIsDocument(turnKind) ||
+    turnKind === "image" || turnKind === "video" || turnKind === "edit-image";
+  const codeReq = (!fileFmt && !kindBlocksCode && (state.mode !== "plan" || planExecuting) && codeTrigger)
     ? (detectCodeRequest(codeTrigger.content) || (state.mode !== "plan" ? codeFollowupSpec(convo) : null))
     : null;
 
@@ -13196,10 +13450,25 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       }
       if (reasoning && wantThinking) {
         if (!thinkingNode || !thinkingNode.isConnected) {
-          thinkingNode = thinkingEl(reasoning, false);
+          /* OPEN while it streams. Built collapsed, the whole feature was a closed grey header:
+             the user pressed a button meaning "let me watch you think" and got a box that
+             revealed nothing until clicked — and by then the thought was already history. It is
+             re-rendered COLLAPSED once the turn is saved (see the disclosure in the message
+             renderer), so past turns stay tidy and only the live one is unfolded. */
+          thinkingNode = thinkingEl(reasoning, true);
           aiNode.querySelector(".msg-ai__head").after(thinkingNode);
         } else {
-          thinkingNode.querySelector(".thinking__inner").textContent = reasoning;
+          const inner = thinkingNode.querySelector(".thinking__inner");
+          /* Follow the newest line the way a terminal does — but STOP the moment the user scrolls
+             up inside the panel to read something, which is the whole reason they opened it.
+             MEASURED BEFORE THE WRITE, and it has to be: once the text overflows, appending more
+             leaves scrollTop where it was, so a reading taken afterwards always says "not at the
+             bottom" and the panel would freeze on its first screenful and never follow again.
+             .thinking__inner is the scroller; .thinking__body is overflow:hidden and drives only
+             the open/close transition, so scrolling that one would silently do nothing. */
+          const wasAtEnd = inner.scrollHeight - inner.scrollTop - inner.clientHeight < 24;
+          inner.textContent = reasoning;
+          if (wasAtEnd && thinkingNode.classList.contains("is-open")) inner.scrollTop = inner.scrollHeight;
         }
       }
       if (autoScroll) scrollToBottom();
@@ -13229,8 +13498,12 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
        thought to write down and it fails silently when it is wrong — which is how "تقدر تغير
        الكلام الي بهاي الصورة؟" got a chat reply saying the assistant cannot change pictures,
        while the code that changes pictures sat right there unused. */
-    if (imgHasAttachments && !fileFmt && !codeReq && (state.mode !== "plan" || planExecuting) &&
-        imgUser && (await classifyAttachedImageIntent(imgUser.content, signal)) === "edit") {
+    /* The source can be an ATTACHED picture or the one this chat just generated. Both are "the
+       picture we are looking at" as far as the user is concerned, and only one of them used to
+       count — so asking to change a freshly made logo got an essay instead of a new logo. */
+    const priorImg = imgHasAttachments ? null : lastGeneratedImageMeta(chat);
+    if ((imgHasAttachments || priorImg) && !fileFmt && !codeReq && (state.mode !== "plan" || planExecuting) &&
+        imgUser && turnKind === "edit-image") {
       if (isGuest()) {
         clearTimeout(timeoutId);
         finalized = true;
@@ -13244,7 +13517,13 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       const enode = liveNode(); const emd = enode && enode.querySelector(".msg-ai__body .md");
       if (emd) emd.innerHTML = buildImageLoadingHtml(replyLang);
       const editPrompt = String(imgUser.content || "").slice(0, 1000);
-      const out = await requestImageEdit(editPrompt, imgUser.images[0], "", signal);
+      const srcB64 = imgHasAttachments ? imgUser.images[0] : await imageMetaToB64(priorImg, signal);
+      if (!srcB64) {
+        clearTimeout(timeoutId); finalized = true;
+        aiMsg.content = imageEditErrorText({ error: "bad_image" }, replyLang);
+        aiMsg.reasoning = ""; finalizeAi(aiMsg, chat); return;
+      }
+      const out = await requestImageEdit(editPrompt, srcB64, "", signal);
       if (signal.aborted) { clearTimeout(timeoutId); return; }
       clearTimeout(timeoutId);
       finalized = true;
@@ -13267,7 +13546,8 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
     const mediaIntent = (imgUser && !imgHasAttachments && (state.mode !== "plan" || planExecuting) && !fileFmt && !codeReq)
       ? await classifyMediaIntent(imgUser.content, signal) : "none";
     if (signal.aborted) { clearTimeout(timeoutId); return; }
-    if (mediaIntent === "video") {
+    const wantsVideo = turnKind === "video" || (turnKind === "unavailable" && mediaIntent === "video");
+    if (wantsVideo) {
       if (isGuest()) {
         clearTimeout(timeoutId);
         finalized = true;
@@ -13322,7 +13602,15 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
     // longer hijack it into image-gen (the "does the opposite of what I asked" bug).
     /* The model's verdict OR the long-standing pattern — images predate the intent layer and
        their regex is well-tuned, so it stays as a second opinion rather than being dropped. */
-    if (imgUser && !imgHasAttachments && (state.mode !== "plan" || planExecuting) && !fileFmt && !codeReq && (mediaIntent === "image" || detectImageRequest(imgUser.content))) {
+    /* THE `||` THAT CAUSED THE REPORTED BUG IS GONE. It used to read
+       (mediaIntent === "image" || detectImageRequest(text))
+   which gave understanding and pattern-matching an equal vote — so a message asking to TRANSLATE
+   some text, which happened to contain the word صورة, was classified correctly as chat and then
+   overruled into generating a picture. The pattern now speaks only when there is no verdict at
+   all, which is the one case where a guess beats nothing. */
+    const wantsImage = turnKind === "image" ||
+      (turnKind === "unavailable" && detectImageRequest(imgUser.content));
+    if (imgUser && !imgHasAttachments && (state.mode !== "plan" || planExecuting) && !fileFmt && !codeReq && wantsImage) {
       // GUESTS CANNOT GENERATE IMAGES. Stop before any engine call, answer in the
       // thread with the reason, and open the sign-up prompt (the server also
       // returns 403 signin_required, so this is defence-in-depth, not the gate).
@@ -13877,7 +14165,13 @@ function finalizeAi(aiMsg, chat) {
   /* The router decides "is this code?" from the REQUEST, before the model has seen it. When it
      guesses wrong the build still happens, it just lands as a fenced block in the chat with no
      preview and no download. Ask the ANSWER instead — see promoteAnswerToCode. */
-  if (!imgMeta && !codeMeta) {
+  /* A DOCUMENT TURN IS NEVER PROMOTED INTO A CODE CARD. This is the step that actually stamped
+     index.html onto a request for a PDF: the document router missed the turn, so the model was
+     told to answer with one fenced block, it produced a whole HTML page, and this turned that page
+     into a code deliverable and persisted it. The router is fixed, but promotion must not be able
+     to overrule a turn that was identified as a document — one missed guard should not be enough
+     to hand back the wrong artifact again. */
+  if (!imgMeta && !codeMeta && !isFileStreamReply(aiMsg, chat)) {
     /* A reply that was ALREADY showing in a code box promotes with keepOutro. Without it, an
        explanation longer than 160 characters after the fence makes this refuse, and the card the
        user has been watching fill up is destroyed on the very last frame — the opposite of what
@@ -23526,6 +23820,23 @@ async function cwAnswerAboutProject(st, req, isWeb) {
   return out;
 }
 
+/** What to say when the IDE is handed a request for a DOCUMENT.
+
+    Firas Code decides what to build from WHERE YOU ARE STANDING, not from what you asked. Every
+    in-IDE request goes to cwAskAI, which routes between a question, a game, an improvement and a
+    build — and not one of those can produce a document. So a brief that opened with "Create a
+    premium, professional PDF document titled..." came back as index.html, because HTML files are
+    the only thing this end of the app knows how to make.
+
+    Naming the mismatch is better than building the wrong artifact silently. */
+function codeDeliverableRedirectText(lang) {
+  return lang === "ar"
+    ? "هذا طلب **مستند**، لا مشروع برمجي — وفِراس كود يبني مواقع وتطبيقات فقط، فلو نفّذتُه هنا لخرجت لك ملفات HTML بدل ما طلبت.\n\n" +
+      "افتح **فِراس AI** من مبدّل المنتجات في الأعلى، والصق الطلب نفسه هناك — يبنيه مستندًا حقيقيًا قابلًا للتحميل."
+    : "This is a **document** request, not a software project — and Firas Code only builds sites and apps, so running it here would hand you HTML files instead of what you asked for.\n\n" +
+      "Open **Firas AI** from the product switcher above and paste the same request there; it will build it as a real, downloadable document.";
+}
+
 async function cwAskAI(chat, instruction) {
   const st = codeFilesOf(chat);
   const isWeb = st.files.some((f) => /\.html?$/.test(f.path));
@@ -23547,6 +23858,16 @@ async function cwAskAI(chat, instruction) {
      unlimited AI edits against the owner's weekly-capped engine while Settings
      still showed 0/60 used. Charge once per edit request, here, before any
      branch does model work. */
+  /* IS THIS EVEN A CODE REQUEST? Asked before the quota is charged, so a brief that belongs in the
+     other product does not also cost a build. The cheap test decides only whether the question is
+     worth a model call — never what the answer is; the verdict itself comes from the one intent
+     authority, told it is standing in the code editor. */
+  if (/\b(pdf|word|docx|powerpoint|pptx|excel|xlsx|csv|slides?|deck|presentation|report|whitepaper|ebook|booklet|brochure)\b|\bwdocument\bb(?!\.)|ملف|مستند|وثيقة|تقرير|عرض\s*تقديمي|شرائح|بوربوينت|وورد|اكسل|كتيّ?ب|بحث/i.test(req)) {
+    const cwKind = await classifyTurnIntent(req, { product: "code" }, null);
+    if (turnIntentIsDocument(cwKind)) {
+      return { changes: [], dels: [], answer: codeDeliverableRedirectText(state.lang) };
+    }
+  }
   const codeCid = uid();
   const cwGate = await chargeUsage("code", codeCid);
   if (!cwGate.ok) {

@@ -2086,19 +2086,32 @@ function sseDone(res) {
 // reasoning; when false we additionally DROP any thinking tokens so the toggle
 // reliably hides thinking even for models that always reason.
 // Returns true on success, false if Ollama was unreachable (-> caller falls back).
+/* Models that answered 400 to a thinking request. Learned at runtime, so the cost of finding out
+   is paid once per model per process rather than on every turn Thinking is switched on. */
+const _noThink = new Set();
+
 async function streamOllama(res, messages, tier, think, signal, modelOverride) {
   const t = TIERS[tier];
   const model = modelOverride || t.model;
   // Stronger thinking: gpt-oss accepts a reasoning LEVEL — use "high" when the
   // user has thinking on. Other models just take a boolean.
-  const thinkVal = think ? (/gpt-oss/i.test(model) ? "high" : true) : false;
-  const body = JSON.stringify({
+  /* THINKING IS A PER-MODEL CAPABILITY, AND ASKING A MODEL THAT LACKS IT COSTS THE WHOLE CALL.
+     Ollama answers 400 for `think` on a model that does not support it. 400 is not one of the
+     quota codes handled below, so every attempt resent the identical rejected body, all of them
+     failed, and the tier fell through to the rescue chain. The visible symptom was the reported
+     one — the Thinking panel never appears — but the real cost was worse: switching Thinking ON
+     silently DEMOTED the answer to a weaker engine. A rejection now drops thinking and retries
+     the same model at once, and the model is remembered so the next turn does not re-buy it. */
+  let wantThink = think && !_noThink.has(model);
+  const buildBody = () => JSON.stringify({
     model,
     messages,
     stream: true,
-    think: thinkVal,
+    // gpt-oss accepts a reasoning LEVEL rather than a boolean; others just take true.
+    think: wantThink ? (/gpt-oss/i.test(model) ? "high" : true) : false,
     options: { temperature: t.temperature, num_predict: t.num_predict },
   });
+  let body = buildBody();
 
   // Retry transient failures with REAL backoff before any bytes are streamed — a brief
   // 429/503 on the hosted pool clears within a second or two. A QUOTA hit (429/402/403 on a
@@ -2142,6 +2155,15 @@ async function streamOllama(res, messages, tier, think, signal, modelOverride) {
       was429 = (st === 429);   // reset each attempt so a 429→503 sequence doesn't over-wait
       lastErr = new Error("ollama " + st);
       upstream = null;
+      if (wantThink && (st === 400 || st === 422)) {
+        /* Not a quota problem and not a dead model — this model simply cannot think out loud.
+           Retry it immediately, unthinking, rather than losing the tier to a fallback engine. */
+        _noThink.add(model);
+        wantThink = false;
+        body = buildBody();
+        attempt--;
+        continue;
+      }
       if (olKey && (st === 429 || st === 402 || st === 403)) {
         ollamaMarkLimited(olKey, st);
         // a FRESH key is available → rotate to it immediately, no backoff wasted
@@ -2621,7 +2643,13 @@ function openaiPickImageModel() {
 // medium: Firas's choice. low is ~4x cheaper and visibly softer; high is ~4x dearer and would
 // empty the account in a few hundred pictures.
 const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || "high";
-const OPENAI_IMAGE_DAILY = Number(process.env.OPENAI_IMAGE_DAILY ?? 2);
+/* FIVE A DAY, AND THE ENGINE IS NOT THE USER'S PROBLEM. The allowance is five pictures per
+   person per day, full stop. Nano Banana draws all five; if the subscription behind it will not
+   answer, gpt-image draws the rest of that same five. Those are not two budgets stacked on top of
+   each other — the user asked for five and gets five, and which engine served them is an internal
+   detail they never see. This number therefore matches IMAGE_DAILY_LIMIT rather than sitting
+   under it, so the premium counter can never bind tighter than the allowance itself. */
+const OPENAI_IMAGE_DAILY = Number(process.env.OPENAI_IMAGE_DAILY ?? 5);
 const OPENAI_IMAGE_BUDGET_USD = Number(process.env.OPENAI_IMAGE_BUDGET_USD ?? 60);
 /* WHAT ONE PICTURE ACTUALLY COSTS — OpenAI's published per-image prices, not an estimate.
 
@@ -4029,7 +4057,15 @@ async function _geminiStream(res, msgs, signal, label, models, think) {
     let upstream = null;
     for (;;) {
       const body = JSON.stringify(askThink
-        ? { model, messages: msgs, stream: true, reasoning_effort: "low" }
+        /* THOUGHTS ARE OPT-IN, AND ASKING TO THINK IS NOT THE SAME AS ASKING TO SEE IT. Google's
+           OpenAI-compatible layer will reason internally on reasoning_effort alone but returns NO
+           thought text unless include_thoughts is set — which is why the panel stayed empty even
+           on turns that really did reason. The effort also rises from "low": the user pressed a
+           button to watch the model think, so a token budget tuned for invisible background
+           reasoning is the wrong one. If either field is rejected the 400 branch below drops
+           askThink and retries, so the answer itself is never at risk. */
+        ? { model, messages: msgs, stream: true, reasoning_effort: "medium",
+            extra_body: { google: { thinking_config: { include_thoughts: true } } } }
         : { model, messages: msgs, stream: true });
       try {
         upstream = await fetch(GEMINI_OAI_URL, {
