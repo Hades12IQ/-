@@ -2422,6 +2422,63 @@ async function isRepeatCharge(bucket, product, cid, messages) {
    shared GEMINI_KEYS pool and had only a per-minute rateLimited() bucket in front of them.
    On the edge that bucket is an in-isolate Map, so a burst spread across isolates each saw
    an empty one: it was never a per-user cap. This charges a real daily unit. */
+/* ══ LIVE VOICE ══════════════════════════════════════════════════════════════════════════
+   The call today is three hops — the browser transcribes, a text model answers, the device
+   speaks. The model never hears the caller, so tone, emphasis and dialect are flattened into a
+   transcript before it ever arrives, and there is no way to interrupt a reply in progress.
+
+   The Live API removes all three hops: the model hears the audio and answers in its own voice
+   over one connection. It needs a WebSocket, which this edge runtime is the wrong place to hold
+   open — so the browser connects to Google DIRECTLY, and this route exists only to hand it a
+   short-lived token. The real API key never leaves the server.
+
+   THE SPEND CEILING IS ENFORCED BY GOOGLE, NOT BY THE CLIENT. expireTime hard-stops the session
+   at LIVE_SESSION_MAX_MS whatever the browser does with it, and uses:1 stops the token being
+   replayed into a second session. Talking longer means minting another token, which costs another
+   unit of the daily voice meter. A forgotten open tab therefore cannot run up a bill.
+
+   liveConnectConstraints pins the model and the response modality, so a token lifted out of the
+   page cannot be repointed at a more expensive model. */
+const GEMINI_LIVE_MODEL = String(env("GEMINI_LIVE_MODEL") || "gemini-3.1-flash-live-preview");
+const LIVE_SESSION_MAX_MS = (() => {
+  const v = parseInt(env("LIVE_SESSION_MAX_MS"), 10);
+  return Number.isFinite(v) && v > 0 ? Math.min(v, 30 * 60000) : 10 * 60000;   // 10 min, hard max 30
+})();
+const LIVE_START_WINDOW_MS = 60000;   // the token must be USED within a minute of being minted
+const LIVE_TOKEN_URL = "https://generativelanguage.googleapis.com/v1beta/auth_tokens";
+
+/** Mint one ephemeral Live-API token. Returns { token } or { error }. */
+async function mintLiveToken() {
+  const key = gemPick() || GEMINI_API_KEY;
+  if (!key) return { error: "no_engine" };
+  const now = Date.now();
+  let r;
+  try {
+    r = await fetch(LIVE_TOKEN_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        uses: 1,
+        expireTime: new Date(now + LIVE_SESSION_MAX_MS).toISOString(),
+        newSessionExpireTime: new Date(now + LIVE_START_WINDOW_MS).toISOString(),
+        liveConnectConstraints: {
+          model: "models/" + GEMINI_LIVE_MODEL,
+          config: { responseModalities: ["AUDIO"] },
+        },
+      }),
+    });
+  } catch (_) { return { error: "unreachable" }; }
+  if (!r.ok) {
+    /* Never hand the upstream body back to the browser — it can carry the project id and,
+       on some errors, the key that was refused. */
+    return { error: "mint_failed", status: r.status };
+  }
+  let j = null; try { j = await r.json(); } catch (_) {}
+  const name = j && (j.name || j.token || (j.tokenInfo && j.tokenInfo.name));
+  if (!name) return { error: "mint_failed" };
+  return { token: String(name) };
+}
+
 async function chargeVoiceEdge(c) {
   if (!c) return null;
   if (c.isGuest) return await guestCharge(c.id, "voice", null, null);
@@ -4921,6 +4978,28 @@ export default async (request, context) => {
         }
       } catch (_) {}
       return json({ url: target, title, text });
+    }
+
+    if (path === "/api/live/token" && method === "POST") {
+      const caller = await callerOf(context);
+      const user = caller.user || null;
+      /* MEMBERS ONLY. A live call costs roughly a hundred times what one dictation costs per
+         minute, and a guest is an unauthenticated cookie — the cheapest identity to mint again.
+         Guests keep the existing three-hop call, which spends nothing per minute. */
+      if (!user) return json({ error: "signin_required", feature: "live" }, 403);
+      if (rateLimited("live:" + user.id, 6, 60000)) return json({ error: "rate limited" }, 429);
+      if (!GEMINI_KEYS.length && !GEMINI_API_KEY) return json({ error: "no_engine" }, 503);
+      /* Charged BEFORE minting: a token that is handed out has already bought its session,
+         whether or not the caller chooses to connect. */
+      { const denied = await chargeVoiceEdge(caller); if (denied) return json(denied, 429); }
+      const out = await mintLiveToken();
+      if (out.error) return json({ error: out.error }, out.error === "no_engine" ? 503 : 502);
+      return json({
+        token: out.token,
+        model: GEMINI_LIVE_MODEL,
+        maxMs: LIVE_SESSION_MAX_MS,
+        startWithinMs: LIVE_START_WINDOW_MS,
+      });
     }
 
     if (path === "/api/transcribe" && method === "POST") {

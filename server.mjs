@@ -3815,6 +3815,56 @@ const STT_INSTRUCTION =
   "no commentary, no quotation marks, no labels, no translation. Keep the speaker's language and dialect " +
   "exactly as spoken (Arabic dialects stay in Arabic script as pronounced; mixed Arabic/English stays mixed). " +
   "Add natural punctuation. If there is no intelligible speech, output an empty string.";
+/* ══ LIVE VOICE TOKEN — parity with netlify/edge-functions/api.js ═══════════════════════════
+   The browser holds the WebSocket to Google itself; this only mints the short-lived token that
+   lets it, so the API key never reaches the page. The session ceiling is expireTime, enforced by
+   Google — a browser cannot talk for longer than the token allows, whatever it does. */
+const GEMINI_LIVE_MODEL = String(process.env.GEMINI_LIVE_MODEL || "gemini-3.1-flash-live-preview");
+const LIVE_SESSION_MAX_MS = (() => {
+  const v = parseInt(process.env.LIVE_SESSION_MAX_MS, 10);
+  return Number.isFinite(v) && v > 0 ? Math.min(v, 30 * 60_000) : 10 * 60_000;
+})();
+const LIVE_START_WINDOW_MS = 60_000;
+
+async function handleLiveToken(req, res) {
+  const caller = callerOf(req);
+  const user = caller.user || null;
+  /* Members only: a live minute costs on the order of a hundred dictations, and a guest is an
+     unauthenticated cookie — the cheapest identity there is to mint again. */
+  if (!user) return sendJson(res, 403, { error: "signin_required", feature: "live" });
+  if (rateLimited("live:" + user.id, 6, 60_000)) return sendJson(res, 429, { error: "rate limited" });
+  if (!GEMINI_API_KEY) return sendJson(res, 503, { error: "no_engine" });
+  { const denied = chargeVoice(caller); if (denied) return sendJson(res, 429, denied); }
+  const now = Date.now();
+  let r;
+  try {
+    r = await fetch("https://generativelanguage.googleapis.com/v1beta/auth_tokens", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+      body: JSON.stringify({
+        uses: 1,
+        expireTime: new Date(now + LIVE_SESSION_MAX_MS).toISOString(),
+        newSessionExpireTime: new Date(now + LIVE_START_WINDOW_MS).toISOString(),
+        liveConnectConstraints: {
+          model: "models/" + GEMINI_LIVE_MODEL,
+          config: { responseModalities: ["AUDIO"] },
+        },
+      }),
+    });
+  } catch (_) { return sendJson(res, 502, { error: "unreachable" }); }
+  /* The upstream body can carry the project id and the refused key — never relay it. */
+  if (!r.ok) return sendJson(res, 502, { error: "mint_failed" });
+  let j = null; try { j = await r.json(); } catch (_) {}
+  const name = j && (j.name || j.token || (j.tokenInfo && j.tokenInfo.name));
+  if (!name) return sendJson(res, 502, { error: "mint_failed" });
+  return sendJson(res, 200, {
+    token: String(name),
+    model: GEMINI_LIVE_MODEL,
+    maxMs: LIVE_SESSION_MAX_MS,
+    startWithinMs: LIVE_START_WINDOW_MS,
+  });
+}
+
 async function handleTranscribe(req, res) {
   const caller = callerOf(req);
   const user = caller.user || (caller.id ? { id: caller.id } : null);
@@ -6110,6 +6160,7 @@ const server = http.createServer(async (req, res) => {
     if (route === "/api/announcements" && method === "PATCH") return await handleAnnouncementsPatch(req, res);
     if (route === "/api/announcements" && method === "DELETE") return await handleAnnouncementsDelete(req, res);
     if (route === "/api/translate" && method === "POST") return await handleTranslate(req, res);
+    if (route === "/api/live/token" && method === "POST") return await handleLiveToken(req, res);
     if (route === "/api/transcribe" && method === "POST") return await handleTranscribe(req, res);
     if (route === "/api/tts" && method === "POST") return await handleTts(req, res);
 

@@ -17787,7 +17787,7 @@ function initMic() {
 const call = {
   active: false, phase: "idle", // idle | connecting | listening | thinking | speaking
   sr: null, rec: null, stream: null, chunks: [], analyser: null, ctx: null, audio: null,
-  silence: 0, finalText: "", speakToken: 0, muted: false, prevMode: null,
+  silence: 0, finalText: "", speakToken: 0, muted: false, prevMode: null, live: false,
   vadRaf: 0, vadQuiet: 0, hadSpeech: false, serverStt: false,
   audioEl: null, audioUnlocked: false, curUrl: "", micGranted: false,
 };
@@ -17832,6 +17832,280 @@ function callBcp(forLang) {
   // was why Arabic speech got transcribed as English when the UI was in English.
   return "ar-SA";
 }
+/* ══ LIVE VOICE ENGINE — the model hears you, and answers in its own voice ═══════════════════
+
+   The call this replaces is three hops: the browser transcribes with SpeechRecognition, a text
+   model answers the transcript, and the device reads the answer aloud. Every one of those hops
+   costs something real. The model never hears the caller, so tone, emphasis, hesitation and
+   dialect are gone before it ever arrives; SpeechRecognition is effectively Chrome-only and weak
+   on Iraqi Arabic; the device voice cannot be improved; and there is no way to interrupt a reply
+   already in progress, because nothing is listening while it speaks.
+
+   Here the audio goes straight to the model and comes straight back. One connection, no
+   transcript in the middle, barge-in for free because the microphone never stops.
+
+   WHY THE BROWSER TALKS TO GOOGLE DIRECTLY. A Live session is a WebSocket held open for minutes;
+   an edge function is the wrong thing to hold it. So the server mints a short-lived token and
+   this connects with that — the API key never reaches the page. The session length is capped by
+   the token itself, server-side, so nothing the browser does can extend it.
+
+   THIS IS AN UPGRADE, NOT A REPLACEMENT. Everything below degrades to the old path: no
+   WebSocket, no AudioWorklet, no microphone, a guest account, a refused token, a dropped
+   connection — each returns false and the three-hop call runs exactly as before. */
+const LIVE_WS_BASE = "wss://generativelanguage.googleapis.com/ws/" +
+  "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained";
+const LIVE_IN_RATE = 16000;    // what the API requires: raw 16-bit PCM, mono, little-endian
+const LIVE_OUT_RATE = 24000;   // what it sends back
+const LIVE_IDLE_HANGUP_MS = 45000;   // a forgotten open microphone is a bill, not a conversation
+
+const liveCall = {
+  ws: null, capCtx: null, playCtx: null, stream: null, node: null, srcNode: null,
+  playAt: 0, playing: [], open: false, ending: false,
+  lastVoiceAt: 0, idleTimer: 0, hardTimer: 0, onEnd: null,
+};
+
+function liveSupported() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  return !!(window.WebSocket && AC && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+}
+
+/* The capture processor, as its own module. AudioWorklet runs on the audio thread, so a busy main
+   thread cannot stutter the microphone the way a ScriptProcessor would. Delivered as a Blob so
+   there is no extra file to serve and no extra request before a call can start. */
+const LIVE_WORKLET_SRC =
+  "class FirasCap extends AudioWorkletProcessor{" +
+  "process(inputs){const ch=inputs[0]&&inputs[0][0];" +
+  "if(ch&&ch.length)this.port.postMessage(ch.slice(0));return true;}}" +
+  "registerProcessor('firas-cap',FirasCap);";
+
+/** Resample a Float32 block to 16 kHz and pack it as little-endian Int16.
+    Linear interpolation rather than nearest-sample: dropping samples on a 48k-to-16k ratio adds
+    audible aliasing, and speech recognition hears that as consonants that were never spoken. */
+function liveTo16k(f32, fromRate) {
+  const ratio = fromRate / LIVE_IN_RATE;
+  const outLen = Math.floor(f32.length / ratio);
+  const out = new Int16Array(outLen);
+  for (let i = 0; i < outLen; i++) {
+    const pos = i * ratio;
+    const i0 = Math.floor(pos), i1 = Math.min(i0 + 1, f32.length - 1);
+    const v = f32[i0] + (f32[i1] - f32[i0]) * (pos - i0);
+    const c = v < -1 ? -1 : v > 1 ? 1 : v;
+    out[i] = c < 0 ? c * 0x8000 : c * 0x7fff;
+  }
+  return out;
+}
+
+/** Bytes → base64, chunked. String.fromCharCode takes every byte as its own argument, so a
+    whole buffer at once overflows the argument limit on a long block. */
+function liveB64(bytes) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+  return btoa(s);
+}
+function liveFromB64(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Queue one chunk of the reply. Scheduled against a cursor rather than played on arrival:
+    packets land in bursts, and playing each one as it comes leaves audible seams between them. */
+function livePlayChunk(b64) {
+  const ctx = liveCall.playCtx;
+  if (!ctx) return;
+  const bytes = liveFromB64(b64);
+  const pcm = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
+  if (!pcm.length) return;
+  const buf = ctx.createBuffer(1, pcm.length, LIVE_OUT_RATE);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 32768;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  /* A small lead so the first packet is not scheduled in the past on a device whose clock has
+     already moved on by the time we get here. */
+  const now = ctx.currentTime;
+  if (liveCall.playAt < now) liveCall.playAt = now + 0.06;
+  src.start(liveCall.playAt);
+  liveCall.playAt += buf.duration;
+  liveCall.playing.push(src);
+  src.onended = () => {
+    const i = liveCall.playing.indexOf(src);
+    if (i >= 0) liveCall.playing.splice(i, 1);
+    if (!liveCall.playing.length && liveCall.open && !liveCall.ending) callSetPhase("listening", "");
+  };
+  callSetPhase("speaking", "");
+}
+
+/** Barge-in. The model reports that the caller started talking over it; everything already
+    queued must stop AT ONCE, or the reply keeps playing over the interruption that cancelled it. */
+function liveFlushPlayback() {
+  for (const s of liveCall.playing.splice(0)) { try { s.stop(); } catch (_) {} }
+  liveCall.playAt = 0;
+}
+
+function liveTeardown() {
+  liveCall.ending = true;
+  clearTimeout(liveCall.idleTimer); clearTimeout(liveCall.hardTimer);
+  liveFlushPlayback();
+  try { liveCall.node && liveCall.node.disconnect(); } catch (_) {}
+  try { liveCall.srcNode && liveCall.srcNode.disconnect(); } catch (_) {}
+  try { liveCall.stream && liveCall.stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+  try { liveCall.capCtx && liveCall.capCtx.close(); } catch (_) {}
+  try { liveCall.playCtx && liveCall.playCtx.close(); } catch (_) {}
+  try { liveCall.ws && liveCall.ws.close(); } catch (_) {}
+  liveCall.ws = null; liveCall.capCtx = null; liveCall.playCtx = null;
+  liveCall.stream = null; liveCall.node = null; liveCall.srcNode = null;
+  liveCall.open = false; liveCall.playing = []; liveCall.playAt = 0;
+}
+
+/** Try to run this call on the Live API. Resolves TRUE if the session is live and audio is
+    flowing, FALSE if anything at all did not work — in which case the caller runs the old path.
+    It never throws and never leaves the microphone open on a failed attempt. */
+async function liveTryStart() {
+  if (!liveSupported()) return false;
+  liveCall.ending = false;
+  let tok = null;
+  try {
+    const r = await fetch("/api/live/token", { method: "POST", credentials: "same-origin" });
+    if (!r.ok) return false;                       // 403 guest, 429 quota, 503 unconfigured
+    tok = await r.json();
+  } catch (_) { return false; }
+  if (!tok || !tok.token) return false;
+
+  const AC = window.AudioContext || window.webkitAudioContext;
+  try {
+    liveCall.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+  } catch (_) { return false; }
+
+  try {
+    liveCall.capCtx = new AC();
+    liveCall.playCtx = new AC();
+    /* iOS starts every context suspended and only lets a USER GESTURE resume it. This runs inside
+       the call tap, so resuming here is what makes the reply audible on iPhone at all. */
+    try { await liveCall.capCtx.resume(); } catch (_) {}
+    try { await liveCall.playCtx.resume(); } catch (_) {}
+    const url = URL.createObjectURL(new Blob([LIVE_WORKLET_SRC], { type: "application/javascript" }));
+    await liveCall.capCtx.audioWorklet.addModule(url);
+    URL.revokeObjectURL(url);
+    liveCall.node = new AudioWorkletNode(liveCall.capCtx, "firas-cap");
+    liveCall.srcNode = liveCall.capCtx.createMediaStreamSource(liveCall.stream);
+    liveCall.srcNode.connect(liveCall.node);
+    /* NOT connected to the destination: routing the microphone to the speakers is feedback. */
+  } catch (_) { liveTeardown(); return false; }
+
+  const ok = await new Promise((resolve) => {
+    let settled = false;
+    const done = (v) => { if (!settled) { settled = true; resolve(v); } };
+    let ws;
+    try { ws = new WebSocket(LIVE_WS_BASE + "?access_token=" + encodeURIComponent(tok.token)); }
+    catch (_) { return done(false); }
+    liveCall.ws = ws;
+    ws.binaryType = "arraybuffer";
+
+    /* If the socket has not come up in ten seconds it is not going to — give the old path the
+       call rather than leaving the user looking at "connecting". */
+    const openTimer = setTimeout(() => { if (!settled) { try { ws.close(); } catch (_) {} done(false); } }, 10000);
+
+    ws.onopen = () => {
+      const lang = state.lang === "ar" ? "Arabic" : "the user language";
+      ws.send(JSON.stringify({
+        setup: {
+          model: "models/" + (tok.model || "gemini-3.1-flash-live-preview"),
+          generationConfig: { responseModalities: ["AUDIO"] },
+          systemInstruction: { parts: [{ text:
+            "You are Firas, on a live voice call. SPEAK, do not lecture: short conversational " +
+            "turns, the way a person actually talks on the phone. Never read markdown, never say " +
+            "asterisk or hash, never spell out punctuation, never list numbered points aloud " +
+            "unless asked. Answer in the SAME language and the SAME dialect the caller uses — if " +
+            "they speak Iraqi Arabic, answer in Iraqi Arabic, not Modern Standard. The interface " +
+            "language is " + lang + ", but the CALLER decides. If you are interrupted, stop " +
+            "immediately and listen." }] },
+        },
+      }));
+    };
+
+    ws.onmessage = async (ev) => {
+      let txt = ev.data;
+      if (txt instanceof Blob) { try { txt = await txt.text(); } catch (_) { return; } }
+      else if (txt instanceof ArrayBuffer) { try { txt = new TextDecoder().decode(txt); } catch (_) { return; } }
+      let m = null; try { m = JSON.parse(txt); } catch (_) { return; }
+
+      if (m.setupComplete) {
+        clearTimeout(openTimer);
+        liveCall.open = true;
+        liveCall.lastVoiceAt = Date.now();
+        /* Audio only starts flowing once the server has accepted the setup — sending before
+           that is discarded, and the first thing the caller says is exactly what must not be. */
+        liveCall.node.port.onmessage = (e) => {
+          if (!liveCall.open || call.muted) return;
+          const f32 = e.data;
+          let peak = 0;
+          for (let i = 0; i < f32.length; i += 8) { const a = f32[i] < 0 ? -f32[i] : f32[i]; if (a > peak) peak = a; }
+          if (peak > 0.02) liveCall.lastVoiceAt = Date.now();
+          const pcm = liveTo16k(f32, liveCall.capCtx.sampleRate);
+          try {
+            ws.send(JSON.stringify({ realtimeInput: { audio: {
+              mimeType: "audio/pcm;rate=" + LIVE_IN_RATE,
+              data: liveB64(new Uint8Array(pcm.buffer)),
+            } } }));
+          } catch (_) {}
+        };
+        callSetPhase("listening", "");
+        done(true);
+        return;
+      }
+
+      const sc = m.serverContent;
+      if (sc) {
+        /* Barge-in comes as its own flag, before any further audio. */
+        if (sc.interrupted) { liveFlushPlayback(); callSetPhase("listening", ""); return; }
+        const parts = (sc.modelTurn && sc.modelTurn.parts) || [];
+        for (const p of parts) {
+          const d = p.inlineData;
+          if (d && d.data && /audio/i.test(d.mimeType || "")) livePlayChunk(d.data);
+        }
+        if (sc.turnComplete && !liveCall.playing.length) callSetPhase("listening", "");
+      }
+      /* The server warns before it closes a session that has reached its limit. */
+      if (m.goAway) { liveEnd(); }
+    };
+
+    ws.onerror = () => { clearTimeout(openTimer); done(false); };
+    ws.onclose = () => {
+      clearTimeout(openTimer);
+      if (!settled) return done(false);          // never came up → the old path takes the call
+      if (!liveCall.ending) liveEnd();           // dropped mid-call → end cleanly, do not hang
+    };
+  });
+
+  if (!ok) { liveTeardown(); return false; }
+
+  /* TWO CLOCKS, BOTH REAL. The hard one matches the token the server minted, so the UI closes at
+     the same moment Google stops accepting audio instead of showing a live call that is already
+     dead. The idle one hangs up on a microphone nobody is talking into — a forgotten call is the
+     way a per-minute service quietly empties an account. */
+  const maxMs = Math.max(60000, Number(tok.maxMs) || 600000);
+  liveCall.hardTimer = setTimeout(() => liveEnd(), maxMs - 1500);
+  const tick = () => {
+    if (!liveCall.open) return;
+    if (Date.now() - liveCall.lastVoiceAt > LIVE_IDLE_HANGUP_MS) { liveEnd(); return; }
+    liveCall.idleTimer = setTimeout(tick, 5000);
+  };
+  liveCall.idleTimer = setTimeout(tick, 5000);
+  return true;
+}
+
+/** End a live session and hand control back to whoever owns the call UI. */
+function liveEnd() {
+  if (!liveCall.ws && !liveCall.capCtx) return;
+  liveTeardown();
+  try { if (typeof callEnd === "function") callEnd(); } catch (_) {}
+}
+
 /* ---- overlay + phase UI ---- */
 function callSetPhase(phase, captionKey) {
   call.phase = phase;
@@ -18178,6 +18452,16 @@ async function callProceed() {
   if (!call.active) return;
   if (els.callControls) els.callControls.style.opacity = "";
   callSetPhase("connecting", "");
+  /* THE LIVE ENGINE GETS FIRST REFUSAL. It returns false — having cleaned up after itself — for
+     every reason it might not run: an older browser, a denied microphone, a guest account, a
+     spent voice quota, an unconfigured key, a socket that will not open. Only then does the
+     three-hop call below run, exactly as it always did. A caller never sees which one answered,
+     except that one of them is faster and can be interrupted. */
+  try {
+    call.live = await liveTryStart();
+    if (call.live) return;                 // the session is up; it drives the phases from here
+  } catch (_) { call.live = false; }
+  if (!call.active) return;
   try { const d = await apiJson("/api/transcribe", { method: "POST", body: JSON.stringify({ probe: true }) }); call.serverStt = !!(d && d.ok); }
   catch (_) { call.serverStt = false; }
   if (!call.active) return;
@@ -18187,6 +18471,12 @@ async function callProceed() {
 function callEnd() {
   if (!call.active) return;
   call.active = false;
+  /* A live session holds an open socket, a live microphone track and two audio contexts. None of
+     them are closed by hanging up the UI, and a microphone that outlives the call is both a
+     privacy problem and, on a per-minute service, a bill. Torn down FIRST, before anything below
+     can return early. */
+  call.live = false;
+  try { liveTeardown(); } catch (_) {}
   clearTimeout(call.silence);
   callStopSpeaking();
   if (call.sr) { try { call.sr.onresult = call.sr.onend = call.sr.onerror = null; call.sr.abort(); } catch (_) {} call.sr = null; }
