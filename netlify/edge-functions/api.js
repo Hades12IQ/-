@@ -2446,6 +2446,15 @@ const LIVE_SESSION_MAX_MS = (() => {
 })();
 const LIVE_START_WINDOW_MS = 60000;   // the token must be USED within a minute of being minted
 const LIVE_TOKEN_URL = "https://generativelanguage.googleapis.com/v1beta/auth_tokens";
+/* The Live models worth trying when a project is denied one of them. Only an admin may select,
+   and only from this list, so no caller can point spending at a model of their choosing. */
+const LIVE_MODEL_ALLOW = [
+  "gemini-3.1-flash-live-preview",
+  "gemini-2.5-flash-native-audio-preview-12-2025",
+  "gemini-2.5-flash-preview-native-audio-dialog",
+  "gemini-2.0-flash-live-001",
+  "gemini-live-2.5-flash-preview",
+];
 
 /** Mint one ephemeral Live-API token. Returns { token } or { error }.
 
