@@ -17911,7 +17911,7 @@ const liveCall = {
   ws: null, capCtx: null, playCtx: null, stream: null, node: null, srcNode: null,
   playAt: 0, playing: [], open: false, ending: false,
   lastVoiceAt: 0, idleTimer: 0, hardTimer: 0, onEnd: null, wsWhy: "",
-  acc: null, accLen: 0, loudRun: 0, turnOpen: false, drainTimer: 0,
+  acc: null, accLen: 0, loudRun: 0, turnOpen: false, drainTimer: 0, sentAt: 0, reduced: false,
 };
 
 /* WHY DID IT FALL BACK? Until now the live engine failed the same way for six different
@@ -18067,6 +18067,7 @@ async function liveTryStart() {
       " mic=" + !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
   }
   liveCall.ending = false;
+  liveCall.reduced = false;
   let tok = null;
   try {
     const r = await fetch("/api/live/token", { method: "POST", credentials: "same-origin" });
@@ -18101,7 +18102,12 @@ async function liveTryStart() {
     /* NOT connected to the destination: routing the microphone to the speakers is feedback. */
   } catch (e) { liveTeardown(); return liveFail("the audio capture graph would not start", (e && e.message) || ""); }
 
-  const ok = await new Promise((resolve) => {
+  /* ONE SOCKET ATTEMPT. Callable twice: the optional parts of the setup — the search tool, the
+     detector tuning, the voice — were taken from the API discovery document and cross-checked
+     against the SDK, but could NOT be confirmed on a live session, because the project was being
+     refused Live sessions while this was written. If the server rejects what we send, the retry
+     below sends only the required fields rather than losing the call to the slow path. */
+  const openSocket = () => new Promise((resolve) => {
     let settled = false;
     const done = (v) => { if (!settled) { settled = true; resolve(v); } };
     let ws;
@@ -18117,6 +18123,7 @@ async function liveTryStart() {
     }, 10000);
 
     ws.onopen = () => {
+      liveCall.sentAt = Date.now();
       const lang = state.lang === "ar" ? "Arabic" : "the user language";
       ws.send(JSON.stringify({
         setup: {
@@ -18126,26 +18133,26 @@ async function liveTryStart() {
             /* Which of the thirty prebuilt voices speaks. NOT pinned by the token — the mint
                fieldMask names only model and responseModalities, so this comes from here and can
                be changed without touching the server. */
-            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: liveVoice() } } },
+            ...(liveCall.reduced ? {} : { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: liveVoice() } } } }),
           },
           /* IT CAN LOOK THINGS UP NOW. Without this the model answers a question about today
              from memory, or refuses; with it, it searches mid-call and answers from what it
              found. Confirmed against the API discovery document: Tool.googleSearch. */
-          tools: [{ googleSearch: {} }],
+          ...(liveCall.reduced ? {} : { tools: [{ googleSearch: {} }] }),
           /* STOP IT FLINCHING AT EVERY SOUND. With nothing set, detection defaults to eager,
              which is what made a cough or the model's own voice count as the caller starting to
              speak. LOW start sensitivity needs more convincing before it calls something speech;
              300ms of prefix padding means a click cannot commit a turn; 800ms of silence means a
              breath mid-sentence is not mistaken for the end of one. Field names and enum values
              taken from the discovery document, not from a prose example. */
-          realtimeInputConfig: {
+          ...(liveCall.reduced ? {} : { realtimeInputConfig: {
             automaticActivityDetection: {
               startOfSpeechSensitivity: "START_SENSITIVITY_LOW",
               endOfSpeechSensitivity: "END_SENSITIVITY_LOW",
               prefixPaddingMs: 300,
               silenceDurationMs: 800,
             },
-          },
+          } }),
           systemInstruction: { parts: [{ text:
             "You are Firas, on a live voice call. SPEAK, do not lecture: short conversational " +
             "turns, the way a person actually talks on the phone. Never read markdown, never say " +
@@ -18267,6 +18274,19 @@ async function liveTryStart() {
       if (!liveCall.ending) liveEnd();           // dropped mid-call → end cleanly, do not hang
     };
   });
+
+  let ok = await openSocket();
+  /* A close arriving within a few seconds of sending setup, with no setupComplete, is the server
+     rejecting the setup itself. 1008 is excluded deliberately: that is "project denied access",
+     an entitlement problem rather than anything we sent, and retrying it only spends another
+     token and prolongs the refusal. */
+  if (!ok && !liveCall.reduced && /socket closed/.test(liveCall.wsWhy || "") &&
+      !/ 1008| 1000/.test(liveCall.wsWhy || "") && liveCall.sentAt && (Date.now() - liveCall.sentAt) < 8000) {
+    liveCall.reduced = true;
+    console.warn("[firas][live] setup refused (" + liveCall.wsWhy + ") — retrying with the minimal setup");
+    liveCall.wsWhy = "";
+    ok = await openSocket();
+  }
 
   if (!ok) {
     const why = liveCall.wsWhy || "the connection did not come up";
