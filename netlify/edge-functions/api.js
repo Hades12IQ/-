@@ -2459,7 +2459,8 @@ const LIVE_TOKEN_URL = "https://generativelanguage.googleapis.com/v1beta/auth_to
     Pinning is a nice-to-have, not the security boundary — the token is single-use and expires in
     minutes, and the real key never leaves the server. So a rejected constraint must never cost
     the call: if Google objects to the pinned form, the same request goes again unpinned. */
-async function mintLiveToken() {
+async function mintLiveToken(modelOverride) {
+  const model = modelOverride || GEMINI_LIVE_MODEL;
   const key = gemPick() || GEMINI_API_KEY;
   if (!key) return { error: "no_engine" };
   const now = Date.now();
@@ -2473,7 +2474,7 @@ async function mintLiveToken() {
      instruction would cost the dialect rule without anything failing loudly enough to notice. */
   const pinned = Object.assign({}, base, {
     bidiGenerateContentSetup: {
-      model: "models/" + GEMINI_LIVE_MODEL,
+      model: "models/" + model,
       generationConfig: { responseModalities: ["AUDIO"] },
     },
   });
@@ -5033,7 +5034,18 @@ export default async (request, context) => {
       /* Charged BEFORE minting: a token that is handed out has already bought its session,
          whether or not the caller chooses to connect. */
       { const denied = await chargeVoiceEdge(caller); if (denied) return json(denied, 429); }
-      const out = await mintLiveToken();
+      /* AN ADMIN MAY NAME THE MODEL. A Live preview model can be denied to a whole project
+         ("Your project has been denied access") while the token still mints perfectly, and the
+         only way to tell that apart from a broken client is to try another model. Restricted to
+         the owner and to a known list, so no caller can point spending at a model of their
+         choosing. */
+      let wantModel = null;
+      if (isAdmin(user)) {
+        let b = null; try { b = await request.json(); } catch (_) {}
+        const m = b && typeof b.model === "string" ? b.model.trim() : "";
+        if (m && LIVE_MODEL_ALLOW.includes(m)) wantModel = m;
+      }
+      const out = await mintLiveToken(wantModel);
       if (out.error) {
         /* The owner gets the upstream reason; everyone else gets the bare code. A user cannot
            act on "INVALID_ARGUMENT: unknown model" and the person who has to fix it cannot act
@@ -5049,7 +5061,7 @@ export default async (request, context) => {
       }
       return json({
         token: out.token,
-        model: GEMINI_LIVE_MODEL,
+        model: wantModel || GEMINI_LIVE_MODEL,
         maxMs: LIVE_SESSION_MAX_MS,
         startWithinMs: LIVE_START_WINDOW_MS,
       });
