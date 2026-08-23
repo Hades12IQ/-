@@ -2469,9 +2469,24 @@ async function mintLiveToken() {
     });
   } catch (_) { return { error: "unreachable" }; }
   if (!r.ok) {
-    /* Never hand the upstream body back to the browser — it can carry the project id and,
-       on some errors, the key that was refused. */
-    return { error: "mint_failed", status: r.status };
+    /* THE UPSTREAM REASON, KEPT BUT SANITISED. Refusing to relay Google's body at all was the
+       safe default and it was also undiagnosable: a mint that failed looked exactly like a mint
+       that was never attempted, and the call fell back to the slow path with nobody able to say
+       why. Google's error carries a status enum (INVALID_ARGUMENT, PERMISSION_DENIED, NOT_FOUND)
+       and a message naming the field or model it objected to — which is the whole diagnosis.
+       Any API key that appears in it is stripped before it goes anywhere, and the caller-facing
+       route only reveals this to an admin. */
+    let code = "", msg = "";
+    try {
+      const t = await r.text();
+      let j = null; try { j = JSON.parse(t); } catch (_) {}
+      const e = (j && j.error) || {};
+      code = String(e.status || e.code || "").slice(0, 40);
+      msg = String(e.message || t || "").slice(0, 300);
+    } catch (_) {}
+    msg = msg.replace(/AIza[0-9A-Za-z_-]{10,}/g, "[key]").replace(/key=[^&\s"]+/gi, "key=[redacted]");
+    console.warn("[firas] live token mint failed: HTTP " + r.status + " " + code + " " + msg);
+    return { error: "mint_failed", status: r.status, code, message: msg };
   }
   let j = null; try { j = await r.json(); } catch (_) {}
   const name = j && (j.name || j.token || (j.tokenInfo && j.tokenInfo.name));
@@ -4993,7 +5008,19 @@ export default async (request, context) => {
          whether or not the caller chooses to connect. */
       { const denied = await chargeVoiceEdge(caller); if (denied) return json(denied, 429); }
       const out = await mintLiveToken();
-      if (out.error) return json({ error: out.error }, out.error === "no_engine" ? 503 : 502);
+      if (out.error) {
+        /* The owner gets the upstream reason; everyone else gets the bare code. A user cannot
+           act on "INVALID_ARGUMENT: unknown model" and the person who has to fix it cannot act
+           without it. */
+        const body = { error: out.error };
+        if (isAdmin(user)) {
+          body.upstream = out.status || null;
+          body.code = out.code || null;
+          body.message = out.message || null;
+          body.model = GEMINI_LIVE_MODEL;
+        }
+        return json(body, out.error === "no_engine" ? 503 : 502);
+      }
       return json({
         token: out.token,
         model: GEMINI_LIVE_MODEL,

@@ -17863,8 +17863,29 @@ const LIVE_IDLE_HANGUP_MS = 45000;   // a forgotten open microphone is a bill, n
 const liveCall = {
   ws: null, capCtx: null, playCtx: null, stream: null, node: null, srcNode: null,
   playAt: 0, playing: [], open: false, ending: false,
-  lastVoiceAt: 0, idleTimer: 0, hardTimer: 0, onEnd: null,
+  lastVoiceAt: 0, idleTimer: 0, hardTimer: 0, onEnd: null, wsWhy: "",
 };
+
+/* WHY DID IT FALL BACK? Until now the live engine failed the same way for six different
+   reasons — an old browser, a refused microphone, a guest account, a spent quota, a token the
+   server would not mint, a socket that never opened — and every one of them looked identical
+   from the outside: a call that was simply slow. That is not a thing anyone can report, and it
+   is not a thing I can fix from a description.
+
+   Every exit now names itself. It is written to the console always, kept on window for reading
+   after the fact, and surfaced as a toast ONLY to the account owner, so an ordinary caller never
+   sees plumbing while the person who has to debug it does not have to open developer tools. */
+function liveFail(reason, detail) {
+  const line = "[firas][live] fell back to the old path: " + reason + (detail ? " (" + detail + ")" : "");
+  try { console.warn(line); } catch (_) {}
+  try {
+    window.__firasLive = { reason, detail: detail || "", at: new Date().toISOString() };
+  } catch (_) {}
+  try {
+    if (state.user && state.user.admin) showToast("Live: " + reason + (detail ? " — " + detail : ""));
+  } catch (_) {}
+  return false;
+}
 
 function liveSupported() {
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -17966,22 +17987,29 @@ function liveTeardown() {
     flowing, FALSE if anything at all did not work — in which case the caller runs the old path.
     It never throws and never leaves the microphone open on a failed attempt. */
 async function liveTryStart() {
-  if (!liveSupported()) return false;
+  if (!liveSupported()) {
+    return liveFail("this browser cannot run it",
+      "ws=" + !!window.WebSocket + " audio=" + !!(window.AudioContext || window.webkitAudioContext) +
+      " mic=" + !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+  }
   liveCall.ending = false;
   let tok = null;
   try {
     const r = await fetch("/api/live/token", { method: "POST", credentials: "same-origin" });
-    if (!r.ok) return false;                       // 403 guest, 429 quota, 503 unconfigured
+    if (!r.ok) {
+      let why = ""; try { const e = await r.json(); why = (e && e.error) || ""; } catch (_) {}
+      return liveFail("the server would not mint a token", "HTTP " + r.status + (why ? " " + why : ""));
+    }
     tok = await r.json();
-  } catch (_) { return false; }
-  if (!tok || !tok.token) return false;
+  } catch (_) { return liveFail("could not reach /api/live/token"); }
+  if (!tok || !tok.token) return liveFail("the token response had no token in it");
 
   const AC = window.AudioContext || window.webkitAudioContext;
   try {
     liveCall.stream = await navigator.mediaDevices.getUserMedia({
       audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
     });
-  } catch (_) { return false; }
+  } catch (_) { return liveFail("the microphone was refused or unavailable"); }
 
   try {
     liveCall.capCtx = new AC();
@@ -17997,20 +18025,22 @@ async function liveTryStart() {
     liveCall.srcNode = liveCall.capCtx.createMediaStreamSource(liveCall.stream);
     liveCall.srcNode.connect(liveCall.node);
     /* NOT connected to the destination: routing the microphone to the speakers is feedback. */
-  } catch (_) { liveTeardown(); return false; }
+  } catch (e) { liveTeardown(); return liveFail("the audio capture graph would not start", (e && e.message) || ""); }
 
   const ok = await new Promise((resolve) => {
     let settled = false;
     const done = (v) => { if (!settled) { settled = true; resolve(v); } };
     let ws;
     try { ws = new WebSocket(LIVE_WS_BASE + "?access_token=" + encodeURIComponent(tok.token)); }
-    catch (_) { return done(false); }
+    catch (_) { liveCall.wsWhy = "the browser refused to open the socket"; return done(false); }
     liveCall.ws = ws;
     ws.binaryType = "arraybuffer";
 
     /* If the socket has not come up in ten seconds it is not going to — give the old path the
        call rather than leaving the user looking at "connecting". */
-    const openTimer = setTimeout(() => { if (!settled) { try { ws.close(); } catch (_) {} done(false); } }, 10000);
+    const openTimer = setTimeout(() => {
+      if (!settled) { liveCall.wsWhy = "no setupComplete within 10s"; try { ws.close(); } catch (_) {} done(false); }
+    }, 10000);
 
     ws.onopen = () => {
       const lang = state.lang === "ar" ? "Arabic" : "the user language";
@@ -18076,15 +18106,25 @@ async function liveTryStart() {
       if (m.goAway) { liveEnd(); }
     };
 
-    ws.onerror = () => { clearTimeout(openTimer); done(false); };
-    ws.onclose = () => {
+    ws.onerror = () => { clearTimeout(openTimer); liveCall.wsWhy = liveCall.wsWhy || "socket error"; done(false); };
+    ws.onclose = (ce) => {
       clearTimeout(openTimer);
-      if (!settled) return done(false);          // never came up → the old path takes the call
+      /* The close CODE and REASON are the only place Google explains a rejected setup — a bad
+         model name, a constraint the setup did not match, an expired token. Losing them is why
+         this was undiagnosable. */
+      if (!settled) {
+        liveCall.wsWhy = "socket closed " + (ce && ce.code) + (ce && ce.reason ? ": " + ce.reason : "");
+        return done(false);
+      }
       if (!liveCall.ending) liveEnd();           // dropped mid-call → end cleanly, do not hang
     };
   });
 
-  if (!ok) { liveTeardown(); return false; }
+  if (!ok) {
+    const why = liveCall.wsWhy || "the connection did not come up";
+    liveTeardown();
+    return liveFail(why);
+  }
 
   /* TWO CLOCKS, BOTH REAL. The hard one matches the token the server minted, so the UI closes at
      the same moment Google stops accepting audio instead of showing a live call that is already
@@ -18098,6 +18138,11 @@ async function liveTryStart() {
     liveCall.idleTimer = setTimeout(tick, 5000);
   };
   liveCall.idleTimer = setTimeout(tick, 5000);
+  try {
+    console.info("[firas][live] connected — model " + (tok.model || "?") + ", ceiling " + Math.round(maxMs / 1000) + "s");
+    window.__firasLive = { reason: "connected", model: tok.model, at: new Date().toISOString() };
+    if (state.user && state.user.admin) showToast("Live: connected");
+  } catch (_) {}
   return true;
 }
 
