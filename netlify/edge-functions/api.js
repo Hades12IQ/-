@@ -2437,7 +2437,7 @@ async function isRepeatCharge(bucket, product, cid, messages) {
    replayed into a second session. Talking longer means minting another token, which costs another
    unit of the daily voice meter. A forgotten open tab therefore cannot run up a bill.
 
-   liveConnectConstraints pins the model and the response modality, so a token lifted out of the
+   bidiGenerateContentSetup pins the model and the response modality, so a token lifted out of the
    page cannot be repointed at a more expensive model. */
 const GEMINI_LIVE_MODEL = String(env("GEMINI_LIVE_MODEL") || "gemini-3.1-flash-live-preview");
 const LIVE_SESSION_MAX_MS = (() => {

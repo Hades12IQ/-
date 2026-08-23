@@ -3845,9 +3845,11 @@ async function handleLiveToken(req, res) {
         uses: 1,
         expireTime: new Date(now + LIVE_SESSION_MAX_MS).toISOString(),
         newSessionExpireTime: new Date(now + LIVE_START_WINDOW_MS).toISOString(),
-        liveConnectConstraints: {
+        /* bidiGenerateContentSetup, not liveConnectConstraints: the latter is the SDK name and
+           the REST resource has no such field, which 400s every mint. */
+        bidiGenerateContentSetup: {
           model: "models/" + GEMINI_LIVE_MODEL,
-          config: { responseModalities: ["AUDIO"] },
+          generationConfig: { responseModalities: ["AUDIO"] },
         },
       }),
     });
