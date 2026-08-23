@@ -2348,13 +2348,10 @@ function imageLoaderMarkup(lang) {
   return '<div class="image-card__loader">' +
       '<div class="imgload">' +
         '<div class="imgload__aura" aria-hidden="true"></div>' +
-        '<div class="imgload__iris" aria-hidden="true">' +
-          '<i></i><i></i><i></i><i></i><i></i><i></i>' +
-          '<span class="imgload__pupil"></span>' +
-        "</div>" +
-        '<div class="imgload__sweep" aria-hidden="true"></div>' +
-        '<div class="imgload__label">' + txt +
-          '<span class="imgload__dots" aria-hidden="true"><i></i><i></i><i></i></span>' +
+        '<div class="imgload__scan" aria-hidden="true"></div>' +
+        '<div class="imgload__meta">' +
+          '<span class="imgload__label">' + txt + '</span>' +
+          '<span class="imgload__bar" aria-hidden="true"><i></i></span>' +
         "</div>" +
       "</div>" +
     "</div>";
@@ -6114,7 +6111,10 @@ function setStreamingUI(mdEl, on) {
   mdEl.classList.toggle("stream-caret", !!on);
   // The paint loop only ever runs once there is something to paint, so reaching here at all
   // means the wait is over — drop the "thinking" label even if the mark keeps animating.
-  if ((mdEl.textContent || "").trim()) clearThinking(mdEl);
+  /* A card counts as content here too - measured only by textContent, a picture read as an
+     empty answer and left the label standing. */
+  if ((mdEl.textContent || "").trim() ||
+      mdEl.querySelector(".image-card, .video-card, .file-card, .code-card, .imgload")) clearThinking(mdEl);
   /* Each paint replaces the answer's HTML wholesale, taking the tip with it. Re-placing it
      here is what makes it WALK: it reappears at whatever the new end of the text is, every
      paint, with no position tracking. When `on` is false the run is finishing, so it goes. */
@@ -13573,7 +13573,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
         // "Creating your file…" loader while it streams.
         let fresh = [mdEl];
         if (fileFmt) {
-          mdEl.innerHTML = buildFileLoadingHtml();
+          setTurnLoader(mdEl, buildFileLoadingHtml());
           mdEl._streamCache = null;
         } else {
           // Settled blocks keep their DOM; only the block still being written is rebuilt.
@@ -13655,7 +13655,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
         return;
       }
       const enode = liveNode(); const emd = enode && enode.querySelector(".msg-ai__body .md");
-      if (emd) emd.innerHTML = buildImageLoadingHtml(replyLang);
+      if (emd) setTurnLoader(emd, buildImageLoadingHtml(replyLang));
       const editPrompt = String(imgUser.content || "").slice(0, 1000);
       const srcB64 = imgHasAttachments ? imgUser.images[0] : await imageMetaToB64(priorImg, signal);
       if (!srcB64) {
@@ -13713,7 +13713,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
         return;
       }
       const vnode = liveNode(); const vmd = vnode && vnode.querySelector(".msg-ai__body .md");
-      if (vmd) vmd.innerHTML = buildFileLoadingHtml(replyLang === "ar" ? "يجهّز الفيديو…" : "Preparing the video…");
+      if (vmd) setTurnLoader(vmd, buildFileLoadingHtml(replyLang === "ar" ? "يجهّز الفيديو…" : "Preparing the video…"));
       let vprompt = String(imgUser.content).slice(0, 1000);
       try {
         const enhanced = await callAgentText([
@@ -13777,7 +13777,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
         return;
       }
       const inode = liveNode(); const imd = inode && inode.querySelector(".msg-ai__body .md");
-      if (imd) imd.innerHTML = buildImageLoadingHtml(replyLang);
+      if (imd) setTurnLoader(imd, buildImageLoadingHtml(replyLang));
       /* The RAW request, kept nearly whole. This was cut at 300 characters, and it is what gets
          used whenever the rewriter below fails or is skipped — so a detailed picture brief lost
          everything past its opening sentence precisely on the turns where nothing else was left
@@ -13834,7 +13834,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       const finalDoc = await runFileAgentPipeline(convo, fileFmt, replyLang, aiMsg.tier, signal, (stage) => {
         const node = liveNode();
         const mdEl = node && node.querySelector(".msg-ai__body .md");
-        if (mdEl) mdEl.innerHTML = buildFileLoadingHtml(fileStageText(stage, replyLang));
+        if (mdEl) setTurnLoader(mdEl, buildFileLoadingHtml(fileStageText(stage, replyLang)));
       });
       clearTimeout(timeoutId);
       finalized = true;
@@ -13907,7 +13907,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
         const showIndicator = (isIrab || silentSearch) ? (!silentSearch && !!state.webSearch) : true;
         if (showIndicator) {
           const sn = liveNode(); const smd = sn && sn.querySelector(".msg-ai__body .md");
-          if (smd) smd.innerHTML = buildFileLoadingHtml(replyLang === "ar" ? "يبحث في الإنترنت…" : "Searching the web…");
+          if (smd) setTurnLoader(smd, buildFileLoadingHtml(replyLang === "ar" ? "يبحث في الإنترنت…" : "Searching the web…"));
         }
         const query = isIrab ? ("إعراب " + lastUserMsg.content) : lastUserMsg.content;
         /* A search the user asked for is worth waiting for; one they did not is not.
@@ -13988,7 +13988,7 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       let did2Stage = false;
       if (isImageTransformRequest(lastUForVision.content || "")) {
         const vnode = liveNode(); const vmd = vnode && vnode.querySelector(".msg-ai__body .md");
-        if (vmd) vmd.innerHTML = buildFileLoadingHtml(fileStageText("extract", replyLang));
+        if (vmd) setTurnLoader(vmd, buildFileLoadingHtml(fileStageText("extract", replyLang)));
         let extracted = "";
         try { extracted = await extractImageSource(visImages, lastUForVision.content || "", replyLang, signal, null); } catch (_) {}
         if (signal.aborted) { clearTimeout(timeoutId); return; }
@@ -14511,6 +14511,22 @@ function markGeneratingTurn(streaming) {
   } catch (_) {}
 }
 
+/** PUT A CARD LOADER IN, AND TAKE THE LABEL DOWN WITH IT.
+
+    markGeneratingTurn stamps "typing..." on a turn whose body is still empty, and it runs when
+    the stream opens - which is BEFORE any of these loaders is injected. So at the moment it
+    looked, the body genuinely was empty and the label was correct; nothing then removed it when
+    the picture card arrived a moment later, and it sat above the card for the whole render.
+
+    Teaching markGeneratingTurn to recognise a card was necessary but not sufficient: it had
+    already run and was never going to run again. The label has to come down at the moment the
+    card goes in, which is here - one place, rather than the seven call sites that each swap a
+    loader into a live body and would each have to remember. */
+function setTurnLoader(mdEl, html) {
+  if (!mdEl) return;
+  mdEl.innerHTML = html;
+  clearThinking(mdEl);
+}
 /** Drop the "thinking" label the moment real content exists. */
 function clearThinking(node) {
   try {
