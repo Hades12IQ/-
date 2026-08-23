@@ -2878,11 +2878,12 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
   box-shadow: 0 0 0 1.5px var(--color-accent-soft), 0 10px 34px -12px var(--color-accent);
   animation: imgGlow 1.7s ease-in-out infinite;
 }
-.image-card.is-loading .image-card__frame::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(110deg, transparent 35%, color-mix(in srgb, var(--color-accent) 22%, transparent) 50%, transparent 65%);
-  background-size: 220% 100%;
-  animation: imgShimmer 1.5s linear infinite;
+/* The frame no longer runs its own shimmer: the loader below sweeps its own light across the
+   plate, and two diagonal sweeps at different speeds read as a glitch rather than as craft. */
+.image-card.is-loading .image-card__frame {
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--color-accent) 7%, transparent), transparent 60%),
+    var(--color-bg-subtle);
 }
 @keyframes imgGlow {
   0%, 100% { box-shadow: 0 0 0 1px var(--color-accent-soft), 0 8px 24px -14px var(--color-accent); }
@@ -2897,13 +2898,138 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 }
 [dir="rtl"] .image-card__loader { font-family: var(--font-arabic); }
 .image-card.is-done .image-card__loader { display: none; }
-.image-card__spin {
-  inline-size: 28px; block-size: 28px; border-radius: 50%;
-  border: 3px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
-  border-top-color: var(--color-accent);
-  animation: auth-spin 0.7s linear infinite;
+/* ══ THE IMAGE IS BEING MADE ═══════════════════════════════════════════════════════════════
+   A picture at full quality now takes real minutes, because the background runner holds the
+   clock instead of an edge function racing a stopwatch. That changes what this has to be: it is
+   looked at, not glimpsed. A borrowed 28px spinner said "a request is pending" — true of a
+   dropdown as much as of this — and said nothing about what was happening.
+
+   So: a camera aperture. Six blades breathing around a pupil, a slow drift of light behind the
+   plate, and one sweep crossing it. The metaphor is the work being done, and every part of it
+   moves on its own clock so the whole never pulses in lockstep like a progress bar pretending
+   to know something it does not. */
+.imgload {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-4);
+  inline-size: 100%; block-size: 100%;
 }
-.image-card.is-error .image-card__spin { display: none; }
+
+/* The light behind the plate. Off-centre and slowly wandering, so the frame never looks like a
+   flat rectangle with something spinning on top of it. */
+.imgload__aura {
+  position: absolute; inset: -25%;
+  background:
+    radial-gradient(38% 38% at 38% 34%, color-mix(in srgb, var(--color-accent) 26%, transparent), transparent 70%),
+    radial-gradient(30% 30% at 68% 64%, color-mix(in srgb, var(--color-accent-deep, var(--color-accent)) 18%, transparent), transparent 72%);
+  filter: blur(26px);
+  opacity: 0.85;
+  animation: imgloadAura 7.5s var(--ease-inout) infinite;
+}
+@keyframes imgloadAura {
+  0%, 100% { transform: translate3d(-4%, -2%, 0) scale(1); }
+  33%      { transform: translate3d(5%, 3%, 0) scale(1.09); }
+  66%      { transform: translate3d(-2%, 5%, 0) scale(0.97); }
+}
+
+/* The aperture. Six blades on one rotation, the ring breathing on another. */
+.imgload__iris {
+  position: relative;
+  inline-size: 62px; block-size: 62px;
+  border-radius: 50%;
+  animation: imgloadSpin 5.2s linear infinite;
+}
+.imgload__iris::before {
+  content: ""; position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 34%, transparent);
+  animation: imgloadBreathe 2.6s var(--ease-inout) infinite;
+}
+.imgload__iris i {
+  position: absolute; inset: 0;
+  display: block;
+  /* one blade: a chord of the circle, rotated into place around the centre */
+  clip-path: polygon(50% 50%, 96% 20%, 96% 62%);
+  background: linear-gradient(200deg,
+    color-mix(in srgb, var(--color-accent) 82%, transparent),
+    color-mix(in srgb, var(--color-accent) 12%, transparent));
+  transform-origin: 50% 50%;
+  animation: imgloadBlade 2.6s var(--ease-inout) infinite;
+}
+.imgload__iris i:nth-child(1) { transform: rotate(0deg);   animation-delay: 0s; }
+.imgload__iris i:nth-child(2) { transform: rotate(60deg);  animation-delay: -0.13s; }
+.imgload__iris i:nth-child(3) { transform: rotate(120deg); animation-delay: -0.26s; }
+.imgload__iris i:nth-child(4) { transform: rotate(180deg); animation-delay: -0.39s; }
+.imgload__iris i:nth-child(5) { transform: rotate(240deg); animation-delay: -0.52s; }
+.imgload__iris i:nth-child(6) { transform: rotate(300deg); animation-delay: -0.65s; }
+/* The blades hold their placement rotation and only change how far they reach in, so the
+   aperture opens and closes instead of the whole flower spinning apart. */
+@keyframes imgloadBlade {
+  0%, 100% { scale: 1;    opacity: 0.9; }
+  50%      { scale: 0.62; opacity: 0.55; }
+}
+@keyframes imgloadSpin { to { rotate: 360deg; } }
+@keyframes imgloadBreathe {
+  0%, 100% { transform: scale(1);    opacity: 0.75; }
+  50%      { transform: scale(1.14); opacity: 0.3; }
+}
+.imgload__pupil {
+  position: absolute; inset: 0; margin: auto;
+  inline-size: 13px; block-size: 13px; border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-accent) 70%, transparent);
+  animation: imgloadBreathe 2.6s var(--ease-inout) infinite reverse;
+}
+
+/* One sweep of light crossing the plate — the only element that spans the whole frame. */
+.imgload__sweep {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg,
+    transparent 38%,
+    color-mix(in srgb, var(--color-accent) 15%, transparent) 50%,
+    transparent 62%);
+  background-size: 260% 100%;
+  animation: imgloadSweep 2.9s linear infinite;
+}
+/* Travels toward the reading direction in both scripts, so it never looks like it is rewinding. */
+@keyframes imgloadSweep { from { background-position: 260% 0; } to { background-position: -260% 0; } }
+[dir="rtl"] .imgload__sweep { animation-direction: reverse; }
+
+.imgload__label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-sans); font-size: var(--text-sm);
+  letter-spacing: 0.01em;
+  color: var(--color-text-secondary);
+  z-index: 1;
+}
+[dir="rtl"] .imgload__label { font-family: var(--font-arabic); }
+.imgload__dots { display: inline-flex; gap: 3px; }
+.imgload__dots i {
+  inline-size: 3px; block-size: 3px; border-radius: 50%;
+  background: currentColor; opacity: 0.35;
+  animation: imgloadDot 1.25s var(--ease-inout) infinite;
+}
+.imgload__dots i:nth-child(2) { animation-delay: 0.16s; }
+.imgload__dots i:nth-child(3) { animation-delay: 0.32s; }
+@keyframes imgloadDot {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  40%      { opacity: 1;    transform: translateY(-2px); }
+}
+
+/* A failed render keeps the frame and the message, and stops every moving part — motion after a
+   failure reads as "still trying" and is a lie. */
+.image-card.is-error .imgload__iris,
+.image-card.is-error .imgload__sweep,
+.image-card.is-error .imgload__aura { display: none; }
+.image-card.is-error .imgload__dots { display: none; }
+.image-card.is-error .imgload__label { color: var(--color-danger, var(--color-error)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .imgload__aura, .imgload__iris, .imgload__iris i, .imgload__iris::before,
+  .imgload__pupil, .imgload__sweep, .imgload__dots i { animation: none; }
+  .imgload__aura { opacity: 0.5; }
+  .imgload__dots i { opacity: 0.55; }
+}
 .image-card__img {
   display: block; position: absolute; inset: 0;
   inline-size: 100%; block-size: 100%; object-fit: cover;
@@ -8121,8 +8247,9 @@ body.product-code #tierSelect { display: none !important; }
   inline-size: 28px; block-size: 28px; border-radius: 50%;
   border: 3px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
   border-top-color: var(--color-accent);
-  /* auth-spin is the file's existing rotation keyframe — .image-card__spin uses it too.
-     There is no `spin` keyframe in this stylesheet; naming one would have failed silently. */
+  /* auth-spin is the file's existing rotation keyframe. There is no `spin` keyframe in this
+     stylesheet; naming one would have failed silently. The image card used to share this
+     spinner and no longer does — it has the aperture loader above. */
   animation: auth-spin 0.7s linear infinite;
 }
 .video-card.is-error .video-card__spin { display: none; }

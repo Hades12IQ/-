@@ -1831,9 +1831,18 @@ function _classifyTurn(text, ctx, signal) {
           "inline to read, questions or problems answered in the conversation. This is the default " +
           "and by far the most common. Choose it whenever nothing is being MANUFACTURED.\n" +
           "image       they want a picture generated: a logo, a poster, an illustration, artwork.\n" +
-          "edit-image  a picture is in play and they want it CHANGED - recoloured, something added " +
-          "or removed, the background replaced, the text in it altered. Only ever valid when a " +
-          "picture is attached or on screen.\n" +
+          "edit-image  a picture is in play and they want THAT picture changed. Recoloured; " +
+          "something added or removed; the background replaced; the text in it altered; and " +
+          "ALSO any change to its SHAPE OR FRAMING - made into a banner, made wide or tall or " +
+          "square, cropped, zoomed, resized, rotated, turned into a cover or a thumbnail. " +
+          "Changing the shape of the picture on screen is an EDIT, not a new picture: the " +
+          "subject must survive it.\n" +
+          "            WHEN A PICTURE IS IN PLAY, THIS IS THE DEFAULT. Choose image over " +
+          "edit-image only when they are plainly asking for a DIFFERENT picture - a new subject, " +
+          "another one, something unrelated to what is on screen. If they say \"make it...\", " +
+          "\"turn it into...\", \"\u0633\u0648\u064a\u0647\u0627...\", \"\u062e\u0644\u064a\u0647\u0627...\", \"\u063a\u064a\u0631...\" - the word IT is the picture " +
+          "on screen, and that is an edit. Only ever valid when a picture is attached or on " +
+          "screen.\n" +
           "video       they want a moving clip generated.\n" +
           "pdf / docx / pptx / xlsx / csv  they want a FILE of that kind produced and handed over " +
           "- a document to read, a report, a deck of slides, a spreadsheet. The giveaway is that " +
@@ -2277,10 +2286,23 @@ function pickImageShape(text) {
     "غيّر" half an hour later silently re-edits a picture nobody was talking about any more. */
 function lastGeneratedImageMeta(chat) {
   if (!chat || !Array.isArray(chat.messages)) return null;
-  for (let i = chat.messages.length - 1; i >= 0; i--) {
+  /* A SHORT LOOK BACK, NOT JUST ONE TURN. This used to read the newest assistant turn and stop,
+     so a single sentence of conversation erased the picture: make an image, say "thanks", then
+     ask to change it, and there was nothing to change - the request fell through to the plain
+     generator and came back as a DIFFERENT picture instead of an edited one.
+
+     Bounded on purpose. Reaching arbitrarily far back would let a request months into a chat
+     silently edit a picture nobody was still looking at, so it gives up after a few turns: far
+     enough to survive an exchange about the picture, short enough that "the picture" still means
+     the one on screen. */
+  const LOOKBACK = 4;                       // assistant turns, not messages
+  let seen = 0;
+  for (let i = chat.messages.length - 1; i >= 0 && seen < LOOKBACK; i--) {
     const m = chat.messages[i];
     if (!m || m.role !== "assistant") continue;
-    return parseImageMeta(m.content);      // the newest assistant turn, and only that one
+    seen++;
+    const meta = parseImageMeta(m.content);
+    if (meta) return meta;
   }
   return null;
 }
@@ -14470,7 +14492,13 @@ function markGeneratingTurn(streaming) {
        says what is really happening, which is that the answer has not started arriving. */
     const body = last.querySelector(".msg-ai__body");
     const md = last.querySelector(".msg-ai__body .md");
-    const empty = !md || !(md.textContent || "").trim();
+    /* A CARD IS NOT AN EMPTY ANSWER. Emptiness was measured with textContent, and a picture has
+       no text in it — so the moment an image started generating, this decided the reply had not
+       begun and hung "typing…" above the card, next to that card's own "painting your image".
+       Two different loading states for one action, one of them wrong, sitting on top of the
+       thing the user was waiting for. Every card this can produce counts as a started answer. */
+    const card = md && md.querySelector(".image-card, .video-card, .file-card, .code-card, .imgload");
+    const empty = !md || (!card && !(md.textContent || "").trim());
     if (body && empty) {
       const reasoning = !!state.think;
       body.setAttribute("data-thinking",
