@@ -179,10 +179,16 @@ at the back.** A wrong guess costs one slow answer, not a broken tier.
 
 | Variable | Default |
 |---|---|
-| `OLLAMA_MODEL_MINI` | `gpt-oss:120b-cloud` |
-| `OLLAMA_MODEL_PRO` | `gpt-oss:120b-cloud` |
-| `OLLAMA_MODEL_ULTRA` | `qwen3-coder:480b-cloud` |
-| `OLLAMA_MODEL_MAX` | `qwen3-coder:480b-cloud` |
+| `OLLAMA_MODEL_MINI` | `gemma4:cloud,…` — fast tier |
+| `OLLAMA_MODEL_PRO` | `glm-5.2:cloud,…` — everyday chat |
+| `OLLAMA_MODEL_ULTRA` | `kimi-k2.7-code:cloud,…` — **Firas Code** |
+| `OLLAMA_MODEL_MAX` | `kimi-k3:cloud,…` — **the Agent** |
+| `OLLAMA_BUSY_COOLDOWN_MS` | `45000` — how long a RATE-LIMITED key rests (the first key rests 15s) |
+| `OLLAMA_SPENT_COOLDOWN_MS` | `1800000` — how long an OUT-OF-QUOTA key rests |
+
+Put the **subscription key in `OLLAMA_API_KEY`** and the older free keys in `OLLAMA_API_KEYS`.
+Picking is first-key-first, so the paid one is always used until it genuinely cannot answer, and
+only then do requests fall to the free pool.
 | `OLLAMA_MODEL_MAX_FALLBACK` | `gpt-oss:120b-cloud` |
 | `OLLAMA_FIRST_BYTE_MS` | `45000` — how long a rung may stay silent before it is dropped |
 | `OLLAMA_MODEL_DEAD_MS` | `1800000` — how long a silent model stays skipped (30 min) |

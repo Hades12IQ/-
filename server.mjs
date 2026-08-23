@@ -118,10 +118,24 @@ const OLLAMA_API_KEY = OLLAMA_KEYS[0] || "";                  // back-compat (st
 const _olCooldown = new Map();                                 // key → ms timestamp it may be retried
 // A limited key rests 45 min (limits reset weekly, but a periodic re-probe self-heals sooner
 // if the quota was actually a transient 429).
+/* A BUSY KEY IS NOT AN EMPTY KEY, and the difference matters most for the one that is paid for.
+
+   Every limit used to cost 45 minutes. That is right for a free key with a weekly quota — once it
+   is gone it is gone — and badly wrong for a subscription key, which throttles for seconds under
+   load and recovers on its own. Sidelining the paid key for three quarters of an hour because it
+   was briefly busy sends every user down to the free keys for no reason at all.
+
+   429 is "come back shortly". 402 and 403 are "there is nothing left". They now rest for very
+   different lengths, and the FIRST key in the pool — the subscription one by convention — gets
+   the shortest rest of all, because it is the one we always want back. */
+const OLLAMA_BUSY_MS  = Number(process.env.OLLAMA_BUSY_COOLDOWN_MS) || 45000;      // rate limited
+const OLLAMA_SPENT_MS = Number(process.env.OLLAMA_SPENT_COOLDOWN_MS) || 45 * 60000; // out of quota
 function ollamaMarkLimited(key, status) {
   if (!key) return;
-  _olCooldown.set(key, Date.now() + 45 * 60_000);
-  console.warn("[firas] ollama key …" + key.slice(-6) + " limited (HTTP " + status + ") — rotating to the next key (" + OLLAMA_KEYS.filter((k) => Date.now() >= (_olCooldown.get(k) || 0)).length + " usable)");
+  const spent = status === 402 || status === 403;
+  const primary = OLLAMA_KEYS[0] === key;
+  const rest = spent ? OLLAMA_SPENT_MS : (primary ? Math.min(OLLAMA_BUSY_MS, 15000) : OLLAMA_BUSY_MS);
+  _olCooldown.set(key, Date.now() + rest);
 }
 // First key not on cooldown; if ALL are cooling, the one that recovers soonest (never give up).
 function ollamaPickKey() {
@@ -298,18 +312,34 @@ function cfLastUserText(messages) {
 // share this budget on reasoning models) do NOT starve the actual answer/code.
 // gpt-oss accepts up to 131072; qwen3-coder caps at its model max (65536, which
 // still allows ~5000 lines and it does not spend tokens on thinking).
+/* THE FOUR TIERS, ON THE SUBSCRIPTION CATALOGUE.
+
+   Each is a LADDER, strongest first, ending on the model that is proven to answer today — so a
+   name Ollama does not resolve costs one slow first request and is then skipped for half an hour,
+   rather than hanging a tier the way qwen3.5:397b once did. The choices are not by reputation but
+   by what each model says it is built for:
+
+     mini  gemma4          frontier-level performance at small sizes; this tier exists to be fast
+     pro   glm-5.2         flagship for long-horizon tasks, the everyday chat workhorse
+     ultra kimi-k2.7-code  purpose-built for coding, ~30% fewer thinking tokens than k2.6 — this
+                           is the Firas Code tier, where thinking tokens compete with the file
+     max   kimi-k3         the most capable in the catalogue, backed by nemotron-3-ultra which is
+                           explicitly built for LONG-RUNNING AGENT WORKFLOWS — the Agent tier
+
+   Every one of them is overridable: OLLAMA_MODEL_MINI / _PRO / _ULTRA / _MAX take the same
+   comma-separated form, so a better model can be tried without touching this file. */
 const TIERS = {
   // EVERY tier has a fallbackModel on a DIFFERENT hosted pool, so a busy primary degrades to a
   // working model instead of surfacing "The Firas AI engine is busy".
-  mini:  { models: modelLadder(process.env.OLLAMA_MODEL_MINI,  "gpt-oss:120b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.5, num_predict: 16384,  fallbackModel: "qwen3-coder:480b-cloud" },
-  pro:   { models: modelLadder(process.env.OLLAMA_MODEL_PRO,   "gpt-oss:120b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.7, num_predict: 131072, fallbackModel: "qwen3-coder:480b-cloud" },
+  mini:  { models: modelLadder(process.env.OLLAMA_MODEL_MINI,  "gemma4:cloud,qwen3.5:35b-cloud,gpt-oss:120b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.5, num_predict: 16384,  fallbackModel: "qwen3-coder:480b-cloud" },
+  pro:   { models: modelLadder(process.env.OLLAMA_MODEL_PRO,   "glm-5.2:cloud,deepseek-v4-flash:cloud,gpt-oss:120b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.7, num_predict: 131072, fallbackModel: "qwen3-coder:480b-cloud" },
   /* ultra is the CODE tier and had HALF the ceiling of the chat tier (65536 vs pro's
      131072), which is backwards: a chat answer stops when the point is made, but a
      single-file build has a hard floor — it is only useful if it reaches </html>. An
      ambitious brief (a Three.js globe with real geometry, shaders, country data and UI)
      runs to thousands of lines, and the budget was the binding constraint long before
      the model ran out of things to say. Raised to match pro. */
-  ultra: { models: modelLadder(process.env.OLLAMA_MODEL_ULTRA, "qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.8, num_predict: 131072, fallbackModel: "gpt-oss:120b-cloud" },
+  ultra: { models: modelLadder(process.env.OLLAMA_MODEL_ULTRA, "kimi-k2.7-code:cloud,glm-5.1:cloud,minimax-m3:cloud,qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.8, num_predict: 131072, fallbackModel: "gpt-oss:120b-cloud" },
   // Max = strongest general/reasoning model (671B), gated by a per-user daily cap.
   // Env-overridable so the model swaps without a redeploy if Ollama's cloud catalog
   // rotates. fallbackModel degrades to a known-good hosted model (gpt-oss) before the
@@ -320,7 +350,7 @@ const TIERS = {
      before the model has said anything unusual, so the budget, not the model, was ending the
      document early and delivering two problems out of ten. Matched to pro/ultra; Ollama clamps
      to whatever the chosen model actually supports, so raising it cannot error. */
-  max:   { models: modelLadder(process.env.OLLAMA_MODEL_MAX,   "qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.7, num_predict: 131072, fallbackModel: process.env.OLLAMA_MODEL_MAX_FALLBACK || "gpt-oss:120b-cloud", capped: false },
+  max:   { models: modelLadder(process.env.OLLAMA_MODEL_MAX,   "kimi-k3:cloud,nemotron-3-ultra:cloud,glm-5.2:cloud,qwen3-coder:480b-cloud"), get model() { return pickModel(this.models); }, temperature: 0.7, num_predict: 131072, fallbackModel: process.env.OLLAMA_MODEL_MAX_FALLBACK || "gpt-oss:120b-cloud", capped: false },
 };
 
 // Vision/multimodal model — used automatically when a request carries images.
