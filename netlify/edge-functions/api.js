@@ -2481,11 +2481,21 @@ async function mintLiveToken(modelOverride) {
   /* Pins the MODEL and the modality only. The system instruction is deliberately NOT pinned here:
      a token-side setup can take precedence over the one the socket sends, and losing the client
      instruction would cost the dialect rule without anything failing loudly enough to notice. */
+  /* fieldMask IS NOT OPTIONAL HERE. The API contract: if bidiGenerateContentSetup is present and
+     fieldMask is EMPTY, the effective setup is taken ENTIRELY from the token and "the setup message
+     from the Live API connection is ignored" - silently, with no error. Pinning the model was
+     therefore throwing away the socket's systemInstruction along with it: the dialect rule, the
+     "speak, do not lecture" rule, all of it, replaced by a default assistant. Proven on a real
+     session: with a token pinned this way, an instruction sent over the socket had no effect.
+     With a fieldMask naming only these two fields, the socket's instruction applies again AND a
+     lifted token still cannot repoint the model - also proven. The mask must name every field the
+     token setup carries, or the mint 400s. */
   const pinned = Object.assign({}, base, {
     bidiGenerateContentSetup: {
       model: "models/" + model,
       generationConfig: { responseModalities: ["AUDIO"] },
     },
+    fieldMask: "model,generationConfig.responseModalities",
   });
 
   const attempt = async (body) => {

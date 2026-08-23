@@ -3851,6 +3851,7 @@ async function handleLiveToken(req, res) {
           model: "models/" + GEMINI_LIVE_MODEL,
           generationConfig: { responseModalities: ["AUDIO"] },
         },
+        fieldMask: "model,generationConfig.responseModalities",
       }),
     });
   } catch (_) { return sendJson(res, 502, { error: "unreachable" }); }
