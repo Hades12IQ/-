@@ -13574,13 +13574,13 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       }
       const vnode = liveNode(); const vmd = vnode && vnode.querySelector(".msg-ai__body .md");
       if (vmd) vmd.innerHTML = buildFileLoadingHtml(replyLang === "ar" ? "يجهّز الفيديو…" : "Preparing the video…");
-      let vprompt = String(imgUser.content).slice(0, 300);
+      let vprompt = String(imgUser.content).slice(0, 1000);
       try {
         const enhanced = await callAgentText([
           { role: "system", content: "Turn the user's request into ONE vivid ENGLISH text-to-video prompt for a 6-second clip. Describe a SINGLE continuous shot: the subject, the setting, the lighting, and ONE simple camera or subject motion (a slow push in, a gentle pan, a rising object). Keep it concrete and filmable in six seconds — no scene cuts, no dialogue, no on-screen text, no story beats. Output ONLY the prompt text." },
           { role: "user", content: imgUser.content },
         ], "pro", signal);
-        if (enhanced && enhanced.trim()) vprompt = enhanced.trim().replace(/^["'\`\s]+|["'\`\s]+$/g, "").replace(/\s+/g, " ").slice(0, 400);
+        if (enhanced && enhanced.trim()) vprompt = enhanced.trim().replace(/^["'\`\s]+|["'\`\s]+$/g, "").replace(/\s+/g, " ").slice(0, 1000);
       } catch (_) { /* the raw request is a serviceable prompt */ }
       if (signal.aborted) { clearTimeout(timeoutId); return; }
       clearTimeout(timeoutId);
@@ -13638,13 +13638,17 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       }
       const inode = liveNode(); const imd = inode && inode.querySelector(".msg-ai__body .md");
       if (imd) imd.innerHTML = buildImageLoadingHtml(replyLang);
-      let prompt = String(imgUser.content).slice(0, 300);
+      /* The RAW request, kept nearly whole. This was cut at 300 characters, and it is what gets
+         used whenever the rewriter below fails or is skipped — so a detailed picture brief lost
+         everything past its opening sentence precisely on the turns where nothing else was left
+         to recover it. The job endpoint accepts 1000, so that is the only ceiling worth having. */
+      let prompt = String(imgUser.content).slice(0, 1000);
       try {
         const enhanced = await callAgentText([
           { role: "system", content: "Turn the user's request into ONE rich, vivid ENGLISH image-generation prompt that yields a HIGH-QUALITY, professional result. Keep the user's subject and intent, then add concrete visual detail: composition, setting, lighting, mood, colors, and camera/style cues. If the user wants a realistic photo, add photoreal cues (e.g. \"photorealistic, ultra-detailed, sharp focus, natural lighting, shot on 50mm, high resolution\"); if they want art/illustration/3D/anime, add the matching style cues instead. Do NOT contradict the requested style. Output ONLY the final prompt text — no quotes, no explanation, no preamble." },
           { role: "user", content: imgUser.content },
         ], "pro", signal);
-        if (enhanced && enhanced.trim()) prompt = enhanced.trim().replace(/^["'`\s]+|["'`\s]+$/g, "").replace(/\s+/g, " ").slice(0, 400);
+        if (enhanced && enhanced.trim()) prompt = enhanced.trim().replace(/^["'`\s]+|["'`\s]+$/g, "").replace(/\s+/g, " ").slice(0, 1000);
       } catch (_) { /* keep the raw request as the prompt */ }
       // Honor Stop pressed during prompt-enhancement — don't generate/charge.
       if (signal.aborted) { clearTimeout(timeoutId); return; }
@@ -21174,7 +21178,7 @@ function cwLineDiff(aStr, bStr) {
   return out;
 }
 /* Console capture: injected into the preview so its logs/errors stream into the console pane. */
-const CW_CONSOLE_HOOK = "<script>(function(){function s(t,a){try{parent.postMessage({__fcw:1,t:t,m:Array.prototype.slice.call(a).map(function(x){try{return typeof x===\"object\"?JSON.stringify(x).slice(0,300):String(x)}catch(e){return String(x)}}).join(\" \").slice(0,600)},\"*\")}catch(e){}}[\"log\",\"warn\",\"error\",\"info\"].forEach(function(k){var o=console[k];console[k]=function(){s(k,arguments);try{o.apply(console,arguments)}catch(e){}}});window.addEventListener(\"error\",function(e){try{parent.postMessage({__fcw:1,t:\"error\",m:e.message+\" @ line \"+e.lineno,file:e.filename||\"\",line:e.lineno||0,col:e.colno||0,stack:(e.error&&e.error.stack||\"\").slice(0,1200)},\"*\")}catch(_e){}});window.addEventListener(\"unhandledrejection\",function(e){try{var r=e.reason;parent.postMessage({__fcw:1,t:\"error\",m:\"Promise: \"+((r&&r.message)||r),file:(r&&r.fileName)||\"\",line:(r&&r.lineNumber)||0,col:(r&&r.columnNumber)||0,stack:(r&&r.stack||\"\").slice(0,1200)},\"*\")}catch(_e){}})})();</" + "script>";
+const CW_CONSOLE_HOOK = "<script>(function(){function s(t,a){try{parent.postMessage({__fcw:1,t:t,m:Array.prototype.slice.call(a).map(function(x){try{return typeof x===\"object\"?JSON.stringify(x).slice(0,300):String(x)}catch(e){return String(x)}}).join(\" \").slice(0,600)},\"*\")}catch(e){}}[\"log\",\"warn\",\"error\",\"info\"].forEach(function(k){var o=console[k];console[k]=function(){s(k,arguments);try{o.apply(console,arguments)}catch(e){}}});window.addEventListener(\"error\",function(e){try{parent.postMessage({__fcw:1,t:\"error\",m:e.message+\" @ line \"+e.lineno,file:e.filename||\"\",line:e.lineno||0,col:e.colno||0,stack:(e.error&&e.error.stack||\"\").slice(0,1200)},\"*\")}catch(_e){}});window.addEventListener(\"unhandledrejection\",function(e){try{var r=e.reason;parent.postMessage({__fcw:1,t:\"error\",m:\"Promise: \"+((r&&r.message)||r),file:(r&&r.fileName)||\"\",line:(r&&r.lineNumber)||0,col:(r&&r.columnNumber)||0,stack:(r&&r.stack||\"\").slice(0,1200)},\"*\")}catch(_e){}})})();window.addEventListener('message',function(e){var d=e.data;if(!d||d.__fcwCss!==1)return;var id='fcw-live-'+encodeURIComponent(d.path);var el=document.getElementById(id);if(!el){el=document.createElement('style');el.id=id;document.head.appendChild(el);}el.textContent=d.text;var links=document.querySelectorAll('style,link[rel=stylesheet]');for(var i=0;i<links.length;i++){var n=links[i];if(n!==el&&n.getAttribute('data-fcw-path')===d.path)n.disabled=true;}});</" + "script>";
 let _cwMsgWired = false;
 function cwWireConsoleListener() {
   if (_cwMsgWired) return;
@@ -22725,6 +22729,52 @@ function cwEnsureViewport(changes) {
 }
 /* Build a COMPLETE multi-file project from a natural-language description (the "create with AI" path
    on the home). Plans + builds per file; falls back to a strengthened single-shot. Returns [{path,content}]. */
+/** WHAT IS THIS PROJECT, AND IN WHAT LANGUAGE?
+
+    cwIsBackendRequest answers this with a regex, and the regex decides whether the whole build
+    goes down the browser road (build -> run in an iframe -> critique -> improve) or the generic
+    one. Anything it fails to recognise is treated as a website, so "write me a Java program that
+    sorts a large file" was built as a web page - and since the pattern list contains no Arabic at
+    all, EVERY non-web request written in Arabic was. Measured on eight requests of which one was
+    a website: seven came out as websites.
+
+    That is the same failure as routing a PDF to index.html, one level down, and it has the same
+    cause: a list of words someone wrote down cannot tell what a sentence is asking to be built.
+    So the model reads the request. The regex keeps exactly one job - answering when the model
+    cannot be reached.
+
+    Returns { web, language }, with web:null meaning undecided so the caller knows to fall back.
+    `language` is what the user actually named, and it is handed to the builder, because knowing
+    this is not a website is only half of knowing what to write. */
+async function cwClassifyProject(desc, signal) {
+  const t = String(desc || "").trim();
+  if (!t) return { web: true, language: "" };
+  try {
+    const raw = await callAgentText([
+      { role: "system", content:
+        "Decide what kind of software the user is asking to be built. Reply with exactly two " +
+        "fields on one line and nothing else:\nPLATFORM=<web|native>  LANGUAGE=<name or unknown>\n\n" +
+        "PLATFORM=web means it RUNS IN A BROWSER: a website, a web page, a web app, a browser " +
+        "game, an HTML/CSS/JavaScript front end.\n" +
+        "PLATFORM=native means anything else: a program in Python, Java, C, C++, C#, Rust, Go, " +
+        "Swift, Kotlin, PHP, Ruby, R, MATLAB, SQL or any other language; a command-line tool; a " +
+        "server, API or backend; a bot; a script; a desktop or mobile app; a library.\n\n" +
+        "LANGUAGE is the language or framework the user named, in English, however they spelled " +
+        "it and in whatever script. If they named none, answer unknown.\n\n" +
+        "Judge the REQUEST, not stray words in it. Any language, any dialect. Two fields only." },
+      { role: "user", content: t.slice(0, 4000) },
+    ], "mini", signal);
+    const w = String(raw || "");
+    const pm = /PLATFORM\s*=\s*(web|native)/i.exec(w);
+    const lm = /LANGUAGE\s*=\s*([A-Za-z+#. \-]{1,24})/i.exec(w);
+    if (pm) {
+      const lang = lm ? lm[1].trim() : "";
+      return { web: pm[1].toLowerCase() === "web", language: /unknown/i.test(lang) ? "" : lang };
+    }
+  } catch (_) { /* fall through to the pattern list */ }
+  return { web: null, language: "" };        // null = undecided; the caller consults the regex
+}
+
 async function cwGenerateProject(name, desc, root, signal) {
   // Firas Code DAILY QUOTA — charge one build up-front. Blocked → clear notice, no build.
   const codeGate = await chargeUsage("code", uid());
@@ -22737,13 +22787,16 @@ async function cwGenerateProject(name, desc, root, signal) {
   }
   const ac = new AbortController();
   const sig = signal || ac.signal;
+  /* Asked ONCE per build and shared by both decisions below, so the road taken and the language
+     written cannot disagree about the same request. */
+  const target = await cwClassifyProject(desc, sig);
   const clearDiff = () => { const w = root && root.querySelector(".cw-diff"); if (w) { w.hidden = true; w.innerHTML = ""; } };
   // GAMES → the agentic developer (build → RUN → critique → keep DEVELOPING, up to N rounds, 2D or 3D).
   if (cwIsGameRequest(desc)) {
     const g = await cwDevelopGame(name, null, desc, root, sig);
     if (g && g.length) { clearDiff(); return g; }
     clearDiff();   // developer produced nothing → fall through to the generic build path
-  } else if (!cwIsBackendRequest(desc)) {
+  } else if (target.web !== null ? target.web : !cwIsBackendRequest(desc)) {
     // EVERYTHING ELSE THAT RUNS IN A BROWSER → the SAME treatment games always had.
     // Previously a website/app got ONE build pass and a single a11y fix, so "I improved
     // it" was never grounded in anything observed. Now it is built, RUN, critiqued and
@@ -22824,10 +22877,18 @@ async function cwGenerateProject(name, desc, root, signal) {
     if (/^\s*(python|node|cli|bot|api)\b/.test(s)) return true;
     return false;
   }
-  const isWeb = !cwIsBackendRequest(desc);
+  const isWeb = target.web !== null ? target.web : !cwIsBackendRequest(desc);
   const WEB_SYS = "You are Firas Code, a principal software engineer building like Claude Code. From the user's description, CREATE a COMPLETE, professional, production-quality multi-file project that RUNS AS-IS in a browser (no build step). Think first about ARCHITECTURE: split into clean, well-named files with clear responsibilities (web app baseline: index.html + css/styles.css + js/app.js, plus more pages/modules/data files when warranted) and keep them perfectly CONSISTENT — every id/class/function/import/path a file uses must exist in the files you output. Write REAL, working logic: every button/form/feature works, search/filter/sort really filter, a cart/todo/favorites really updates and PERSISTS via localStorage, forms validate and give feedback. Refined responsive design and polished modern styling throughout. Absolutely NO placeholders, NO 'TODO', NO '...', NO empty handlers, NO skeletons. STRICT OUTPUT: ONE short summary line in the user's language, then for EVERY file exactly one fenced block:\n```file:relative/path.ext\n<the COMPLETE file content>\n```\nALWAYS include an index.html entry. Use a CDN library only when it clearly helps (official browser/UMD build, pinned, correct no-build init). Output every file COMPLETE, start to end, never truncated.";
   const BACKEND_SYS = "You are Firas Code, a principal software engineer building like Claude Code. From the user's description, CREATE a COMPLETE, professional, production-quality multi-file BACKEND/SERVER project the user can install and run locally. Think first about ARCHITECTURE: split into clean, well-named files with clear responsibilities (a correct entry module — e.g. server.js / app.py / main.py / index.mjs — plus routes/controllers/services/models/middleware/config modules as warranted) and keep them perfectly CONSISTENT — every import/require/route/function/path a file uses must exist in the files you output. Write REAL, working logic: real routes/handlers, a real data layer (in-memory seed OR SQLite/JSON-file persistence), input validation, proper error handling and correct HTTP status codes, logging. Absolutely NO placeholders, NO 'TODO', NO '...', NO empty handlers, NO stubs. You MUST also include: a package.json with real PINNED dependency versions and a `start` script (plus a `dev` script) for Node projects — OR a requirements.txt with pinned versions for Python; a .env.example listing every variable, and a small config module that reads process.env / os.environ with sane defaults; and a README.md with the EXACT install command, the EXACT run command, and a sample curl request (with expected response) for each main endpoint. STRICT OUTPUT: ONE short summary line in the user's language, then for EVERY file exactly one fenced block:\n```file:relative/path.ext\n<the COMPLETE file content>\n```\nDo NOT force an index.html and do NOT write browser-only code — build a real runnable server folder that starts with the documented command. Output every file COMPLETE, start to end, never truncated.";
-  const sys = (isWeb ? WEB_SYS : BACKEND_SYS) + cwBrain(isWeb, desc) + cwLangRule();
+  /* Knowing it is not a website is only half of it — the builder is told WHICH language, so a
+     request for C++ is not answered in whatever the model felt like reaching for. */
+  const targetRule = target.language
+    ? (" WRITE THIS PROJECT IN " + target.language.toUpperCase() + ". The user named that language" +
+       " and it is not negotiable: use its real conventions, its real project layout and its real" +
+       " file extensions, and do not substitute another language because it would be easier to run" +
+       " in a browser.")
+    : "";
+  const sys = (isWeb ? WEB_SYS : BACKEND_SYS) + targetRule + cwBrain(isWeb, desc) + cwLangRule();
   const usr = "PROJECT NAME: " + name + "\n\nWHAT TO BUILD:\n" + String(desc).slice(0, 8000);
   if (sig && sig.aborted) return [];
   const out = await agentCall([{ role: "system", content: sys }, { role: "user", content: usr }], "max", sig);
@@ -22845,6 +22906,28 @@ async function cwGenerateProject(name, desc, root, signal) {
   } catch (_) {}
   return fb.changes.slice(0, 30);
 }
+/** LIVE CSS, WITHOUT THROWING THE PAGE AWAY.
+
+    Every edit used to rebuild the whole iframe from srcdoc, which is both slow and destructive:
+    scroll position, form input, canvas state, whatever the page had built up — all of it gone,
+    on a timer, while the user was still typing. For a stylesheet none of that is necessary; the
+    rule text can simply be replaced in place, which is why this runs on a keystroke debounce
+    measured in milliseconds while a structural change still waits for the reload.
+
+    Returns false when the edit is not something that can be pushed live, so the caller knows to
+    fall back to the full rebuild rather than silently showing stale output. */
+function cwPushLiveCss(root, chat) {
+  const st = codeFilesOf(chat);
+  const f = st.files[cwState.file];
+  if (!f || !/\.css$/i.test(f.path)) return false;
+  const ifr = root.querySelector(".cw-preview");
+  if (!ifr || !ifr.contentWindow) return false;
+  const text = cwCurrentEditorValue();
+  if (text == null) return false;
+  try { ifr.contentWindow.postMessage({ __fcwCss: 1, path: f.path, text }, "*"); } catch (_) { return false; }
+  return true;
+}
+
 function cwRefreshPreview(root, chat) {
   const { files } = codeFilesOf(chat);
   const ifr = root.querySelector(".cw-preview");
@@ -23554,7 +23637,16 @@ async function renderCodeIDE(root, chat) {
       clearTimeout(cwState.saveTimer);
       cwState.saveTimer = setTimeout(() => { cwCommitEdit(root, chat, false); }, 900);
       clearTimeout(cwState.prevTimer);
-      cwState.prevTimer = setTimeout(() => { cwMaybeAutoPreview(root, chat); }, 1600);
+      /* TWO SPEEDS, BECAUSE NOT EVERY EDIT COSTS THE SAME. A stylesheet is pushed into the live
+         page almost immediately and without a reload, so colours and spacing move under the
+         cursor as they are typed. Anything structural still rebuilds the document — but at 700ms
+         rather than 1600, because the old delay was long enough that the preview read as
+         something you waited for rather than something that followed you. */
+      if (cwState.autoReload !== false && cwPushLiveCss(root, chat)) {
+        cwState.prevTimer = setTimeout(() => { cwMaybeAutoPreview(root, chat); }, 2500);
+      } else {
+        cwState.prevTimer = setTimeout(() => { cwMaybeAutoPreview(root, chat); }, 700);
+      }
       cwSnapScheduleAuto(chat);
     });
     cwState.cm.on("cursorActivity", () => cwUpdateStatus(root, chat));
@@ -23563,7 +23655,13 @@ async function renderCodeIDE(root, chat) {
     ta.addEventListener("input", () => {
       cwSetSaveState(root, "editing"); cwUpdateStatus(root, chat);
       clearTimeout(cwState.saveTimer);
-      cwState.saveTimer = setTimeout(() => { cwMaybeAutoPreview(root, chat); }, 1200);
+      /* Same two speeds as the CodeMirror path above — the plain-textarea fallback is what runs
+         when the editor library is unavailable, and it should not feel like a different product. */
+      if (cwState.autoReload !== false && cwPushLiveCss(root, chat)) {
+        cwState.saveTimer = setTimeout(() => { cwMaybeAutoPreview(root, chat); }, 2500);
+      } else {
+        cwState.saveTimer = setTimeout(() => { cwMaybeAutoPreview(root, chat); }, 700);
+      }
       cwSnapScheduleAuto(chat);
     });
     ["keyup", "click", "select"].forEach((ev) => ta.addEventListener(ev, () => cwUpdateStatus(root, chat)));
