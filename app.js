@@ -1774,14 +1774,31 @@ const _turnIntentCache = new Map();
     assistant turn produced one, and which product the user is standing in. The model is told these
     rather than left to guess, because "make it darker" means completely different things with and
     without a picture on the table. */
-async function classifyTurnIntent(text, ctx, signal) {
+/** ONE CALL, TWO ANSWERS: what to MAKE, and what the user SAID ABOUT IT.
+
+    Routing was only half the problem. A brief says "exactly 20 advanced, non-repeating problems,
+    each with a full solution, titled X" - and every one of those conditions reached the model as
+    ordinary prose competing with the app own house rules, with nothing checking the result.
+
+    The obvious build was a second model call to extract them. It was the wrong build: an ordinary
+    member turn already fires FIVE completions, and every second spent before the stream opens is
+    subtracted from the generation own 15-minute budget - worst of all on the document builds this
+    exists to serve. So the requirements come back from the call that was ALREADY being made.
+    Same call, same cache, no added latency, no added cost.
+
+    Returns { kind, requirements }. kind is one of TURN_KINDS or "unavailable"; requirements is a
+    compact restatement of the conditions THE USER set, or "" when they set none.
+
+    The cache holds the PROMISE, not the value, so the two readers below both await the same
+    in-flight call instead of racing into two. */
+function _classifyTurn(text, ctx, signal) {
   const t = String(text || "").trim();
   ctx = ctx || {};
-  if (!t) return "chat";
+  if (!t) return Promise.resolve({ kind: "chat", requirements: "" });
 
   /* THE KEY MUST COVER EVERYTHING THE MODEL IS SHOWN. It was cut at 600 characters while the
      request below is sent at 6000, so two long briefs that opened with the same paragraph and
-     diverged after it shared one verdict — and a long brief with a shared preamble is exactly
+     diverged after it shared one verdict - and a long brief with a shared preamble is exactly
      the shape of the requests this layer exists to read. Keyed on the same slice that is sent,
      so a cache hit means the model genuinely saw the same message. */
   const key = (ctx.hasAttachedImage ? "A" : "") + (ctx.hasPriorImage ? "P" : "") +
@@ -1796,52 +1813,91 @@ async function classifyTurnIntent(text, ctx, signal) {
       ? "The user is inside a CODE EDITOR that builds websites and web apps.\n"
       : "The user is in an ordinary chat.\n");
 
-  let verdict = "unavailable";
-  try {
-    const raw = await callAgentText([
-      { role: "system", content:
-        "You route one message to whatever should PRODUCE its answer. Read the WHOLE message and " +
-        "decide what the user is ASKING YOU TO MAKE. Reply with exactly one word from this list " +
-        "and nothing else:\n" +
-        "chat, image, edit-image, video, pdf, docx, pptx, xlsx, csv, code\n\n" +
-        "DECIDE FROM THE REQUEST, NOT FROM WORDS THAT APPEAR IN IT. A message can mention a " +
-        "picture, a file or a website while asking for something else entirely. If someone writes " +
-        "a long text and asks you to translate it, that is chat — even if the text they pasted is " +
-        "about photography, even if it contains the words image or صورة. Ask yourself only: when " +
-        "I finish, what does the user expect to be holding?\n\n" +
-        "chat        an answer, an explanation, a translation, a rewrite, a summary, code shown " +
-        "inline to read, questions or problems answered in the conversation. This is the default " +
-        "and by far the most common. Choose it whenever nothing is being MANUFACTURED.\n" +
-        "image       they want a picture generated: a logo, a poster, an illustration, artwork.\n" +
-        "edit-image  a picture is in play and they want it CHANGED — recoloured, something added " +
-        "or removed, the background replaced, the text in it altered. Only ever valid when a " +
-        "picture is attached or on screen.\n" +
-        "video       they want a moving clip generated.\n" +
-        "pdf / docx / pptx / xlsx / csv  they want a FILE of that kind produced and handed over — " +
-        "a document to read, a report, a deck of slides, a spreadsheet. The giveaway is that the " +
-        "deliverable is a file they will download, not an answer they will read here. Pick the " +
-        "exact format they named; if they clearly want a document but name no format, answer pdf.\n" +
-        "code        they want software built or changed: a website, a web app, a page, a game, a " +
-        "component, a script. A website ABOUT documents is still code. A page that GENERATES pdfs " +
-        "is still code.\n\n" +
-        "Any language, any dialect, any length. Reply with the single word only." },
-      { role: "user", content: situation + "\nMESSAGE:\n" + t.slice(0, 6000) },
-    ], "mini", signal);
+  const run = (async () => {
+    let verdict = "unavailable", reqs = "";
+    try {
+      const raw = await callAgentText([
+        { role: "system", content:
+          "Read one message and answer TWO questions about it. Reply with exactly two lines and " +
+          "nothing else:\nKIND=<one word>\nREQUIREMENTS=<one line, or NONE>\n\n" +
+          "QUESTION 1 - KIND. What should PRODUCE the answer? One word from this list:\n" +
+          "chat, image, edit-image, video, pdf, docx, pptx, xlsx, csv, code\n\n" +
+          "DECIDE FROM THE REQUEST, NOT FROM WORDS THAT APPEAR IN IT. A message can mention a " +
+          "picture, a file or a website while asking for something else entirely. If someone " +
+          "writes a long text and asks you to translate it, that is chat - even if the text they " +
+          "pasted is about photography, even if it contains the words image or صورة. Ask " +
+          "yourself only: when I finish, what does the user expect to be holding?\n\n" +
+          "chat        an answer, an explanation, a translation, a rewrite, a summary, code shown " +
+          "inline to read, questions or problems answered in the conversation. This is the default " +
+          "and by far the most common. Choose it whenever nothing is being MANUFACTURED.\n" +
+          "image       they want a picture generated: a logo, a poster, an illustration, artwork.\n" +
+          "edit-image  a picture is in play and they want it CHANGED - recoloured, something added " +
+          "or removed, the background replaced, the text in it altered. Only ever valid when a " +
+          "picture is attached or on screen.\n" +
+          "video       they want a moving clip generated.\n" +
+          "pdf / docx / pptx / xlsx / csv  they want a FILE of that kind produced and handed over " +
+          "- a document to read, a report, a deck of slides, a spreadsheet. The giveaway is that " +
+          "the deliverable is a file they will download, not an answer they will read here. Pick " +
+          "the exact format they named; if they clearly want a document but name none, answer pdf.\n" +
+          "code        they want software built or changed: a website, a web app, a page, a game, " +
+          "a component, a script. A website ABOUT documents is still code. A page that GENERATES " +
+          "pdfs is still code.\n\n" +
+          "QUESTION 2 - REQUIREMENTS. List the conditions THE USER THEMSELVES set, as one short " +
+          "line of semicolon-separated items, in the language they wrote in. Include only things " +
+          "that are CHECKABLE against a finished result: an exact count (\"exactly 20 problems\"), " +
+          "a required title or heading, a required language, a required structure or sections, a " +
+          "difficulty or audience level, a required format, and anything they FORBADE (\"no " +
+          "repetition\", \"do not use library X\", \"no introductions\").\n\n" +
+          "Copy their conditions; never invent, soften or add your own. A vague wish such as " +
+          "\"make it nice\" is not a requirement. If they set no checkable conditions, answer NONE.\n\n" +
+          "Any language, any dialect, any length. Two lines only." },
+        { role: "user", content: situation + "\nMESSAGE:\n" + t.slice(0, 6000) },
+      ], "mini", signal);
 
-    const w = String(raw || "").toLowerCase();
-    /* Longest first, so "edit-image" is not swallowed by "image". */
-    for (const k of ["edit-image", "image", "video", "pptx", "xlsx", "docx", "csv", "pdf", "code", "chat"]) {
-      if (w.includes(k)) { verdict = k; break; }
+      const reply = String(raw || "");
+      /* THE KIND IS READ FROM ITS OWN LINE, NEVER FROM THE WHOLE REPLY. The scan used to run over
+         everything the model said, which was safe while the reply was one word and is a trap now
+         that it is two lines: a requirement such as "must be a downloadable pdf" would otherwise
+         hand back kind=pdf on a turn the model had just classified as chat. */
+      const km = /KIND\s*=\s*([a-z-]+)/i.exec(reply);
+      const kw = km ? km[1].toLowerCase() : "";
+      /* Exact match first; the longest-first order below then stops "edit-image" being swallowed
+         by "image" when the model decorates its answer. */
+      for (const k of ["edit-image", "image", "video", "pptx", "xlsx", "docx", "csv", "pdf", "code", "chat"]) { if (kw === k) { verdict = k; break; } }
+      if (verdict === "unavailable" && kw) {
+        for (const k of ["edit-image", "image", "video", "pptx", "xlsx", "docx", "csv", "pdf", "code", "chat"]) { if (kw.includes(k)) { verdict = k; break; } }
+      }
+      if (verdict === "edit-image" && !ctx.hasAttachedImage && !ctx.hasPriorImage) verdict = "image";
+
+      const rm = /REQUIREMENTS\s*=\s*([\S\s]*)$/i.exec(reply);
+      reqs = rm ? rm[1].trim() : "";
+      if (/^(none|no|n\/a|-|)$/i.test(reqs)) reqs = "";
+      reqs = reqs.replace(/\s+/g, " ").slice(0, 700);
+    } catch (_) {
+      verdict = "unavailable";             // the caller may consult the old patterns, and only then
+      reqs = "";
     }
-    if (verdict === "edit-image" && !ctx.hasAttachedImage && !ctx.hasPriorImage) verdict = "image";
-  } catch (_) {
-    verdict = "unavailable";               // the caller may consult the old patterns, and only then
-  }
+    /* An unreachable model must not be remembered as an answer - drop the entry so the next turn
+       tries again instead of inheriting one failure for the rest of the session. */
+    if (verdict === "unavailable") _turnIntentCache.delete(key);
+    return { kind: verdict, requirements: reqs };
+  })();
 
-  if (verdict !== "unavailable") _turnIntentCache.set(key, verdict);
-  return verdict;
+  _turnIntentCache.set(key, run);
+  run.catch(() => _turnIntentCache.delete(key));      // a thrown promise must not poison it either
+  return run;
 }
 
+/** What should produce this turn answer. One of TURN_KINDS, or "unavailable". */
+async function classifyTurnIntent(text, ctx, signal) {
+  return (await _classifyTurn(text, ctx, signal)).kind;
+}
+
+/** The conditions the USER set for this turn, as a compact line, or "" when they set none.
+    Free: it awaits the same call classifyTurnIntent already made for this very message. */
+async function turnRequirementsOf(text, ctx, signal) {
+  return (await _classifyTurn(text, ctx, signal)).requirements;
+}
 /** The document formats, so callers can test membership without repeating the list. */
 function turnIntentIsDocument(kind) {
   return kind === "pdf" || kind === "docx" || kind === "pptx" || kind === "xlsx" || kind === "csv";
@@ -11608,6 +11664,32 @@ function buildMessages(tier, conversation, replyLang) {
   const productRule = state.product === "ai"
     ? " As FIRAS AI (the flagship assistant): give exceptionally well-ORGANIZED answers with a clear structure, reason step by step on any multi-part or analytical question, stay equally precise in Arabic and English, and — above all — MINIMIZE hallucination: never invent a fact, date, name, number, verse or citation; if you are not certain, say so plainly, and attribute a specific source or definition accurately."
     : "";
+  /* WHAT THE USER ASKED FOR OUTRANKS WHAT THE APP PREFERS.
+
+     Everything above this point is a house rule - the persona, the science rigour, the subject
+     difficulty rules, the finishing rule. They exist because they are usually right. But when
+     the person actually asking has stated a condition, that condition is not one more voice in
+     the chorus: it is the brief. It used to arrive as ordinary prose in the user turn, competing
+     with a system message full of confident instructions, and it lost the arguments it should
+     have won.
+
+     Placed LAST for the reason the finishRule comment gives a few lines up: the final position
+     is the one the model weighs most. The requirements are pinned to the message in streamAnswer
+     by the same classifier call that routes the turn, so reading them here costs nothing.
+
+     Note the names: `lastUser` and `fileFmt` are already taken further down this same block
+     scope (declared below), so this deliberately reuses `_lastU` and invents nothing that could
+     collide with them. */
+  const _reqs = (_lastU && typeof _lastU.requirements === "string") ? _lastU.requirements.trim() : "";
+  const userReqRule = _reqs
+    ? (" THE USER'S OWN REQUIREMENTS FOR THIS TURN - THESE OUTRANK EVERY RULE ABOVE. They asked" +
+       " for: " + _reqs + " . Satisfy every one of them exactly. Where one of them contradicts" +
+       " anything you were told earlier in this system message - length, style, structure," +
+       " difficulty, what to include or leave out - THE USER WINS, silently: follow their" +
+       " instruction and never announce the conflict or explain that you were told otherwise." +
+       " Before you finish, check your answer against each requirement in turn, and if one is not" +
+       " met, fix it before replying rather than apologising for it afterwards.")
+    : "";
   let system;
   if (state.callMode) {
     const callSys = replyLang === "ar"
@@ -11631,7 +11713,7 @@ function buildMessages(tier, conversation, replyLang) {
          count instruction buried between the science-rigor block and the code block is the
          first thing to lose an argument with "be concise". Last position is the one the model
          weighs most, and this rule is the one whose failure the user actually notices. */
-      content: model.persona + productRule + identityRule + langRule + mathRule + accuracyRule + NO_NEEDLESS_REFUSAL + SCIENCE_RIGOR + NEVER_RAW_FILE_FORMAT + codeRule + genLevelRule + STEM_HARD_RULE + SUBJECT_HARD_RULE + imageRule + tikzRule+ (planning ? "" : buildRule + engineerRule) + finishRule,
+      content: model.persona + productRule + identityRule + langRule + mathRule + accuracyRule + NO_NEEDLESS_REFUSAL + SCIENCE_RIGOR + NEVER_RAW_FILE_FORMAT + codeRule + genLevelRule + STEM_HARD_RULE + SUBJECT_HARD_RULE + imageRule + tikzRule+ (planning ? "" : buildRule + engineerRule) + finishRule + userReqRule,
     };
   }
 
@@ -12873,6 +12955,24 @@ async function runFileAgentPipeline(convo, fmt, lang, tierKey, signal, onStage) 
     if (batched != null) return batched;
   }
   // 1) Planner — identity + outline
+  /* THE USER CONDITIONS, RESTATED WHERE EVERY STAGE WILL SEE THEM.
+
+     This is the path a "make me a PDF with exactly 20 non-repeating advanced problems" brief
+     actually takes - it returns out of streamAnswer long before the chat system prompt is built,
+     so the requirements rule wired into buildMessages never reaches it. userText is the one
+     string the planner, the author and the count-enforcer all read, so putting them here reaches
+     all three with a single change and no extra model call.
+
+     Appended at the END, deliberately: an attached file can be tens of thousands of characters,
+     and conditions buried in front of that wall are the ones that get dropped. */
+  const _docReqs = (lastUser && typeof lastUser.requirements === "string") ? lastUser.requirements.trim() : "";
+  if (_docReqs) {
+    userText += "\n\n=== THE REQUESTER\'S OWN REQUIREMENTS - THESE OUTRANK EVERY OTHER INSTRUCTION ===\n" +
+      _docReqs +
+      "\nEvery one of these must be satisfied exactly in the finished document. Where one of them" +
+      " contradicts anything else you were told, follow the requester. Check the finished document" +
+      " against each of them before you hand it over.";
+  }
   onStage("plan");
   const plan = await callAgentText([
     { role: "system", content: plannerSys(fmt, lang) },
@@ -13330,6 +13430,19 @@ async function streamAnswer(aiMsg, aiNode, chat, convoOverride) {
       }, signal)
     : "chat";
   if (lastUserTurn && turnKind !== "unavailable") lastUserTurn.intent = turnKind;
+  /* THE CONDITIONS THE USER SET, PINNED TO THE MESSAGE. This adds no call and no latency: it
+     awaits the same cached promise classifyTurnIntent just resolved for this very message.
+     Pinning it here is what lets buildMessages - which is synchronous and cannot await anything -
+     read the requirements later without a second round trip. */
+  if (lastUserTurn && turnKind !== "unavailable") {
+    try {
+      lastUserTurn.requirements = await turnRequirementsOf(lastUserTurn.content, {
+        hasAttachedImage: !!(lastUserTurn.images && lastUserTurn.images.length),
+        hasPriorImage: !!lastGeneratedImageMeta(chat),
+        product: state.product,
+      }, signal);
+    } catch (_) { /* a turn must never be lost over its requirements - fail open */ }
+  }
   if (signal.aborted) { clearTimeout(timeoutId); return; }
 
   // Snapshot whether THIS reply should be masked as a streaming file (so the chat
