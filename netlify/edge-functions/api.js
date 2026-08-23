@@ -2447,35 +2447,55 @@ const LIVE_SESSION_MAX_MS = (() => {
 const LIVE_START_WINDOW_MS = 60000;   // the token must be USED within a minute of being minted
 const LIVE_TOKEN_URL = "https://generativelanguage.googleapis.com/v1beta/auth_tokens";
 
-/** Mint one ephemeral Live-API token. Returns { token } or { error }. */
+/** Mint one ephemeral Live-API token. Returns { token } or { error }.
+
+    THE CONSTRAINT FIELD IS bidiGenerateContentSetup, NOT liveConnectConstraints. The second name
+    is what the client SDKs call it; the REST resource does not have it, and Google rejected every
+    request with "Unknown name \"liveConnectConstraints\" at 'auth_token': Cannot find field." —
+    a 400 that this route turned into a bare 502, which the browser read as "no token" and
+    answered by silently falling back to the slow three-hop call. The whole feature was dead for
+    one wrong field name.
+
+    Pinning is a nice-to-have, not the security boundary — the token is single-use and expires in
+    minutes, and the real key never leaves the server. So a rejected constraint must never cost
+    the call: if Google objects to the pinned form, the same request goes again unpinned. */
 async function mintLiveToken() {
   const key = gemPick() || GEMINI_API_KEY;
   if (!key) return { error: "no_engine" };
   const now = Date.now();
-  let r;
-  try {
-    r = await fetch(LIVE_TOKEN_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({
-        uses: 1,
-        expireTime: new Date(now + LIVE_SESSION_MAX_MS).toISOString(),
-        newSessionExpireTime: new Date(now + LIVE_START_WINDOW_MS).toISOString(),
-        liveConnectConstraints: {
-          model: "models/" + GEMINI_LIVE_MODEL,
-          config: { responseModalities: ["AUDIO"] },
-        },
-      }),
-    });
-  } catch (_) { return { error: "unreachable" }; }
-  if (!r.ok) {
-    /* THE UPSTREAM REASON, KEPT BUT SANITISED. Refusing to relay Google's body at all was the
-       safe default and it was also undiagnosable: a mint that failed looked exactly like a mint
-       that was never attempted, and the call fell back to the slow path with nobody able to say
-       why. Google's error carries a status enum (INVALID_ARGUMENT, PERMISSION_DENIED, NOT_FOUND)
-       and a message naming the field or model it objected to — which is the whole diagnosis.
-       Any API key that appears in it is stripped before it goes anywhere, and the caller-facing
-       route only reveals this to an admin. */
+  const base = {
+    uses: 1,
+    expireTime: new Date(now + LIVE_SESSION_MAX_MS).toISOString(),
+    newSessionExpireTime: new Date(now + LIVE_START_WINDOW_MS).toISOString(),
+  };
+  /* Pins the MODEL and the modality only. The system instruction is deliberately NOT pinned here:
+     a token-side setup can take precedence over the one the socket sends, and losing the client
+     instruction would cost the dialect rule without anything failing loudly enough to notice. */
+  const pinned = Object.assign({}, base, {
+    bidiGenerateContentSetup: {
+      model: "models/" + GEMINI_LIVE_MODEL,
+      generationConfig: { responseModalities: ["AUDIO"] },
+    },
+  });
+
+  const attempt = async (body) => {
+    let r;
+    try {
+      r = await fetch(LIVE_TOKEN_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify(body),
+      });
+    } catch (_) { return { error: "unreachable" }; }
+    if (r.ok) {
+      let j = null; try { j = await r.json(); } catch (_) {}
+      const name = j && (j.name || j.token || (j.tokenInfo && j.tokenInfo.name));
+      return name ? { token: String(name) } : { error: "mint_failed", status: r.status, code: "no_name" };
+    }
+    /* THE UPSTREAM REASON, KEPT BUT SANITISED. Refusing to relay it at all was safe and
+       undiagnosable: a mint that failed looked exactly like one never attempted. Google names the
+       field or model it objected to, which is the entire diagnosis. Anything key-shaped is
+       stripped, and the route reveals it to an admin only. */
     let code = "", msg = "";
     try {
       const t = await r.text();
@@ -2485,13 +2505,19 @@ async function mintLiveToken() {
       msg = String(e.message || t || "").slice(0, 300);
     } catch (_) {}
     msg = msg.replace(/AIza[0-9A-Za-z_-]{10,}/g, "[key]").replace(/key=[^&\s"]+/gi, "key=[redacted]");
-    console.warn("[firas] live token mint failed: HTTP " + r.status + " " + code + " " + msg);
     return { error: "mint_failed", status: r.status, code, message: msg };
+  };
+
+  let out = await attempt(pinned);
+  if (out.error === "mint_failed" && out.status === 400) {
+    console.warn("[firas] live token: pinned mint refused (" + out.code + " " + out.message + ") - retrying unpinned");
+    const bare = await attempt(base);
+    if (bare.token) return bare;
+    /* Report whichever failure is more informative rather than the last one. */
+    out = bare.message ? bare : out;
   }
-  let j = null; try { j = await r.json(); } catch (_) {}
-  const name = j && (j.name || j.token || (j.tokenInfo && j.tokenInfo.name));
-  if (!name) return { error: "mint_failed" };
-  return { token: String(name) };
+  if (out.error) console.warn("[firas] live token mint failed: HTTP " + out.status + " " + out.code + " " + out.message);
+  return out;
 }
 
 async function chargeVoiceEdge(c) {
