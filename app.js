@@ -17889,6 +17889,35 @@ const LIVE_VOICES = [
   "Callirrhoe", "Autonoe", "Enceladus", "Leda", "Orus", "Fenrir", "Alnilam", "Rasalgethi",
   "Laomedeia", "Algenib", "Pulcherrima", "Zubenelgenubi", "Sadachbia",
 ];
+/* WHEN THE UPSTREAM QUOTA IS GONE, STOP BUYING TOKENS TO FIND OUT AGAIN.
+
+   A Live session that runs out of project quota closes with 1011 ("You exceeded your current
+   quota") or, confusingly, 1008 ("Your project has been denied access") — the same condition
+   under two different names. Either way every subsequent call was still minting a token first,
+   which spends a unit of the caller's daily voice allowance to buy a refusal, and only then
+   fell back. Worse, mid-call it drops the caller onto the device voice with no explanation,
+   which is exactly what was reported: "sometimes it switches me to the default voice".
+
+   So a quota refusal is remembered, and for the next ten minutes the call goes straight to the
+   fallback without minting anything. Ten minutes because these limits are per-minute or
+   per-day windows rather than permanent — this must expire on its own, not require a reload. */
+const LIVE_QUOTA_COOLDOWN_MS = 10 * 60000;
+let liveQuotaBlockedUntil = 0;
+function liveQuotaBlocked() { return Date.now() < liveQuotaBlockedUntil; }
+function liveNoteQuotaRefusal(code, reason) {
+  liveQuotaBlockedUntil = Date.now() + LIVE_QUOTA_COOLDOWN_MS;
+  try {
+    console.warn("[firas][live] upstream quota refusal (" + code + "): " + reason +
+      " — live calls paused for " + (LIVE_QUOTA_COOLDOWN_MS / 60000) + " minutes");
+    window.__firasLive = { reason: "google quota exhausted", detail: code + " " + reason, at: new Date().toISOString() };
+    if (state.user && state.user.admin) {
+      showToast(state.lang === "ar"
+        ? "\u0627\u0646\u062a\u0647\u062a \u062d\u0635\u0629 Gemini Live \u2014 \u0641\u0639\u0651\u0644 \u0627\u0644\u0641\u0648\u062a\u0631\u0629 \u0639\u0644\u0649 \u0645\u0634\u0631\u0648\u0639 \u0627\u0644\u0645\u0641\u062a\u0627\u062d"
+        : "Gemini Live quota exhausted — enable billing on the key's project");
+    }
+  } catch (_) {}
+}
+
 const LS_LIVE_VOICE = "firas_live_voice";
 function liveVoice() {
   try {
@@ -18061,6 +18090,10 @@ function liveTeardown() {
     flowing, FALSE if anything at all did not work — in which case the caller runs the old path.
     It never throws and never leaves the microphone open on a failed attempt. */
 async function liveTryStart() {
+  if (liveQuotaBlocked()) {
+    const left = Math.ceil((liveQuotaBlockedUntil - Date.now()) / 60000);
+    return liveFail("Google quota exhausted", "retrying in about " + left + " min");
+  }
   if (!liveSupported()) {
     return liveFail("this browser cannot run it",
       "ws=" + !!window.WebSocket + " audio=" + !!(window.AudioContext || window.webkitAudioContext) +
@@ -18264,6 +18297,8 @@ async function liveTryStart() {
     ws.onerror = () => { clearTimeout(openTimer); liveCall.wsWhy = liveCall.wsWhy || "socket error"; done(false); };
     ws.onclose = (ce) => {
       clearTimeout(openTimer);
+      /* 1008 and 1011 are the same upstream condition under two names. */
+      if (ce && (ce.code === 1008 || ce.code === 1011)) liveNoteQuotaRefusal(ce.code, ce.reason || "");
       /* The close CODE and REASON are the only place Google explains a rejected setup — a bad
          model name, a constraint the setup did not match, an expired token. Losing them is why
          this was undiagnosable. */
