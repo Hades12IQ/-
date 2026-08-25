@@ -4515,6 +4515,12 @@ export default async (request, context) => {
     if (path === "/api/image/diag" && method === "GET") {
       const user = await currentUser(context);
       if (!user) return new Response("auth required", { status: 401 });
+      /* SECURITY: this probe deliberately skips openaiImageAllowed/openaiImageCharge, so every
+         call spends real OpenAI money that the $60 ceiling and the daily allowance never see.
+         It was gated on "signed in" only, which meant ANY member could bill the owner in a
+         loop and read back the provider config, model ladders and live budget state. Admin
+         only, matching every other privileged route in this file. */
+      if (!isAdmin(user)) return json({ error: "admins only" }, 403);
       if (rateLimited("imgdiag:" + user.id, 6, 60000)) return new Response("rate limited", { status: 429 });
 
       const out = {
