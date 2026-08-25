@@ -5009,11 +5009,20 @@ export default async (request, context) => {
       if (!/^https:\/\//i.test(target) || proxyHostBlocked(host)) return new Response(null, { status: 400 });
       try {
         const r = await safeProxyFetch(target, { "User-Agent": SEARCH_UA, "Accept": "image/*" }, 3);
+        /* SECURITY: `/^image\//` passed image/svg+xml, and echoing the remote Content-Type
+           back verbatim turned this route into a first-party document — an attacker-hosted
+           SVG opened as a top-level navigation ran its inline <script> on OUR origin with the
+           session cookie attached. netlify.toml has no script-src, so nothing else stopped it.
+           Two belts: a raster-only allowlist (no SVG), and CSP sandbox so any future type that
+           slips through is still parsed in an opaque origin. Emit `type`, never raw `ct`, so a
+           charset/parameter tail cannot smuggle anything past the check. */
         const ct = r.headers.get("content-type") || "";
-        if (!r.ok || !/^image\//i.test(ct)) return new Response(null, { status: 415 });
+        const type = ct.split(";")[0].trim().toLowerCase();
+        const OK_IMG = ["image/png","image/jpeg","image/jpg","image/gif","image/webp","image/avif","image/bmp","image/tiff","image/x-icon","image/vnd.microsoft.icon"];
+        if (!r.ok || !OK_IMG.includes(type)) return new Response(null, { status: 415 });
         const buf = await r.arrayBuffer();
         if (buf.byteLength > 4000000) return new Response(null, { status: 413 });
-        return new Response(buf, { status: 200, headers: { "Content-Type": ct, "Cache-Control": "public, max-age=86400" } });
+        return new Response(buf, { status: 200, headers: { "Content-Type": type, "Cache-Control": "public, max-age=86400", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox; default-src 'none'" } });
       } catch (_) { return new Response(null, { status: 502 }); }
     }
     if (path === "/api/fetch" && method === "GET") {

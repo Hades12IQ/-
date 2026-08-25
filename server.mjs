@@ -4030,11 +4030,16 @@ async function handleImgProxy(req, res) {
   if (!/^https:\/\//i.test(target) || /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|::1|\[)/.test(host) || /\.local$/.test(host)) { res.writeHead(400); return res.end(); }
   try {
     const r = await safeProxyFetch(target, { "User-Agent": SEARCH_UA, "Accept": "image/*" }, 3);
+    /* SECURITY: see the matching comment in netlify/edge-functions/api.js — `/^image\//`
+       admitted image/svg+xml and the remote Content-Type was echoed verbatim, making this
+       route serve attacker script as a same-origin document. Raster allowlist + CSP sandbox. */
     const ct = r.headers.get("content-type") || "";
-    if (!r.ok || !/^image\//i.test(ct)) { res.writeHead(415); return res.end(); }
+    const type = ct.split(";")[0].trim().toLowerCase();
+    const OK_IMG = ["image/png","image/jpeg","image/jpg","image/gif","image/webp","image/avif","image/bmp","image/tiff","image/x-icon","image/vnd.microsoft.icon"];
+    if (!r.ok || !OK_IMG.includes(type)) { res.writeHead(415); return res.end(); }
     const buf = Buffer.from(await r.arrayBuffer());
     if (buf.length > 4_000_000) { res.writeHead(413); return res.end(); }
-    res.writeHead(200, { "Content-Type": ct, "Cache-Control": "public, max-age=86400", "Content-Length": buf.length });
+    res.writeHead(200, { "Content-Type": type, "Cache-Control": "public, max-age=86400", "Content-Length": buf.length, "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox; default-src 'none'" });
     return res.end(buf);
   } catch (_) { res.writeHead(502); return res.end(); }
 }
