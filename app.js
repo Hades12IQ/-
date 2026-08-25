@@ -10835,8 +10835,14 @@ function openHtmlPreview(rawCode, opts) {
      tolerable for the documents previewDocumentFor GENERATES: the JavaScript one evaluates
      model-authored source by design, which would turn one click into arbitrary code execution
      on an authenticated origin. So the button is offered only for a real HTML document — the
-     exact reach it had before multi-language preview existed. */
-  const openBtn = opts.allowOpenInTab === false ? null : mkTool(ICONS.external, t().previewOpen, () => {
+     exact reach it had before multi-language preview existed.
+
+     One more caller broke the premise above: checkShareLink renders assistant messages that a
+     STRANGER authored, and reaches this same panel three ways — decorateMarkdown's Preview
+     button, buildCodeCard/wireCodeActions, and buildProjectCard's live preview. On a public
+     share page the HTML is by definition not "the user's own", so the tab — which inherits
+     this origin — is never offered there. Gating here covers all three callers at once. */
+  const openBtn = (opts.allowOpenInTab === false || isSharePage()) ? null : mkTool(ICONS.external, t().previewOpen, () => {
     openCodeInTab(html, state.lang === "ar");
   });
   const dlBtn = mkTool(ICONS.download, t().previewDownload, () => {
