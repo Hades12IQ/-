@@ -5620,7 +5620,13 @@ async function handleShareCreate(req, res) {
     const o = { role: m.role === "assistant" ? "assistant" : "user", content: String(m.content || "").slice(0, 200000) };
     if (m.lang) o.lang = String(m.lang).slice(0, 8);
     if (m.tier) o.tier = String(m.tier).slice(0, 16);
-    if (Array.isArray(m.imageThumbs) && m.imageThumbs.length) o.imageThumbs = m.imageThumbs.slice(0, 10).map((s) => String(s).slice(0, 200000));
+    // Only data: thumbs are ever real (the client stores nothing else). Filtering at WRITE time
+    // stops NEW snapshots carrying a beacon URL at all. It does not retroactively clean ones
+    // already stored — the viewer applies the same test at render time, and that is what
+    // actually prevents the load. Deliberately NOT pushed into sanitizeMessages: it writes
+    // the user's live chats, so dropping entries there would mutate saved chat state, not a
+    // snapshot. Two layers, each doing the half it can.
+    if (Array.isArray(m.imageThumbs) && m.imageThumbs.length) o.imageThumbs = m.imageThumbs.slice(0, 10).map((s) => String(s).slice(0, 200000)).filter((s) => /^data:image\//i.test(s));
     return o;
   });
   // chatId is recorded so a repeat share of the same chat reuses this snapshot (above)

@@ -25507,7 +25507,17 @@ async function checkShareLink() {
         b.dir = (m.lang === "ar" || /[؀-ۿ]/.test(m.content || "")) ? "rtl" : "ltr";
         if (Array.isArray(m.imageThumbs) && m.imageThumbs.length) {
           const g = document.createElement("div"); g.className = "msg-user__images"; g.dir = "ltr";
-          m.imageThumbs.forEach((src) => { const im = document.createElement("img"); im.src = src; im.alt = ""; g.appendChild(im); });
+          /* Built with createElement, so DOMPurify and installPurifyHooks NEVER see these —
+             the click-to-load guard does not apply. On a public /?share= page every thumb is
+             attacker-authored, so a remote URL here is a zero-click beacon that hands the
+             visitor's IP, UA, Referer and open time to a host of the attacker's choosing, up
+             to 10 distinct URLs per snapshot for per-recipient tagging. Real thumbs are
+             always small data: URLs (see userMsg.imageThumbs), so this costs nothing. */
+          m.imageThumbs.forEach((src) => {
+            const s = String(src || "");
+            if (!/^data:image\//i.test(s)) return;
+            const im = document.createElement("img"); im.src = s; im.alt = ""; g.appendChild(im);
+          });
           b.appendChild(g);
         }
         if (m.content) { const tx = document.createElement("div"); tx.style.whiteSpace = "pre-wrap"; tx.textContent = m.content; b.appendChild(tx); typesetMath(tx); }
