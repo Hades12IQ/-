@@ -17922,6 +17922,36 @@ const LIVE_VOICES = [
 const LIVE_QUOTA_COOLDOWN_MS = 10 * 60000;
 let liveQuotaBlockedUntil = 0;
 function liveQuotaBlocked() { return Date.now() < liveQuotaBlockedUntil; }
+
+/* SEARCH IS A SEPARATE ENTITLEMENT, AND ITS REFUSAL LIES ABOUT ITSELF. A setup carrying
+   tools:[{googleSearch:{}}] is closed with 1011 "You exceeded your current quota" on a project
+   that has no Live search quota — the same words the API uses when the Live minutes really are
+   gone, which is why this was read as a billing problem for so long. Measured 2026-08-25, six
+   alternating sessions, everything else identical: WITH search 0/3 accepted, WITHOUT search 3/3.
+   Voice, the VAD tuning and the systemInstruction were all accepted on their own.
+   Unlike a quota window this does not heal on its own, so the verdict is remembered across
+   reloads and the tool is simply never offered again. Clearing the key is what resets it.
+
+   REMEMBERED PER MODEL, NOT GLOBALLY. The entitlement is not a property of the project alone:
+   measured the same day across the whole allowlist, gemini-3.1-flash-live-preview refuses the
+   tool while gemini-2.5-flash-native-audio-preview-12-2025 accepts it on this very key. A single
+   global flag would therefore silence search on a model that supports it the moment anyone set
+   GEMINI_LIVE_MODEL to one, and nothing would ever turn it back on. */
+const LS_LIVE_NO_SEARCH = "firas_live_no_search";
+function liveNoSearchList() {
+  try { const v = JSON.parse(localStorage.getItem(LS_LIVE_NO_SEARCH) || "[]"); return Array.isArray(v) ? v : []; } catch (_) { return []; }
+}
+function liveSearchBlocked(model) { return liveNoSearchList().indexOf(String(model || "")) !== -1; }
+function liveNoteSearchUnsupported(model, code, reason) {
+  const m = String(model || "");
+  const list = liveNoSearchList();
+  if (list.indexOf(m) !== -1) return;
+  list.push(m);
+  try { localStorage.setItem(LS_LIVE_NO_SEARCH, JSON.stringify(list.slice(-10))); } catch (_) {}
+  console.warn("[firas][live] " + m + " has no Live search entitlement (" + code + ": " + reason +
+    ") - reconnecting without the search tool; the call itself is fine");
+  try { window.__firasLive = { reason: "live search not available on this model", model: m, detail: code + " " + reason, at: new Date().toISOString() }; } catch (_) {}
+}
 function liveNoteQuotaRefusal(code, reason) {
   liveQuotaBlockedUntil = Date.now() + LIVE_QUOTA_COOLDOWN_MS;
   try {
@@ -18119,16 +18149,24 @@ async function liveTryStart() {
   }
   liveCall.ending = false;
   liveCall.reduced = false;
+  /* EVERY ATTEMPT NEEDS ITS OWN TOKEN. The mint asks for uses:1, so a token that has opened a
+     socket is spent even when the server rejected the setup a moment later. The old ladder
+     reused it and got back "Token has been used too many times" - which means the retry below
+     had never once succeeded since it was written, and every refused setup went to the slow
+     path regardless of what the retry was meant to do. */
+  const mintToken = async () => {
+    try {
+      const r = await fetch("/api/live/token", { method: "POST", credentials: "same-origin" });
+      if (!r.ok) {
+        let why = ""; try { const e = await r.json(); why = (e && e.error) || ""; } catch (_) {}
+        return { err: "HTTP " + r.status + (why ? " " + why : "") };
+      }
+      const j = await r.json();
+      return (j && j.token) ? { tok: j } : { err: "the token response had no token in it" };
+    } catch (_) { return { err: "could not reach /api/live/token" }; }
+  };
   let tok = null;
-  try {
-    const r = await fetch("/api/live/token", { method: "POST", credentials: "same-origin" });
-    if (!r.ok) {
-      let why = ""; try { const e = await r.json(); why = (e && e.error) || ""; } catch (_) {}
-      return liveFail("the server would not mint a token", "HTTP " + r.status + (why ? " " + why : ""));
-    }
-    tok = await r.json();
-  } catch (_) { return liveFail("could not reach /api/live/token"); }
-  if (!tok || !tok.token) return liveFail("the token response had no token in it");
+  { const m = await mintToken(); if (m.err) return liveFail("the server would not mint a token", m.err); tok = m.tok; }
 
   const AC = window.AudioContext || window.webkitAudioContext;
   try {
@@ -18175,6 +18213,8 @@ async function liveTryStart() {
 
     ws.onopen = () => {
       liveCall.sentAt = Date.now();
+      // Which of the two things a 1011 close means depends on whether we sent the tool.
+      liveCall.sentSearch = !liveCall.reduced && !liveSearchBlocked(tok.model);
       const lang = state.lang === "ar" ? "Arabic" : "the user language";
       ws.send(JSON.stringify({
         setup: {
@@ -18189,7 +18229,7 @@ async function liveTryStart() {
           /* IT CAN LOOK THINGS UP NOW. Without this the model answers a question about today
              from memory, or refuses; with it, it searches mid-call and answers from what it
              found. Confirmed against the API discovery document: Tool.googleSearch. */
-          ...(liveCall.reduced ? {} : { tools: [{ googleSearch: {} }] }),
+          ...(liveCall.reduced || liveSearchBlocked(tok.model) ? {} : { tools: [{ googleSearch: {} }] }),
           /* STOP IT FLINCHING AT EVERY SOUND. With nothing set, detection defaults to eager,
              which is what made a cough or the model's own voice count as the caller starting to
              speak. LOW start sensitivity needs more convincing before it calls something speech;
@@ -18315,8 +18355,14 @@ async function liveTryStart() {
     ws.onerror = () => { clearTimeout(openTimer); liveCall.wsWhy = liveCall.wsWhy || "socket error"; done(false); };
     ws.onclose = (ce) => {
       clearTimeout(openTimer);
-      /* 1008 and 1011 are the same upstream condition under two names. */
-      if (ce && (ce.code === 1008 || ce.code === 1011)) liveNoteQuotaRefusal(ce.code, ce.reason || "");
+      /* 1008 and 1011 are the same upstream condition under two names — but ONLY when the setup
+         did not carry the search tool. With the tool present the identical 1011 means the project
+         has no search entitlement, and treating that as exhausted minutes blocked every live call
+         for ten minutes and told the owner to enable billing for a bill that was never the cause. */
+      if (ce && (ce.code === 1008 || ce.code === 1011)) {
+        if (liveCall.sentSearch) { liveNoteSearchUnsupported(tok.model, ce.code, ce.reason || ""); liveCall.searchJustRefused = true; }
+        else liveNoteQuotaRefusal(ce.code, ce.reason || "");
+      }
       /* The close CODE and REASON are the only place Google explains a rejected setup — a bad
          model name, a constraint the setup did not match, an expired token. Losing them is why
          this was undiagnosable. */
@@ -18329,16 +18375,29 @@ async function liveTryStart() {
   });
 
   let ok = await openSocket();
-  /* A close arriving within a few seconds of sending setup, with no setupComplete, is the server
-     rejecting the setup itself. 1008 is excluded deliberately: that is "project denied access",
-     an entitlement problem rather than anything we sent, and retrying it only spends another
-     token and prolongs the refusal. */
+  const retry = async (why) => {
+    const m = await mintToken();
+    if (m.err) { liveCall.wsWhy = "retry could not mint a token: " + m.err; return false; }
+    tok = m.tok;
+    console.warn("[firas][live] " + why + " - reconnecting");
+    liveCall.wsWhy = "";
+    return await openSocket();
+  };
+  /* FIRST RUNG: drop ONLY the search tool. That is the field actually refused on this project,
+     and the voice and detector tuning were both proven acceptable on their own - the old single
+     rung threw all three away together, so a call that did recover came back in the default
+     voice, flinching at every cough. Fires only on the attempt that just discovered the refusal;
+     once the verdict is stored the tool is never sent again and this rung never runs. */
+  if (!ok && liveCall.searchJustRefused) { liveCall.searchJustRefused = false; ok = await retry("search tool refused"); }
+  /* SECOND RUNG: the original minimal setup, for a refusal we have not characterised. A close
+     within seconds of sending setup, with no setupComplete, is the server rejecting what we
+     sent. 1008 and 1000 stay excluded: "denied access" and a clean close are not things a
+     different setup fixes. */
   if (!ok && !liveCall.reduced && /socket closed/.test(liveCall.wsWhy || "") &&
       !/ 1008| 1000/.test(liveCall.wsWhy || "") && liveCall.sentAt && (Date.now() - liveCall.sentAt) < 8000) {
+    const why = liveCall.wsWhy;
     liveCall.reduced = true;
-    console.warn("[firas][live] setup refused (" + liveCall.wsWhy + ") — retrying with the minimal setup");
-    liveCall.wsWhy = "";
-    ok = await openSocket();
+    ok = await retry("setup refused (" + why + ")");
   }
 
   if (!ok) {
