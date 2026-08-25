@@ -3995,7 +3995,23 @@ async function proxyHostAllowed(host) {
   }
 }
 /* Fetch with MANUAL redirect handling: every hop's hostname is re-validated, so a public host
-   can't 302 the proxy into localhost / the cloud metadata service (classic SSRF bypass). */
+   can't 302 the proxy into localhost / the cloud metadata service (classic SSRF bypass).
+
+   KNOWN, ACCEPTED GAP — DNS rebinding (TOCTOU). proxyHostAllowed resolves the name and vets
+   the addresses, then the fetch() below resolves the SAME name a second time; the address we
+   vetted is discarded. A name whose TTL is 0 and which answers public-then-private can slip
+   between the two lookups and reach loopback/LAN, and /api/fetch returns the body, so it is
+   full-read, not blind. Deliberately NOT fixed, 2026-08-25:
+     - It cannot affect production. netlify.toml is the deployment; server.mjs runs only in
+       self-hosted mode, and the cloudflared tunnel that exposed it has been unused since
+       June 2026 (run-online.bat still points at a Desktop path that no longer exists).
+     - The fix is not cheap here. Closing it means pinning the vetted address, which global
+       fetch() cannot do — it takes no `lookup` option, and this project has ZERO npm
+       dependencies, so undici's dispatcher is not importable either. The only route is
+       rewriting this helper onto node:https.request and re-wrapping the result into the
+       Response shape its two callers destructure (handleImgProxy 4032, handleUrlFetch 4065).
+       That is a shared-helper rewrite with real regression surface for zero production gain.
+   If the tunnel ever comes back, close this first — it becomes the most serious hole here. */
 async function safeProxyFetch(target, headers, maxHops) {
   let cur = target;
   for (let hop = 0; hop <= (maxHops || 3); hop++) {
