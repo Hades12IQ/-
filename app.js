@@ -2931,6 +2931,18 @@ function installPurifyHooks() {
   window.DOMPurify.addHook("afterSanitizeAttributes", (node) => {
     const tag = (node.tagName || "").toLowerCase();
 
+    /* srcset is a load vector the src check below cannot see. That guard fires only when a
+       src is present AND cross-origin, so <img srcset="https://attacker.tld/b.png 1x"> with
+       NO src at all sailed straight through and the browser loaded it — zero-click, which is
+       exactly what the click-to-load control exists to prevent (netlify.toml deliberately
+       omits img-src and delegates it here). Nothing this app renders emits srcset: markdown
+       ![]() produces only src, and the single other mention in this file is the removal
+       below. <source> is not in FORBID_TAGS and loads the same way inside <picture>. */
+    if (tag === "img" || tag === "source") {
+      node.removeAttribute("srcset");
+      node.removeAttribute("sizes");
+    }
+
     if (tag === "img") {
       const raw = node.getAttribute("src") || "";
       let sameOrigin = false;
