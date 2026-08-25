@@ -17891,7 +17891,19 @@ const LIVE_JITTER_LEAD = 0.2;
    treated as room noise or the model's own voice leaking back in, and silence is sent in its
    place. Deliberately not zero: the whole reported fault is that ANY sound cut the model off. */
 const LIVE_BARGE_RMS = 0.055;
-const LIVE_BARGE_FRAMES = 2;         // consecutive loud frames — one door slam is not a sentence
+const LIVE_BARGE_FRAMES = 3;         // consecutive loud frames — one door slam is not a sentence
+/* THE ECHO ARRIVES LATE. A speaker emits at T and the microphone hears it at T plus the acoustic
+   path plus the input buffer - 100ms to 300ms on a phone held in the hand. The guard used to
+   disarm the instant playback stopped, so that entire tail went out at full level and the far
+   side heard a caller starting to talk. It also disarmed during the gaps BETWEEN network bursts,
+   while the model was very much mid-sentence. Armed for this long after the last audio, and for
+   as long as the turn is open. */
+const LIVE_ECHO_HANGOVER_MS = 350;
+/* A FIXED THRESHOLD CANNOT SEPARATE THE TWO. How loud the leak is depends on the speaker volume
+   and how close the phone is to the face - at any decent volume a leaked voice clears 0.055 for
+   frames on end, which is a sustained "barge-in" that never happened. So the level of the leak is
+   MEASURED while the guard is armed, and a real interruption has to stand clearly above it. */
+const LIVE_BARGE_OVER_ECHO = 3.0;
 
 /* THE VOICE. The accent complaint — English that sounds Russian — is not the model: 3.1 Flash
    Live is a native-audio model, and native-audio models pick the language themselves and refuse
@@ -17989,6 +18001,7 @@ const liveCall = {
   playAt: 0, playing: [], open: false, ending: false,
   lastVoiceAt: 0, idleTimer: 0, hardTimer: 0, onEnd: null, wsWhy: "",
   acc: null, accLen: 0, loudRun: 0, turnOpen: false, drainTimer: 0, sentAt: 0, reduced: false,
+  echoFloor: 0, speakingUntil: 0, lastSentRms: 0, interruptions: 0,
 };
 
 /* WHY DID IT FALL BACK? Until now the live engine failed the same way for six different
@@ -18088,6 +18101,37 @@ function livePlayChunk(b64) {
   callSetPhase("speaking", "");
 }
 
+/** Send this frame, or replace it with silence? Pure on purpose: the whole reason self-inter-
+    ruption kept coming back is that it could only ever be judged by making a real call in a real
+    room. Given a frame's loudness and the guard state it returns the decision and the state that
+    follows, so the behaviour can be exercised against synthetic loudness sequences.
+
+    `echoFloor` only learns from frames NOT already judged loud: letting it follow the caller's
+    own voice upward would raise the bar every frame they spoke and make barging in progressively
+    harder the longer they tried. */
+function liveBargeDecision(rms, armed, echoFloor, loudRun) {
+  if (!armed) return { send: true, loudRun: 0, echoFloor: 0 };
+  /* SEEDED FROM THE LEAK ITSELF, on the first armed frame. Starting the floor at zero was the
+     whole bug in the first attempt at this: a sustained leak sits above the fixed threshold on
+     every single frame, so it counts as "loud" every time, so the floor never learns it, so after
+     LIVE_BARGE_FRAMES the guard opens and posts the model's own voice back to Google. Taking the
+     first frame as the reference means the leak is measured before it can ever be mistaken for a
+     caller, at the cost of one 100ms frame of silence at the start of each reply. */
+  if (echoFloor <= 0) return { send: false, loudRun: 0, echoFloor: Math.max(rms, 1e-4) };
+  const threshold = Math.max(LIVE_BARGE_RMS, echoFloor * LIVE_BARGE_OVER_ECHO);
+  const loud = rms >= threshold;
+  const run = loud ? loudRun + 1 : 0;
+  return {
+    send: run >= LIVE_BARGE_FRAMES,
+    loudRun: run,
+    /* FROZEN while a candidate interruption is running, and quick to follow the leak otherwise.
+       Frozen, because a floor that chased the caller's voice upward would raise its own bar every
+       frame they spoke and make barging in harder the longer they tried. Quick otherwise, because
+       a reply that starts softly and grows louder must not read as someone starting to talk. */
+    echoFloor: loud ? echoFloor : echoFloor * 0.7 + rms * 0.3,
+  };
+}
+
 /** Are we currently playing the model back? Measured from the schedule, not from the queue
     length: between two network bursts the queue is briefly empty while the model is very much
     still mid-sentence. */
@@ -18116,6 +18160,9 @@ function liveFlushPlayback() {
   for (const s of liveCall.playing.splice(0)) { try { s.stop(); } catch (_) {} }
   liveCall.playAt = 0;
   liveCall.loudRun = 0;
+  /* A real barge-in must disarm the guard, or the caller's first words are the ones swallowed. */
+  liveCall.echoFloor = 0;
+  liveCall.speakingUntil = 0;
   clearTimeout(liveCall.drainTimer);
 }
 
@@ -18308,14 +18355,15 @@ async function liveTryStart() {
                deliberately talking over the reply is. Everything else is replaced by silence
                rather than dropped: the stream has to stay continuous or the far-side detector
                loses its sense of when a turn ended. */
-            let out = frame;
-            if (liveIsSpeaking()) {
-              if (rms >= LIVE_BARGE_RMS) liveCall.loudRun++;
-              else liveCall.loudRun = 0;
-              if (liveCall.loudRun < LIVE_BARGE_FRAMES) out = null;
-            } else {
-              liveCall.loudRun = 0;
-            }
+            /* Armed while anything is scheduled AND while the turn is still open - the second
+               half is what covers the gaps between network bursts, where playback has briefly
+               drained but the model is mid-sentence. Then it stays armed through the echo tail. */
+            if (liveIsSpeaking() || liveCall.turnOpen) liveCall.speakingUntil = Date.now() + LIVE_ECHO_HANGOVER_MS;
+            const d = liveBargeDecision(rms, Date.now() < liveCall.speakingUntil, liveCall.echoFloor, liveCall.loudRun);
+            liveCall.loudRun = d.loudRun;
+            liveCall.echoFloor = d.echoFloor;
+            const out = d.send ? frame : null;
+            if (d.send) liveCall.lastSentRms = rms;
 
             const pcm = out
               ? liveTo16k(out, liveCall.capCtx.sampleRate)
@@ -18337,7 +18385,21 @@ async function liveTryStart() {
       const sc = m.serverContent;
       if (sc) {
         /* Barge-in comes as its own flag, before any further audio. */
-        if (sc.interrupted) { liveCall.turnOpen = false; liveFlushPlayback(); callSetPhase("listening", ""); return; }
+        if (sc.interrupted) {
+          /* COUNTED, so a call that still cuts itself can be READ rather than guessed at. If
+             __firasLive.interruptions climbs while nobody is talking, the guard is still leaking
+             and lastSentRms/echoFloor say by how much. Recorded before the flush, which clears
+             the floor. */
+          liveCall.interruptions++;
+          try {
+            window.__firasLive = Object.assign({}, window.__firasLive || {}, {
+              interruptions: liveCall.interruptions,
+              lastSentRms: Math.round(liveCall.lastSentRms * 1e4) / 1e4,
+              echoFloor: Math.round(liveCall.echoFloor * 1e4) / 1e4,
+            });
+          } catch (_) {}
+          liveCall.turnOpen = false; liveFlushPlayback(); callSetPhase("listening", ""); return;
+        }
         const parts = (sc.modelTurn && sc.modelTurn.parts) || [];
         if (parts.length) liveCall.turnOpen = true;
         for (const p of parts) {
