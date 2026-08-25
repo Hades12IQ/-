@@ -3573,7 +3573,16 @@ export default async (request, context) => {
       if (next.length > 200) return json({ error: "كلمة المرور طويلة جداً" }, 400);
       if (!(await verifyPassword(current, user.passHash))) return json({ error: "كلمة المرور الحالية غير صحيحة" }, 403);
       user.passHash = await hashPassword(next);
+      /* SECURITY / PARITY with server.mjs handleChangePassword: session values carry no
+         expiry, so sessVer is the ONLY revocation lever that exists. Leaving it untouched
+         made a password change purely cosmetic on this backend — the live one — and a
+         stolen cookie stayed valid forever. Bump, save, then re-issue THIS browser a cookie
+         signed with the NEW version, or the user who just changed their password is
+         instantly signed out of the tab they did it in. Pass user.sessVer, never
+         (user.sessVer || 0), which would re-sign the OLD version and undo the bump. */
+      user.sessVer = (user.sessVer || 0) + 1;
       await saveUser(user);
+      await attachSession(context, user.id, request, user.sessVer);   // keep THIS browser signed in
       return json({ ok: true });
     }
     if (path === "/api/auth/change-email" && method === "POST") {
