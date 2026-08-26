@@ -18300,10 +18300,18 @@ async function liveTryStart() {
             "language is " + lang + ", but the CALLER decides. If you are interrupted, stop " +
             "immediately and listen. " +
             "YOU CAN SEARCH THE WEB. When a question needs current information — news, prices, " +
-            "scores, what happened today, anything you are unsure of — SAY SO FIRST, in one short " +
-            "sentence, in the caller's own language and dialect: in Iraqi Arabic something like " +
-            "\u0644\u062d\u0638\u0629\u060c \u0623\u062f\u0648\u0651\u0631\u0644\u0643 \u0639\u0644\u0649 \u0627\u0644\u0645\u0648\u0636\u0648\u0639, in English something like " +
-            "\"one second, let me look that up\". Then search, then answer with what you found. " +
+            "scores, what happened today, anything you are unsure of — first say WHAT you are " +
+            "about to look up, in one short sentence, in the caller's own language and dialect. " +
+            "NAME THE SUBJECT; do not just promise to check. In Iraqi Arabic something like " +
+            "لحظة، أدوّرلك على سعر الدولار اليوم, in English something like " +
+            "\"one second, let me look up today's dollar rate\". " +
+            "THE ANNOUNCEMENT AND THE ANSWER ARE ONE SINGLE TURN — never two. Do NOT stop " +
+            "speaking the moment you have announced it, and do NOT hand the turn back to the " +
+            "caller to wait: search, then keep going in the SAME turn and tell them what you " +
+            "found. The caller must NEVER have to prompt you, ask what you found, or say " +
+            "anything at all between your announcement and your answer. If you are about to " +
+            "end a turn having promised to look something up but not yet said what you found, " +
+            "do not end it — give the answer now. " +
             "Never go silent while searching — a silent line sounds like a dropped call. " +
             "Say the answer, not the URLs." }] },
         },
@@ -18757,6 +18765,13 @@ function callFinishRecord() {
 /* ---- orb tap: interrupt speaking, or stop a tap-to-talk recording ---- */
 function callOrbTap() {
   if (!call.active) return;
+  /* LIVE MODE BRINGS ITS OWN TURN-TAKING. The socket's own voice detector decides when the
+     caller has started and stopped speaking, and barge-in works by simply talking over the
+     reply. Every branch below drives the THREE-HOP engine instead: callListen() starts a second
+     recogniser on top of the running session — so both engines answer the same question, out
+     loud, at once — and callStopSpeaking() silences only the three-hop's own TTS, never the live
+     playback it was aimed at. While the socket is up a tap here can do nothing but harm. */
+  if (call.live) return;
   if (call.phase === "speaking") { callStopSpeaking(); callListen(); return; }
   if (call.phase === "listening") {
     if (call.sr) { // SR mode: force-commit now
@@ -18773,6 +18788,17 @@ function callOrbTap() {
 function callToggleMute() {
   call.muted = !call.muted;
   if (els.callMute) els.callMute.classList.toggle("is-muted", call.muted);
+  /* LIVE MODE: MUTE IS A MICROPHONE GATE AND NOTHING ELSE. The capture worklet already reads
+     call.muted on every frame and stops sending the moment it is set, so the gate is complete
+     as soon as the flag flips — there is nothing left for this function to do. Everything below
+     belongs to the three-hop engine, and running it against a live session caused BOTH reported
+     faults at once: unmuting fell into callListen(), which starts a SECOND engine that
+     transcribes the caller, posts the text to the chat and reads the answer back (two voices
+     replying to one question), and whose very first statement is callStopSpeaking() — which is
+     why toggling the mic while it was talking cut the reply dead mid-word. Muting no longer
+     touches the phase either: the live session is still listening in its own sense, and
+     rewriting the phase underneath it is what let the next unmute think a turn was pending. */
+  if (call.live) return;
   if (call.muted) {
     clearTimeout(call.silence);
     if (call.sr) { try { call.sr.stop(); } catch (_) {} call.sr = null; }
@@ -18899,6 +18925,13 @@ function initCall() {
   // Leaving the tab pauses a live listen; returning resumes (privacy + no ghost mic).
   document.addEventListener("visibilitychange", () => {
     if (!call.active) return;
+    /* A LIVE SESSION RIDES OUT A TAB SWITCH BY ITSELF — it holds its own microphone and does its
+       own turn-taking, and nothing below applies to it. Everything here drives the three-hop
+       engine: returning to the tab called callListen(), which started a SECOND engine beside the
+       running socket, so both answered aloud at once. Same fault as the mute button, reached
+       through a different door — left here, it would have come back on the first tab switch and
+       looked like the fix had failed. */
+    if (call.live) return;
     if (document.hidden) { clearTimeout(call.silence); if (call.sr) { try { call.sr.stop(); } catch (_) {} call.sr = null; } if (call.rec) { callStopRecordHw(); call.rec = null; } callStopSpeaking(); }
     else if (call.phase === "listening" && !call.muted) callListen();
   });
