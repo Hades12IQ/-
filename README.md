@@ -111,8 +111,3 @@ FirasAI/
 The underlying free model is an internal detail and is **never** shown in the UI — users only ever see the three **Firas** tiers.
 
 ---
-
-## 🔒 Privacy & keys / الخصوصية والمفاتيح
-
-- No API key is required for the default free engine.
-- Any key you add stays **server-side** (env vars) and is never sent to the browser. Don't commit `.env`.
