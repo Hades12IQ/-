@@ -3307,6 +3307,37 @@ async function handleImage(req, res) {
          billing error, which switches the engine off permanently),
        · and this user has one of their two premium images left today.
      A failure here is never an error to the client: it returns null and Cloudflare answers. */
+  /* NANO BANANA (Gemini image) FIRST — chosen 2026-08-27 as the primary generator: strongest
+     of the free engines at ARABIC TEXT inside the image, which is the quality that matters most
+     for an Arabic-first product. Free key, no cost gate; any failure falls to Cloudflare. */
+  try {
+    const gem = await generateImageGemini(prompt);
+    if (gem && gem.buf && gem.buf.length) {
+      console.log("[firas] image served by Gemini (" + GEMINI_IMAGE_MODEL + ") [primary]");
+      const fin = await picsartEnhance(gem.buf, gem.mime);
+      await imgCacheSet(ckey, fin.buf, fin.mime);
+      if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
+      res.writeHead(200, { "Content-Type": fin.mime, "Cache-Control": "public, max-age=86400" });
+      return res.end(fin.buf);
+    }
+    if (GEMINI_API_KEY) console.error("[firas] Gemini returned no image → next engine");
+  } catch (_) { if (GEMINI_API_KEY) console.error("[firas] Gemini error → next engine"); }
+  // Cloudflare Workers AI (FREE FLUX.2, ~65/day) → great quality + in-image text at NO
+  // per-image cost. Falls through to the paid engines only once the free pools are gone.
+  try {
+    const cf = await generateImageCloudflare(prompt, w, h);
+    if (cf && cf.buf && cf.buf.length) {
+      console.log("[firas] image served by Cloudflare (" + CF_IMAGE_MODEL + ")");
+      const fin = await picsartEnhance(cf.buf, cf.mime);
+        await imgCacheSet(ckey, fin.buf, fin.mime);
+      if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
+      res.writeHead(200, { "Content-Type": fin.mime, "Cache-Control": "public, max-age=86400" });
+      return res.end(fin.buf);
+    }
+  } catch (_) { /* fall through to OpenAI */ }
+  /* OpenAI gpt-image — sharpest PAID engine, now a fallback rather than first: Nano Banana leads
+     on Arabic text, and paying per image to lead was the wrong default. Three gates still apply
+     (key, budget, this user's daily premium slot); any failure falls through to Puter. */
   if (OPENAI_API_KEY && openaiImageAllowed(user, slot)) {
     try {
       const oai = await generateImageOpenAI(prompt, w, h);
@@ -3325,23 +3356,9 @@ async function handleImage(req, res) {
         res.writeHead(200, { "Content-Type": fin.mime, "Cache-Control": "public, max-age=86400" });
         return res.end(fin.buf);
       }
-    } catch (_) { /* fall through to Cloudflare */ }
+    } catch (_) { /* fall through to Puter */ }
   }
-  // 0) Cloudflare Workers AI (FREE FLUX.2, ~65/day) → PRIMARY: great quality + in-image
-  // text at NO per-image cost and no user login. Falls through to Puter when its daily
-  // quota is exhausted, so paid credits are only spent once the free pool is gone.
-  try {
-    const cf = await generateImageCloudflare(prompt, w, h);
-    if (cf && cf.buf && cf.buf.length) {
-      console.log("[firas] image served by Cloudflare (" + CF_IMAGE_MODEL + ")");
-      const fin = await picsartEnhance(cf.buf, cf.mime);
-        await imgCacheSet(ckey, fin.buf, fin.mime);
-      if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
-      res.writeHead(200, { "Content-Type": fin.mime, "Cache-Control": "public, max-age=86400" });
-      return res.end(fin.buf);
-    }
-  } catch (_) { /* fall through to Puter */ }
-  // 1) Puter gpt-image-2 (paid credits) → premium fallback: the sharpest in-image text.
+  // Puter gpt-image-2 (paid credits) → premium fallback: the sharpest in-image text.
   try {
     const put = await generateImagePuter(prompt);
     if (put && put.buf && put.buf.length) {
@@ -3354,19 +3371,6 @@ async function handleImage(req, res) {
     }
     if (PUTER_AUTH_TOKEN) console.error("[firas] Puter returned no image → next engine");
   } catch (_) { if (PUTER_AUTH_TOKEN) console.error("[firas] Puter error → next engine"); }
-  // 2) Gemini (free key) → actual Gemini-image quality. Falls back to pollinations.
-  try {
-    const gem = await generateImageGemini(prompt);
-    if (gem && gem.buf && gem.buf.length) {
-      console.log("[firas] image served by Gemini (" + GEMINI_IMAGE_MODEL + ")");
-      const fin = await picsartEnhance(gem.buf, gem.mime);
-        await imgCacheSet(ckey, fin.buf, fin.mime);
-      if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
-      res.writeHead(200, { "Content-Type": fin.mime, "Cache-Control": "public, max-age=86400" });
-      return res.end(fin.buf);
-    }
-    if (GEMINI_API_KEY) console.error("[firas] Gemini returned no image → next engine");
-  } catch (_) { if (GEMINI_API_KEY) console.error("[firas] Gemini error → next engine"); }
   // 1b) Hugging Face FLUX.1-schnell (free token) → lossless PNG; ~on par with keyless.
   try {
     const hf = await generateImageHF(prompt);

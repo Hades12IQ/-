@@ -4922,26 +4922,19 @@ export default async (request, context) => {
       const slot = await imgSlotKey(prompt, w, h, seed);
       const isNew = !(slot in node);
       if (IMAGE_DAILY_LIMIT >= 0 && isNew && Object.keys(node).length >= IMAGE_DAILY_LIMIT) return new Response("daily limit reached", { status: 429 });
-      /* OpenAI gpt-image FIRST — the sharpest engine, and the one being paid for. Three gates,
-         all of which must pass: a key, money left against the ceiling, and one of this user's
-         two premium images for the day. Any failure returns null and Cloudflare answers, so this
-         can only make the result better, never break the request. */
-      if (OPENAI_API_KEY && await openaiImageAllowed(user.id, slot)) {
-        try {
-          const oai = await generateImageOpenAI(prompt, w, h);
-          if (oai && oai.bytes && oai.bytes.length) {
-            // Priced at the size actually requested — square and portrait do not cost the same.
-            // Charged at the quality that was actually produced: a medium request that fell back to low
-            // costs low, and the ceiling stays honest.
-            await openaiImageCharge(openaiImageCost(openaiImageSize(w, h), oai.quality || OPENAI_IMAGE_QUALITY));
-            await openaiImageMark(user.id, slot);
-            if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
-            return new Response(oai.bytes, { headers: { "Content-Type": oai.mime, "Cache-Control": "public, max-age=86400" } });
-          }
-        } catch (_) { /* fall through to Cloudflare */ }
-      }
+      /* NANO BANANA (Gemini image) FIRST — chosen as the primary generator on 2026-08-27:
+         it is the strongest of the free engines at ARABIC TEXT inside the image, which for an
+         Arabic-first product is the quality that matters most. Free key, so no cost gate. Any
+         failure returns null and the chain below answers, so this can only help, never break. */
+      try {
+        const gem = await generateImageGemini(prompt);
+        if (gem && gem.bytes && gem.bytes.length) {
+          if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
+          return new Response(gem.bytes, { headers: { "Content-Type": gem.mime, "Cache-Control": "public, max-age=86400" } });
+        }
+      } catch (_) { /* fall through to Cloudflare */ }
       // Cloudflare Workers AI (FREE FLUX.2, ~65/day) → great quality + in-image text,
-      // no per-image cost, no user login. Falls through to Puter when its daily quota is gone.
+      // no per-image cost, no user login. Falls through to OpenAI/Puter when its quota is gone.
       try {
         const cf = await generateImageCloudflare(prompt, w, h);
         if (cf && cf.bytes && cf.bytes.length) {
@@ -4949,20 +4942,26 @@ export default async (request, context) => {
           return new Response(cf.bytes, { headers: { "Content-Type": cf.mime, "Cache-Control": "public, max-age=86400" } });
         }
       } catch (_) { /* fall through */ }
+      /* OpenAI gpt-image — the sharpest PAID engine, now a fallback rather than first: Nano
+         Banana leads on Arabic text, and paying per image to lead was the wrong default. Three
+         gates still apply (key, budget, this user's daily premium slot); any failure falls on. */
+      if (OPENAI_API_KEY && await openaiImageAllowed(user.id, slot)) {
+        try {
+          const oai = await generateImageOpenAI(prompt, w, h);
+          if (oai && oai.bytes && oai.bytes.length) {
+            await openaiImageCharge(openaiImageCost(openaiImageSize(w, h), oai.quality || OPENAI_IMAGE_QUALITY));
+            await openaiImageMark(user.id, slot);
+            if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
+            return new Response(oai.bytes, { headers: { "Content-Type": oai.mime, "Cache-Control": "public, max-age=86400" } });
+          }
+        } catch (_) { /* fall through to Puter */ }
+      }
       // Puter gpt-image-2 (paid credits) → premium fallback: the sharpest in-image text.
       try {
         const put = await generateImagePuter(prompt);
         if (put && put.bytes && put.bytes.length) {
           if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
           return new Response(put.bytes, { headers: { "Content-Type": put.mime, "Cache-Control": "public, max-age=86400" } });
-        }
-      } catch (_) { /* fall through */ }
-      // Gemini (free key) → actual Gemini-image quality; else keyless pollinations.
-      try {
-        const gem = await generateImageGemini(prompt);
-        if (gem && gem.bytes && gem.bytes.length) {
-          if (isNew) { try { await dbPut(`imgQuota/${dbKey(user.id)}/${day}/${dbKey(slot)}`, true); } catch (_) {} }
-          return new Response(gem.bytes, { headers: { "Content-Type": gem.mime, "Cache-Control": "public, max-age=86400" } });
         }
       } catch (_) { /* fall through */ }
       // Hugging Face FLUX.1-schnell (free token) → lossless PNG; ~on par with keyless.
