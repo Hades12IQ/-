@@ -12,12 +12,57 @@
   <meta property="og:site_name" content="Firas AI" />
   <meta property="og:title" content="فِراس AI — مساعدك الذكي بالعربية | Firas AI" />
   <meta property="og:description" content="محادثة ذكية، ووكيل ينفّذ المهام الطويلة، وبيئة برمجة بالمتصفح، ومكتبة تجيب من ملفاتك مع رقم الصفحة — بالعربية والإنجليزية." />
-  <meta name="twitter:card" content="summary" />
+  <link rel="canonical" href="https://firasai.org/" />
+  <meta property="og:url" content="https://firasai.org/" />
+  <meta property="og:locale" content="ar" />
+  <meta property="og:locale:alternate" content="en" />
+  <meta property="og:image" content="https://firasai.org/media/og-image.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="فِراس AI — Firas AI" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://firasai.org/media/og-image.jpg" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="twitter:title" content="فِراس AI — مساعدك الذكي بالعربية | Firas AI" />
   <meta name="twitter:description" content="محادثة ذكية، ووكيل ينفّذ المهام الطويلة، وبيئة برمجة بالمتصفح، ومكتبة تجيب من ملفاتك مع رقم الصفحة — بالعربية والإنجليزية." />
   <meta name="apple-mobile-web-app-title" content="Firas AI" />
   <meta name="application-name" content="Firas AI" />
   <title>Firas AI — فِراس AI</title>
+
+  <!-- Structured data: tells search engines WHAT this is, not just what it says.
+       Facts only — no invented ratings, review counts, or download numbers. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://firasai.org/#org",
+        "name": "Firas AI",
+        "url": "https://firasai.org/",
+        "logo": "https://firasai.org/media/og-image.jpg",
+        "parentOrganization": { "@type": "Organization", "name": "MentronX", "url": "https://mentronx.com/" }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://firasai.org/#site",
+        "url": "https://firasai.org/",
+        "name": "Firas AI — فِراس AI",
+        "inLanguage": ["ar", "en"],
+        "publisher": { "@id": "https://firasai.org/#org" }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "Firas AI",
+        "url": "https://firasai.org/",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Web",
+        "description": "منصّة ذكاء اصطناعي بالعربية أولًا: محادثة، وكيل مهام، بيئة برمجة بالمتصفح، ومكتبة تجيب من ملفاتك مع رقم الصفحة.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    ]
+  }
+  </script>
 
   <!-- Theme bootstrap (runs BEFORE styles paint → no flash): DARK is the default;
        a returning visitor who explicitly chose light keeps light. -->
@@ -58,7 +103,7 @@
   <!-- Highlight.js + KaTeX stylesheets load LAZILY with their JS (see the loader below) so
        the site opens without waiting on ~350 KB of code/math libs it doesn't need yet. -->
 
-  <link rel="stylesheet" href="styles.css?v=v40" />
+  <link rel="stylesheet" href="styles.css?v=v41" />
 
   <!-- CDN libs: marked + DOMPurify are needed for the FIRST message render, so they load
        eagerly (defer). The HEAVY math + code-highlight libs (~350 KB) are NOT needed to open
@@ -105,7 +150,7 @@
        degrades gracefully (email/password still works) when it's absent. -->
   <script defer src="firebase-config.js"></script>
 
-  <script defer src="app.js?v=v40"></script>
+  <script defer src="app.js?v=v41"></script>
 </head>
 <body>
 <!--

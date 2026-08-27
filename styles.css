@@ -234,6 +234,163 @@
   --shadow-composer: 0 1px 2px rgba(0,0,0,0.50), 0 6px 18px rgba(0,0,0,0.45);
 }
 
+/* ── Extra themes ────────────────────────────────────────────────────────────
+   Each theme redefines the SAME token names with different values, so all ~6,400
+   lines of CSS below inherit it at once — the architecture the redesign was built
+   on. Every one of these is dark-family on purpose: previewTheme() in app.js reads
+   any theme that is not "light" as dark, and the product's binding constraint is
+   that it stays dark. Adding a LIGHT-family theme means teaching that function
+   first — see THEMES in app.js.
+   Contrast: every --color-text-muted below was checked against both its own --color-bg
+   and its --color-surface, because muted is the token that paints every placeholder. */
+
+/* PURE BLACK — for OLED panels, where black pixels are actually off. */
+[data-theme="black"] {
+  --color-bg:            #000000;
+  --color-bg-subtle:     #0A0A0A;
+  --color-surface:       #161616;
+  --color-surface-sunken:#0A0A0A;
+  --color-sidebar-bg:    #000000;
+
+  --color-text-primary:  #F2F2F0;
+  --color-text-secondary:#ABABA6;
+  --color-text-muted:    #8C8C87;
+
+  --color-border-hairline:#232323;
+  --color-border-strong:  #343432;
+
+  --color-accent:        #5FBBA7;
+  --color-accent-hover:  #74CFBB;
+  --color-accent-soft:   rgba(95,187,167,0.15);
+  --color-accent-ring:   rgba(95,187,167,0.45);
+  --color-on-accent:     #000000;
+  --color-accent-deep:   #2F6F62;
+
+  --color-success:       #4BA784;
+  --color-error:         #E06A60;
+
+  --color-line:          var(--color-accent);
+  --color-line-bright:   var(--color-accent-hover);
+  /* The grain is a metal tooth at 4% white — on a true black ground it lifts #000 to a
+     flat charcoal and throws away the entire reason to pick this theme. Off, not faint. */
+  --grain-opacity:       0;
+
+  --shadow-xs:    0 1px 1px rgba(0,0,0,0.7);
+  --shadow-sm:    0 1px 2px rgba(0,0,0,0.75), 0 2px 4px rgba(0,0,0,0.5);
+  --shadow-md:    0 2px 8px rgba(0,0,0,0.7);
+  --shadow-lg:    0 6px 20px rgba(0,0,0,0.8);
+  --shadow-composer: 0 1px 2px rgba(0,0,0,0.75), 0 6px 18px rgba(0,0,0,0.6);
+}
+
+/* MIDNIGHT — deep navy ground, cool blue signal. */
+[data-theme="midnight"] {
+  --color-bg:            #0F1522;
+  --color-bg-subtle:     #0A0E19;
+  --color-surface:       #182133;
+  --color-surface-sunken:#0A0E19;
+  --color-sidebar-bg:    #0A0E19;
+
+  --color-text-primary:  #E6ECF5;
+  --color-text-secondary:#9FACC2;
+  --color-text-muted:    #8695AE;
+
+  --color-border-hairline:#232E44;
+  --color-border-strong:  #33405A;
+
+  --color-accent:        #5AA9E6;
+  --color-accent-hover:  #7CBEF0;
+  --color-accent-soft:   rgba(90,169,230,0.15);
+  --color-accent-ring:   rgba(90,169,230,0.45);
+  --color-on-accent:     #0A0E19;
+  --color-accent-deep:   #2C6394;
+
+  --color-success:       #4BA784;
+  --color-error:         #E06A60;
+
+  --color-line:          var(--color-accent);
+  --color-line-bright:   var(--color-accent-hover);
+  --grain-opacity:       0.035;
+
+  --shadow-xs:    0 1px 1px rgba(0,0,0,0.5);
+  --shadow-sm:    0 1px 2px rgba(0,0,0,0.55), 0 2px 4px rgba(0,0,0,0.4);
+  --shadow-md:    0 2px 8px rgba(0,0,0,0.55);
+  --shadow-lg:    0 6px 20px rgba(0,0,0,0.62);
+  --shadow-composer: 0 1px 2px rgba(0,0,0,0.55), 0 6px 18px rgba(0,0,0,0.5);
+}
+
+/* GRAPHITE — neutral grey, no colour cast anywhere in the ground. */
+[data-theme="graphite"] {
+  --color-bg:            #171719;
+  --color-bg-subtle:     #101012;
+  --color-surface:       #202023;
+  --color-surface-sunken:#101012;
+  --color-sidebar-bg:    #101012;
+
+  --color-text-primary:  #ECECEE;
+  --color-text-secondary:#A5A5AA;
+  --color-text-muted:    #8B8B90;
+
+  --color-border-hairline:#2A2A2E;
+  --color-border-strong:  #3A3A3F;
+
+  --color-accent:        #57AE9C;
+  --color-accent-hover:  #6BC0AE;
+  --color-accent-soft:   rgba(87,174,156,0.14);
+  --color-accent-ring:   rgba(87,174,156,0.45);
+  --color-on-accent:     #101012;
+  --color-accent-deep:   #2F6F62;
+
+  --color-success:       #4BA784;
+  --color-error:         #E06A60;
+
+  --color-line:          var(--color-accent);
+  --color-line-bright:   var(--color-accent-hover);
+  --grain-opacity:       0.03;
+
+  --shadow-xs:    0 1px 1px rgba(0,0,0,0.5);
+  --shadow-sm:    0 1px 2px rgba(0,0,0,0.55), 0 2px 4px rgba(0,0,0,0.4);
+  --shadow-md:    0 2px 8px rgba(0,0,0,0.55);
+  --shadow-lg:    0 6px 20px rgba(0,0,0,0.62);
+  --shadow-composer: 0 1px 2px rgba(0,0,0,0.55), 0 6px 18px rgba(0,0,0,0.5);
+}
+
+/* AMBER — warm ground, brass signal. The astrolabe world after dark. */
+[data-theme="amber"] {
+  --color-bg:            #1B1713;
+  --color-bg-subtle:     #141110;
+  --color-surface:       #241F19;
+  --color-surface-sunken:#141110;
+  --color-sidebar-bg:    #141110;
+
+  --color-text-primary:  #F0E7D8;
+  --color-text-secondary:#B3A793;
+  --color-text-muted:    #9C907C;
+
+  --color-border-hairline:#332C23;
+  --color-border-strong:  #453C30;
+
+  --color-accent:        #D9A05B;
+  --color-accent-hover:  #E8B475;
+  --color-accent-soft:   rgba(217,160,91,0.15);
+  --color-accent-ring:   rgba(217,160,91,0.45);
+  --color-on-accent:     #1B1713;
+  --color-accent-deep:   #8A6234;
+
+  --color-success:       #8FBF6F;
+  --color-error:         #E06A60;
+
+  --color-line:          var(--color-accent);
+  --color-line-bright:   var(--color-accent-hover);
+  --grain-opacity:       0.05;
+
+  --shadow-xs:    0 1px 1px rgba(0,0,0,0.5);
+  --shadow-sm:    0 1px 2px rgba(0,0,0,0.55), 0 2px 4px rgba(0,0,0,0.4);
+  --shadow-md:    0 2px 8px rgba(0,0,0,0.55);
+  --shadow-lg:    0 6px 20px rgba(0,0,0,0.62);
+  --shadow-composer: 0 1px 2px rgba(0,0,0,0.55), 0 6px 18px rgba(0,0,0,0.5);
+}
+
+
 /* ----------------------------------------------------------------------------
    2. Base + Motion + Accessibility
 ---------------------------------------------------------------------------- */
@@ -518,8 +675,19 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
   padding: 2px 6px; font-size: var(--text-sm); color: var(--color-text-primary);
 }
 .chat-item__actions { display: none; gap: 2px; flex: 0 0 auto; }
-.chat-item:hover .chat-item__actions,
 .chat-item.is-active .chat-item__actions { display: flex; }
+/* HOVER-REVEAL ONLY WHERE HOVER IS REAL. A touch screen SYNTHESISES :hover on the first tap,
+   which flipped this from none to flex and reflowed the row while the finger was still down —
+   the click then landed on shifted geometry and the chat only opened on the SECOND tap. That
+   is the reported "المحادثات مرتين اضغط حتى تفتح", and it is a layout change mid-gesture, not
+   a slow handler: nothing in JS was ever wrong. */
+@media (hover: hover) and (pointer: fine) {
+  .chat-item:hover .chat-item__actions { display: flex; }
+}
+/* Touch: always present, so the row's geometry is identical before and after the tap. */
+@media (hover: none) {
+  .chat-item__actions { display: flex; }
+}
 .chat-item__actions button {
   display: grid; place-items: center;
   inline-size: 26px; block-size: 26px;
@@ -781,10 +949,13 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 .msg-user { display: flex; justify-content: flex-end; }
 .msg-user__bubble {
   max-inline-size: 85%;
-  padding: var(--space-3) var(--space-4);
+  /* 14px block padding buys the bubble its height: a one-line message lands ~58px tall,
+     safely past where the 20px radius could close it into a capsule. The 20px inline padding
+     keeps the first and last glyph off the corner arcs. */
+  padding: 14px var(--space-5);
   background: var(--color-surface);
   border: var(--border-hairline) solid var(--color-border-hairline);
-  border-radius: var(--radius-lg);
+  border-radius: var(--soft-radius);
   box-shadow: var(--shadow-xs);
   /* Long-press (any device) opens ONLY our Copy menu — never the OS callout and never a
      text selection. The user copies via the button, not by selecting the text. */
@@ -921,6 +1092,12 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 .md h2 { font-size: var(--text-2xl); line-height: var(--leading-2xl); }
 .md h3 { font-size: var(--text-xl); line-height: var(--leading-xl); }
 .md ul, .md ol { margin: 0 0 var(--space-4); padding-inline-start: var(--space-6); }
+/* An RTL ordered list renders "1." as ".1". The digit is a strong LTR character and the period
+   is NEUTRAL, so the paragraph's right-to-left direction pulls the period to the left of the
+   number it belongs to. Isolating the marker in its own left-to-right run keeps the pair in the
+   order every reader expects, in Arabic exactly as in English. ::marker accepts `direction` and
+   `unicode-bidi` precisely for this; it is a no-op on a list that is already LTR. */
+.md ol > li::marker { direction: ltr; unicode-bidi: isolate; }
 .md li { margin: var(--space-2) 0; }
 .md a {
   color: var(--color-accent);
@@ -2712,7 +2889,9 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 }
 .msg-user__images img {
   max-inline-size: 180px; max-block-size: 180px;
-  border-radius: var(--radius-sm);
+  /* Follows the bubble's corner instead of cutting across it: the usable inner radius is
+     (--soft-radius minus the padding), so a 3px square-ish corner read as a notch in the arc. */
+  border-radius: var(--radius-lg);
   border: var(--border-hairline) solid var(--color-border-hairline);
   display: block; object-fit: cover;
 }
@@ -2861,168 +3040,112 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 .file-card__dl svg { inline-size: 15px; block-size: 15px; }
 
 /* ---- Generated image card ---- */
+/* ══ THE IMAGE CARD ════════════════════════════════════════════════════════════
+   The plate is SMALLER than the finished picture while it works. It is a placeholder, not
+   the picture, and should not claim the final size; growing into the real one at the end
+   turns the arrival into a change of state rather than a swap. Every colour below is a theme
+   token, so the whole thing is teal on Dark, navy on Midnight and brass on Amber for free. */
 .image-card {
   inline-size: 100%; max-inline-size: 420px;
   margin-block: var(--space-3) var(--space-1);
+  transition: max-inline-size 900ms var(--ease-out);
 }
+.image-card.is-loading { max-inline-size: 300px; }
+
 .image-card__frame {
   position: relative; overflow: hidden;
-  inline-size: 100%; aspect-ratio: 1 / 1;
-  border-radius: var(--radius-lg);
+  inline-size: 100%;
+  /* --img-ar is set from the file's OWN naturalWidth/Height the instant it decodes, before the
+     reveal begins, so the frame grows straight into the picture's shape instead of snapping to
+     a square and then correcting. */
+  aspect-ratio: var(--img-ar, 1 / 1);
+  border-radius: var(--soft-radius);
   background: var(--color-bg-subtle);
   border: var(--border-hairline) solid var(--color-border-hairline);
+  transition: aspect-ratio 900ms var(--ease-out);
 }
-/* Generating effect: glowing accent border + sweeping shimmer over the frame. */
-.image-card.is-loading .image-card__frame {
-  border-color: transparent;
-  box-shadow: 0 0 0 1.5px var(--color-accent-soft), 0 10px 34px -12px var(--color-accent);
-  animation: imgGlow 1.7s ease-in-out infinite;
+.image-card.is-loading .image-card__frame { aspect-ratio: 1 / 1; }
+
+/* THE SHEEN. One pass, top-right to bottom-left, only during the reveal. Deliberately
+   PHYSICAL translate values, not logical: the sweep is a light source crossing a plate, so it
+   must fall the same way in Arabic as in English — this is the one place in this file where a
+   logical property would be the bug rather than the fix. */
+.image-card__frame::after {
+  content: ""; position: absolute; inset: -25%;
+  z-index: 3; pointer-events: none; opacity: 0;
+  background: linear-gradient(205deg,
+    transparent 40%,
+    color-mix(in srgb, #FFFFFF 24%, transparent) 50%,
+    transparent 60%);
+  transform: translate3d(65%, -65%, 0);
 }
-/* The frame no longer runs its own shimmer: the loader below sweeps its own light across the
-   plate, and two diagonal sweeps at different speeds read as a glitch rather than as craft. */
-.image-card.is-loading .image-card__frame {
-  background:
-    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--color-accent) 7%, transparent), transparent 60%),
-    var(--color-bg-subtle);
+.image-card.is-revealing .image-card__frame::after {
+  animation: imgSheen 1100ms cubic-bezier(.4, 0, .2, 1) 360ms both;
 }
-@keyframes imgGlow {
-  0%, 100% { box-shadow: 0 0 0 1px var(--color-accent-soft), 0 8px 24px -14px var(--color-accent); }
-  50%      { box-shadow: 0 0 0 2px var(--color-accent), 0 16px 44px -10px var(--color-accent); }
+@keyframes imgSheen {
+  0%   { opacity: 0; transform: translate3d(65%, -65%, 0); }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(-65%, 65%, 0); }
 }
-@keyframes imgShimmer { from { background-position: 220% 0; } to { background-position: -220% 0; } }
+
+/* ── The dot field ─────────────────────────────────────────────────────────── */
 .image-card__loader {
-  position: absolute; inset: 0; z-index: 1;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2);
-  color: var(--color-text-secondary);
-  font-family: var(--font-sans); font-size: var(--text-sm);
+  position: absolute; inset: 0; z-index: 2;
+  opacity: 1; transition: opacity 620ms var(--ease-out);
 }
-[dir="rtl"] .image-card__loader { font-family: var(--font-arabic); }
+.image-card.is-revealing .image-card__loader { opacity: 0; }
 .image-card.is-done .image-card__loader { display: none; }
-/* ══ THE IMAGE IS BEING MADE ══════════════════════════════════════════
-   A picture at full quality takes minutes now that the background runner holds the clock, so this
-   is looked at rather than glimpsed - and what is looked at for minutes has to be quiet.
+.imgload__dots { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; }
+/* The header follows the LANGUAGE: the element carries its own dir, so inset-inline-start puts
+   the pulse and the word on the right in Arabic and on the left in English. */
+.imgload__head {
+  position: absolute; inset-block-start: 0; inset-inline-start: 0;
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 18px 20px;
+  font-family: var(--font-sans); font-size: 13.5px; font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  user-select: none;
+}
+.imgload__head[dir="rtl"], [dir="rtl"] .imgload__head { font-family: var(--font-arabic); }
+.imgload__pulse { position: relative; flex: 0 0 auto; inline-size: 8px; block-size: 8px; display: inline-flex; align-items: center; justify-content: center; }
+.imgload__pulse i {
+  inline-size: 6.5px; block-size: 6.5px; border-radius: 50%;
+  background: var(--color-accent); box-shadow: 0 0 12px var(--color-accent-ring);
+}
+.imgload__pulse::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid var(--color-accent);
+  animation: imgPulseRing 2.2s cubic-bezier(.2, .8, .2, 1) infinite;
+}
+@keyframes imgPulseRing {
+  0%        { transform: scale(.8); opacity: .85; }
+  80%, 100% { transform: scale(2.8); opacity: 0; }
+}
+.imgload__word { transition: opacity .24s var(--ease-out), transform .24s var(--ease-out); }
+.imgload__word.is-out { opacity: 0; transform: translateY(-4px); }
 
-   The first attempt was a six-bladed aperture spinning over a glow, with three dots bouncing
-   underneath. Read back as toy-like, and rightly: fast rotation, a symmetrical flower and
-   bouncing dots are the vocabulary of a game loading screen. Restraint is what separates this
-   from that, so the whole thing is now three elements, none of them fast:
-
-     · a light source drifting behind the plate, too slow to watch (11s)
-     · ONE fine line travelling down the frame, the way a plate develops (4.2s)
-     · a hairline progress bar - indeterminate, because we genuinely do not know
-
-   Nothing rotates. Nothing bounces. Nothing shares a clock with anything else, so the composition
-   never pulses in unison the way a progress bar pretends to. */
-.imgload {
-  position: relative;
-  display: flex; align-items: flex-end; justify-content: center;
-  inline-size: 100%; block-size: 100%;
-  overflow: hidden;
-  border-radius: inherit;
-}
-
-/* The light behind the plate. Two wide fields, heavily blurred, drifting out of step with each
-   other so the frame is never evenly lit and never obviously repeating. */
-.imgload__aura {
-  position: absolute; inset: -30%;
-  background:
-    radial-gradient(42% 42% at 34% 30%, color-mix(in srgb, var(--color-accent) 20%, transparent), transparent 72%),
-    radial-gradient(34% 34% at 70% 68%, color-mix(in srgb, var(--color-accent-deep, var(--color-accent)) 15%, transparent), transparent 74%);
-  filter: blur(34px);
-  opacity: 0.6;
-  animation: imgloadAura 11s var(--ease-inout) infinite;
-}
-@keyframes imgloadAura {
-  0%, 100% { transform: translate3d(-3%, -2%, 0) scale(1); }
-  50%      { transform: translate3d(4%, 3%, 0) scale(1.08); }
-}
-
-/* The developing line. A single hairline with its own soft bloom, crossing the plate top to
-   bottom and pausing at each end - the pause is what stops it reading as a machine part. */
-.imgload__scan {
-  position: absolute; inset-inline: 0; inset-block-start: 0;
-  block-size: 1px;
-  background: linear-gradient(90deg,
-    transparent,
-    color-mix(in srgb, var(--color-accent) 55%, transparent) 22%,
-    color-mix(in srgb, var(--color-accent) 85%, transparent) 50%,
-    color-mix(in srgb, var(--color-accent) 55%, transparent) 78%,
-    transparent);
-  box-shadow: 0 0 18px 2px color-mix(in srgb, var(--color-accent) 26%, transparent);
-  animation: imgloadScan 4.2s var(--ease-inout) infinite;
-}
-/* Travels in PERCENT of the frame, not a fixed pixel distance. A transform percentage resolves
-   against the element's own box, and this element is one pixel tall, so translateY(100%) would
-   have moved it exactly one pixel; a fixed px travel instead stops partway down any frame taller
-   than the guess. Offsetting the position resolves against the FRAME, which is the thing being
-   crossed, so it reaches the bottom of a square, a banner and a portrait alike. */
-@keyframes imgloadScan {
-  0%       { inset-block-start: 0;    opacity: 0; }
-  12%      { opacity: 0.85; }
-  50%      { inset-block-start: 100%; opacity: 0.85; }
-  62%      { opacity: 0; }
-  100%     { inset-block-start: 100%; opacity: 0; }
-}
-
-/* Label and bar sit together at the foot of the plate rather than dead centre: centred, they
-   compete with the light for the middle of the frame; at the foot they read as a caption. */
-.imgload__meta {
-  position: relative; z-index: 1;
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  margin-block-end: 26px;
-}
-.imgload__label {
-  font-family: var(--font-sans); font-size: 12px; font-weight: 500;
-  letter-spacing: 0.06em;
-  color: color-mix(in srgb, var(--color-text-secondary) 88%, transparent);
-  animation: imgloadBreathe 3.4s var(--ease-inout) infinite;
-}
-[dir="rtl"] .imgload__label { font-family: var(--font-arabic); letter-spacing: 0; }
-@keyframes imgloadBreathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
-
-/* Indeterminate on purpose: a filling bar would be a claim about how far along this is, and we
-   do not know. A segment crossing a track says "running" without inventing a number. */
-.imgload__bar {
-  position: relative; display: block; overflow: hidden;
-  inline-size: 108px; block-size: 2px; border-radius: 2px;
-  background: color-mix(in srgb, var(--color-text-secondary) 16%, transparent);
-}
-.imgload__bar i {
-  position: absolute; inset-block: 0; inset-inline-start: 0;
-  inline-size: 42%; border-radius: 2px;
-  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
-  animation: imgloadTrack 1.9s var(--ease-inout) infinite;
-}
-/* translate, not inset-inline-start: a logical offset flips under RTL and the segment would
-   travel out of its own track. A transform is direction-agnostic. */
-@keyframes imgloadTrack {
-  0%   { transform: translateX(-110%); }
-  100% { transform: translateX(275%); }
-}
-
-/* A failed render keeps the frame and the message and stops every moving part - motion after a
-   failure reads as "still trying", which is a lie. */
-.image-card.is-error .imgload__scan,
-.image-card.is-error .imgload__aura,
-.image-card.is-error .imgload__bar { display: none; }
-.image-card.is-error .imgload__label {
-  animation: none; opacity: 1;
-  color: var(--color-danger, var(--color-error));
-}
+/* Failure keeps the plate and the word, drops everything that implies progress. */
+.image-card.is-error .imgload__dots,
+.image-card.is-error .imgload__pulse { display: none; }
+.image-card.is-error .imgload__word { color: var(--color-error); }
 
 @media (prefers-reduced-motion: reduce) {
-  .imgload__aura, .imgload__scan, .imgload__label, .imgload__bar i { animation: none; }
-  .imgload__scan { opacity: 0.5; }
-  .imgload__label { opacity: 0.9; }
-  .imgload__bar i { inline-size: 100%; opacity: 0.5; }
+  .imgload__pulse::after { animation: none; }
+  .image-card.is-revealing .image-card__frame::after { animation: none; }
 }
+:root[data-motion="off"] .imgload__pulse::after,
+:root[data-motion="off"] .image-card.is-revealing .image-card__frame::after { animation: none; }
+
 .image-card__img {
   display: block; position: absolute; inset: 0;
   inline-size: 100%; block-size: 100%; object-fit: cover;
-  opacity: 0; transition: opacity var(--dur-base) var(--ease-out);
+  opacity: 0; transform: scale(1.04);
+  transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-out);
 }
+.image-card.is-revealing .image-card__img { opacity: 1; transform: scale(1); transition-delay: 500ms; }
 .image-card.is-done .image-card__frame { aspect-ratio: auto; }
-.image-card.is-done .image-card__img { position: relative; block-size: auto; opacity: 1; }
+.image-card.is-done .image-card__img { position: relative; block-size: auto; opacity: 1; transform: none; cursor: zoom-in; }
 .image-card__bar {
   display: flex; align-items: center; gap: var(--space-2);
   margin-block-start: var(--space-2);
@@ -3047,6 +3170,73 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 .image-card__dl[hidden] { display: none; }
 .image-card__dl:hover { background: var(--color-accent-hover); }
 .image-card__dl svg { inline-size: 15px; block-size: 15px; }
+
+
+/* ══ FULL-SIZE VIEWER ══════════════════════════════════════════════════════════
+   Sized in dvh/dvw so a phone's collapsing address bar cannot crop the picture, and every
+   control is inset from the safe area so nothing lands under a notch or a home indicator. */
+body.imgview-open { overflow: hidden; }
+.imgview {
+  position: fixed; inset: 0; z-index: 1400;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px;
+  padding: max(64px, calc(env(safe-area-inset-top) + 56px)) 16px max(16px, calc(env(safe-area-inset-bottom) + 8px));
+  background: rgba(0, 0, 0, .86);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  opacity: 0; transition: opacity 200ms var(--ease-out);
+}
+.imgview.is-open { opacity: 1; }
+.imgview__stage {
+  flex: 1 1 auto; min-block-size: 0;
+  inline-size: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+.imgview__img {
+  max-inline-size: min(100%, 1400px);
+  max-block-size: 100%;
+  inline-size: auto; block-size: auto;
+  object-fit: contain;
+  border-radius: var(--soft-radius);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6);
+  transform: scale(.96); transition: transform 260ms var(--ease-out);
+}
+.imgview.is-open .imgview__img { transform: scale(1); }
+.imgview__x {
+  position: absolute;
+  inset-block-start: max(12px, env(safe-area-inset-top));
+  inset-inline-end: max(12px, env(safe-area-inset-right));
+  inline-size: 40px; block-size: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .12); color: #fff;
+  transition: background 150ms var(--ease-out);
+}
+.imgview__x:hover { background: rgba(255, 255, 255, .22); }
+.imgview__x svg { inline-size: 20px; block-size: 20px; }
+.imgview__bar { flex: 0 0 auto; }
+.imgview__dl {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 20px; border-radius: var(--radius-pill);
+  background: var(--color-accent); color: var(--color-on-accent);
+  font: var(--weight-semibold) 14px var(--font-sans);
+  transition: background 150ms var(--ease-out);
+}
+[dir="rtl"] .imgview__dl { font-family: var(--font-arabic); }
+.imgview__dl:hover { background: var(--color-accent-hover); }
+.imgview__dl svg { inline-size: 16px; block-size: 16px; }
+
+/* Phones: the picture takes the room, the chrome shrinks out of its way. */
+@media (max-width: 560px) {
+  .imgview { gap: 10px; padding-inline: 10px; }
+  .imgview__x { inline-size: 36px; block-size: 36px; }
+  .imgview__dl { padding: 10px 18px; font-size: 13.5px; }
+  .imgload__head { padding: 14px 15px; font-size: 12.5px; }
+  .image-card.is-loading { max-inline-size: 260px; }
+}
+/* Tablets and up: the loader plate can afford to be a little larger. */
+@media (min-width: 768px) {
+  .image-card.is-loading { max-inline-size: 320px; }
+}
 
 /* ---- Code deliverable card (live editor window) — always dark, editor-style ---- */
 .code-card {
@@ -3322,7 +3512,15 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 }
 
 /* Account settings panel */
-.settings-card{width:min(470px,100%);max-height:88vh}
+/* A FIXED height, not a floor. The dialog is centred, so while its height tracked the
+   active tab the whole panel slid up and down the screen on every tab change — measured
+   at 189px between Account and Voice, which moves the tab strip out from under the finger
+   that just tapped it. A min-height only shrinks that jump; pinning the height removes it.
+   The body already scrolls, so a tall tab is unaffected. */
+.settings-card{width:min(470px,100%);height:min(620px,88vh);max-height:88vh}
+/* min-height: the dialog is vertically centred, so without a floor its height follows the
+   active tab's content and the whole panel JUMPS up the screen when you move from Account
+   (five cards) to Voice (two). The tab strip should stay under the same finger. */
 .set-body{padding:16px 18px 20px;overflow:auto;display:flex;flex-direction:column;gap:14px}
 /* account hero */
 .set-hero{display:flex;align-items:center;gap:14px;padding:16px 16px;border-radius:var(--radius-lg);background:linear-gradient(150deg,var(--color-accent-soft),transparent 70%),var(--color-bg-subtle);border:1px solid var(--color-border-hairline)}
@@ -3347,6 +3545,59 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 .set-lbl-hint{color:var(--color-text-muted);font-weight:400}
 .set-in{width:100%;background:var(--color-bg-subtle);color:var(--color-text-primary);border:1px solid var(--color-border-strong);border-radius:var(--radius-md);padding:10px 12px;font:400 14px/1.4 var(--font-sans);transition:border-color .15s,box-shadow .15s}
 .set-in:focus{outline:none;border-color:var(--color-accent);box-shadow:var(--shadow-focus);background:var(--color-surface)}
+
+/* ── Settings: tabs ──────────────────────────────────────────────────────────
+   The panel used to be one flat scroll of thirteen cards, so reaching "about" meant
+   passing the delete-account button, and changing a password meant scrolling past the
+   theme. Five tabs; the strip scrolls sideways rather than wrapping on a narrow phone. */
+.set-tabs{display:flex;gap:2px;padding:0 14px;flex:0 0 auto;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--color-border-hairline)}
+.set-tabs::-webkit-scrollbar{display:none}
+.set-tab{flex:0 0 auto;padding:11px 12px;background:transparent;color:var(--color-text-secondary);font:500 13.5px var(--font-sans);white-space:nowrap;box-shadow:inset 0 -2px 0 transparent;transition:color .15s,box-shadow .15s}
+.set-tab:hover{color:var(--color-text-primary)}
+.set-tab.is-active{color:var(--color-text-primary);font-weight:600;box-shadow:inset 0 -2px 0 var(--color-accent)}
+/* An inactive pane is hidden, never detached — every querySelector in openSettingsPanel
+   must keep resolving whether or not its tab has been opened. */
+.set-pane{display:none;flex-direction:column;gap:14px}
+.set-pane.is-active{display:flex}
+
+/* ── Settings: theme tiles ───────────────────────────────────────────────────
+   Each tile paints its own ground, surface and accent, so a theme is chosen by looking
+   rather than by reading six names none of which mean anything until you try them. */
+.set-theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.set-theme-tile{display:flex;flex-direction:column;align-items:center;gap:7px;padding:9px 6px;border-radius:var(--radius-md);border:1px solid var(--color-border-hairline);background:var(--color-bg-subtle);transition:border-color .15s,box-shadow .15s}
+.set-theme-tile:hover{border-color:var(--color-border-strong)}
+.set-theme-tile.is-active{border-color:var(--color-accent);box-shadow:0 0 0 1px var(--color-accent)}
+/* A hairline in a neutral grey, not a token: the chip shows OTHER themes' colours, and a
+   themed border would misreport the tile it frames. */
+.set-tile-chip{position:relative;display:block;width:100%;height:34px;border-radius:var(--radius-sm);border:1px solid rgba(128,128,128,.3);overflow:hidden}
+.set-tile-surf{position:absolute;inset:auto 0 0 0;height:13px;display:block}
+.set-tile-acc{position:absolute;top:6px;left:6px;width:15px;height:6px;border-radius:3px;display:block}
+.set-tile-name{font:500 12px var(--font-sans);color:var(--color-text-secondary);line-height:1.2}
+.set-theme-tile.is-active .set-tile-name{color:var(--color-text-primary);font-weight:600}
+
+/* ── Settings: select (call voice, dictation dialect) ────────────────────── */
+.set-select{width:100%;background:var(--color-bg-subtle);color:var(--color-text-primary);border:1px solid var(--color-border-strong);border-radius:var(--radius-md);padding:10px 12px;font:400 14px/1.4 var(--font-sans);cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.set-select:focus{outline:none;border-color:var(--color-accent);box-shadow:var(--shadow-focus);background:var(--color-surface)}
+/* Native dropdown lists ignore the control's colours in several browsers; setting them on
+   the options is what keeps the list readable in the dark themes. */
+.set-select option{background:var(--color-surface);color:var(--color-text-primary)}
+
+/* ── Settings: labelled switch rows ──────────────────────────────────────── */
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.set-row + .set-row{padding-top:12px;border-top:1px solid var(--color-border-hairline)}
+.set-row-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.set-row-t strong{font:600 13.5px var(--font-sans);color:var(--color-text-primary)}
+.set-row-t em{font:400 12px/1.35 var(--font-sans);color:var(--color-text-muted);font-style:normal}
+.set-switch{flex:0 0 auto;position:relative;width:42px;height:24px;padding:0;border-radius:var(--radius-pill);background:var(--color-bg-subtle);border:1px solid var(--color-border-strong);transition:background .18s,border-color .18s}
+.set-switch>span{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--color-text-muted);transition:transform .18s,background .18s}
+.set-switch.is-on{background:var(--color-accent-soft);border-color:var(--color-accent)}
+.set-switch.is-on>span{background:var(--color-accent);transform:translateX(18px)}
+/* The shell is fixed LTR (see html.dir in app.js), so this never fires today. It is here
+   because inset + translateX is the pair that silently breaks if any ancestor ever turns
+   RTL: the anchor flips to the right edge while the transform still travels right, and the
+   knob leaves the switch entirely. */
+[dir="rtl"] .set-switch>span{left:auto;right:2px}
+[dir="rtl"] .set-switch.is-on>span{transform:translateX(-18px)}
 .set-save{align-self:flex-start;margin-top:2px;background:var(--color-accent);color:var(--color-on-accent);border:none;border-radius:var(--radius-pill);padding:10px 22px;font:600 13px var(--font-sans);cursor:pointer;transition:.15s}
 .set-save:hover{background:var(--color-accent-hover)}
 .set-save:disabled{opacity:.55;cursor:default}
@@ -3468,7 +3719,65 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 
 /* Pinned conversations */
 .chat-item__pin{opacity:0;transition:opacity .15s,color .15s}
-.chat-item:hover .chat-item__pin,.chat-item.is-pinned .chat-item__pin{opacity:1}
+.chat-item.is-pinned .chat-item__pin{opacity:1}
+/* Opacity alone does not move anything, so this one never broke a tap — but a control that
+   only appears on a hover the device cannot produce is simply unreachable. */
+@media (hover: hover) and (pointer: fine) { .chat-item:hover .chat-item__pin{opacity:1} }
+@media (hover: none) { .chat-item__pin{opacity:.75} }
+
+/* The announcements panel opens INSTANTLY now and fills in when the data lands, so it needs a
+   waiting face. Sized like the real card so the swap is not a jump. */
+.ann-card--wait { min-block-size: 190px; display: flex; align-items: center; justify-content: center; }
+.ann-spin {
+  inline-size: 26px; block-size: 26px; border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  border-top-color: var(--color-accent);
+  animation: annSpin .8s linear infinite;
+}
+@keyframes annSpin { to { transform: rotate(360deg); } }
+
+/* ══ THE MENTRONX SIGNATURE (entry interstitial) ══════════════════════════════
+   Silent monochrome: both strokes take the ACTIVE THEME'S text tokens, so the card
+   is native in all six themes and needs no palette of its own. The M-line's dash
+   length is the measured path length (~198), not a round guess — a short dash makes
+   the pen visibly "jump" at the end of the write. */
+.mx-intro {
+  position: fixed; inset: 0; z-index: 4000;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-bg);
+  opacity: 1; transition: opacity 340ms var(--ease-out);
+}
+.mx-intro.is-out { opacity: 0; pointer-events: none; }
+.mx-intro__stage { display: flex; align-items: center; gap: 0; }
+.mx-intro__mark { width: 200px; height: auto; transition: width 560ms var(--ease-inout); }
+.mx-intro__m, .mx-intro__x { stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.mx-intro__m { stroke: var(--color-text-primary); stroke-dasharray: 200; stroke-dashoffset: 200; }
+.mx-intro__x { stroke: var(--color-text-muted);   stroke-dasharray: 49;  stroke-dashoffset: 49; }
+/* The write: pen pace — an ease that starts deliberate and lands soft, then the
+   crossing stroke closes the figure in one shorter gesture. */
+.mx-intro.is-draw .mx-intro__m { animation: mxWrite 1150ms cubic-bezier(.5, .05, .3, 1) forwards; }
+.mx-intro.is-draw .mx-intro__x { animation: mxWrite 420ms cubic-bezier(.4, 0, .3, 1) 1120ms forwards; }
+@keyframes mxWrite { to { stroke-dashoffset: 0; } }
+/* The bow: the mark shrinks aside and its name arrives. Reduced motion enters here
+   directly — finished figure, no theatre — so the strokes must be complete WITHOUT
+   the draw animation ever having run. */
+.mx-intro.is-lockup .mx-intro__m, .mx-intro.is-lockup .mx-intro__x { stroke-dashoffset: 0; animation: none; }
+.mx-intro.is-lockup .mx-intro__mark { width: 64px; }
+.mx-intro__word {
+  font: 600 22px var(--font-sans); letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+  max-width: 0; overflow: hidden; white-space: nowrap;
+  opacity: 0; transform: translateX(-6px);
+  transition: opacity 480ms var(--ease-out) 180ms, transform 480ms var(--ease-out) 180ms,
+              max-width 560ms var(--ease-inout), margin 560ms var(--ease-inout);
+}
+.mx-intro.is-lockup .mx-intro__word { max-width: 240px; margin-inline-start: 16px; opacity: 1; transform: none; }
+/* `top: -3px`: the BY is small caps beside a large word, and sharing the baseline makes it
+   read as SUNK — optical alignment wants small type lifted toward the big type's midline. */
+.mx-intro__word i { font-style: normal; font-weight: 500; font-size: 13px; letter-spacing: .14em; color: var(--color-text-muted); margin-inline-end: 4px; position: relative; top: -3px; }
+:root[data-motion="off"] .mx-intro__mark,
+:root[data-motion="off"] .mx-intro__word { transition: none; }
+:root[data-motion="off"] .ann-spin { animation-duration: 2.4s; }
 .chat-item__pin.is-on{color:var(--color-accent)}
 .history__group-label--pinned{display:flex;align-items:center;gap:5px;color:var(--color-accent)}
 .history__group-label--pinned .pin-dot{display:inline-flex}
@@ -4158,11 +4467,50 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
   /* --column-w stays 744px (defined L108) — composer/welcome/frame lever.   */
   --reading-w: 704px;                 /* prose measure (~66ch @ 17px serif)  */
   --turn-gap:  var(--space-10);       /* 40px vertical rhythm between turns  */
-  --user-fill: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  /* THE USER BUBBLE NOW READS AS A BUBBLE. It was --color-accent at 12% over the surface:
+     a tint so faint that on a dark ground it was indistinguishable from any other card, so
+     the reader's own words never separated from the assistant's. Same idea at real strength.
+
+     Built from --color-accent-deep, NOT --color-accent: the deep token is the saturated,
+     low-luminance member of each palette, which is what gives a solid fill weight instead of
+     glare — full-strength --color-accent would be a bright mint slab.
+
+     DERIVED, never hard-coded. Every theme already defines --color-accent-deep, so the bubble
+     comes out teal on Dark and Black, navy on Midnight, brass on Amber, and any theme added
+     later inherits a harmonised version with no extra rule. That is the whole point of the
+     replace-values-not-names architecture this file is built on. */
+  --user-fill: color-mix(in srgb, var(--color-accent-deep) 90%, var(--color-surface));
+  /* White clears AA on every one of the six deep tokens (measured: 5.1:1 on Amber's #8A6234,
+     the tightest of them; 8.4:1 on Light's #14544A). */
+  --user-ink:  #FFFFFF;
+  --user-edge: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  /* One hairline of light along the top edge — the machined-plate treatment the rest of this
+     world uses. Not a gradient wash: a coloured bleed is the exact tell the design refuses. */
+  --user-sheen: inset 0 1px 0 color-mix(in srgb, #FFFFFF 16%, transparent);
+  /* A DELIBERATE BREAK FROM THE RADIUS SCALE, which tops out at --radius-xl: 9px because the
+     rest of this world is machined plate, not soft UI. The user bubble is the one element that
+     should read as speech, so it gets its own named token rather than a magic number or a
+     redefined --radius-lg (which would round every card in the app).
+     20px against the ~58px single-line bubble stays clearly UNDER half its height, so a short
+     message reads as a softly-rounded card. The first cut used 24px, which on a short "هلو"
+     closed into a full capsule — and a small capsule beside a composer full of pill buttons
+     reads as ANOTHER BUTTON, which is exactly what Firas flagged (الحجم أو الشكل). */
+  /* Renamed from --user-radius: the picture frame and the viewer now share this exact curve,
+     so the name can no longer belong to the bubble alone. One value, one family — a bubble at
+     24px beside a picture at 7px read as two different design languages in the same column. */
+  --soft-radius: 20px;
 }
+/* Raised, not removed. Prose past roughly 90 characters a line is measurably harder to read —
+   the eye loses its place on the return sweep — so "wide" buys room without abandoning the
+   measure entirely. The phone override below still wins: 100% is already wider than either.
+   A SEPARATE rule on purpose. The first version of this override was spliced into the MIDDLE
+   of the tokens block above, which silently moved every token after --reading-w (the bubble's
+   fill, ink, edge and radius) INSIDE the wide-only rule — braces stayed balanced, node had
+   nothing to say, and the bubbles quietly lost their entire design except when width=wide. */
+:root[data-width="wide"] { --reading-w: 920px; }
 [data-theme="dark"] {
-  /* Dark surfaces sit close in value — a slightly stronger clay reads best. */
-  --user-fill: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface));
+  /* Dark surfaces sit close in value, so the fill leans further off the surface to separate. */
+  --user-fill: color-mix(in srgb, var(--color-accent-deep) 94%, var(--color-surface));
 }
 
 /* ---- 2. Column frame — retune top rhythm only (centering already exists) - */
@@ -4183,14 +4531,23 @@ h1, h2, h3 { margin: 0; font-family: var(--font-serif); font-weight: var(--weigh
 .msg-user__bubble {
   max-inline-size: min(80%, 544px);
   background: var(--user-fill);
-  border-color: var(--color-border-hairline);
-  border-radius: var(--radius-lg);      /* uniform — no asymmetric corner (RTL-safe) */
-  box-shadow: none;                      /* the tint carries identity; no lift needed */
-  color: var(--color-text-primary);
+  border-color: var(--user-edge);
+  border-radius: var(--soft-radius); /* uniform — no asymmetric corner (RTL-safe) */
+  box-shadow: var(--user-sheen);
+  color: var(--user-ink);
 }
+/* Was a second copy of the neutral hairline, which on a saturated fill drew a grey ring around
+   a coloured bubble. The edge token already carries the theme. */
 [data-theme="dark"] .msg-user__bubble {
-  border-color: var(--color-border-hairline);
+  border-color: var(--user-edge);
 }
+/* Everything INSIDE the bubble now sits on a saturated ground, so anything that painted itself
+   from a text or accent token would drop out of contrast. --color-accent links in particular
+   were near-invisible on their own deep tone. */
+.msg-user__bubble a { color: var(--user-ink); text-decoration: underline; text-underline-offset: 2px; }
+.msg-user__bubble code,
+.msg-user__bubble kbd { background: color-mix(in srgb, #000000 22%, transparent); color: var(--user-ink); }
+.msg-user__bubble .katex { color: var(--user-ink); }
 
 /* ---- 5. Assistant prose — measured TEXT RUNS, cards untouched ------------
    Clamp the flowing text elements to the reading measure; cards + code + math
@@ -7969,13 +8326,22 @@ img.md-img-held:hover::after { color: var(--color-accent); }
    Display math is additionally forced to its own line and centred, so an equation is never
    a participant in a bidi run at all — the strongest form of separation available.
    ══════════════════════════════════════════════════════════════════════════════ */
+/* `unicode-bidi: plaintext` USED TO BE HERE and has been removed on purpose. It gave each
+   block its own base direction from its FIRST STRONG CHARACTER, which fixed equations but
+   broke lists: it re-orders inline content without changing the `direction` property, and the
+   list marker's side resolves against `direction`. A bullet starting with a Latin word laid
+   its text out to the left while its dot stayed on the right — the reported
+   "النقاط تدخل بالكلام". autoDirBlocks() in app.js now stamps a real `dir` on every
+   block instead, deciding by DOMINANT script rather than first character (so "Hb 8.5 غ/دل عند
+   القبول" stays Arabic), which moves alignment, padding-inline-start AND the marker together.
+   Keeping both would be worse than either: the text would be ordered by one rule and aligned
+   by the other. */
 .msg-ai__body .md > p,
 .msg-ai__body .md > h1, .msg-ai__body .md > h2, .msg-ai__body .md > h3,
 .msg-ai__body .md > h4, .msg-ai__body .md > h5, .msg-ai__body .md > h6,
 .msg-ai__body .md > ul > li, .msg-ai__body .md > ol > li,
 .msg-ai__body .md > blockquote,
 .msg-ai__body .md td, .msg-ai__body .md th {
-  unicode-bidi: plaintext;
   text-align: start;
 }
 
@@ -8198,6 +8564,16 @@ body.product-code #tierSelect { display: none !important; }
    .image-card (frame, glow, shimmer, action bar) so the two read as one family;
    only the aspect ratio and the player differ.
 ---------------------------------------------------------------------------- */
+/* These two were defined beside the image card and moved here when its loader was rebuilt as
+   a dot field. The VIDEO card is now their only consumer, and an animation naming keyframes
+   that no longer exist is silently inert — no error, just a loader that stops moving. Keeping
+   the definition next to its single use is what stops that happening again. */
+@keyframes imgGlow {
+  0%, 100% { box-shadow: 0 0 0 1px var(--color-accent-soft), 0 8px 24px -14px var(--color-accent); }
+  50%      { box-shadow: 0 0 0 2px var(--color-accent), 0 16px 44px -10px var(--color-accent); }
+}
+@keyframes imgShimmer { from { background-position: 220% 0; } to { background-position: -220% 0; } }
+
 .video-card {
   inline-size: 100%; max-inline-size: 520px;
   margin-block: var(--space-3) var(--space-1);

@@ -2,13 +2,24 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "//": "The one to use. A NEW NAME on purpose: the preview tool keeps a cached command per config name, so editing 'firas' in place kept relaunching `node server.mjs` relative to an old working directory and quietly served the stale C: checkout on the same port. server.mjs resolves static files, .env and data/ from __dirname, so this absolute path pins the entire server to THIS checkout regardless of where it is launched from.",
+      "name": "firas-d",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "D:/Programming/Projects/FirasAI/server.mjs"
+      ],
+      "port": 1990,
+      "autoPort": true
+    },
+    {
       "name": "firas",
       "runtimeExecutable": "node",
       "runtimeArgs": [
-        "server.mjs"
+        "D:/Programming/Projects/FirasAI/server.mjs"
       ],
       "port": 1988,
-      "autoPort": true
+      "autoPort": true,
+      "//": "ABSOLUTE path on purpose. The project moved from C: to D: and a preview session kept the old working directory, so `node server.mjs` silently served the STALE C: copy — same URL, same port, old code. server.mjs resolves its static files, .env and data dir from __dirname (import.meta.url), never from cwd, so naming the file absolutely pins the whole server to this checkout no matter where it is launched from."
     },
     {
       "//": "STATIC-ONLY. Serves the front end without a backend, for checking that app.js parses and the UI renders when Node is unavailable. /api/* returns 404 here — use the 'firas' entry for anything that talks to the server.",
@@ -17,7 +28,9 @@
       "runtimeArgs": [
         "-m",
         "http.server",
-        "1989"
+        "1989",
+        "--directory",
+        "D:/Programming/Projects/FirasAI"
       ],
       "port": 1989,
       "autoPort": true

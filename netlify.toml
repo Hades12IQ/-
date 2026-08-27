@@ -55,6 +55,18 @@
   [headers.values]
     Cache-Control = "public, max-age=300, stale-while-revalidate=86400"
 
+# Model weights and brand marks never change without changing NAME, so a year-long
+# immutable cache is correct — the 21 MB upscaler downloads once per visitor, ever.
+[[headers]]
+  for = "/models/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/brand/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 # ── Security headers (all pages) ─────────────────────────────────────────────
 [[headers]]
   for = "/*"

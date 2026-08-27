@@ -241,7 +241,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
    upstream image pools, which have their own hard daily caps that cannot be raised from here.
    The env var still wins, and -1 there still means unmetered, so the ceiling moves without a
    code change. */
-const IMAGE_DAILY_LIMIT = (() => { const n = parseInt(env("IMAGE_DAILY_LIMIT"), 10); return Number.isFinite(n) ? n : 5; })();
+const IMAGE_DAILY_LIMIT = (() => { const n = parseInt(env("IMAGE_DAILY_LIMIT"), 10); return Number.isFinite(n) ? n : 8; })();
 /* Same shape as IMAGE_DAILY_LIMIT above, and for the same reason. This used to be
    `Math.max(1, parseInt(env(…) || "10", 10) || 10)`, which had two independent faults:
    it defaulted to 10 instead of the -1 sentinel, and the Math.max(1, …) floor made
@@ -2675,13 +2675,13 @@ function openaiPickImageModel() {
   return OPENAI_IMAGE_MODELS.find((m) => !_oaiModelDead.has(m)) || OPENAI_IMAGE_MODELS[0];
 }
 const OPENAI_IMAGE_QUALITY = env("OPENAI_IMAGE_QUALITY") || "high";
-/* FIVE A DAY, AND THE ENGINE IS NOT THE USER'S PROBLEM. The allowance is five pictures per
-   person per day, full stop. Nano Banana draws all five; if the subscription behind it will not
-   answer, gpt-image draws the rest of that same five. Those are not two budgets stacked on top of
-   each other — the user asked for five and gets five, and which engine served them is an internal
+/* EIGHT A DAY, AND THE ENGINE IS NOT THE USER'S PROBLEM. The allowance is eight pictures per
+   person per day, full stop. Nano Banana draws all eight; if the subscription behind it will not
+   answer, gpt-image draws the rest of that same eight. Those are not two budgets stacked on top of
+   each other — the user asked for eight and gets eight, and which engine served them is an internal
    detail they never see. This number therefore matches IMAGE_DAILY_LIMIT rather than sitting
    under it, so the premium counter can never bind tighter than the allowance itself. */
-const OPENAI_IMAGE_DAILY = Number(env("OPENAI_IMAGE_DAILY") ?? 5);
+const OPENAI_IMAGE_DAILY = Number(env("OPENAI_IMAGE_DAILY") ?? 8);
 const OPENAI_IMAGE_BUDGET_USD = Number(env("OPENAI_IMAGE_BUDGET_USD") ?? 60);
 /* WHAT ONE PICTURE ACTUALLY COSTS — OpenAI's published per-image prices, not an estimate.
 

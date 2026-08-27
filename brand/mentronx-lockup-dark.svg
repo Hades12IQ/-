@@ -1,0 +1,6 @@
+<!-- MentronX — BY-lockup for dark surfaces. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 64" fill="none">
+  <path d="M8 52 18 12 30 44 42 12 54 52 78 12" stroke="#8B8578" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M54 12 78 52" stroke="#EDEAE0" stroke-width="8.5" stroke-linecap="round"/>
+  <text x="96" y="41" font-family="Space Grotesk, system-ui, sans-serif" font-size="15" letter-spacing="1" fill="#8B8578">BY <tspan fill="#EDEAE0" font-weight="600">MentronX</tspan></text>
+</svg>

@@ -682,6 +682,42 @@ const LS_WEBSEARCH = "firas_ai_websearch";
 const LS_PRODUCT = "firas_ai_product";
 const LS_FONTSIZE = "firas_ai_fontsize"; // reading size: "sm" | "md" | "lg"
 const LS_MOTION = "firas_ai_motion";     // "off" reduces animations/transitions
+const LS_IMG_SR = "firas_ai_img_sr";      // "0" turns the on-device upscaler off
+const LS_ENTER_SEND = "firas_ai_enter_send"; // "1" = Enter sends, Shift+Enter newlines
+const LS_WIDTH = "firas_ai_width";        // reading measure: "normal" | "wide"
+
+/* EVERY THEME IN ONE PLACE. Three things knew about themes independently and each knew only
+   part: applyTheme() set the attribute and picked the browser-chrome colour from a two-way
+   ternary, previewTheme() chose a palette from `!== "light"`, and loadState() read the stored
+   id with no whitelist at all — the only device preference in this file that was not
+   validated. In that shape a third theme paints the phone's status bar the wrong colour and
+   previews bronze inside Firas Code, and a stale id renders the app with NO tokens at all.
+   One registry now feeds all three: a new theme is one entry here plus one CSS block.
+   `dark` is what previewTheme reads. `pv` is the literal palette handed to the sandboxed
+   preview iframe, which cannot see our stylesheet, so var() would resolve to nothing there.
+   `sw` is the three-colour swatch the Settings picker paints: ground, surface, accent. */
+const THEMES = [
+  { id: "light", ar: "نهاري", en: "Light", dark: false, meta: "#FAF9F5",
+    sw: ["#FAF9F5", "#FFFFFF", "#237A68"],
+    pv: { bg:"#FAF9F5", surface:"#FFFFFF", text:"#1A1A18", muted:"#6B6A63", accent:"#237A68", hair:"#E6E4DA", bad:"#B4483A", ok:"#4A7A2E" } },
+  { id: "dark", ar: "ليلي", en: "Dark", dark: true, meta: "#262624",
+    sw: ["#262624", "#30302E", "#57AE9C"],
+    pv: { bg:"#262624", surface:"#30302E", text:"#ECEAE3", muted:"#A6A39A", accent:"#57AE9C", hair:"#3A3A36", bad:"#E5877A", ok:"#8FBF6F" } },
+  { id: "black", ar: "أسود", en: "Black", dark: true, meta: "#000000",
+    sw: ["#000000", "#161616", "#5FBBA7"],
+    pv: { bg:"#000000", surface:"#161616", text:"#F2F2F0", muted:"#8C8C87", accent:"#5FBBA7", hair:"#232323", bad:"#E5877A", ok:"#8FBF6F" } },
+  { id: "midnight", ar: "نيلي", en: "Midnight", dark: true, meta: "#0F1522",
+    sw: ["#0F1522", "#182133", "#5AA9E6"],
+    pv: { bg:"#0F1522", surface:"#182133", text:"#E6ECF5", muted:"#8695AE", accent:"#5AA9E6", hair:"#232E44", bad:"#E5877A", ok:"#8FBF6F" } },
+  { id: "graphite", ar: "كربوني", en: "Graphite", dark: true, meta: "#171719",
+    sw: ["#171719", "#202023", "#57AE9C"],
+    pv: { bg:"#171719", surface:"#202023", text:"#ECECEE", muted:"#8B8B90", accent:"#57AE9C", hair:"#2A2A2E", bad:"#E5877A", ok:"#8FBF6F" } },
+  { id: "amber", ar: "عنبري", en: "Amber", dark: true, meta: "#1B1713",
+    sw: ["#1B1713", "#241F19", "#D9A05B"],
+    pv: { bg:"#1B1713", surface:"#241F19", text:"#F0E7D8", muted:"#9C907C", accent:"#D9A05B", hair:"#332C23", bad:"#E5877A", ok:"#8FBF6F" } },
+];
+const THEME_IDS = THEMES.map((t) => t.id);
+function themeInfo(id) { for (const t of THEMES) if (t.id === id) return t; return THEMES[1]; }
 
 const state = {
   chats: [],          // sidebar list: [{ id, title, updatedAt, messages? }] — messages loaded on open
@@ -1179,8 +1215,20 @@ function loadState() {
   if (!MODELS[state.tier]) state.tier = CONFIG.DEFAULT_TIER;
   state.mode = localStorage.getItem(LS_MODE) || "auto";
   if (!MODES[state.mode]) state.mode = "auto";
+  /* Whitelisted like tier/mode/product above. An id with no matching CSS block leaves the
+     app painted by the :root light tokens while state claims otherwise — so a theme removed
+     in a later build must fall back, not pass through. */
   state.theme = localStorage.getItem(LS_THEME) || "dark"; // DARK by default
+  if (THEME_IDS.indexOf(state.theme) === -1) state.theme = "dark";
   state.sidebarCollapsed = localStorage.getItem(LS_SIDEBAR) === "true";
+  /* The upscaler is ON unless this device turned it off. It costs a second or two of the
+     caller's own CPU/GPU and nothing else, and the sharper picture is the point of it. */
+  state.imgSr = localStorage.getItem(LS_IMG_SR) !== "0";
+  /* OFF by default, deliberately. Enter has inserted a newline in this composer since it
+     shipped; flipping that under people who write multi-line prompts would send half of them
+     by accident. It is a preference, not a correction. */
+  state.enterSend = localStorage.getItem(LS_ENTER_SEND) === "1";
+  state.width = localStorage.getItem(LS_WIDTH) === "wide" ? "wide" : "normal";
   /* `null` means this device never touched the toggle → take the default (now off).
      A device that DID set it keeps whatever it chose, so nobody who deliberately turned
      thinking on loses it. */
@@ -2340,23 +2388,445 @@ function resolveImageName(meta) {
   const n = String(meta.prompt || "image").replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim().slice(0, 50) || "firas-image";
   return n + ".png";
 }
-/** The waiting state. A picture at high quality takes real minutes now that the background runner
-    holds the clock, so this is on screen long enough to be looked at — a shimmering square was not
-    good enough for that. An aperture closing and opening, a slow drift of light behind it, and a
-    sweep crossing the frame: motion that reads as WORK BEING DONE rather than a page that hung. */
+/* ═══ WHILE THE PICTURE IS BEING MADE ═══════════════════════════════════════════
+   A generation runs for minutes, so this is looked at rather than glimpsed, and what is
+   looked at for minutes must be calm. The previous version pulsed a coloured glow around the
+   frame and swept a bar across it: motion that reads as a page struggling, not as work.
+
+   What replaced it is a field of dots on a slow radial wave. Nothing rotates, nothing bounces,
+   nothing flashes. The frame sits SMALLER than the finished picture while it works, then grows
+   into the real image at the end, so the arrival is a change of state rather than a swap.
+
+   EVERY COLOUR COMES FROM THE THEME AT PAINT TIME. The dots read --color-accent off their own
+   element, so the field is teal on Dark and Black, navy on Midnight and brass on Amber, and a
+   theme switched mid-generation is picked up within half a second — no second code path, and
+   no colour written down anywhere in here. */
+const IMG_WORDS = {
+  /* Four, in the order the work actually happens: understand, arrange, light, refine. They are
+     a narrative, not a spinner — a caller who reads two of them learns where the wait is going.
+     The header carries its own dir, so in Arabic the pulse and the word sit on the right. */
+  ar: ["أقرأ طلبك", "أُركّب المشهد", "أضبط الضوء", "أصقل التفاصيل"],
+  en: ["Reading your prompt", "Composing the scene", "Setting the light", "Refining details"],
+};
+const IMG_REVEAL_MS = 1850;   // dots out → sheen across → frame grows into the picture
+
+/* The same dot field, a different job. The picture is drawn by then — this is our own network
+   sharpening it — so the words say that rather than pretending the drawing is still going on. */
+const IMG_WORDS_SR = {
+  ar: ["أرفع الدقّة", "أستعيد التفاصيل", "أشحذ الحوافّ", "أُنهي الصورة"],
+  en: ["Raising resolution", "Recovering detail", "Sharpening edges", "Finishing up"],
+};
+
 function imageLoaderMarkup(lang) {
   const ar = lang === "ar";
-  const txt = escapeHtml(ar ? "يرسم الصورة" : "Painting your image");
-  return '<div class="image-card__loader">' +
-      '<div class="imgload">' +
-        '<div class="imgload__aura" aria-hidden="true"></div>' +
-        '<div class="imgload__scan" aria-hidden="true"></div>' +
-        '<div class="imgload__meta">' +
-          '<span class="imgload__label">' + txt + '</span>' +
-          '<span class="imgload__bar" aria-hidden="true"><i></i></span>' +
-        "</div>" +
+  const words = IMG_WORDS[ar ? "ar" : "en"];
+  return '<div class="image-card__loader" dir="' + (ar ? "rtl" : "ltr") + '">' +
+      '<canvas class="imgload__dots" aria-hidden="true"></canvas>' +
+      '<div class="imgload__head">' +
+        '<span class="imgload__pulse" aria-hidden="true"><i></i></span>' +
+        '<span class="imgload__word">' + escapeHtml(words[0]) + '</span>' +
       "</div>" +
     "</div>";
+}
+
+/* One running loop per loader element, held OUTSIDE the DOM so a card that is thrown away
+   cannot leave a requestAnimationFrame burning for the rest of the session. */
+const IMG_LOADERS = new WeakMap();
+
+/** --color-accent as [r,g,b], whatever notation the theme wrote it in. */
+function imgAccentRgb(el, fallback) {
+  try {
+    const v = getComputedStyle(el).getPropertyValue("--color-accent").trim();
+    const hex = v.match(/^#([0-9a-fA-F]{6})$/);
+    if (hex) { const n = parseInt(hex[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+    const p = v.match(/[\d.]+/g);
+    if (p && p.length >= 3) return [Math.round(+p[0]), Math.round(+p[1]), Math.round(+p[2])];
+  } catch (_) {}
+  return fallback;
+}
+
+function imgLoaderStart(loader) {
+  if (!loader || IMG_LOADERS.has(loader)) return;          // idempotent: scans may re-run
+  const canvas = loader.querySelector(".imgload__dots");
+  const wordEl = loader.querySelector(".imgload__word");
+  if (!canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext("2d");
+
+  const lang = loader.getAttribute("dir") === "rtl" ? "ar" : "en";
+  const words = (loader.dataset.phase === "sr" ? IMG_WORDS_SR : IMG_WORDS)[lang];
+  let wi = 0, t = 0, raf = 0, frame = 0, alpha = 1, dying = false;
+  let rgb = imgAccentRgb(loader, [87, 174, 156]);
+  let w = 0, h = 0;
+
+  const size = () => {
+    const r = loader.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    /* Capped at 2: a 3x phone would trebled the fill cost of ~500 arcs for no visible gain. */
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = Math.round(r.width); h = Math.round(r.height);
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  size();
+  const ro = window.ResizeObserver ? new ResizeObserver(size) : null;
+  if (ro) { try { ro.observe(loader); } catch (_) {} }
+
+  const SP = 15, MINR = 0.5, MAXR = 2.2;
+  /* buildImageCard starts the field BEFORE the card is appended, so the element is legitimately
+     disconnected for the first frame or two. Stopping on `!isConnected` alone killed the loop
+     immediately and left an empty plate; the field must only be torn down for a card that was
+     once live and has since been removed. */
+  let seen = false;
+  const draw = () => {
+    raf = requestAnimationFrame(draw);
+    if (loader.isConnected) seen = true;
+    else if (seen) { stop(); return; }                      // card removed mid-flight
+    else return;                                            // not inserted yet - wait for it
+    if ((frame++ % 30) === 0) rgb = imgAccentRgb(loader, rgb);   // theme may change mid-generation
+    if (!w || !h) { size(); return; }
+    ctx.clearRect(0, 0, w, h);
+    const cols = Math.ceil(w / SP) + 1, rows = Math.ceil(h / SP) + 1;
+    const offX = (w - (cols - 1) * SP) / 2, offY = (h - (rows - 1) * SP) / 2;
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        const x = i * SP + offX, y = j * SP + offY;
+        const d = Math.hypot(x - w / 2, y - h / 2) * 0.02;
+        const f = (Math.sin(t * 0.88 + d + i * 0.12) + 1) / 2;
+        const a = (0.05 + Math.pow(f, 1.8) * 0.6) * alpha;
+        if (a <= 0.005) continue;
+        ctx.beginPath();
+        ctx.arc(x, y, MINR + Math.pow(f, 2.2) * (MAXR - MINR), 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + "," + a.toFixed(3) + ")";
+        ctx.fill();
+      }
+    }
+    /* Reduced motion freezes the wave but keeps the field drawn — the caller still sees a
+       composed plate rather than an empty box, which is the honest thing to show while
+       something is genuinely happening. */
+    if (document.documentElement.getAttribute("data-motion") !== "off") t += 0.016;
+    if (dying) { alpha -= 0.05; if (alpha <= 0) { alpha = 0; stop(); } }
+  };
+
+  const cycle = setInterval(() => {
+    if (!wordEl || !wordEl.isConnected || dying) return;
+    /* Re-read every tick: the phase flips from drawing to sharpening while this is running, and
+       restarting the whole field just to change four words would blink the picture. */
+    const set = (loader.dataset.phase === "sr" ? IMG_WORDS_SR : IMG_WORDS)[lang];
+    wi = (wi + 1) % set.length;
+    wordEl.classList.add("is-out");
+    setTimeout(() => {
+      if (!wordEl.isConnected) return;
+      wordEl.textContent = (loader.dataset.phase === "sr" ? IMG_WORDS_SR : IMG_WORDS)[lang][wi];
+      wordEl.classList.remove("is-out");
+    }, 220);
+  }, 2600);
+
+  function stop() {
+    clearInterval(cycle);
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    if (ro) { try { ro.disconnect(); } catch (_) {} }
+    IMG_LOADERS.delete(loader);
+  }
+  IMG_LOADERS.set(loader, { stop, fade: () => { dying = true; clearInterval(cycle); } });
+  draw();
+}
+
+/** Start any loader that has been dropped into the DOM as raw HTML (setTurnLoader). */
+function scanImageLoaders(root) {
+  try {
+    const found = (root || document).querySelectorAll(".image-card__loader");
+    found.forEach(imgLoaderStart);
+    /* A loader on screen means a picture is being drawn upstream, which takes minutes. Building
+       the inference session costs real time; spending it now, inside a wait that is already
+       happening, is why the sharpening can start the instant the picture lands. */
+    if (found.length) srWarm();
+  } catch (_) {}
+}
+
+/** The arrival: dots dissolve, one sheen crosses the plate, the frame grows into the picture. */
+function imgLoaderFinish(card) {
+  if (!card || card.classList.contains("is-done")) return;
+  const loader = card.querySelector(".image-card__loader");
+  const h = loader && IMG_LOADERS.get(loader);
+  if (h) h.fade();
+  card.classList.add("is-revealing");
+  setTimeout(() => {
+    if (!card.isConnected) return;
+    card.classList.remove("is-loading", "is-revealing");
+    card.classList.add("is-done");
+    if (h) h.stop();
+  }, IMG_REVEAL_MS);
+}
+
+/** Full-resolution bytes, not what is on screen — the <img> is laid out inside a bounded
+    frame, so reading it back from the DOM would hand over the displayed size. */
+async function downloadImageFile(url, meta) {
+  try {
+    const r = await fetch(url, { credentials: "same-origin" });
+    if (!r.ok) throw new Error("http " + r.status);
+    downloadBlob(await r.blob(), resolveImageName(meta));
+  } catch (_) { window.open(url, "_blank", "noopener"); }
+}
+
+/* ═══ THE UPSCALER — ours, on the visitor's own device ═══════════════════════════
+   A real super-resolution network, not a resample and not a second pass through the image
+   model. It runs in the browser on the caller's GPU, so a thousand pictures cost exactly what
+   one costs: nothing. No key, no credits, no daily cap, no third party holding the feature.
+
+   WHY THIS MODEL AND NOT A BETTER ONE. Measured here, in this browser, on this machine:
+     · Swin2SR (transformer, 20.5 MB) — 17.6s for ONE 128px tile → ~19 MINUTES per picture.
+     · ESPCN   (sub-pixel CNN, 234 KB) — 60ms per 224px tile on WebGPU, 135ms on WASM
+                                          → ~1.5s per picture, and it still works with no GPU.
+   Eleven other candidates (Real-ESRGAN and friends) answered 401 or 404: the good weights are
+   behind gated repositories. So this is the strongest network that is actually obtainable and
+   actually fast enough to run while someone waits. It is a clear step above a plain resize —
+   edges recover, ringing and softness drop — and it is NOT Topaz. Both halves of that are true.
+
+   ESPCN UPSCALES LUMA ONLY: its input is [1,1,H,W]. That is not a shortcut — detail lives in
+   luminance, and chroma carries so little of it that bicubic on Cb/Cr is visually free. */
+const SR_MODEL_URL = "/models/espcn-x3.onnx";
+const SR_ORT_URL = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.webgpu.min.js";
+const SR_ORT_WASM = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+const SR_TILE = 224;      // the model's native input size
+const SR_SCALE = 3;       // and its fixed output ratio
+const SR_OVERLAP = 16;    // cross-faded, so tile edges never print a grid across the picture
+/* The network runs at 3x, but the picture is delivered at 2x. Downsampling the 3x result
+   CONSOLIDATES what the network recovered instead of spreading it thin — the pixels come out
+   denser and cleaner than either a straight 2x or an unreduced 3x, and the file stays sane. */
+const SR_OUT_SCALE = 2;
+
+let _srSession = null, _srLoading = null, _srBroken = false;
+
+/** Never start work that will end in an out-of-memory crash on someone's phone. */
+function srSupported() {
+  if (_srBroken) return false;
+  if (state && state.imgSr === false) return false;   // the caller turned it off
+
+  if (typeof OffscreenCanvas === "undefined" && typeof document === "undefined") return false;
+  try {
+    /* WASM alone is ~135ms a tile, which is still ~3.5s a picture — slow but honest. Below 2 GB
+       of reported memory the tensors are the problem, not the clock. */
+    if (navigator.deviceMemory && navigator.deviceMemory < 2) return false;
+  } catch (_) {}
+  return true;
+}
+/** Largest source the device should attempt, in pixels on the long side. */
+function srSourceCap() {
+  let mem = 4;
+  try { mem = navigator.deviceMemory || 4; } catch (_) {}
+  if (mem < 4) return 640;
+  if (mem < 8) return 896;
+  return 1280;
+}
+
+async function srLoadRuntime() {
+  if (window.ort) return window.ort;
+  await new Promise((res, rej) => {
+    const el = document.createElement("script");
+    el.src = SR_ORT_URL;
+    el.onload = res;
+    el.onerror = () => rej(new Error("onnxruntime blocked"));
+    document.head.appendChild(el);
+  });
+  if (!window.ort) throw new Error("onnxruntime missing after load");
+  window.ort.env.wasm.wasmPaths = SR_ORT_WASM;
+  /* Threads need crossOriginIsolated, which this app is not (and turning it on would break the
+     CDN scripts and every embedded frame). One thread is the honest setting. */
+  window.ort.env.wasm.numThreads = 1;
+  return window.ort;
+}
+
+/** One session for the page, built once and shared. Concurrent callers await the same promise. */
+function srSession() {
+  if (_srSession) return Promise.resolve(_srSession);
+  if (_srLoading) return _srLoading;
+  _srLoading = (async () => {
+    const ort = await srLoadRuntime();
+    const buf = await (await fetch(SR_MODEL_URL, { credentials: "same-origin" })).arrayBuffer();
+    let sess = null;
+    for (const ep of ["webgpu", "wasm"]) {
+      try { sess = await ort.InferenceSession.create(buf, { executionProviders: [ep] }); break; }
+      catch (e) { console.warn("[firas][sr] " + ep + " unavailable: " + ((e && e.message) || e)); }
+    }
+    if (!sess) throw new Error("no execution provider");
+    _srSession = sess;
+    return sess;
+  })().catch((e) => {
+    _srBroken = true; _srLoading = null;
+    console.warn("[firas][sr] disabled: " + ((e && e.message) || e));
+    throw e;
+  });
+  return _srLoading;
+}
+
+/* Warm the session while the picture is still being drawn upstream. Creating it costs real
+   milliseconds and the wait is already happening — paying for it then means the enhancement
+   starts the instant the picture lands instead of after a cold start. */
+function srWarm() { if (srSupported()) srSession().catch(() => {}); }
+
+/**
+ * Upscale a loaded <img>/canvas. Returns a canvas at SR_OUT_SCALE x the (capped) source,
+ * or null if anything at all goes wrong — the caller then keeps the original.
+ * onProgress(done, total) fires per tile so a long run can show real movement.
+ */
+async function srEnhance(srcEl, onProgress) {
+  if (!srSupported()) return null;
+  const ort = await srLoadRuntime();
+  const sess = await srSession();
+
+  // ── source, capped ────────────────────────────────────────────────────────
+  const sw0 = srcEl.naturalWidth || srcEl.width;
+  const sh0 = srcEl.naturalHeight || srcEl.height;
+  if (!sw0 || !sh0) return null;
+  const cap = srSourceCap();
+  const k = Math.min(1, cap / Math.max(sw0, sh0));
+  const sw = Math.max(8, Math.round(sw0 * k)), sh = Math.max(8, Math.round(sh0 * k));
+  const src = document.createElement("canvas");
+  src.width = sw; src.height = sh;
+  const sctx = src.getContext("2d", { willReadFrequently: true });
+  sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = "high";
+  sctx.drawImage(srcEl, 0, 0, sw, sh);
+  const sdata = sctx.getImageData(0, 0, sw, sh).data;
+
+  // ── RGB → YCbCr. Only Y goes through the network. ─────────────────────────
+  const Y = new Float32Array(sw * sh);
+  for (let i = 0, p = 0; i < sdata.length; i += 4, p++) {
+    Y[p] = (0.299 * sdata[i] + 0.587 * sdata[i + 1] + 0.114 * sdata[i + 2]) / 255;
+  }
+
+  const ow = sw * SR_SCALE, oh = sh * SR_SCALE;
+  const outY = new Float32Array(ow * oh);
+  const step = SR_TILE - SR_OVERLAP * 2;
+  const cols = Math.max(1, Math.ceil((sw - SR_OVERLAP * 2) / step));
+  const rows = Math.max(1, Math.ceil((sh - SR_OVERLAP * 2) / step));
+  const total = cols * rows;
+  let done = 0;
+
+  const tile = new Float32Array(SR_TILE * SR_TILE);
+  const inName = sess.inputNames[0], outName = sess.outputNames[0];
+
+  for (let ty = 0; ty < rows; ty++) {
+    for (let tx = 0; tx < cols; tx++) {
+      const x0 = Math.min(tx * step, Math.max(0, sw - SR_TILE));
+      const y0 = Math.min(ty * step, Math.max(0, sh - SR_TILE));
+      /* EDGES ARE CLAMPED, NOT ZEROED. Padding a border tile with black makes the network
+         invent a dark halo along the picture's outer edge; repeating the edge pixel does not. */
+      for (let y = 0; y < SR_TILE; y++) {
+        const sy = Math.min(sh - 1, Math.max(0, y0 + y));
+        for (let x = 0; x < SR_TILE; x++) {
+          const sx = Math.min(sw - 1, Math.max(0, x0 + x));
+          tile[y * SR_TILE + x] = Y[sy * sw + sx];
+        }
+      }
+      let res;
+      try {
+        res = await sess.run({ [inName]: new ort.Tensor("float32", tile, [1, 1, SR_TILE, SR_TILE]) });
+      } catch (e) {
+        console.warn("[firas][sr] inference failed: " + ((e && e.message) || e));
+        return null;
+      }
+      const o = res[outName].data;
+      const OT = SR_TILE * SR_SCALE, ox0 = x0 * SR_SCALE, oy0 = y0 * SR_SCALE, ov = SR_OVERLAP * SR_SCALE;
+      for (let y = 0; y < OT; y++) {
+        const oy = oy0 + y; if (oy >= oh) break;
+        for (let x = 0; x < OT; x++) {
+          const ox = ox0 + x; if (ox >= ow) break;
+          /* Cross-fade only where this tile overlaps one already written. Tiles are laid down
+             left-to-right and top-to-bottom, so a linear ramp on the leading edges is enough to
+             make the seam invisible without a second accumulation buffer the size of the
+             picture — which on a phone is the difference between working and crashing. */
+          let w = 1;
+          if (tx > 0 && x < ov) w *= x / ov;
+          if (ty > 0 && y < ov) w *= y / ov;
+          const idx = oy * ow + ox;
+          outY[idx] = w >= 1 ? o[y * OT + x] : outY[idx] * (1 - w) + o[y * OT + x] * w;
+        }
+      }
+      done++;
+      if (onProgress) { try { onProgress(done, total); } catch (_) {} }
+      /* Yield between tiles. Without this the whole run is one long task and the page freezes —
+         no scrolling, no loader animation, nothing. */
+      await new Promise((r) => setTimeout(r, 0));
+    }
+  }
+
+  // ── chroma, resampled by the browser, recombined with the recovered luma ──
+  const chroma = document.createElement("canvas");
+  chroma.width = ow; chroma.height = oh;
+  const cctx = chroma.getContext("2d", { willReadFrequently: true });
+  cctx.imageSmoothingEnabled = true; cctx.imageSmoothingQuality = "high";
+  cctx.drawImage(src, 0, 0, ow, oh);
+  const cim = cctx.getImageData(0, 0, ow, oh);
+  const cd = cim.data;
+  for (let i = 0, p = 0; i < cd.length; i += 4, p++) {
+    const r = cd[i], g = cd[i + 1], b = cd[i + 2];
+    const cb = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
+    const cr = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
+    const y = Math.max(0, Math.min(255, outY[p] * 255));
+    cd[i]     = y + 1.402 * (cr - 128);
+    cd[i + 1] = y - 0.344136 * (cb - 128) - 0.714136 * (cr - 128);
+    cd[i + 2] = y + 1.772 * (cb - 128);
+  }
+  cctx.putImageData(cim, 0, 0);
+
+  // ── down to the delivery size ────────────────────────────────────────────
+  const fw = Math.round(sw * SR_OUT_SCALE), fh = Math.round(sh * SR_OUT_SCALE);
+  const out = document.createElement("canvas");
+  out.width = fw; out.height = fh;
+  const octx = out.getContext("2d");
+  octx.imageSmoothingEnabled = true; octx.imageSmoothingQuality = "high";
+  octx.drawImage(chroma, 0, 0, fw, fh);
+  return out;
+}
+
+/** Canvas → an object URL the <img> can show. WebP because a 2x picture as PNG is enormous. */
+function srCanvasToUrl(canvas) {
+  return new Promise((resolve) => {
+    try {
+      canvas.toBlob((b) => resolve(b ? URL.createObjectURL(b) : null), "image/webp", 0.94);
+    } catch (_) { resolve(null); }
+  });
+}
+
+/* ═══ THE VIEWER ════════════════════════════════════════════════════════════════
+   Tap the picture and it opens over the app: the image at its own size, an X, and Save.
+   Sized in `dvh`/`dvw` so a phone's collapsing address bar cannot crop it, and the close
+   button is inset from the safe area so it is never under a notch. */
+function openImageViewer(url, meta) {
+  const ar = state.lang === "ar";
+  const ov = document.createElement("div");
+  ov.className = "imgview";
+  ov.setAttribute("role", "dialog");
+  ov.setAttribute("aria-modal", "true");
+  ov.innerHTML =
+    '<button type="button" class="imgview__x" aria-label="' + (ar ? "إغلاق" : "Close") + '">' + ICONS.close + "</button>" +
+    '<div class="imgview__stage"><img class="imgview__img" alt="' +
+      escapeHtml(String((meta && meta.prompt) || "").slice(0, 120)) + '"></div>' +
+    '<div class="imgview__bar">' +
+      '<button type="button" class="imgview__dl">' + ICONS.download +
+        "<span>" + escapeHtml(ar ? "حفظ الصورة" : "Save image") + "</span></button>" +
+    "</div>";
+  document.body.appendChild(ov);
+  ov.querySelector(".imgview__img").src = url;
+
+  let onKey = null;
+  const close = () => {
+    if (onKey) document.removeEventListener("keydown", onKey);
+    ov.classList.remove("is-open");
+    document.body.classList.remove("imgview-open");
+    setTimeout(() => { try { ov.remove(); } catch (_) {} }, 220);
+  };
+  onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+  document.addEventListener("keydown", onKey);
+  ov.querySelector(".imgview__x").addEventListener("click", close);
+  /* Backdrop only. A click that lands on the picture or the bar must not dismiss it —
+     that is how a save tap turns into a close by accident on a phone. */
+  ov.addEventListener("click", (e) => { if (e.target === ov || e.target.classList.contains("imgview__stage")) close(); });
+  ov.querySelector(".imgview__dl").addEventListener("click", (e) => {
+    e.stopPropagation(); downloadImageFile(url, meta);
+  });
+  document.body.classList.add("imgview-open");
+  requestAnimationFrame(() => ov.classList.add("is-open"));
 }
 
 function buildImageLoadingHtml(lang) {
@@ -2388,24 +2858,58 @@ function buildImageCard(meta, lang) {
     "</div>";
   const img = card.querySelector(".image-card__img");
   const dl = card.querySelector(".image-card__dl");
-  img.addEventListener("load", () => { card.classList.remove("is-loading"); card.classList.add("is-done"); dl.hidden = false; });
+  const frame = card.querySelector(".image-card__frame");
+  imgLoaderStart(card.querySelector(".image-card__loader"));
+  /* Set once the sharpened copy is in the <img>, so the second `load` this triggers falls
+     straight through to the reveal instead of sharpening the sharpened picture. */
+  let srDone = false;
+  img.addEventListener("load", async () => {
+    /* The frame grows into the PICTURE'S shape, not a guessed square. Handing the real ratio
+       to CSS before the reveal starts is what makes the growth one motion instead of a snap
+       to a square followed by a correction. */
+    if (frame && img.naturalWidth && img.naturalHeight) {
+      frame.style.setProperty("--img-ar", img.naturalWidth + " / " + img.naturalHeight);
+    }
+    /* AUTOMATIC. No button: the picture is not finished until it has been through our own
+       network, so the caller never sees the soft version and never has to ask for the sharp
+       one. The loader simply keeps running and changes what it says. */
+    if (!srDone && srSupported()) {
+      srDone = true;
+      const loader = card.querySelector(".image-card__loader");
+      if (loader) loader.dataset.phase = "sr";
+      let sharpened = null;
+      try { sharpened = await srEnhance(img, null); } catch (_) { sharpened = null; }
+      if (sharpened) {
+        const localUrl = await srCanvasToUrl(sharpened);
+        if (localUrl) {
+          /* Download and the viewer must hand over the picture that is actually on screen. */
+          meta.srUrl = localUrl;
+          img.src = localUrl;
+          return;                      // this reload comes back here with srDone already true
+        }
+      }
+      /* Nothing sharpened: no GPU, a blocked CDN, a device that said no. The original picture
+         is delivered exactly as before — the enhancement is a bonus, never a dependency. */
+      if (loader) delete loader.dataset.phase;
+    }
+    imgLoaderFinish(card);
+    dl.hidden = false;
+  });
   img.addEventListener("error", () => {
+    const loader = card.querySelector(".image-card__loader");
+    const h = loader && IMG_LOADERS.get(loader);
+    if (h) h.stop();                                   // never leave a loop running on a dead card
     card.classList.remove("is-loading"); card.classList.add("is-error");
-    const lt = card.querySelector(".imgload__label");
+    const lt = card.querySelector(".imgload__word");
     if (lt) lt.textContent = ar ? "تعذّر توليد الصورة" : "Image generation failed";
   });
   img.src = url;
-  dl.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    /* The ORIGINAL bytes, not what is on screen. The <img> is laid out inside a bounded frame, so
-       reading it from the DOM or a canvas would hand back the displayed size; fetching the same
-       URL returns the full-resolution file the engine produced, untouched and un-recompressed. */
-    try {
-      const r = await fetch(url, { credentials: "same-origin" });
-      if (!r.ok) throw new Error("http " + r.status);
-      downloadBlob(await r.blob(), resolveImageName(meta));
-    } catch (_) { window.open(url, "_blank", "noopener"); }
+  /* Tap the finished picture to open it full-size. Gated on is-done so a tap during the
+     reveal cannot open a viewer onto a half-drawn frame. */
+  img.addEventListener("click", () => {
+    if (card.classList.contains("is-done")) openImageViewer(meta.srUrl || imageUrl(meta), meta);
   });
+  dl.addEventListener("click", (e) => { e.stopPropagation(); downloadImageFile(meta.srUrl || imageUrl(meta), meta); });
   return card;
 }
 
@@ -3478,6 +3982,9 @@ function tclamp(el, opts) {
 
 /** Post-process a rendered .md node: wrap code blocks with header + copy, highlight. */
 function decorateMarkdown(container) {
+  /* Stamp direction FIRST, before code blocks are rewrapped: the wrapper this builds is not a
+     markdown block and must not be handed a direction meant for prose. */
+  try { autoDirBlocks(container, state.lang); } catch (_) {}
   container.querySelectorAll("pre > code").forEach((code) => {
     const pre = code.parentElement;
     if (pre.closest(".code-block")) return;
@@ -5313,16 +5820,44 @@ async function mAutoAnimate(el) {
    Theme
 ---------------------------------------------------------------------------- */
 function applyTheme(theme) {
+  /* Validated at the ONE door every theme change goes through, so neither a stale stored id
+     nor a caller typo can set an attribute that matches no CSS block. */
+  if (THEME_IDS.indexOf(theme) === -1) theme = "dark";
+  const info = themeInfo(theme);
   state.theme = theme;
   localStorage.setItem(LS_THEME, theme);
   document.documentElement.setAttribute("data-theme", theme);
-  if (els.themeToggle) els.themeToggle.setAttribute("aria-checked", theme === "dark" ? "true" : "false"); // control now lives in Settings
+  // aria-checked is "is it dark", not "is it the one theme called dark".
+  if (els.themeToggle) els.themeToggle.setAttribute("aria-checked", info.dark ? "true" : "false"); // control now lives in Settings
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", theme === "dark" ? "#262624" : "#FAF9F5");
+  if (meta) meta.setAttribute("content", info.meta);
 }
 
 /** Reading size — scales the conversation text (assistant prose + user bubbles)
     via a CSS multiplier. Does NOT touch the theme or shell chrome. */
+/** The reading measure. Prose is clamped to --reading-w so a line never runs the full width
+    of a wide monitor; "wide" raises that clamp for people who would rather scroll less than
+    keep their eyes on a narrow column. Phones already override it to 100% and are unaffected. */
+function applyWidth(w) {
+  w = w === "wide" ? "wide" : "normal";
+  state.width = w;
+  try { localStorage.setItem(LS_WIDTH, w); } catch (_) {}
+  document.documentElement.setAttribute("data-width", w);
+}
+/** On-device image sharpening. Reading it through state (not localStorage) keeps the toggle
+    live: turning it off applies to the very next picture, with no reload. */
+function applyImgSr(on) {
+  state.imgSr = !!on;
+  try { localStorage.setItem(LS_IMG_SR, state.imgSr ? "1" : "0"); } catch (_) {}
+}
+/** Enter-to-send. The keydown handler reads state on every press, so this needs no rebinding. */
+function applyEnterSend(on) {
+  state.enterSend = !!on;
+  try { localStorage.setItem(LS_ENTER_SEND, state.enterSend ? "1" : "0"); } catch (_) {}
+  if (els.input) {
+    els.input.setAttribute("aria-keyshortcuts", state.enterSend ? "Enter" : "Control+Enter");
+  }
+}
 function applyFontSize(size) {
   if (size !== "sm" && size !== "lg") size = "md";
   state.fontSize = size;
@@ -10503,12 +11038,11 @@ function ensureHtmlDocument(code) {
 
 /** The app's own palette, resolved to literals for use inside the preview iframe. */
 function previewTheme() {
-  const dark = document.documentElement.getAttribute("data-theme") !== "light";
-  return dark
-    ? { bg: "#262624", surface: "#30302E", text: "#ECEAE3", muted: "#A6A39A",
-        accent: "#57AE9C", hair: "#3A3A36", bad: "#E5877A", ok: "#8FBF6F" }
-    : { bg: "#FAF9F5", surface: "#FFFFFF", text: "#1A1A18", muted: "#6B6A63",
-        accent: "#237A68", hair: "#E6E4DA", bad: "#B4483A", ok: "#4A7A2E" };
+  /* Was a two-way choice on `!== "light"`, which handed the bronze palette to every dark
+     theme — a pure-black app previewing its own code on a #262624 ground. Each theme now
+     carries its own literals in THEMES.pv. */
+  const id = document.documentElement.getAttribute("data-theme") || state.theme;
+  return Object.assign({}, themeInfo(id).pv);
 }
 
 /** A JS string literal safe to embed inside a <script> block.
@@ -14545,6 +15079,9 @@ function markGeneratingTurn(streaming) {
 function setTurnLoader(mdEl, html) {
   if (!mdEl) return;
   mdEl.innerHTML = html;
+  /* This path inserts the loader as a STRING, so nothing holds a handle to the canvas inside
+     it. Without this scan the image loader would sit there as a still, empty plate. */
+  scanImageLoaders(mdEl);
   clearThinking(mdEl);
 }
 /** Drop the "thinking" label the moment real content exists. */
@@ -14685,7 +15222,16 @@ function reconcileStreamChildren(parent, next, depth, from) {
   while (parent.childNodes.length > start + nextArr.length) parent.removeChild(parent.lastChild);
 }
 
+/* The incremental painter reconciles nodes in place and returns the live ones; it never calls
+   decorateMarkdown, so without this wrapper every block would stream in undirected and only
+   snap to the right side once the reply settled. Wrapping instead of stamping at each of the
+   inner function's four return points keeps the one rule in one place. */
 function paintStreamingMarkdown(mdEl, src) {
+  const live = paintStreamingMarkdownInner(mdEl, src);
+  try { autoDirBlocks(mdEl, state.lang); } catch (_) {}
+  return live;
+}
+function paintStreamingMarkdownInner(mdEl, src) {
   const [settled, tail] = splitSettledMarkdown(src);
   const cache = mdEl._streamCache;
 
@@ -15239,9 +15785,27 @@ async function openKbManager() {
   });
 }
 
+/* Guards the window between the tap and the panel existing. Without it a second tap during a
+   slow fetch queued a SECOND panel behind the first. */
+let _annOpening = false;
 async function openAnnouncementsPanel() {
+  /* THE TAP MUST DO SOMETHING IMMEDIATELY. This function used to `await fetchAnnouncements()`
+     BEFORE creating any element, so on a slow connection the button appeared dead — and if the
+     request failed outright, nothing ever appeared. The caller taps again, the second tap finds
+     annCache already filled and opens instantly, which is exactly the reported
+     "يطول ياله يفتح ومرات ميفتح إلا ضغطتين". The fix is ordering, not speed: show the panel
+     first, fill it when the data lands. */
+  if (_annOpening || document.querySelector(".ann-overlay")) return;
+  _annOpening = true;
   const ar = state.lang === "ar";
-  await fetchAnnouncements();
+  const wait = document.createElement("div");
+  wait.className = "mem-overlay ann-overlay";
+  wait.innerHTML = '<div class="mem-card ann-card ann-card--wait"><span class="ann-spin" aria-hidden="true"></span></div>';
+  document.body.appendChild(wait);
+  requestAnimationFrame(() => wait.classList.add("is-open"));
+  try { await fetchAnnouncements(); } catch (_) { /* render whatever is cached */ }
+  try { wait.remove(); } catch (_) {}
+  _annOpening = false;
   // Opening = read everything → clear the badge.
   const newest = annCache.reduce((mx, a) => Math.max(mx, a.ts || 0), 0);
   if (newest) localStorage.setItem(LS_ANN_SEEN, String(newest));
@@ -15251,7 +15815,10 @@ async function openAnnouncementsPanel() {
   ov.className = "mem-overlay ann-overlay";
   let onKey = null;
   const close = () => { if (onKey) document.removeEventListener("keydown", onKey); unlockBodyScroll(); ov.classList.remove("is-open"); setTimeout(() => ov.remove(), 200); };
-  const refresh = () => { close(); openAnnouncementsPanel(); };
+  /* close() only detaches after its 200ms exit animation, and the re-entrancy guard above
+     rejects an open while any .ann-overlay is still attached — so re-opening on the same tick
+     would silently do nothing. Wait out the animation. */
+  const refresh = () => { close(); setTimeout(openAnnouncementsPanel, 240); };
 
   const adminForm = annIsAdmin ? (
     '<form class="ann-form">' +
@@ -15942,6 +16509,18 @@ function openSettingsPanel() {
     exporting: "جارٍ التصدير…", exportedN: "تم تصدير محادثاتك ✓", noChats: "لا توجد محادثات لتصديرها", importing: "جارٍ الاستيراد…", importedN: "تم استيراد المحادثات ✓", importBad: "ملف النسخة غير صالح", importConfirm: "استيراد المحادثات من هذا الملف؟ ستُضاف إلى قائمتك.",
     storageH: "التخزين", storageSub: "يمسح تفضيلات هذا الجهاز فقط — محادثاتك محفوظة في حسابك.", clearBtn: "مسح بيانات الجهاز", clearConfirm: "مسح تفضيلات هذا الجهاز وإعادة التحميل؟ محادثاتك لن تُحذف.",
     aboutH: "عن التطبيق", versionLbl: "الإصدار", updatesLink: "عرض آخر التحديثات",
+    tabAccount: "الحساب", tabLook: "المظهر", tabChat: "المحادثة", tabVoice: "الصوت", tabData: "البيانات",
+    themeH: "الثيم", themeSub: "ستة أمزجة",
+    voiceH: "صوت المكالمة", voiceSub: "يُطبَّق على مكالمتك القادمة",
+    voiceNote: "أصوات Gemini الرسمية. جرّب حتى تجد الأقرب إلى أذنك.",
+    dictH: "لهجة الإملاء", dictSub: "حين تُملي كلامك نصّاً",
+    behaveH: "سلوك الردّ",
+    thinkLbl: "التفكير العميق", thinkHint: "أبطأ وأدقّ في المسائل الصعبة",
+    webLbl: "البحث في الويب", webHint: "يبحث قبل كلّ ردّ",
+    widthH: "عرض القراءة", widthNormal: "عادي", widthWide: "واسع",
+    enterLbl: "الإرسال بمفتاح Enter", enterHint: "و Shift+Enter لسطر جديد",
+    imgH: "الصور", srLbl: "شحذ الصور تلقائيًّا",
+    srHint: "شبكة تعمل على جهازك — ثانية أو اثنتان، وبلا أي كلفة",
   } : {
     title: "Settings", sub: "Manage your account & security", account: "Account",
     appearanceH: "Appearance", themeLight: "Light", themeDark: "Dark",
@@ -15959,6 +16538,18 @@ function openSettingsPanel() {
     exporting: "Exporting…", exportedN: "Chats exported ✓", noChats: "No conversations to export", importing: "Importing…", importedN: "Chats imported ✓", importBad: "Invalid backup file", importConfirm: "Import conversations from this file? They'll be added to your list.",
     storageH: "Storage", storageSub: "Clears this device's preferences only — your chats live safely in your account.", clearBtn: "Clear device data", clearConfirm: "Clear this device's preferences and reload? Your chats won't be deleted.",
     aboutH: "About", versionLbl: "Version", updatesLink: "See what's new",
+    tabAccount: "Account", tabLook: "Appearance", tabChat: "Chat", tabVoice: "Voice", tabData: "Data",
+    themeH: "Theme", themeSub: "six moods",
+    voiceH: "Call voice", voiceSub: "applies to your next call",
+    voiceNote: "Google's own Gemini voices. Try a few until one sounds right.",
+    dictH: "Dictation dialect", dictSub: "when you speak instead of type",
+    behaveH: "Reply behaviour",
+    thinkLbl: "Deep thinking", thinkHint: "slower, more careful on hard questions",
+    webLbl: "Web search", webHint: "searches before every reply",
+    widthH: "Reading width", widthNormal: "Normal", widthWide: "Wide",
+    enterLbl: "Send with Enter", enterHint: "Shift+Enter for a new line",
+    imgH: "Images", srLbl: "Sharpen pictures automatically",
+    srHint: "a network on your own device — a second or two, and free",
   };
   // Server returns Arabic strings; in English mode map by status so the panel stays English.
   const errMsg = (er, kind) => {
@@ -15982,6 +16573,12 @@ function openSettingsPanel() {
     save: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg>',
     database: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>',
     info: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>',
+    wave: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></svg>',
+    mic: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+    tune: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.4"/><circle cx="10" cy="17" r="2.4"/></svg>',
+    palette: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.9 1.4-1.8-.4-1.2.5-2.2 1.7-2.2H18a3 3 0 0 0 3-3 9 9 0 0 0-9-9Z"/><circle cx="7.5" cy="11.5" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="16.5" cy="11" r="1"/></svg>',
+    width: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14M21 5v14M7 12h10"/><path d="m9 9-3 3 3 3M15 9l3 3-3 3"/></svg>',
+    image: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m21 16-5-5L5 20"/></svg>',
   };
   // A present-but-hidden username field gives the browser somewhere to bind the saved email so
   // it stops bleeding it into the conversation search box.
@@ -15992,100 +16589,211 @@ function openSettingsPanel() {
     '<button type="button" class="set-theme-opt" data-tier-opt="' + k + '" role="radio"><span>' + escapeHtml((MODELS[k].short && MODELS[k].short[ar ? "ar" : "en"]) || k) + '</span></button>'
   ).join("");
 
+  /* \u2500\u2500 the pieces, named, so the panes below read as a layout instead of a wall \u2500\u2500
+     Every class the wiring further down queries for is preserved exactly; only the ORDER
+     and the nesting changed. An inactive pane is display:none, which keeps every element
+     in the DOM \u2014 so ov.querySelector(".set-new-email") and friends still resolve whether
+     or not their tab has ever been opened. */
+
+  // Six grounds, painted rather than named: you pick a theme by looking at it.
+  const themeTiles = THEMES.map((th) =>
+    '<button type="button" class="set-theme-tile" data-theme-opt="' + th.id + '" role="radio" aria-checked="false" title="' + escapeHtml(ar ? th.ar : th.en) + '">' +
+      '<span class="set-tile-chip" style="background:' + th.sw[0] + '">' +
+        '<span class="set-tile-surf" style="background:' + th.sw[1] + '"></span>' +
+        '<span class="set-tile-acc" style="background:' + th.sw[2] + '"></span>' +
+      '</span>' +
+      '<span class="set-tile-name">' + escapeHtml(ar ? th.ar : th.en) + '</span>' +
+    '</button>').join("");
+
+  /* The call voices were reachable ONLY by typing firasSetVoice("\u2026") into a browser
+     console \u2014 thirty working voices behind a hidden door. These are Gemini's own prebuilt
+     voices, not the browser's speechSynthesis set. */
+  const curVoice = liveVoice();
+  const voiceOpts = LIVE_VOICES.map((v) =>
+    '<option value="' + v + '"' + (v === curVoice ? ' selected' : '') + '>' + v + '</option>').join("");
+
+  const dictOpts = MIC_LANGS.map((l) =>
+    '<option value="' + l.key + '"' + (l.key === mic.lang ? ' selected' : '') + '>' +
+    escapeHtml(ar ? l.ar : l.en) + '</option>').join("");
+
+  const swRow = (key, label, hint) =>
+    '<div class="set-row">' +
+      '<span class="set-row-t"><strong>' + label + '</strong><em>' + hint + '</em></span>' +
+      '<button type="button" class="set-switch" data-sw="' + key + '" role="switch" aria-checked="false" aria-label="' + label + '"><span></span></button>' +
+    '</div>';
+
+  const TABS = [["account", tx.tabAccount], ["look", tx.tabLook], ["chat", tx.tabChat],
+                ["voice", tx.tabVoice], ["data", tx.tabData]];
+  const tabsHtml = TABS.map((pair, i) =>
+    '<button type="button" class="set-tab' + (i === 0 ? ' is-active' : '') + '" data-tab="' + pair[0] + '" role="tab" aria-selected="' + (i === 0 ? 'true' : 'false') + '">' + escapeHtml(pair[1]) + '</button>').join("");
+
+  const cHero =
+    '<section class="set-hero">' +
+      '<span class="set-avatar"></span>' +
+      '<div class="set-hero-info"><span class="set-hero-eyebrow">' + tx.account + '</span><strong class="set-acct-name"></strong><span class="set-acct-email" dir="ltr"></span></div>' +
+    '</section>';
+
+  const cTheme =
+    '<section class="set-card set-appearance">' +
+      '<div class="set-card-h"><span class="set-ico set-theme-ico">' + (themeInfo(state.theme).dark ? ICO.moon : ICO.sun) + '</span>' + tx.themeH + ' <span class="set-lbl-hint">\u00b7 ' + tx.themeSub + '</span></div>' +
+      '<div class="set-theme-grid" role="radiogroup" aria-label="' + tx.themeH + '">' + themeTiles + '</div>' +
+    '</section>';
+
+  const cReading =
+    '<section class="set-card">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.text + '</span>' + tx.readingH + '</div>' +
+      '<div class="set-theme-seg set-fs-seg" role="radiogroup" aria-label="' + tx.readingH + '">' +
+        '<button type="button" class="set-theme-opt" data-fs-opt="sm" role="radio"><span style="font-size:12px">' + tx.fsSmall + '</span></button>' +
+        '<button type="button" class="set-theme-opt" data-fs-opt="md" role="radio"><span style="font-size:14px">' + tx.fsMedium + '</span></button>' +
+        '<button type="button" class="set-theme-opt" data-fs-opt="lg" role="radio"><span style="font-size:16px">' + tx.fsLarge + '</span></button>' +
+      '</div>' +
+    '</section>';
+
+  const cWidth =
+    '<section class="set-card">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.width + '</span>' + tx.widthH + '</div>' +
+      '<div class="set-theme-seg set-width-seg" role="radiogroup" aria-label="' + tx.widthH + '">' +
+        '<button type="button" class="set-theme-opt" data-width-opt="normal" role="radio"><span>' + tx.widthNormal + '</span></button>' +
+        '<button type="button" class="set-theme-opt" data-width-opt="wide" role="radio"><span>' + tx.widthWide + '</span></button>' +
+      '</div>' +
+    '</section>';
+
+  const cMotion =
+    '<section class="set-card">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.motion + '</span>' + tx.motionH + '</div>' +
+      '<div class="set-theme-seg set-motion-seg" role="radiogroup" aria-label="' + tx.motionH + '">' +
+        '<button type="button" class="set-theme-opt" data-motion-opt="on" role="radio"><span>' + tx.motionFull + '</span></button>' +
+        '<button type="button" class="set-theme-opt" data-motion-opt="off" role="radio"><span>' + tx.motionReduce + '</span></button>' +
+      '</div>' +
+    '</section>';
+
+  const cLang =
+    '<section class="set-card set-appearance">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.globe + '</span>' + tx.langH + '</div>' +
+      '<div class="set-lang-seg" role="radiogroup" aria-label="' + tx.langH + '">' +
+        '<button type="button" class="set-theme-opt" data-lang-opt="ar" role="radio"><span>' + tx.langAr + '</span></button>' +
+        '<button type="button" class="set-theme-opt" data-lang-opt="en" role="radio"><span>' + tx.langEn + '</span></button>' +
+      '</div>' +
+    '</section>';
+
+  const cModel =
+    '<section class="set-card">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.cpu + '</span>' + tx.modelH + ' <span class="set-lbl-hint">\u00b7 ' + tx.modelSub + '</span></div>' +
+      '<div class="set-theme-seg set-tier-seg" role="radiogroup" aria-label="' + tx.modelH + '">' + tierOpts + '</div>' +
+    '</section>';
+
+  /* Mirrors of the two tools-menu toggles. Safe to duplicate because setThink/setWebSearch
+     are the single writers \u2014 each persists AND repaints the composer control, so the two
+     surfaces cannot drift apart. */
+  const cBehave =
+    '<section class="set-card">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.tune + '</span>' + tx.behaveH + '</div>' +
+      swRow("think", tx.thinkLbl, tx.thinkHint) +
+      swRow("web", tx.webLbl, tx.webHint) +
+      swRow("enter", tx.enterLbl, tx.enterHint) +
+    '</section>';
+
+  /* The upscaler shipped with no way to refuse it. It spends a second or two of the caller's
+     own device on every picture — free, but not free of TIME, and on a slow phone that is a
+     wait they did not ask for. A feature that costs the user something needs a switch. */
+  const cImage =
+    '<section class="set-card">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.image + '</span>' + tx.imgH + '</div>' +
+      swRow("imgsr", tx.srLbl, tx.srHint) +
+    '</section>';
+
+  const cVoice =
+    '<section class="set-card">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.wave + '</span>' + tx.voiceH + ' <span class="set-lbl-hint">\u00b7 ' + tx.voiceSub + '</span></div>' +
+      '<select class="set-select set-voice-sel" aria-label="' + tx.voiceH + '" dir="ltr">' + voiceOpts + '</select>' +
+      '<p class="set-danger-note">' + tx.voiceNote + '</p>' +
+    '</section>';
+
+  const cDict =
+    '<section class="set-card">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.mic + '</span>' + tx.dictH + ' <span class="set-lbl-hint">\u00b7 ' + tx.dictSub + '</span></div>' +
+      '<select class="set-select set-dict-sel" aria-label="' + tx.dictH + '">' + dictOpts + '</select>' +
+    '</section>';
+
+  const cEmail =
+    '<form class="set-card set-email-form" novalidate autocomplete="off">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.mail + '</span>' + tx.chEmailH + '</div>' +
+      hiddenUser +
+      field(tx.newEmail, '<input class="set-in set-new-email" type="email" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false">') +
+      field(tx.curPw, '<input class="set-in set-email-pw" type="password" dir="ltr" autocomplete="off">') +
+      '<div class="set-err" hidden></div>' +
+      '<button type="submit" class="set-save">' + tx.saveEmail + '</button>' +
+    '</form>';
+
+  const cPass =
+    '<form class="set-card set-pass-form" novalidate autocomplete="off">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.lock + '</span>' + tx.chPwH + '</div>' +
+      hiddenUser +
+      field(tx.curPw, '<input class="set-in set-cur-pw" type="password" dir="ltr" autocomplete="off">') +
+      field(tx.newPw, '<input class="set-in set-new-pw" type="password" dir="ltr" autocomplete="new-password">', tx.newPwHint) +
+      '<div class="set-err" hidden></div>' +
+      '<button type="submit" class="set-save">' + tx.savePw + '</button>' +
+    '</form>';
+
+  const cConv =
+    '<section class="set-card set-conv">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.save + '</span>' + tx.convH + '</div>' +
+      '<p class="set-danger-note">' + tx.convSub + '</p>' +
+      '<div class="set-btn-row">' +
+        '<button type="button" class="set-save set-export">' + tx.exportBtn + '</button>' +
+        '<button type="button" class="set-save set-secondary set-import">' + tx.importBtn + '</button>' +
+      '</div>' +
+      '<input type="file" class="set-import-file" accept="application/json,.json" hidden>' +
+    '</section>';
+
+  const cStorage =
+    '<section class="set-card">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.database + '</span>' + tx.storageH + '</div>' +
+      '<p class="set-danger-note">' + tx.storageSub + '</p>' +
+      '<button type="button" class="set-save set-secondary set-clear">' + tx.clearBtn + '</button>' +
+    '</section>';
+
+  const cAbout =
+    '<section class="set-card set-about">' +
+      '<div class="set-card-h"><span class="set-ico">' + ICO.info + '</span>' + tx.aboutH + '</div>' +
+      '<div class="set-about-row"><span>' + tx.versionLbl + '</span><span class="set-ver skeleton skeleton--line" style="width:56px"></span></div>' +
+      '<button type="button" class="set-save set-secondary set-updates">' + tx.updatesLink + '</button>' +
+    '</section>';
+
+  /* Account deletion now sits at the bottom of a tab you have to choose, instead of under
+     your thumb at the end of the one scroll everybody used to reach everything else. */
+  const cDanger =
+    '<section class="set-card set-danger">' +
+      '<div class="set-card-h set-danger-h"><span class="set-ico">' + ICO.alert + '</span>' + tx.dangerH + '</div>' +
+      '<p class="set-danger-note">' + tx.dangerP + '</p>' +
+      '<button type="button" class="set-del-btn">' + tx.delBtn + '</button>' +
+      '<div class="set-del-confirm" hidden>' +
+        '<p class="set-danger-note">' + tx.delConfirmP + '</p>' +
+        '<input class="set-in set-del-pw" type="password" dir="ltr" autocomplete="off" placeholder="' + tx.curPw + '">' +
+        '<div class="set-err set-del-err" hidden></div>' +
+        '<div class="set-del-row">' +
+          '<button type="button" class="set-del-cancel">' + tx.cancel + '</button>' +
+          '<button type="button" class="set-del-final">' + tx.delFinal + '</button>' +
+        '</div>' +
+      '</div>' +
+    '</section>';
+
+  const pane = (k, inner, first) =>
+    '<div class="set-pane' + (first ? ' is-active' : '') + '" data-pane="' + k + '" role="tabpanel">' + inner + '</div>';
+
   ov.innerHTML =
     '<div class="mem-card settings-card" role="dialog" aria-modal="true">' +
       '<div class="mem-head"><div style="flex:1">' +
         '<h3>' + tx.title + '</h3><p>' + tx.sub + '</p></div>' +
-        '<button class="mem-x" aria-label="' + (ar ? "إغلاق" : "close") + '"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' +
+        '<button class="mem-x" aria-label="' + (ar ? "\u0625\u063a\u0644\u0627\u0642" : "close") + '"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' +
       '</div>' +
+      '<div class="set-tabs" role="tablist">' + tabsHtml + '</div>' +
       '<div class="set-body">' +
-        '<section class="set-hero">' +
-          '<span class="set-avatar"></span>' +
-          '<div class="set-hero-info"><span class="set-hero-eyebrow">' + tx.account + '</span><strong class="set-acct-name"></strong><span class="set-acct-email" dir="ltr"></span></div>' +
-        '</section>' +
-        subCardHtml(ar) +
-        '<section class="set-card set-appearance">' +
-          '<div class="set-card-h"><span class="set-ico set-theme-ico">' + (state.theme === "dark" ? ICO.moon : ICO.sun) + '</span>' + tx.appearanceH + '</div>' +
-          '<div class="set-theme-seg" role="radiogroup" aria-label="' + tx.appearanceH + '">' +
-            '<button type="button" class="set-theme-opt" data-theme-opt="light" role="radio">' + ICO.sun + '<span>' + tx.themeLight + '</span></button>' +
-            '<button type="button" class="set-theme-opt" data-theme-opt="dark" role="radio">' + ICO.moon + '<span>' + tx.themeDark + '</span></button>' +
-          '</div>' +
-        '</section>' +
-        '<section class="set-card">' +
-          '<div class="set-card-h"><span class="set-ico">' + ICO.text + '</span>' + tx.readingH + '</div>' +
-          '<div class="set-theme-seg set-fs-seg" role="radiogroup" aria-label="' + tx.readingH + '">' +
-            '<button type="button" class="set-theme-opt" data-fs-opt="sm" role="radio"><span style="font-size:12px">' + tx.fsSmall + '</span></button>' +
-            '<button type="button" class="set-theme-opt" data-fs-opt="md" role="radio"><span style="font-size:14px">' + tx.fsMedium + '</span></button>' +
-            '<button type="button" class="set-theme-opt" data-fs-opt="lg" role="radio"><span style="font-size:16px">' + tx.fsLarge + '</span></button>' +
-          '</div>' +
-        '</section>' +
-        '<section class="set-card">' +
-          '<div class="set-card-h"><span class="set-ico">' + ICO.motion + '</span>' + tx.motionH + '</div>' +
-          '<div class="set-theme-seg set-motion-seg" role="radiogroup" aria-label="' + tx.motionH + '">' +
-            '<button type="button" class="set-theme-opt" data-motion-opt="on" role="radio"><span>' + tx.motionFull + '</span></button>' +
-            '<button type="button" class="set-theme-opt" data-motion-opt="off" role="radio"><span>' + tx.motionReduce + '</span></button>' +
-          '</div>' +
-        '</section>' +
-        '<section class="set-card set-appearance">' +
-          '<div class="set-card-h"><span class="set-ico">' + ICO.globe + '</span>' + tx.langH + '</div>' +
-          '<div class="set-lang-seg" role="radiogroup" aria-label="' + tx.langH + '">' +
-            '<button type="button" class="set-theme-opt" data-lang-opt="ar" role="radio"><span>' + tx.langAr + '</span></button>' +
-            '<button type="button" class="set-theme-opt" data-lang-opt="en" role="radio"><span>' + tx.langEn + '</span></button>' +
-          '</div>' +
-        '</section>' +
-        '<section class="set-card">' +
-          '<div class="set-card-h"><span class="set-ico">' + ICO.cpu + '</span>' + tx.modelH + ' <span class="set-lbl-hint">· ' + tx.modelSub + '</span></div>' +
-          '<div class="set-theme-seg set-tier-seg" role="radiogroup" aria-label="' + tx.modelH + '">' + tierOpts + '</div>' +
-        '</section>' +
-        '<form class="set-card set-email-form" novalidate autocomplete="off">' +
-          '<div class="set-card-h"><span class="set-ico">' + ICO.mail + '</span>' + tx.chEmailH + '</div>' +
-          hiddenUser +
-          field(tx.newEmail, '<input class="set-in set-new-email" type="email" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false">') +
-          field(tx.curPw, '<input class="set-in set-email-pw" type="password" dir="ltr" autocomplete="off">') +
-          '<div class="set-err" hidden></div>' +
-          '<button type="submit" class="set-save">' + tx.saveEmail + '</button>' +
-        '</form>' +
-        '<form class="set-card set-pass-form" novalidate autocomplete="off">' +
-          '<div class="set-card-h"><span class="set-ico">' + ICO.lock + '</span>' + tx.chPwH + '</div>' +
-          hiddenUser +
-          field(tx.curPw, '<input class="set-in set-cur-pw" type="password" dir="ltr" autocomplete="off">') +
-          field(tx.newPw, '<input class="set-in set-new-pw" type="password" dir="ltr" autocomplete="new-password">', tx.newPwHint) +
-          '<div class="set-err" hidden></div>' +
-          '<button type="submit" class="set-save">' + tx.savePw + '</button>' +
-        '</form>' +
-        '<section class="set-card set-conv">' +
-          '<div class="set-card-h"><span class="set-ico">' + ICO.save + '</span>' + tx.convH + '</div>' +
-          '<p class="set-danger-note">' + tx.convSub + '</p>' +
-          '<div class="set-btn-row">' +
-            '<button type="button" class="set-save set-export">' + tx.exportBtn + '</button>' +
-            '<button type="button" class="set-save set-secondary set-import">' + tx.importBtn + '</button>' +
-          '</div>' +
-          '<input type="file" class="set-import-file" accept="application/json,.json" hidden>' +
-        '</section>' +
-        '<section class="set-card">' +
-          '<div class="set-card-h"><span class="set-ico">' + ICO.database + '</span>' + tx.storageH + '</div>' +
-          '<p class="set-danger-note">' + tx.storageSub + '</p>' +
-          '<button type="button" class="set-save set-secondary set-clear">' + tx.clearBtn + '</button>' +
-        '</section>' +
-        '<section class="set-card set-about">' +
-          '<div class="set-card-h"><span class="set-ico">' + ICO.info + '</span>' + tx.aboutH + '</div>' +
-          '<div class="set-about-row"><span>' + tx.versionLbl + '</span><span class="set-ver skeleton skeleton--line" style="width:56px"></span></div>' +
-          '<button type="button" class="set-save set-secondary set-updates">' + tx.updatesLink + '</button>' +
-        '</section>' +
-        '<section class="set-card set-danger">' +
-          '<div class="set-card-h set-danger-h"><span class="set-ico">' + ICO.alert + '</span>' + tx.dangerH + '</div>' +
-          '<p class="set-danger-note">' + tx.dangerP + '</p>' +
-          '<button type="button" class="set-del-btn">' + tx.delBtn + '</button>' +
-          '<div class="set-del-confirm" hidden>' +
-            '<p class="set-danger-note">' + tx.delConfirmP + '</p>' +
-            '<input class="set-in set-del-pw" type="password" dir="ltr" autocomplete="off" placeholder="' + tx.curPw + '">' +
-            '<div class="set-err set-del-err" hidden></div>' +
-            '<div class="set-del-row">' +
-              '<button type="button" class="set-del-cancel">' + tx.cancel + '</button>' +
-              '<button type="button" class="set-del-final">' + tx.delFinal + '</button>' +
-            '</div>' +
-          '</div>' +
-        '</section>' +
+        pane("account", cHero + subCardHtml(ar) + cEmail + cPass + cDanger, true) +
+        pane("look",    cTheme + cReading + cWidth + cMotion + cLang) +
+        pane("chat",    cModel + cBehave + cImage) +
+        pane("voice",   cVoice + cDict) +
+        pane("data",    cConv + cStorage + cAbout) +
       '</div>' +
     '</div>';
 
@@ -16108,23 +16816,29 @@ function openSettingsPanel() {
   wireSubCard(ov, close); // subscription card (redeem / plans / admin)
 
   // — appearance (light / dark) — applies instantly, persists via applyTheme
-  const themeSeg = ov.querySelector(".set-theme-seg");
-  const syncThemeSeg = () => {
-    themeSeg.querySelectorAll(".set-theme-opt").forEach((b) => {
+  /* THEME — six tiles now, and queried by a class only the theme grid carries.
+     ".set-theme-seg" was never theme-specific: the reading-size and motion segments carry
+     it too, and ov.querySelector returns the FIRST match. The moment the theme card stopped
+     being a .set-theme-seg, that line would have bound this handler to the FONT-SIZE control
+     and turned every text-size tap into a theme change. */
+  const themeGrid = ov.querySelector(".set-theme-grid");
+  const syncThemeGrid = () => {
+    if (!themeGrid) return;
+    themeGrid.querySelectorAll(".set-theme-tile").forEach((b) => {
       const on = b.getAttribute("data-theme-opt") === state.theme;
       b.classList.toggle("is-active", on);
       b.setAttribute("aria-checked", on ? "true" : "false");
     });
     const ico = ov.querySelector(".set-theme-ico");
-    if (ico) ico.innerHTML = state.theme === "dark" ? ICO.moon : ICO.sun;
+    if (ico) ico.innerHTML = themeInfo(state.theme).dark ? ICO.moon : ICO.sun;
   };
-  themeSeg.addEventListener("click", (e) => {
-    const b = e.target.closest(".set-theme-opt");
+  if (themeGrid) themeGrid.addEventListener("click", (e) => {
+    const b = e.target.closest(".set-theme-tile");
     if (!b) return;
-    applyTheme(b.getAttribute("data-theme-opt") === "dark" ? "dark" : "light");
-    syncThemeSeg();
+    applyTheme(b.getAttribute("data-theme-opt"));   // applyTheme whitelists the id itself
+    syncThemeGrid();
   });
-  syncThemeSeg();
+  syncThemeGrid();
 
   // — interface language (العربية / English) — changes the TEXT only; layout stays fixed.
   const langSeg = ov.querySelector(".set-lang-seg");
@@ -16167,8 +16881,67 @@ function openSettingsPanel() {
   };
   wireSeg(".set-fs-seg", "data-fs-opt", () => state.fontSize, (v) => applyFontSize(v));
   wireSeg(".set-motion-seg", "data-motion-opt", () => state.motion, (v) => applyMotionPref(v));
+  wireSeg(".set-width-seg", "data-width-opt", () => state.width, (v) => applyWidth(v));
   wireSeg(".set-tier-seg", "data-tier-opt", () => state.tier, (v) => {
     if (MODELS[v]) { setTier(v); showToast(tx.modelSet); }
+  });
+
+  /* ── TABS ──────────────────────────────────────────────────────────
+     Panes are toggled by class and never detached, so every querySelector in this
+     function resolves whether or not its tab has been opened — which is what lets the
+     email form, the delete flow and the export buttons keep their existing wiring
+     untouched. */
+  const tabBtns = Array.from(ov.querySelectorAll(".set-tab"));
+  const panes = Array.from(ov.querySelectorAll(".set-pane"));
+  const setBody = ov.querySelector(".set-body");
+  const showPane = (k) => {
+    tabBtns.forEach((b) => {
+      const on = b.getAttribute("data-tab") === k;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    panes.forEach((pn) => pn.classList.toggle("is-active", pn.getAttribute("data-pane") === k));
+    if (setBody) setBody.scrollTop = 0;  // a new tab opens at ITS top, not the last one's offset
+  };
+  tabBtns.forEach((b) => b.addEventListener("click", () => showPane(b.getAttribute("data-tab"))));
+
+  /* ── CALL VOICE ── thirty Gemini voices that until now could only be reached by
+     typing firasSetVoice("…") into a browser console. That function stays the single
+     writer of LS_LIVE_VOICE — it validates against LIVE_VOICES, persists and toasts —
+     because re-implementing those three lines here is exactly how two copies drift. */
+  const voiceSel = ov.querySelector(".set-voice-sel");
+  if (voiceSel) voiceSel.addEventListener("change", () => { firasSetVoice(voiceSel.value); });
+
+  /* ── DICTATION DIALECT ── setMicLang is likewise complete: it persists, repaints the
+     mic labels, and restarts a running live dictation so the new dialect applies at once. */
+  const dictSel = ov.querySelector(".set-dict-sel");
+  if (dictSel) dictSel.addEventListener("change", () => { setMicLang(dictSel.value); });
+
+  /* ── REPLY BEHAVIOUR ── mirrors of the two tools-menu toggles. setThink/setWebSearch
+     each persist AND repaint the composer control, so the two surfaces cannot disagree and
+     no sync code is needed between them. */
+  const swGet = {
+    think: () => state.think,
+    web: () => state.webSearch,
+    enter: () => state.enterSend,
+    imgsr: () => state.imgSr,
+  };
+  const swSet = {
+    think: (v) => setThink(v),
+    web: (v) => setWebSearch(v),
+    enter: (v) => applyEnterSend(v),
+    imgsr: (v) => applyImgSr(v),
+  };
+  ov.querySelectorAll(".set-switch").forEach((b) => {
+    const k = b.getAttribute("data-sw");
+    if (!swGet[k]) return;
+    const paint = () => {
+      const on = !!swGet[k]();
+      b.classList.toggle("is-on", on);
+      b.setAttribute("aria-checked", on ? "true" : "false");
+    };
+    b.addEventListener("click", () => { swSet[k](!swGet[k]()); paint(); });
+    paint();
   });
 
   // — conversations: export backup / import —
@@ -16512,7 +17285,14 @@ function startVerifyPolling() {
     if (authMode !== "verify" || !_verifyPid) { stopVerifyPolling(); return; }
     try {
       const d = await apiJson("/api/auth/verify-status", { method: "POST", body: JSON.stringify({ pid: _verifyPid }) });
-      if (d && d.verified && d.user) { stopVerifyPolling(); _verifyPid = ""; _verifyEmail = ""; await bootApp(d.user); }
+      if (d && d.verified && d.user) {
+        stopVerifyPolling(); _verifyPid = ""; _verifyEmail = "";
+        // Signing UP ends here, not at the submit button — the account exists only once the
+        // email link is opened, so this is where that door's entrance belongs.
+        const intro = mxIntroStart();
+        await bootApp(d.user);
+        await intro.finish();
+      }
     } catch (_) { /* keep polling */ }
   }, 3000);
 }
@@ -16722,7 +17502,11 @@ async function handleAuthSubmit(e) {
       return;
     }
     const user = (data && data.user) || data || { email };
+    /* Started only AFTER the server said yes — a refused password must show its error
+       immediately, not behind a branding card. */
+    const intro = mxIntroStart();
     await bootApp(user);
+    await intro.finish();
   } catch (err) {
     const fbMsg = firebaseAuthMessage(err);
     if (fbMsg) showAuthError(fbMsg);
@@ -16761,6 +17545,7 @@ function setupAuthChannel() {
 
 async function logout() {
   if (isGuest()) return exitGuest();
+  try { localStorage.removeItem(LS_HAD_SESSION); } catch (_) {}
   try { await api("/api/auth/logout", { method: "POST" }); } catch (_) {}
   try { if (authChannel) authChannel.postMessage({ type: "logout" }); } catch (_) {}
   // Clear in-memory account state (device prefs stay).
@@ -16831,16 +17616,80 @@ const LS_GUEST_CHATS  = "firas_guest_chats";
 function isGuest() { return !!(state.user && state.user.guest); }
 
 /** Start (or resume) a guest session and boot the app into it. */
+/* ═══ THE MENTRONX SIGNATURE ══════════════════════════════════════════════════
+   Played on the two doors into the app — "Get Started" and sign-in — never on an
+   ordinary reload: a returning session walking straight into the app is the calmer
+   behaviour, and calm is this brand's whole voice.
+
+   The mark is one continuous line that writes the M and rises into the X's first
+   arm without lifting; the second stroke crosses it and the figure closes. So the
+   intro simply LETS THE MARK WRITE ITSELF — pen pace, one crossing, then it steps
+   aside to sit beside its name. Silent monochrome: both strokes take the theme's
+   own text tokens, so the card matches all six themes with no palette of its own.
+
+   The overlay also covers the auth/boot network wait, which is why the guest door
+   starts it BEFORE the request — the wait everyone already pays becomes the show. */
+const MX_MIN_MS = 3150;      // full performance: draw + cross + lockup, then a LONGER breath — Firas asked the lockup to sit a moment before the site opens
+const MX_MIN_REDUCED = 900;  // reduced motion: the finished lockup, briefly, no theatre
+
+function mxIntroStart() {
+  if (document.querySelector(".mx-intro")) return { finish: async () => {}, cancel: () => {} };
+  const reduced = document.documentElement.getAttribute("data-motion") === "off" ||
+    (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const ov = document.createElement("div");
+  ov.className = "mx-intro";
+  ov.setAttribute("aria-hidden", "true");
+  ov.innerHTML =
+    '<div class="mx-intro__stage">' +
+      '<svg class="mx-intro__mark" viewBox="0 0 96 64" fill="none">' +
+        '<path class="mx-intro__m" d="M8 52 18 12 30 44 42 12 54 52 78 12"/>' +
+        '<path class="mx-intro__x" d="M54 12 78 52"/>' +
+      "</svg>" +
+      '<div class="mx-intro__word" dir="ltr"><i>BY</i> MentronX</div>' +
+    "</div>";
+  document.body.appendChild(ov);
+  const t0 = Date.now();
+  let lockT = null;
+  requestAnimationFrame(() => {
+    if (reduced) ov.classList.add("is-lockup");
+    else {
+      ov.classList.add("is-draw");
+      lockT = setTimeout(() => ov.classList.add("is-lockup"), 1680);
+    }
+  });
+  const remove = (fast) => {
+    if (lockT) clearTimeout(lockT);
+    ov.classList.add("is-out");
+    setTimeout(() => { try { ov.remove(); } catch (_) {} }, fast ? 80 : 360);
+  };
+  return {
+    /* Success: hold until the performance has had its minimum, then bow out. */
+    async finish() {
+      const left = (reduced ? MX_MIN_REDUCED : MX_MIN_MS) - (Date.now() - t0);
+      if (left > 0) await new Promise((r) => setTimeout(r, left));
+      remove(false);
+      await new Promise((r) => setTimeout(r, 360));
+    },
+    /* Failure below it (auth refused, network gone): get out of the way at once —
+       an error toast hiding behind a branding card would be worse than no intro. */
+    cancel() { remove(true); },
+  };
+}
+try { window.mxIntroPlay = async () => { const i = mxIntroStart(); await i.finish(); }; } catch (_) {}
+
 async function startGuestSession() {
   const btn = $("#landingStart");
   if (btn) { btn.disabled = true; btn.classList.add("is-busy"); }
+  const intro = mxIntroStart();
   try {
     const d = await apiJson("/api/guest", { method: "POST" });
     const u = (d && d.user) || null;
     if (!u) throw new Error("no guest");
     try { localStorage.setItem(LS_GUEST_ACTIVE, u.guest ? "1" : "0"); } catch (_) {}
     await bootApp(u);
+    await intro.finish();
   } catch (e) {
+    intro.cancel();
     /* Guest start failed → still fall back to the auth screen, so the visitor is never
        stuck on the landing page. But SAY WHY. This used to swallow the reason entirely,
        which made a misconfigured deploy indistinguishable from "the button does nothing":
@@ -17025,6 +17874,7 @@ async function exitGuest() {
 
 /** Boot the authenticated app: identity, server chats, welcome. */
 async function bootApp(user) {
+  try { localStorage.setItem(LS_HAD_SESSION, "1"); } catch (_) {}
   state.user = user;
   sessionExpiredHandled = false; // fresh session → re-arm the expiry guard
   applyUserIdentity();
@@ -17144,9 +17994,19 @@ async function completeFirebaseSignIn(result) {
   const idToken = await result.user.getIdToken();
   const data = await apiJson("/api/auth/firebase", { method: "POST", body: JSON.stringify({ idToken }) });
   const user = (data && data.user) || data || {};
+  /* The same entrance as the other doors — started only after OUR server accepted the token,
+     so a refused exchange shows its error instead of hiding behind the card. */
+  const intro = mxIntroStart();
   await bootApp(user);
+  await intro.finish();
 }
 const LS_GOOGLE_REDIRECT = "firas_google_redirect";
+/* Set the moment ANY session boots, cleared on logout. It exists for one reason: the entry
+   intro on a RETURNING visit must start the instant the page opens — masking the /api/auth/me
+   round trip the way the guest door masks /api/guest — and the session cookie is HttpOnly, so
+   this hint is the only way the client can guess "a session probably exists" before asking. A
+   stale hint is harmless: the gate cancels the card the moment the server says no. */
+const LS_HAD_SESSION = "firas_had_session";
 /** True inside the native shells (Capacitor bridge injected into this remote page); false in a browser. */
 function isNativeApp() {
   const cap = window.Capacitor;
@@ -19058,10 +19918,17 @@ function wireEvents() {
   // Enter inserts a NEWLINE (default textarea behavior) on EVERY device — sending happens ONLY via
   // the send button, per the user's request. Ctrl/Cmd+Enter stays as an optional power-user send.
   els.input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !e.isComposing) {
-      e.preventDefault();
-      if (!state.streaming) sendMessage();
-    }
+    if (e.key !== "Enter" || e.isComposing) return;
+    /* isComposing is the whole reason this is checked first: an IME (Arabic prediction, Chinese,
+       Japanese) uses Enter to COMMIT the word being typed. Sending on that key would cut the
+       sentence off mid-word for exactly the users this app is built for. */
+    const withMod = e.ctrlKey || e.metaKey;
+    /* Ctrl/Cmd+Enter always sends, in both modes — it is muscle memory for anyone who has used
+       the app until now, and taking it away would be a regression dressed as a preference. */
+    const send = withMod || (state.enterSend && !e.shiftKey);
+    if (!send) return;
+    e.preventDefault();
+    if (!state.streaming) sendMessage();
   });
   els.composer.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -25719,6 +26586,8 @@ async function init() {
   injectBrandMarks();           // brand the static markup (topbar, sidebar, auth)
   applyTheme(state.theme);
   applyFontSize(state.fontSize);
+  applyWidth(state.width);
+  applyEnterSend(state.enterSend);
   applyMotionPref(state.motion);
   applyThink();
   applyWebSearch();
@@ -25743,19 +26612,29 @@ async function init() {
   // Auth gate: ask the server who we are. A valid session skips the landing and
   // goes straight to the app; a logged-out visitor sees the polished landing
   // hero FIRST (the "Get Started" button then opens the auth screen).
+  /* A RETURNING VISIT GETS THE SAME ENTRANCE (Firas: «حتى مع الترسيت»). Started before the
+     server is even asked, so the auth round trip happens behind the writing — and if the hint
+     turns out stale, cancel() clears the card in 80ms and the landing shows as before. */
+  const hadSession = (() => { try { return localStorage.getItem(LS_HAD_SESSION) === "1"; } catch (_) { return false; } })();
+  const intro = hadSession ? mxIntroStart() : { finish: async () => {}, cancel: () => {} };
   try {
     const data = await apiJson("/api/auth/me");
     const user = (data && data.user) || data;
-    if (user) { await bootApp(user); return; }
-    if (await resumeGuestIfActive()) return;
+    if (user) { await bootApp(user); await intro.finish(); return; }
+    if (await resumeGuestIfActive()) { await intro.finish(); return; }
+    intro.cancel();
+    try { localStorage.removeItem(LS_HAD_SESSION); } catch (_) {}
     showLanding();
   } catch (err) {
     if (err && err.status === 401) {
       // No member session — but an active guest trial on this device should
       // resume silently instead of bouncing the visitor back to the landing.
-      if (await resumeGuestIfActive()) return;
+      if (await resumeGuestIfActive()) { await intro.finish(); return; }
+      intro.cancel();
+      try { localStorage.removeItem(LS_HAD_SESSION); } catch (_) {}
       showLanding();
     } else {
+      intro.cancel();
       /* Reaching auth failed for a reason that is NOT "no session". Still show the landing so
          the visitor can act — but do NOT report every failure as a connection problem. A 500
          from a misconfigured deploy ("server not configured — missing/invalid env: …") arrives
@@ -28637,7 +29516,7 @@ function brainRenderThread(chat, opts) {
       const md = document.createElement("div");
       md.className = "md";
       md.innerHTML = renderMarkdown(brainStripSources(m.content), { lang: m.lang });
-      brainAutoDir(md, m.lang);
+      autoDirBlocks(md, m.lang);
       body.appendChild(md);
       try { decorateMarkdown(md); } catch (_) {}
       try { typesetMath(md); } catch (_) {}
@@ -28689,7 +29568,15 @@ function brainRenderThread(chat, opts) {
    `:dir(ltr)` never matches and a pure-Latin heading inside an Arabic answer still inherits the
    Arabic font stack. dir="auto" resolves from the first strong character, which drives layout,
    :dir() selectors, font choice and list-marker side all at once. */
-function brainAutoDir(md, lang) {
+/* PER-BLOCK DIRECTION. Was brainAutoDir, used only by the library workspace; the main chat was
+   left to a CSS rule instead, and that is what produced the reported "النقاط تدخل بالكلام".
+   `unicode-bidi: plaintext` re-orders an element's INLINE CONTENT from its first strong
+   character but never touches the `direction` property — so a bullet beginning with a Latin
+   word laid its text out left-to-right while its MARKER, which follows the list's direction,
+   stayed on the right. One line, its dot stranded across the width of the column.
+   Setting a real `dir` fixes both at once, because alignment, `padding-inline-start` and the
+   marker side all resolve against `direction`. */
+function autoDirBlocks(md, lang) {
   if (!md) return;
   const fallback = lang === "en" ? "ltr" : "rtl";
   // ul/ol are included because the MARKER side follows the list's own direction, not the
@@ -28705,7 +29592,13 @@ function brainAutoDir(md, lang) {
     // "Hb 8.5 غ/دل عند القبول" to LTR on the strength of one leading abbreviation, which is
     // exactly the shape medical and technical Arabic takes. Counting decides it correctly:
     // an English heading is LTR, an Arabic sentence carrying Latin terms stays RTL.
-    el.setAttribute("dir", ar || la ? (ar >= la ? "rtl" : "ltr") : fallback);
+    /* A MARGIN, not a bare majority. A plain count flips "Spaced repetition يضاعف التثبيت"
+       to LTR on 17 Latin letters against 12 Arabic — but that is an Arabic sentence whose
+       subject happens to be an English term, and a reader wants it on the right with the rest
+       of the list. Latin must therefore win by half again before it takes the block. A
+       genuinely English line still flips easily (it carries no Arabic at all), and Arabic
+       prose carrying technical terms stops flipping on their length. */
+    el.setAttribute("dir", ar || la ? (la > ar * 1.5 ? "ltr" : "rtl") : fallback);
   });
 }
 
@@ -28739,7 +29632,7 @@ function brainPaintStream(text, lang, force) {
   if (!thread) return;
   const atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
   _brainStreamMd.innerHTML = renderMarkdown(brainStripSources(text), { lang });
-  brainAutoDir(_brainStreamMd, lang);
+  autoDirBlocks(_brainStreamMd, lang);
   if (atBottom) thread.scrollTop = thread.scrollHeight;
 }
 

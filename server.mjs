@@ -21,6 +21,7 @@ import { readFile, mkdir, writeFile, readdir, rm, realpath } from "node:fs/promi
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -446,9 +447,11 @@ const MIME = {
   ".webp": "image/webp",
   ".ico":  "image/x-icon",
   ".woff2":"font/woff2",
+  ".onnx": "application/octet-stream",
   ".woff": "font/woff",
   ".map":  "application/json",
   ".txt":  "text/plain; charset=utf-8",
+  ".xml":  "application/xml; charset=utf-8",
   ".mp4":  "video/mp4",
   ".webm": "video/webm",
 };
@@ -2371,7 +2374,7 @@ function parseDuckDuckGo(html) {
    upstream image pools, which have their own hard daily caps that cannot be raised from here.
    The env var still wins, and -1 there still means unmetered, so the ceiling moves without a
    code change. */
-const IMAGE_DAILY_LIMIT = (() => { const n = parseInt(process.env.IMAGE_DAILY_LIMIT, 10); return Number.isFinite(n) ? n : 5; })();
+const IMAGE_DAILY_LIMIT = (() => { const n = parseInt(process.env.IMAGE_DAILY_LIMIT, 10); return Number.isFinite(n) ? n : 8; })();
 
 /* The quota day is the USERS' calendar day, not the host's. This used the machine's
    local time while the edge used UTC, so the same build reset counters at a different
@@ -2643,13 +2646,13 @@ function openaiPickImageModel() {
 // medium: Firas's choice. low is ~4x cheaper and visibly softer; high is ~4x dearer and would
 // empty the account in a few hundred pictures.
 const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || "high";
-/* FIVE A DAY, AND THE ENGINE IS NOT THE USER'S PROBLEM. The allowance is five pictures per
-   person per day, full stop. Nano Banana draws all five; if the subscription behind it will not
-   answer, gpt-image draws the rest of that same five. Those are not two budgets stacked on top of
-   each other — the user asked for five and gets five, and which engine served them is an internal
+/* EIGHT A DAY, AND THE ENGINE IS NOT THE USER'S PROBLEM. The allowance is eight pictures per
+   person per day, full stop. Nano Banana draws all eight; if the subscription behind it will not
+   answer, gpt-image draws the rest of that same eight. Those are not two budgets stacked on top of
+   each other — the user asked for eight and gets eight, and which engine served them is an internal
    detail they never see. This number therefore matches IMAGE_DAILY_LIMIT rather than sitting
    under it, so the premium counter can never bind tighter than the allowance itself. */
-const OPENAI_IMAGE_DAILY = Number(process.env.OPENAI_IMAGE_DAILY ?? 5);
+const OPENAI_IMAGE_DAILY = Number(process.env.OPENAI_IMAGE_DAILY ?? 8);
 const OPENAI_IMAGE_BUDGET_USD = Number(process.env.OPENAI_IMAGE_BUDGET_USD ?? 60);
 /* WHAT ONE PICTURE ACTUALLY COSTS — OpenAI's published per-image prices, not an estimate.
 
@@ -3158,13 +3161,73 @@ async function handleImageEdit(req, res) {
   console.log("[firas] image EDITED by OpenAI (" + openaiPickImageModel() + "/" + OPENAI_IMAGE_QUALITY +
     ", $" + editCost.toFixed(3) + "; $" + openaiImageSpent().toFixed(2) + " of $" + OPENAI_IMAGE_BUDGET_USD + " used)");
   openaiImageCharge(editCost);
-  await imgCacheSet(key, out.buf, out.mime);
+  /* An EDITED picture goes through the enhancer too: the user asked for a change, not for a
+     softer copy of what they had. */
+  const finEdit = await picsartEnhance(out.buf, out.mime);
+  await imgCacheSet(key, finEdit.buf, finEdit.mime);
   if (!user.oaiImgCids.includes(key)) user.oaiImgCids.push(key);
   if (!user.imgCids.includes(key)) user.imgCids.push(key);
   persist();
 
   res.writeHead(200, { "Content-Type": "application/json" });
   return res.end(JSON.stringify({ ok: true, key }));
+}
+
+/* ═══ THE EXTERNAL ENHANCER ═════════════════════════════════════════════════════
+   Picsart UPSCALES the picture the engine already produced. It is not a model re-imagining
+   it, which is the whole point: the subject, the composition, the faces and any text in the
+   frame survive exactly, because nothing is being generated a second time.
+
+   Runs BEFORE imgCacheSet on every path, so the enhanced copy is the one written to disk — a
+   reload then serves the good version without spending a second credit.
+
+   IT FAILS OPEN, ALWAYS. No key, no credits (402), a slow service, a reply that is not an
+   image — every one of those returns the ORIGINAL bytes untouched. A picture the user waited
+   minutes for must never be lost because its polish step was unavailable. */
+const PICSART_API_KEY = process.env.PICSART_API_KEY || "";
+const PICSART_UPSCALE_FACTOR = process.env.PICSART_UPSCALE_FACTOR || "2";
+const PICSART_TIMEOUT_MS = Number(process.env.PICSART_TIMEOUT_MS || 45000);
+/* A 402 means the plan is out of credits, and that does not fix itself in the next second.
+   Without this every single image would pay a full round trip to be told so again. */
+let _picsartOffUntil = 0;
+
+async function picsartEnhance(buf, mime) {
+  if (!PICSART_API_KEY || !buf || !buf.length) return { buf, mime };
+  if (Date.now() < _picsartOffUntil) return { buf, mime };
+  const t0 = Date.now();
+  try {
+    const fd = new FormData();
+    fd.append("image", new Blob([buf], { type: mime || "image/png" }), "in.png");
+    fd.append("upscale_factor", String(PICSART_UPSCALE_FACTOR));
+    fd.append("format", "PNG");
+    const r = await fetch("https://api.picsart.io/tools/1.0/upscale", {
+      method: "POST",
+      headers: { "X-Picsart-API-Key": PICSART_API_KEY, accept: "application/json" },
+      body: fd,
+      signal: AbortSignal.timeout(PICSART_TIMEOUT_MS),
+    });
+    if (r.status === 402) {
+      _picsartOffUntil = Date.now() + 600000;   // ten minutes
+      console.error("[firas] picsart: out of credits - serving the original (backing off 10m)");
+      return { buf, mime };
+    }
+    if (!r.ok) { console.error("[firas] picsart " + r.status + " - serving the original"); return { buf, mime }; }
+    const j = await r.json().catch(() => null);
+    const url = j && j.data && j.data.url;
+    if (!url) { console.error("[firas] picsart: no url in reply - serving the original"); return { buf, mime }; }
+    const img = await fetch(url, { signal: AbortSignal.timeout(PICSART_TIMEOUT_MS) });
+    if (!img.ok) return { buf, mime };
+    const out = Buffer.from(await img.arrayBuffer());
+    /* Smaller than the source is not an upscale; something went wrong upstream and the
+       original is strictly the better answer. */
+    if (out.length < 512 || out.length < buf.length * 0.9) return { buf, mime };
+    console.log("[firas] picsart x" + PICSART_UPSCALE_FACTOR + ": " + buf.length + " -> " + out.length +
+      " bytes in " + (Date.now() - t0) + "ms");
+    return { buf: out, mime: img.headers.get("content-type") || "image/png" };
+  } catch (_) {
+    console.error("[firas] picsart error - serving the original");
+    return { buf, mime };
+  }
 }
 
 async function handleImage(req, res) {
@@ -3255,11 +3318,12 @@ async function handleImage(req, res) {
           "; $" + openaiImageSpent().toFixed(2) + " of $" + OPENAI_IMAGE_BUDGET_USD + " used)");
         openaiImageCharge(genCost);
         if (!user.oaiImgCids.includes(slot)) { user.oaiImgCids.push(slot); }
-        await imgCacheSet(ckey, oai.buf, oai.mime);
+        const fin = await picsartEnhance(oai.buf, oai.mime);
+        await imgCacheSet(ckey, fin.buf, fin.mime);
         if (isNew) { user.imgCids.push(slot); }
         persist();
-        res.writeHead(200, { "Content-Type": oai.mime, "Cache-Control": "public, max-age=86400" });
-        return res.end(oai.buf);
+        res.writeHead(200, { "Content-Type": fin.mime, "Cache-Control": "public, max-age=86400" });
+        return res.end(fin.buf);
       }
     } catch (_) { /* fall through to Cloudflare */ }
   }
@@ -3270,10 +3334,11 @@ async function handleImage(req, res) {
     const cf = await generateImageCloudflare(prompt, w, h);
     if (cf && cf.buf && cf.buf.length) {
       console.log("[firas] image served by Cloudflare (" + CF_IMAGE_MODEL + ")");
-      await imgCacheSet(ckey, cf.buf, cf.mime);
+      const fin = await picsartEnhance(cf.buf, cf.mime);
+        await imgCacheSet(ckey, fin.buf, fin.mime);
       if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
-      res.writeHead(200, { "Content-Type": cf.mime, "Cache-Control": "public, max-age=86400" });
-      return res.end(cf.buf);
+      res.writeHead(200, { "Content-Type": fin.mime, "Cache-Control": "public, max-age=86400" });
+      return res.end(fin.buf);
     }
   } catch (_) { /* fall through to Puter */ }
   // 1) Puter gpt-image-2 (paid credits) → premium fallback: the sharpest in-image text.
@@ -3281,10 +3346,11 @@ async function handleImage(req, res) {
     const put = await generateImagePuter(prompt);
     if (put && put.buf && put.buf.length) {
       console.log("[firas] image served by Puter (" + imgEngineTag() + ")");
-      await imgCacheSet(ckey, put.buf, put.mime);
+      const fin = await picsartEnhance(put.buf, put.mime);
+        await imgCacheSet(ckey, fin.buf, fin.mime);
       if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
-      res.writeHead(200, { "Content-Type": put.mime, "Cache-Control": "public, max-age=86400" });
-      return res.end(put.buf);
+      res.writeHead(200, { "Content-Type": fin.mime, "Cache-Control": "public, max-age=86400" });
+      return res.end(fin.buf);
     }
     if (PUTER_AUTH_TOKEN) console.error("[firas] Puter returned no image → next engine");
   } catch (_) { if (PUTER_AUTH_TOKEN) console.error("[firas] Puter error → next engine"); }
@@ -3293,10 +3359,11 @@ async function handleImage(req, res) {
     const gem = await generateImageGemini(prompt);
     if (gem && gem.buf && gem.buf.length) {
       console.log("[firas] image served by Gemini (" + GEMINI_IMAGE_MODEL + ")");
-      await imgCacheSet(ckey, gem.buf, gem.mime);
+      const fin = await picsartEnhance(gem.buf, gem.mime);
+        await imgCacheSet(ckey, fin.buf, fin.mime);
       if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
-      res.writeHead(200, { "Content-Type": gem.mime, "Cache-Control": "public, max-age=86400" });
-      return res.end(gem.buf);
+      res.writeHead(200, { "Content-Type": fin.mime, "Cache-Control": "public, max-age=86400" });
+      return res.end(fin.buf);
     }
     if (GEMINI_API_KEY) console.error("[firas] Gemini returned no image → next engine");
   } catch (_) { if (GEMINI_API_KEY) console.error("[firas] Gemini error → next engine"); }
@@ -3305,10 +3372,11 @@ async function handleImage(req, res) {
     const hf = await generateImageHF(prompt);
     if (hf && hf.buf && hf.buf.length) {
       console.log("[firas] image served by Hugging Face (" + HF_IMAGE_MODEL + ")");
-      await imgCacheSet(ckey, hf.buf, hf.mime);
+      const fin = await picsartEnhance(hf.buf, hf.mime);
+        await imgCacheSet(ckey, fin.buf, fin.mime);
       if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string
-      res.writeHead(200, { "Content-Type": hf.mime, "Cache-Control": "public, max-age=86400" });
-      return res.end(hf.buf);
+      res.writeHead(200, { "Content-Type": fin.mime, "Cache-Control": "public, max-age=86400" });
+      return res.end(fin.buf);
     }
   } catch (_) { /* fall through to pollinations */ }
   // 2) Keyless pollinations (flux) with LLM prompt-enhance + private/no-feed for the
@@ -3318,8 +3386,10 @@ async function handleImage(req, res) {
   try {
     const r = await fetch(src, { headers: { "User-Agent": SEARCH_UA, "Accept": "image/*" } });
     if (!r.ok) { res.writeHead(502); return res.end("image generation failed"); }
-    const buf = Buffer.from(await r.arrayBuffer());
-    const pmime = r.headers.get("content-type") || "image/jpeg";
+    const rawBuf = Buffer.from(await r.arrayBuffer());
+    const rawMime = r.headers.get("content-type") || "image/jpeg";
+    const fin = await picsartEnhance(rawBuf, rawMime);
+    const buf = fin.buf, pmime = fin.mime;
     await imgCacheSet(ckey, buf, pmime);
     if (isNew) { user.imgCids.push(slot); persist(); }   // record the IMAGE, not the client string // charge only now (real bytes)
     res.writeHead(200, { "Content-Type": pmime, "Cache-Control": "public, max-age=86400" });
@@ -5978,6 +6048,8 @@ const STATIC_ALLOW = new Set([
   "index.html",
   "app.js",
   "styles.css",
+  "robots.txt",             // crawlers ask for these two by name; a 404-to-index.html
+  "sitemap.xml",            // fallback would feed Google an HTML page as a "sitemap"
   "firebase-config.js",     // optional, git-ignored; absent on most deploys
   "logo-preview.html",      // temporary design-review page; safe to delete with this entry
   "favicon.ico",
@@ -5990,7 +6062,32 @@ const STATIC_ALLOW = new Set([
    47 MB, and an announcement record is JSON in RTDB. It is a read-only directory of files
    the owner puts there deliberately; the containment check below still resolves the real
    path, so a "../" cannot climb out of it. */
-const STATIC_ALLOW_PREFIX = [".well-known/", "media/"];
+/* models/ holds the super-resolution weights. Served from OUR domain on purpose: fetching them
+   from Hugging Face at run time measured 213 KB/s here — about 96 seconds for a 21 MB file, and
+   worse on mobile data. On Netlify's CDN behind a year-long cache it is a one-time cost the
+   visitor pays once and never again. */
+const STATIC_ALLOW_PREFIX = [".well-known/", "media/", "models/"];
+
+/* ═══ GZIP FOR STATIC TEXT ═══════════════════════════════════════════════════════
+   Measured before this existed: app.js crossed the wire at 2,320,736 bytes — every visitor,
+   every cold cache, 2.3 MB of JavaScript raw. Netlify compresses on its own, so PRODUCTION was
+   fine; this server (localhost today, Fly.io if that path is ever used) sent bytes exactly as
+   they sat on disk.
+
+   Compressed ONCE per file version and kept: gzipping 2.3 MB costs real CPU, and doing it per
+   request would trade bandwidth for latency. The cache key includes mtime, so editing a file
+   during development invalidates its entry by itself. Only text types are compressed — images,
+   fonts, video and the .onnx models are already entropy-dense, and gzip on them wastes CPU to
+   save nothing. */
+const GZIP_TYPES = new Set([".html", ".js", ".mjs", ".css", ".json", ".svg", ".txt", ".xml"]);
+const _gzipCache = new Map();   // path -> { mtime, buf }
+function gzipFor(filePath, raw, mtimeMs) {
+  const hit = _gzipCache.get(filePath);
+  if (hit && hit.mtime === mtimeMs) return hit.buf;
+  const buf = gzipSync(raw, { level: 6 });
+  _gzipCache.set(filePath, { mtime: mtimeMs, buf });
+  return buf;
+}
 
 async function serveStatic(req, res) {
   let urlPath;
@@ -6068,9 +6165,28 @@ async function serveStatic(req, res) {
   }
 
   try {
-    const data = await readFile(filePath);
+    let data = await readFile(filePath);
     const ext = path.extname(filePath).toLowerCase();
+    /* Compress text when the client can take it. The gzip is cached per file version
+       (see gzipFor above), so this is a Map lookup on every request after the first. */
+    const extraHeaders = {};
+    /* .includes, DELIBERATELY not a regex. The first version used a word-boundary regex
+       written through a non-raw Python patch string, which turned each boundary escape
+       into a literal BACKSPACE byte (0x08) - a regex that is syntactically valid, matches
+       nothing, and prints cleanly in every terminal because the byte is invisible. It
+       cost a full debugging session. Plain substring match has no such failure mode. */
+    if (GZIP_TYPES.has(ext) && String(req.headers["accept-encoding"] || "").includes("gzip")) {
+      try {
+        const { statSync } = await import("node:fs");
+        data = gzipFor(filePath, data, statSync(filePath).mtimeMs);
+        extraHeaders["Content-Encoding"] = "gzip";
+      } catch (_) { /* fall through uncompressed */ }
+    }
     res.writeHead(200, {
+      ...extraHeaders,
+      /* Caches must key on encoding, or a proxy could hand gzip bytes to a client
+         that never asked for them. */
+      "Vary": "Accept-Encoding",
       "Content-Type": MIME[ext] || "application/octet-stream",
       "Cache-Control": "no-cache", // always revalidate so edits show up immediately
       "X-Content-Type-Options": "nosniff",

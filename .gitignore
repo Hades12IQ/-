@@ -30,3 +30,8 @@ desktop.ini
 # Editor
 .vscode/
 .idea/
+
+# Swin2SR was benchmarked for the on-device upscaler and lost: 17.6s per 128px tile in-browser
+# (~19 minutes per picture) against ESPCN's 60ms. Kept locally for reference, never shipped -
+# 21 MB of dead weight would live in git history forever.
+models/swin2sr-x2-q8.onnx
