@@ -23,10 +23,6 @@ jobs:
     env:
       PROJECT_PATH: ios/FirasAI.xcodeproj
       SCHEME_NAME: FirasAI
-      BUILD_ROOT: ${{ runner.temp }}/FirasAI-Build
-      INTERMEDIATES_ROOT: ${{ runner.temp }}/FirasAI-Intermediates
-      PACKAGES_ROOT: ${{ runner.temp }}/FirasAI-Packages
-      ARTIFACT_ROOT: ${{ runner.temp }}/FirasAI-Artifacts
 
     steps:
       - name: Check out source
@@ -38,6 +34,7 @@ jobs:
           set -Eeuo pipefail
           test -d /Applications/Xcode_26.6.app
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          ARTIFACT_ROOT="$RUNNER_TEMP/FirasAI-Artifacts"
           mkdir -p "$ARTIFACT_ROOT"
           {
             sw_vers
@@ -50,6 +47,10 @@ jobs:
         run: |
           set -Eeuo pipefail
           set -o pipefail
+          BUILD_ROOT="$RUNNER_TEMP/FirasAI-Build"
+          INTERMEDIATES_ROOT="$RUNNER_TEMP/FirasAI-Intermediates"
+          PACKAGES_ROOT="$RUNNER_TEMP/FirasAI-Packages"
+          ARTIFACT_ROOT="$RUNNER_TEMP/FirasAI-Artifacts"
 
           xcodebuild \
             -project "$PROJECT_PATH" \
@@ -75,6 +76,8 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          BUILD_ROOT="$RUNNER_TEMP/FirasAI-Build"
+          ARTIFACT_ROOT="$RUNNER_TEMP/FirasAI-Artifacts"
 
           APP_PATH="$BUILD_ROOT/Release-iphoneos/FirasAI.app"
           test -d "$APP_PATH"
