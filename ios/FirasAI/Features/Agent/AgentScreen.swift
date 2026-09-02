@@ -557,7 +557,7 @@ private struct AgentPhaseChip: View {
 
     private var label: LocalizedStringResource {
         if isStarting { return AgentStrings.queued }
-        switch phase {
+        return switch phase {
         case .queued, nil: AgentStrings.queued
         case .run: AgentStrings.running
         case .done: AgentStrings.done

@@ -611,7 +611,7 @@ final class MediaStudioStore {
         guard let apiError = error as? APIError else { return false }
         switch apiError {
         case .transport, .invalidResponse, .decoding:
-            true
+            return true
         case .httpStatus(let code, let message):
             if code == 503,
                message.lowercased().contains("configured") {
@@ -619,7 +619,7 @@ final class MediaStudioStore {
             }
             return (500...599).contains(code)
         case .invalidURL, .invalidRequest, .encoding:
-            false
+            return false
         }
     }
 
@@ -702,7 +702,7 @@ actor MediaAssetRepository {
         if mime.contains("mp4") { return "mp4" }
         if mime.contains("wav") { return "wav" }
         if mime.contains("mpeg") || mime.contains("mp3") { return "mp3" }
-        switch kind {
+        return switch kind {
         case .image: "png"
         case .video: "mp4"
         case .music: "mp3"

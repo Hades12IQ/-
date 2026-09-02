@@ -162,7 +162,7 @@ private struct MentronXCrossStroke: Shape {
     }
 }
 
-private func scaledPath(_ points: [CGPoint], in rect: CGRect) -> Path {
+private nonisolated func scaledPath(_ points: [CGPoint], in rect: CGRect) -> Path {
     var path = Path()
     guard let first = points.first else { return path }
 

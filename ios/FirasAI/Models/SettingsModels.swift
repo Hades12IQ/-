@@ -126,7 +126,7 @@ nonisolated struct FirasChatBackupEntry: Codable, Equatable, Sendable {
 }
 
 private extension ChatMessage {
-    var sanitizedForImport: ChatMessage {
+    nonisolated var sanitizedForImport: ChatMessage {
         let safeAlternatives = (alts ?? [])
             .prefix(5)
             .map { alternative in

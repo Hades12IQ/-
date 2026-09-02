@@ -133,7 +133,12 @@ struct CodeScreen: View {
     private var buildCard: some View {
         GlassSurface(cornerRadius: 24, tintStrength: 0.045) {
             VStack(alignment: .leading, spacing: 13) {
-                TextField(CodeStrings.projectNamePlaceholder, text: $projectName)
+                TextField(
+                    text: $projectName,
+                    prompt: Text(CodeStrings.projectNamePlaceholder)
+                ) {
+                    Text(CodeStrings.projectNamePlaceholder)
+                }
                     .font(.headline)
                     .foregroundStyle(preferences.palette.textPrimary)
                     .padding(.horizontal, 13)
@@ -141,7 +146,13 @@ struct CodeScreen: View {
                     .background(preferences.palette.surfaceSunken.opacity(0.68), in: RoundedRectangle(cornerRadius: 14))
                     .accessibilityLabel(Text(CodeStrings.projectName))
 
-                TextField(CodeStrings.promptPlaceholder, text: $prompt, axis: .vertical)
+                TextField(
+                    text: $prompt,
+                    prompt: Text(CodeStrings.promptPlaceholder),
+                    axis: .vertical
+                ) {
+                    Text(CodeStrings.promptPlaceholder)
+                }
                     .font(.body)
                     .foregroundStyle(preferences.palette.textPrimary)
                     .lineLimit(4...9)
@@ -599,7 +610,7 @@ private struct CodeFileNavigator: View {
 
     private func fileIcon(_ path: String) -> String {
         let ext = (path as NSString).pathExtension.lowercased()
-        switch ext {
+        return switch ext {
         case "html", "htm": "globe"
         case "css": "paintbrush"
         case "js", "mjs", "ts": "curlybraces"

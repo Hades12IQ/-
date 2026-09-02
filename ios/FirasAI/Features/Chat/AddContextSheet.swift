@@ -244,7 +244,9 @@ struct AddContextSheet: View {
     }
 
     private var photoStrip: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        let allPhotosTitle = ChatStrings.contextAllPhotos
+
+        return ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: 10) {
                 Button(action: requestCamera) {
                     ContextPhotoActionTile(
@@ -298,12 +300,12 @@ struct AddContextSheet: View {
                     matching: .images
                 ) {
                     ContextPhotoActionTile(
-                        title: ChatStrings.contextAllPhotos,
+                        title: allPhotosTitle,
                         systemImage: "photo.on.rectangle.angled"
                     )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(Text(ChatStrings.contextAllPhotos))
+                .accessibilityLabel(Text(allPhotosTitle))
             }
             .padding(.vertical, 2)
         }

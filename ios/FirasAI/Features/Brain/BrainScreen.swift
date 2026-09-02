@@ -60,7 +60,7 @@ struct BrainScreen: View {
                 BrainPassageSheet(passage: passage) {
                     store.dismissPassage()
                 }
-                .environment(PreferencesStore.self, preferences)
+                .environment(preferences)
                 .environment(\.locale, preferences.language.locale)
                 .environment(\.layoutDirection, preferences.language.layoutDirection)
             }
@@ -286,7 +286,13 @@ struct BrainScreen: View {
                 }
 
                 HStack(alignment: .bottom, spacing: 10) {
-                    TextField(BrainStrings.askPlaceholder, text: $query, axis: .vertical)
+                    TextField(
+                        text: $query,
+                        prompt: Text(BrainStrings.askPlaceholder),
+                        axis: .vertical
+                    ) {
+                        Text(BrainStrings.askPlaceholder)
+                    }
                         .focused($isSearchFocused)
                         .lineLimit(1...4)
                         .font(.body)

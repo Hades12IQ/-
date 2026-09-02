@@ -516,7 +516,7 @@ final class CodeStore {
 
     private func retryable(_ error: Error) -> Bool {
         guard let apiError = error as? APIError else { return false }
-        switch apiError {
+        return switch apiError {
         case .transport:
             true
         case .httpStatus(let code, _):

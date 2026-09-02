@@ -98,7 +98,13 @@ struct MediaStudioScreen: View {
                     .font(.headline)
                     .foregroundStyle(preferences.palette.textPrimary)
 
-                TextField(promptPlaceholder, text: $prompt, axis: .vertical)
+                TextField(
+                    text: $prompt,
+                    prompt: Text(promptPlaceholder),
+                    axis: .vertical
+                ) {
+                    Text(promptPlaceholder)
+                }
                     .font(.body)
                     .foregroundStyle(preferences.palette.textPrimary)
                     .lineLimit(4...9)
@@ -182,7 +188,13 @@ struct MediaStudioScreen: View {
                 Text(MediaStrings.lyrics)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(preferences.palette.textSecondary)
-                TextField(MediaStrings.lyricsOptional, text: $lyrics, axis: .vertical)
+                TextField(
+                    text: $lyrics,
+                    prompt: Text(MediaStrings.lyricsOptional),
+                    axis: .vertical
+                ) {
+                    Text(MediaStrings.lyricsOptional)
+                }
                     .font(.body)
                     .foregroundStyle(preferences.palette.textPrimary)
                     .lineLimit(3...8)
