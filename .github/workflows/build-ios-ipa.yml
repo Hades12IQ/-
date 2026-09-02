@@ -1,0 +1,126 @@
+name: Build unsigned FirasAI IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/ios-ipa-build
+    paths:
+      - "ios/**"
+      - ".github/workflows/build-ios-ipa.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firasai-unsigned-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-unsigned-ipa:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      PROJECT_PATH: ios/FirasAI.xcodeproj
+      SCHEME_NAME: FirasAI
+      BUILD_ROOT: ${{ runner.temp }}/FirasAI-Build
+      INTERMEDIATES_ROOT: ${{ runner.temp }}/FirasAI-Intermediates
+      PACKAGES_ROOT: ${{ runner.temp }}/FirasAI-Packages
+      ARTIFACT_ROOT: ${{ runner.temp }}/FirasAI-Artifacts
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 26.6
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -d /Applications/Xcode_26.6.app
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          mkdir -p "$ARTIFACT_ROOT"
+          {
+            sw_vers
+            xcodebuild -version
+            xcode-select --print-path
+          } | tee "$ARTIFACT_ROOT/toolchain.log"
+
+      - name: Build unsigned device app
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set -o pipefail
+
+          xcodebuild \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME_NAME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -clonedSourcePackagesDirPath "$PACKAGES_ROOT" \
+            -onlyUsePackageVersionsFromResolvedFile \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            ONLY_ACTIVE_ARCH=NO \
+            ENABLE_PREVIEWS=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            SYMROOT="$BUILD_ROOT" \
+            OBJROOT="$INTERMEDIATES_ROOT" \
+            clean build \
+            2>&1 | tee "$ARTIFACT_ROOT/xcodebuild.log"
+
+      - name: Package Payload as unsigned IPA
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          APP_PATH="$BUILD_ROOT/Release-iphoneos/FirasAI.app"
+          test -d "$APP_PATH"
+          test -f "$APP_PATH/FirasAI"
+
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")"
+          test "$BUNDLE_ID" = "org.firasai.FirasAI"
+
+          if /usr/bin/codesign --verify "$APP_PATH" >/dev/null 2>&1; then
+            echo "Expected an unsigned app, but the bundle already verifies as signed." >&2
+            exit 1
+          fi
+
+          rm -rf "$ARTIFACT_ROOT/Payload"
+          mkdir -p "$ARTIFACT_ROOT/Payload"
+          /usr/bin/ditto "$APP_PATH" "$ARTIFACT_ROOT/Payload/FirasAI.app"
+
+          (
+            cd "$ARTIFACT_ROOT"
+            /usr/bin/zip -qry -X FirasAI-unsigned.ipa Payload
+          )
+
+          /usr/bin/unzip -t "$ARTIFACT_ROOT/FirasAI-unsigned.ipa"
+          /usr/bin/unzip -l "$ARTIFACT_ROOT/FirasAI-unsigned.ipa" \
+            | tee "$ARTIFACT_ROOT/ipa-contents.log"
+          shasum -a 256 "$ARTIFACT_ROOT/FirasAI-unsigned.ipa" \
+            | tee "$ARTIFACT_ROOT/FirasAI-unsigned.ipa.sha256"
+          rm -rf "$ARTIFACT_ROOT/Payload"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: FirasAI-unsigned-IPA
+          path: |
+            ${{ runner.temp }}/FirasAI-Artifacts/FirasAI-unsigned.ipa
+            ${{ runner.temp }}/FirasAI-Artifacts/FirasAI-unsigned.ipa.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FirasAI-xcodebuild-logs
+          path: |
+            ${{ runner.temp }}/FirasAI-Artifacts/*.log
+            ${{ runner.temp }}/FirasAI-Artifacts/ipa-contents.log
+          if-no-files-found: warn
+          retention-days: 7
