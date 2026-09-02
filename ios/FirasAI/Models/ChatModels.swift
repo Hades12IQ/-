@@ -126,13 +126,15 @@ nonisolated struct ChatMessage: Codable, Equatable, Identifiable, Sendable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        role = try container.decodeIfPresent(ChatRole.self, forKey: .role) ?? .user
+        let decodedRole = try container.decodeIfPresent(ChatRole.self, forKey: .role) ?? .user
+        role = decodedRole
         content = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
         tier = try container.decodeIfPresent(String.self, forKey: .tier)
         lang = try container.decodeIfPresent(String.self, forKey: .lang)
         files = try container.decodeIfPresent([ChatAttachment].self, forKey: .files)
         askAnswered = try container.decodeIfPresent(Bool.self, forKey: .askAnswered)
-        cid = try container.decodeIfPresent(String.self, forKey: .cid)
+        let decodedCID = try container.decodeIfPresent(String.self, forKey: .cid)
+        cid = decodedCID
         retryOf = try container.decodeIfPresent(RetryReference.self, forKey: .retryOf)
         retried = try container.decodeIfPresent(Bool.self, forKey: .retried)
         mode = try container.decodeIfPresent(String.self, forKey: .mode)
@@ -146,7 +148,7 @@ nonisolated struct ChatMessage: Codable, Equatable, Identifiable, Sendable {
         // A persisted turn may use the same cid for its user and assistant
         // halves. Include the role so SwiftUI never receives duplicate row
         // identities after a conversation is decoded again.
-        id = cid.map { "message-\(role.rawValue)-\($0)" } ?? UUID().uuidString
+        id = decodedCID.map { "message-\(decodedRole.rawValue)-\($0)" } ?? UUID().uuidString
         state = .delivered
     }
 
