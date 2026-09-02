@@ -1,0 +1,32 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "agent.account" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الحساب" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Account" } } } },
+    "agent.activity" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "سجل التنفيذ" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Execution log" } } } },
+    "agent.credits" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "رصيد Agent" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Agent credits" } } } },
+    "agent.credits.remaining" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المتبقي" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Remaining" } } } },
+    "agent.credits.used" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المستخدم" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Used" } } } },
+    "agent.dismissError" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إخفاء الخطأ" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Dismiss error" } } } },
+    "agent.download" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تنزيل الملف" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Download file" } } } },
+    "agent.files" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الملفات الناتجة" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Deliverables" } } } },
+    "agent.hero" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "سلّم المهمة، واترك الباقي لفِراس" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Hand off the mission to Firas" } } } },
+    "agent.hero.detail" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يخطط وينفّذ ويراجع عمله، ثم يسلّمك النتيجة والملفات. تستمر المهمة في السحابة حتى لو غادرت التطبيق." } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "It plans, executes, reviews its work, and delivers the result and files. The mission keeps running in the cloud if you leave the app." } } } },
+    "agent.newMission" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مهمة جديدة" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "New mission" } } } },
+    "agent.openSidebar" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فتح القائمة" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Open sidebar" } } } },
+    "agent.phase.done" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مكتملة" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Completed" } } } },
+    "agent.phase.failed" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لم تكتمل" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Not completed" } } } },
+    "agent.phase.queued" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "في الطابور" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Queued" } } } },
+    "agent.phase.running" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "قيد التنفيذ" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Running" } } } },
+    "agent.plan" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "خطة العمل" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Work plan" } } } },
+    "agent.prompt" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ما المهمة التي تريد إنجازها؟" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "What mission should Firas complete?" } } } },
+    "agent.result" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "النتيجة" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Result" } } } },
+    "agent.runningCloud" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يمكنك المغادرة؛ ستستمر المهمة في السحابة." } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "You can leave; this mission will keep running in the cloud." } } } },
+    "agent.send" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بدء المهمة" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Start mission" } } } },
+    "agent.share" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مشاركة الملف" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Share file" } } } },
+    "agent.signIn" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "سجّل الدخول لبدء مهمة" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to start a mission" } } } },
+    "agent.step.pending" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بانتظار التنفيذ" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Waiting" } } } },
+    "agent.subtitle" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "وكيل المهام الكبيرة" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Agent for substantial tasks" } } } },
+    "agent.title" : { "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فِراس Agent" } }, "en" : { "stringUnit" : { "state" : "translated", "value" : "Firas Agent" } } } }
+  },
+  "version" : "1.0"
+}
