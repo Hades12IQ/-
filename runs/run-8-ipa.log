@@ -1,0 +1,37 @@
+Archive:  /Users/runner/work/_temp/FirasAI-Artifacts/FirasAI-unsigned.ipa
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+        0  09-02-2026 09:48   Payload/
+        0  09-02-2026 09:48   Payload/FirasAI.app/
+        0  09-02-2026 09:47   Payload/FirasAI.app/ar.lproj/
+     6281  09-02-2026 09:47   Payload/FirasAI.app/ar.lproj/Chat.strings
+     1552  09-02-2026 09:47   Payload/FirasAI.app/ar.lproj/Agent.strings
+     1673  09-02-2026 09:47   Payload/FirasAI.app/ar.lproj/Code.strings
+     2035  09-02-2026 09:47   Payload/FirasAI.app/ar.lproj/Media.strings
+    13346  09-02-2026 09:47   Payload/FirasAI.app/ar.lproj/Localizable.strings
+      788  09-02-2026 09:47   Payload/FirasAI.app/ar.lproj/InfoPlist.strings
+     1322  09-02-2026 09:47   Payload/FirasAI.app/ar.lproj/Shell.strings
+      176  09-02-2026 09:47   Payload/FirasAI.app/ar.lproj/Activity.strings
+     1748  09-02-2026 09:47   Payload/FirasAI.app/ar.lproj/Brain.strings
+        0  09-02-2026 09:47   Payload/FirasAI.app/en.lproj/
+     4788  09-02-2026 09:47   Payload/FirasAI.app/en.lproj/Chat.strings
+     1179  09-02-2026 09:47   Payload/FirasAI.app/en.lproj/Agent.strings
+     1303  09-02-2026 09:47   Payload/FirasAI.app/en.lproj/Code.strings
+     1713  09-02-2026 09:47   Payload/FirasAI.app/en.lproj/Media.strings
+    10143  09-02-2026 09:47   Payload/FirasAI.app/en.lproj/Localizable.strings
+      534  09-02-2026 09:47   Payload/FirasAI.app/en.lproj/InfoPlist.strings
+      963  09-02-2026 09:47   Payload/FirasAI.app/en.lproj/Shell.strings
+      174  09-02-2026 09:47   Payload/FirasAI.app/en.lproj/Activity.strings
+     1392  09-02-2026 09:47   Payload/FirasAI.app/en.lproj/Brain.strings
+     1392  09-02-2026 09:47   Payload/FirasAI.app/AppIcon60x60@2x.png
+        0  09-02-2026 09:47   Payload/FirasAI.app/ZIPFoundation_ZIPFoundation.bundle/
+      599  09-02-2026 09:47   Payload/FirasAI.app/ZIPFoundation_ZIPFoundation.bundle/PrivacyInfo.xcprivacy
+      699  09-02-2026 09:47   Payload/FirasAI.app/ZIPFoundation_ZIPFoundation.bundle/Info.plist
+ 11206080  09-02-2026 09:48   Payload/FirasAI.app/FirasAI
+    60408  09-02-2026 09:48   Payload/FirasAI.app/Assets.car
+   104120  09-02-2026 09:47   Payload/FirasAI.app/FirasComplete.wav
+     1600  09-02-2026 09:47   Payload/FirasAI.app/AppIcon76x76@2x~ipad.png
+     2174  09-02-2026 09:48   Payload/FirasAI.app/Info.plist
+        8  09-02-2026 09:48   Payload/FirasAI.app/PkgInfo
+---------                     -------
+ 11428190                     32 files
