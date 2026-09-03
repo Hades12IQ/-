@@ -69,13 +69,27 @@ enum PromptBuilder {
         let think = input.thinkToggle && tier.showThinking && !hasImages
         let planning = isPlanningTurn(input.planTurn)
 
+        /* THE LANGUAGE THE READER NAMED, not the one the overload assumed.
+           This called the short `systemPrompt`, and the short one passes `codeLabel: HTML,
+           codeLang: html` as literals - so every code request in the app, in any language, was
+           given the HTML brief. The model was told to put everything inside one HTML file and
+           it obeyed: a request for Python came back as a web page with a Run button that
+           simulates Python. The remaining arguments below are the short overload's own
+           defaults, so nothing else about the prompt moves. */
+        let codeSpec = CodeSpec.detect(input.lastUser.content)
         var system = PromptCatalog.systemPrompt(
             tier: tier.rawValue,
             product: input.product.wireValue,
             mode: planning ? "plan" : "auto",
             lang: input.lang.rawValue,
             think: think,
-            requestKind: catalogRequestKind(input.kind)
+            requestKind: catalogRequestKind(input.kind),
+            requestedCount: 0,
+            userRequirements: "",
+            difficultyLevel: PromptCatalog.difficultyDefault,
+            includeDifficultyRule: true,
+            codeLabel: codeSpec.label,
+            codeLang: codeSpec.lang
         )
         /* PLAN MODE ARRIVES AS ITS OWN SYSTEM MESSAGE. The catalog says so directly above
            the text — "Sent as a SEPARATE second system message (index 1)" — and the web does

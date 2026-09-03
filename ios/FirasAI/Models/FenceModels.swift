@@ -201,6 +201,98 @@ enum FirasFence: Sendable, Equatable {
         )
     }
 
+    /// The fences whose body is one JSON object, and which can therefore be repaired when the
+    /// model writes the name without its backticks. `firas-code` is deliberately absent: its body
+    /// is a metadata line followed by source, not an object, and guessing where the source ends is
+    /// not a repair.
+    private static let jsonBodyNames: Set<String> = [
+        "firas-file", "firas-image", "firas-video", "firas-music",
+        "firas-agent", "firas-project", "firas-deck", "firas-sources", "firas-ask"
+    ]
+
+    /// Puts back a fence the model left off.
+    ///
+    /* EVERYTHING DOWNSTREAM IS KEYED ON THE FENCE. `MarkdownBlocks` calls `parse(name:body:)`
+       only for a fenced block, so a metadata block written as bare text is a paragraph - and a
+       paragraph is what the reader got where their document should have been: the word
+       `firas-file` and a line of JSON, with no card, no Open and no file. Worse, the design
+       ITSELF was written correctly inside its ```html fence, and `hidingDesign` removed it as it
+       is supposed to, so the only part of the answer left on screen was the part that was never
+       meant to be read.
+       A prompt can make a model likely to write the backticks; it cannot make it certain. The
+       marker is therefore repaired rather than demanded. A line that is EXACTLY a known name,
+       outside any fence, and followed by a JSON object, gets the fence it should have had - and
+       a bare word with no object after it is left exactly where it is. */
+    static func fencingBareMarkers(in markdown: String) -> String {
+        guard markdown.contains("firas-") else { return markdown }
+        let lines = markdown.components(separatedBy: "\n")
+        var out: [String] = []
+        out.reserveCapacity(lines.count + 4)
+        var insideFence = false
+        var repaired = false
+        var index = 0
+
+        while index < lines.count {
+            let line = lines[index]
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~") {
+                insideFence.toggle()
+                out.append(line)
+                index += 1
+                continue
+            }
+            guard !insideFence, jsonBodyNames.contains(trimmed.lowercased()) else {
+                out.append(line)
+                index += 1
+                continue
+            }
+            var probe = index + 1
+            while probe < lines.count, lines[probe].trimmingCharacters(in: .whitespaces).isEmpty {
+                probe += 1
+            }
+            guard probe < lines.count,
+                  lines[probe].trimmingCharacters(in: .whitespaces).hasPrefix("{"),
+                  let last = objectEnd(in: lines, from: probe) else {
+                out.append(line)
+                index += 1
+                continue
+            }
+            out.append("```" + trimmed.lowercased())
+            out.append(contentsOf: lines[probe...last])
+            out.append("```")
+            repaired = true
+            index = last + 1
+        }
+        return repaired ? out.joined(separator: "\n") : markdown
+    }
+
+    /// The index of the line on which the JSON object starting at `start` closes.
+    ///
+    /// Braces inside a string do not count, and neither does an escaped quote - a filename or a
+    /// title is model-written text and may contain either. The scan gives up after forty lines so
+    /// that an unbalanced brace in ordinary prose can never make this walk an entire answer.
+    private static func objectEnd(in lines: [String], from start: Int) -> Int? {
+        var depth = 0
+        var inString = false
+        var index = start
+        while index < lines.count, index - start <= 40 {
+            var escaped = false
+            for character in lines[index] {
+                if escaped { escaped = false; continue }
+                if character == "\\" { escaped = true; continue }
+                if character == "\"" { inString.toggle(); continue }
+                if inString { continue }
+                if character == "{" { depth += 1 }
+                if character == "}" {
+                    depth -= 1
+                    if depth == 0 { return index }
+                }
+            }
+            index += 1
+        }
+        return nil
+    }
+
     /// A body whose fence name is known, turned into a card. `nil` means "render it as code".
     static func parse(name: String, body: String) -> FirasFence? {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -28,7 +28,7 @@ extension Strings {
             en: "Firas can make mistakes. Check important info."
         )
 
-        static let streaming = LText(ar: "يكتب فِراس...", en: "Firas is typing…")
+        static let streaming = LText(ar: "فِراس يكتب...", en: "Firas is typing…")
         static let thinkingLive = LText(ar: "فِراس يفكّر…", en: "Firas is thinking…")
         static let searchingWeb = LText(ar: "يبحث في الإنترنت…", en: "Searching the web…")
         static let readingAttachments = LText(ar: "يقرأ المرفقات…", en: "Reading attachments…")

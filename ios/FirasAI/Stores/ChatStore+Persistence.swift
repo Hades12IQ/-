@@ -46,23 +46,46 @@ extension ChatStore {
     }
 
     /// The device-only half of `persist`: used when the server already holds the turn.
+    ///
+    /* IT USED TO REFUSE MEMBERS, and that refusal was the second half of the lost answer. Every
+       caller that reaches here has decided the server needs nothing more - the worker already
+       upserted the turn, or the turn failed and there is nothing to send. For a guest that
+       still meant "write it to the device". For a member it meant "write it nowhere", so a
+       landed answer, a stopped answer and a failed-but-partial answer were all held in memory
+       and lost with the process.
+       The device copy is not a guest privilege. It is what this device knows, and `open(_:)`
+       merges it UNDER the server's transcript, so it can only ever restore something missing
+       and never overwrite something better. */
     func persistLocalOnly(_ id: String) async {
         let key = resolve(id)
-        guard !session.isMember, let owner = session.identityID, let conversation = conversations[key] else { return }
+        guard let owner = session.identityID, let conversation = conversations[key] else { return }
         guard !conversation.ephemeral else { return }
         await guestChats.save(conversation, owner: owner)
     }
 
-    func refreshFromServer(_ id: String) async {
+    /// Returns THE SERVER'S OWN ROWS, not the merged result.
+    ///
+    /* The distinction is the whole of a data-loss bug. The caller at the end of a turn asks
+       whether the server already holds this answer, so that it can skip a redundant PUT. It
+       used to ask by reading the conversation back after this call - but this call MERGES the
+       server into the local copy, and the local copy was given the finished answer moments
+       before. The row was therefore always found and the answer was always yes, so the PUT was
+       always skipped, and the fallback branch refused members outright. The answer reached
+       neither the server nor the disk. Handing the fetched array back is what lets the
+       question be about the server at all. An empty return means the fetch failed or there was
+       nothing to fetch - both of which must lead to a write, never to skipping one. */
+    @discardableResult
+    func refreshFromServer(_ id: String) async -> [ChatMessage] {
         let key = resolve(id)
-        guard session.isMember, var conversation = conversations[key], let serverID = conversation.serverID else { return }
-        guard let fetched = try? await api.getChat(id: serverID) else { return }
+        guard session.isMember, var conversation = conversations[key], let serverID = conversation.serverID else { return [] }
+        guard let fetched = try? await api.getChat(id: serverID) else { return [] }
         conversation.messages = MessageSerializer.merge(local: conversation.messages, server: fetched.messages)
         if !fetched.title.isEmpty, !renamed.contains(key) {
             conversation.title = fetched.title
         }
         setConversation(conversation, forKey: key)
         rebuildSummaries()
+        return fetched.messages
     }
 
     func applicationDidBecomeActive() async {

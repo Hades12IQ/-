@@ -266,6 +266,10 @@ struct AssistantTurnView: View, Equatable {
        everywhere else, and a genuine ```html answer in an ordinary reply still renders as the
        code it is, because there is no file block above it. */
     static func hidingDesign(in text: String) -> String {
+        // The repair comes first: an unfenced metadata block is not a card until it has its
+        // fence back, and everything below - the file card, the pending label, the design
+        // that gets hidden - is keyed on the fence being there.
+        let text = FirasFence.fencingBareMarkers(in: text)
         guard text.contains("firas-file") else { return text }
         guard let fence = htmlFenceRange(in: text) else { return text }
         var out = text

@@ -69,11 +69,16 @@ extension SendPipeline {
 
         // The worker already upserted this turn by cid for a member. Re-reading first means the
         // PUT (when it is still needed) carries the server's own copy rather than replacing it.
+        /* ASKED OF THE SERVER'S ROWS, which is the only place the answer can be true.
+           This read the merged CONVERSATION back instead - and the conversation had just been
+           given the finished answer by `upsertAssistant` above, so the row was always present,
+           `serverHasTurn` was always true, and the PUT below was never made. `persistLocalOnly`
+           then refused members, so nothing was written at all: the reader watched the answer
+           arrive, restarted, and found the question alone. */
         var serverHasTurn = false
         if session.isMember, store.conversation(key)?.serverID != nil {
-            await refreshPreservingQuestions(key)
-            let rows = store.conversation(key)?.messages ?? []
-            serverHasTurn = rows.contains(where: { $0.role == .assistant && $0.cid == cid && !$0.content.isEmpty })
+            let onServer = await refreshPreservingQuestions(key)
+            serverHasTurn = onServer.contains(where: { $0.role == .assistant && $0.cid == cid && !$0.content.isEmpty })
         }
         if !serverHasTurn {
             await store.persist(key)
@@ -111,14 +116,16 @@ extension SendPipeline {
     /// **the server never authors a question.** Every user row this device already had keeps the
     /// text this device gave it. Rows the server has that we do not are untouched — they are added
     /// by the fold, not repaired here.
-    func refreshPreservingQuestions(_ key: String) async {
-        guard let store else { return }
+    /// Returns the server's own rows, for a caller that needs to know what the server holds.
+    @discardableResult
+    func refreshPreservingQuestions(_ key: String) async -> [ChatMessage] {
+        guard let store else { return [] }
         var questions: [String: ChatMessage] = [:]
         for message in store.conversation(key)?.messages ?? [] where message.role == .user {
             questions[message.id] = message
         }
-        await store.refreshFromServer(key)
-        guard !questions.isEmpty else { return }
+        let onServer = await store.refreshFromServer(key)
+        guard !questions.isEmpty else { return onServer }
         store.mutate(key) { conversation in
             for index in conversation.messages.indices where conversation.messages[index].role == .user {
                 guard let original = questions[conversation.messages[index].id] else { continue }
@@ -130,6 +137,7 @@ extension SendPipeline {
                 conversation.messages[index].altAt = original.altAt
             }
         }
+        return onServer
     }
 
     func failTurn(

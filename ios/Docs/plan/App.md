@@ -1,0 +1,15 @@
+# Plan — `App/`
+
+Interfaces: `INTERFACES.md` → App/. Read `ARCHITECTURE.md §2.3, §2.8, §3` first.
+
+| File | Batch | Purpose | Depends on | Read |
+|---|---|---|---|---|
+| `App/AppConfiguration.swift` (keep, extend) | 0 | Base URL from `FIRAS_API_BASE_URL` (https only, http for localhost), `bundleID`, `isDebug`. | Foundation | `audit-ios-networking-auth.md §B6` |
+| `App/AppRoute.swift` | 0 | `AppRoute`, `AppSheet`, `AppCover`, `SettingsSection`, `AuthMode`, `Router`. `Router.handle(url:)` parses `?share=`, `?verify=`, `?reset=&uid=` on any host and the custom scheme; `open(_:)` sets `product` + `selectedConversationID` + presents sheet/cover; `pendingRoute` is consumed by `AppShell` once (set to nil after). | Models | `server-auth-session-account.md §7`, `design-brief.md §1.3`, `web-auth-account-settings.md §9` |
+| `App/AppEnvironment.swift` | 2 | Constructs every store once in the order listed in INTERFACES (api → prefs → network → toasts → router → notifications → session → jobs → drafts/guestChats → chat → agent/code/brain/media → announcements/memory → tts → dictation → call). Registers `JobObserver`s (`jobs.register(chat, for: .chat/.longdoc/.longfile)`, agent for `.agentrun`, code for `.codebuild`, brain for `.brainask`, media for `.image/.video/.music`). Wires `session.onGuestBecameMember` → `GuestMigration`, `session.onUnauthorized` → `jobs.suspend`, `call.onPause/onResume` → chat plan cycles, `tts.callActive`/`jobs.callActive` ← call phase. `inject(into:)` applies `.environment(...)` for every `@Observable` store. | everything | `arch` §1 |
+| `App/AppLifecycle.swift` | 2 | `didBecomeActive`: `session.applicationDidBecomeActive()` → `jobs.applicationDidBecomeActive()` → `chat.applicationDidBecomeActive()` → `announcements.load()` → `notifications.refreshAuthorization()`. `didEnterBackground`: `drafts.flush()`, `dictation.applicationDidEnterBackground()`, `jobs.applicationDidEnterBackground()` (which schedules `BackgroundRefresh`). `handle(url:)` → `router.handle`; verify/reset routes call `session.verifySignup`/`resetPassword` then route. `handleNotificationTap` → `NotificationRouter.route` → `router.pendingRoute`. | stores | `ARCHITECTURE.md §2.4 (6)`, `§2.5` |
+| `App/FirasAIApp.swift` (keep, rewrite body) | 0 (stub) / 2 (final) | `@main`; `@UIApplicationDelegateAdaptor(FirasAppDelegate.self)`; owns `AppEnvironment` as `@State`; `WindowGroup { env.inject(into: RootView(env:)) }`; `.onChange(of: scenePhase)` → lifecycle; `.onOpenURL`; `BackgroundRefresh.register` in `init` (must happen before `didFinishLaunching` returns — call it from `FirasAppDelegate.application(_:didFinishLaunchingWithOptions:)` via the static hook). Batch 0 ships a stub that renders `RootView` placeholder so the tree compiles with the Codex screens deleted. | all | `audit-ios-networking-auth.md §B6`, `audit-ios-shell-settings-design.md §2.1 F2` |
+
+Rules: `AppEnvironment` is the only place stores are constructed; no `@State` stores in views; no
+`.environmentObject`. `ISOLATED_DEFAULT_VALUES`: constructor calls happen inside `@MainActor init`,
+never as default arguments.
