@@ -1,0 +1,50 @@
+/* CORPORATE — a business report or a feasibility study.
+   The website's navy. A rule of colour under the title, section heads in the same navy, and tables
+   that read as data rather than as a grid: banded rows, no vertical lines. */
+
+@page { margin: 20mm 18mm 22mm; }
+
+body { font-size: 11pt; line-height: 1.8; }
+
+.doc-cover {
+  border-bottom: none;
+  padding: 0 0 5mm;
+  margin-bottom: 11mm;
+}
+
+.doc-title { font-size: 26pt; color: #14243d; letter-spacing: -0.4pt; }
+.doc-subtitle { color: #4a5568; margin-top: 3mm; }
+
+.doc-cover::after {
+  content: "";
+  display: block;
+  width: 34mm;
+  height: 1.6mm;
+  margin-top: 5mm;
+  background: #2c5aa0;
+}
+
+.doc-h--2 {
+  font-size: 15pt;
+  color: #14243d;
+  margin: 10mm 0 3.5mm;
+}
+
+.doc-h--3 { font-size: 12pt; color: #2c5aa0; }
+
+.doc-toc { background: #f4f6fa; border-color: #dae1ee; }
+
+.doc-table th {
+  background: #14243d;
+  color: #ffffff;
+  border-color: #14243d;
+}
+
+.doc-table td { border-inline: none; border-color: #e1e5ec; }
+.doc-table tbody tr:nth-child(even) td { background: #f7f9fc; }
+
+.doc-quote {
+  border-inline-start-color: #2c5aa0;
+  background: #f7f9fc;
+  padding: 3mm 5mm;
+}
