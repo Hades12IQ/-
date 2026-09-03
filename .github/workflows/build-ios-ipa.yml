@@ -1,0 +1,230 @@
+name: Build unsigned FirasAI IPA
+
+# Builds the native app on a macOS runner and publishes an UNSIGNED .ipa.
+# The owner signs it himself with a free 7-day certificate (Sideloadly / AltStore /
+# iTunes-style sideloading). Nothing here needs an Apple Developer Team.
+#
+# Only the ios/ tree and this file are pushed to the build repository — the web
+# sources (app.js, server.mjs, …) stay private.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "claude/**"
+      - "codex/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: firasai-unsigned-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-unsigned-ipa:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      PROJECT_PATH: ios/FirasAI.xcodeproj
+      SCHEME_NAME: FirasAI
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select newest Xcode 26
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          XCODE_APP="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$XCODE_APP" ]; then
+            XCODE_APP="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          fi
+          echo "Using $XCODE_APP"
+          sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
+          ARTIFACT_ROOT="$RUNNER_TEMP/FirasAI-Artifacts"
+          mkdir -p "$ARTIFACT_ROOT"
+          {
+            sw_vers
+            xcodebuild -version
+            xcode-select --print-path
+            xcodebuild -showsdks | grep -i ios || true
+          } | tee "$ARTIFACT_ROOT/toolchain.log"
+
+      - name: Resolve Swift packages
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PACKAGES_ROOT="$RUNNER_TEMP/FirasAI-Packages"
+          xcodebuild \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME_NAME" \
+            -clonedSourcePackagesDirPath "$PACKAGES_ROOT" \
+            -resolvePackageDependencies 2>&1 | tail -40
+
+      - name: Build unsigned device app
+        id: build
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          BUILD_ROOT="$RUNNER_TEMP/FirasAI-Build"
+          INTERMEDIATES_ROOT="$RUNNER_TEMP/FirasAI-Intermediates"
+          PACKAGES_ROOT="$RUNNER_TEMP/FirasAI-Packages"
+          ARTIFACT_ROOT="$RUNNER_TEMP/FirasAI-Artifacts"
+          set +e
+          xcodebuild \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME_NAME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -clonedSourcePackagesDirPath "$PACKAGES_ROOT" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            ONLY_ACTIVE_ARCH=NO \
+            ENABLE_PREVIEWS=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            SYMROOT="$BUILD_ROOT" \
+            OBJROOT="$INTERMEDIATES_ROOT" \
+            clean build \
+            > "$ARTIFACT_ROOT/xcodebuild.log" 2>&1
+          STATUS=$?
+          set -e
+          grep -E "error:|BUILD SUCCEEDED|BUILD FAILED|Compiling|Linking" "$ARTIFACT_ROOT/xcodebuild.log" | head -400 || true
+          # Every compile error, once, with file:line — readable straight from the job log.
+          {
+            echo "## xcodebuild exit status: $STATUS (run #${{ github.run_number }}, commit ${{ github.sha }})"
+            echo
+            echo '### Errors'
+            echo '```'
+            grep -E "(^|/)[^ ]+\.swift:[0-9]+:[0-9]+: error:|error: " "$ARTIFACT_ROOT/xcodebuild.log" \
+              | sed -E 's#/Users/runner/work/[^/]+/[^/]+/##' | sort -u | head -300 || true
+            echo '```'
+            echo
+            echo '### Warnings (first 80)'
+            echo '```'
+            grep -E "\.swift:[0-9]+:[0-9]+: warning:" "$ARTIFACT_ROOT/xcodebuild.log" \
+              | sed -E 's#/Users/runner/work/[^/]+/[^/]+/##' | sort -u | head -80 || true
+            echo '```'
+            echo
+            echo '### Log tail (last 120 lines)'
+            echo '```'
+            tail -120 "$ARTIFACT_ROOT/xcodebuild.log" | sed -E 's#/Users/runner/work/[^/]+/[^/]+/##' || true
+            echo '```'
+          } | tee "$ARTIFACT_ROOT/errors.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "===== ERROR DIGEST ====="
+          cat "$ARTIFACT_ROOT/errors.md"
+          exit "$STATUS"
+
+      - name: Package Payload as unsigned IPA
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          BUILD_ROOT="$RUNNER_TEMP/FirasAI-Build"
+          ARTIFACT_ROOT="$RUNNER_TEMP/FirasAI-Artifacts"
+
+          echo "Build products:"; ls -laR "$BUILD_ROOT" 2>/dev/null | head -60 || true
+          APP_PATH="$BUILD_ROOT/Release-iphoneos/FirasAI.app"
+          test -d "$APP_PATH"
+          test -f "$APP_PATH/FirasAI"
+
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")"
+          test "$BUNDLE_ID" = "org.firasai.FirasAI"
+
+          if /usr/bin/codesign --verify "$APP_PATH" >/dev/null 2>&1; then
+            echo "Expected an unsigned app, but the bundle already verifies as signed." >&2
+            exit 1
+          fi
+
+          rm -rf "$ARTIFACT_ROOT/Payload"
+          mkdir -p "$ARTIFACT_ROOT/Payload"
+          /usr/bin/ditto "$APP_PATH" "$ARTIFACT_ROOT/Payload/FirasAI.app"
+
+          (
+            cd "$ARTIFACT_ROOT"
+            /usr/bin/zip -qry -X FirasAI-unsigned.ipa Payload
+          )
+
+          /usr/bin/unzip -t "$ARTIFACT_ROOT/FirasAI-unsigned.ipa"
+          /usr/bin/unzip -l "$ARTIFACT_ROOT/FirasAI-unsigned.ipa" \
+            | tee "$ARTIFACT_ROOT/ipa-contents.log"
+          shasum -a 256 "$ARTIFACT_ROOT/FirasAI-unsigned.ipa" \
+            | tee "$ARTIFACT_ROOT/FirasAI-unsigned.ipa.sha256"
+          rm -rf "$ARTIFACT_ROOT/Payload"
+          ls -la "$ARTIFACT_ROOT"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: FirasAI-unsigned-IPA
+          path: |
+            ${{ runner.temp }}/FirasAI-Artifacts/FirasAI-unsigned.ipa
+            ${{ runner.temp }}/FirasAI-Artifacts/FirasAI-unsigned.ipa.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish rolling release (ios-latest)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          ARTIFACT_ROOT="$RUNNER_TEMP/FirasAI-Artifacts"
+          TAG="ios-latest"
+          BUILD_TAG="ios-build-${{ github.run_number }}"
+          SHA="$(cut -d' ' -f1 "$ARTIFACT_ROOT/FirasAI-unsigned.ipa.sha256")"
+          NOTES="$(printf 'Unsigned FirasAI.ipa - commit %s - run #%s\nSHA-256: %s\n\nSign with a free Apple ID (Sideloadly / AltStore) and install; the certificate lasts 7 days.' "${{ github.sha }}" "${{ github.run_number }}" "$SHA")"
+          # Per-build release (kept) + rolling release (replaced every time).
+          gh release create "$BUILD_TAG" "$ARTIFACT_ROOT/FirasAI-unsigned.ipa" "$ARTIFACT_ROOT/FirasAI-unsigned.ipa.sha256" \
+            --title "FirasAI iOS build #${{ github.run_number }}" --notes "$NOTES" --target "${{ github.sha }}" || true
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" "$ARTIFACT_ROOT/FirasAI-unsigned.ipa" "$ARTIFACT_ROOT/FirasAI-unsigned.ipa.sha256" \
+            --title "FirasAI iOS — latest unsigned build" --notes "$NOTES" --target "${{ github.sha }}"
+          echo "Download: https://github.com/${{ github.repository }}/releases/download/$TAG/FirasAI-unsigned.ipa" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FirasAI-xcodebuild-logs
+          path: |
+            ${{ runner.temp }}/FirasAI-Artifacts/*.log
+            ${{ runner.temp }}/FirasAI-Artifacts/*.md
+          if-no-files-found: warn
+          retention-days: 14
+
+      # Logs and artifacts need a GitHub login to read; a branch does not. The digest (and a
+      # trimmed log) are pushed to the orphan branch `build-logs` so they can be fetched with git.
+      - name: Publish build log to the build-logs branch
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          ARTIFACT_ROOT="$RUNNER_TEMP/FirasAI-Artifacts"
+          LOGS_DIR="$RUNNER_TEMP/build-logs"
+          rm -rf "$LOGS_DIR"
+          git clone --quiet --depth 1 --branch build-logs "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$LOGS_DIR" 2>/dev/null \
+            || { mkdir -p "$LOGS_DIR"; cd "$LOGS_DIR"; git init -q; git checkout -q -b build-logs; cd -; }
+          mkdir -p "$LOGS_DIR/runs"
+          RUN="run-${{ github.run_number }}"
+          cp "$ARTIFACT_ROOT/errors.md" "$LOGS_DIR/runs/$RUN.md" 2>/dev/null || echo "no errors.md (build step did not run)" > "$LOGS_DIR/runs/$RUN.md"
+          if [ -f "$ARTIFACT_ROOT/xcodebuild.log" ]; then
+            grep -E "error:|warning:|note:|BUILD|Compiling|Linking|Ld |Copy|Sign|fatal" "$ARTIFACT_ROOT/xcodebuild.log" \
+              | sed -E 's#/Users/runner/work/[^/]+/[^/]+/##' | head -3000 > "$LOGS_DIR/runs/$RUN.log" || true
+          fi
+          cp "$ARTIFACT_ROOT/ipa-contents.log" "$LOGS_DIR/runs/$RUN-ipa.log" 2>/dev/null || true
+          cp "$LOGS_DIR/runs/$RUN.md" "$LOGS_DIR/latest.md"
+          cd "$LOGS_DIR"
+          git config user.name "firas-ci"
+          git config user.email "ci@firasai.org"
+          git add -A
+          git commit -q -m "Build log for run #${{ github.run_number }} (${{ job.status }})" || true
+          git push -q "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" HEAD:refs/heads/build-logs
+          echo "log published: runs/$RUN.md"
