@@ -1,0 +1,46 @@
+/* MINISTRY — the وزاري exam paper.
+   An official Iraqi question paper is not a designed document, and that restraint IS the design:
+   a ruled masthead, a serif question number, and nothing that would look out of place photocopied.
+   No contents page: `DocTemplate.showsTableOfContents` refuses one here, because a paper of
+   questions does not open with a table of them. */
+
+@page { margin: 16mm 15mm 20mm; }
+
+body { font-size: 12pt; line-height: 1.9; }
+
+.doc-cover {
+  border-bottom: 2.5pt double #1b1e24;
+  padding-bottom: 4mm;
+  margin-bottom: 9mm;
+  text-align: center;
+}
+
+.doc-title {
+  font-size: 18pt;
+  letter-spacing: 0;
+  font-weight: 700;
+}
+
+.doc-subtitle {
+  color: #2c313b;
+  font-size: 11pt;
+  margin-top: 2mm;
+}
+
+/* Every question stands apart and is never split across a sheet: half a question on each side of a
+   page break is the one thing a candidate cannot work with. */
+.doc-list { padding-inline-start: 8mm; }
+.doc-li {
+  margin: 0 0 4mm;
+  break-inside: avoid;
+}
+
+.doc-h--2 {
+  font-size: 13.5pt;
+  margin: 8mm 0 3mm;
+  padding-bottom: 1.2mm;
+  border-bottom: 1px solid #9aa0ad;
+}
+
+.doc-table th { background: #ebedf1; }
+.doc-math--display { margin: 3mm 0; }
