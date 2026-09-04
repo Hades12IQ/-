@@ -34,6 +34,7 @@ struct FirasSelectableText: UIViewRepresentable {
     let lineSpacing: CGFloat
     let palette: FirasPalette
     let lang: AppLanguage
+    var streaming: Bool = false
 
     @Environment(\.firasTextSelection) private var selection
     @Environment(\.openURL) private var openURL
@@ -56,10 +57,22 @@ struct FirasSelectableText: UIViewRepresentable {
         context.coordinator.selection = selection
         context.coordinator.lang = lang
         context.coordinator.openURL = openURL
+        updateText(view, coordinator: context.coordinator, width: context.coordinator.layoutWidth)
+    }
+
+    private func updateText(_ view: SelectableTextView, coordinator: Coordinator, width: CGFloat) {
+        let visibleGlyphs = coordinator.liveGlyphs(source: source, current: glyphs,
+            streaming: streaming, pointSize: pointSize, ink: UIColor(palette.textPrimary))
+        let signature = RenderSignature(source: source, glyphs: visibleGlyphs, pointSize: pointSize,
+            semibold: semibold, lineSpacing: lineSpacing, palette: palette, lang: lang, width: width)
+        // SwiftUI also visits unchanged paragraphs when another equation finishes. Comparing
+        // inputs first avoids allocating new attachments and relaying out selected text each time.
+        guard coordinator.signature != signature else { return }
+        coordinator.signature = signature
         view.tintColor = UIColor(palette.accent)
         view.linkTextAttributes = [.foregroundColor: UIColor(palette.accent), .underlineStyle: NSUnderlineStyle.single.rawValue]
         view.accessibilityValue = String(source.characters)
-        let text = attributedText()
+        let text = attributedText(maximumMathWidth: width, resolvedGlyphs: visibleGlyphs)
         guard !view.attributedText.isEqual(to: text) else { return }
         let previous = view.selectedRange
         view.attributedText = text
@@ -71,6 +84,10 @@ struct FirasSelectableText: UIViewRepresentable {
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: SelectableTextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width.isFinite, width > 0 else { return nil }
+        if abs(context.coordinator.layoutWidth - width) > 0.5 {
+            context.coordinator.layoutWidth = width
+            updateText(uiView, coordinator: context.coordinator, width: width)
+        }
         let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
         return CGSize(width: width, height: ceil(size.height))
     }
@@ -78,9 +95,39 @@ struct FirasSelectableText: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     @MainActor final class Coordinator: NSObject, UITextViewDelegate {
+        fileprivate var signature: RenderSignature?
+        fileprivate var layoutWidth: CGFloat = 320
+        private struct PreviousMath {
+            let prefix: String
+            let glyph: MathGlyph
+            let pointSize: CGFloat
+            let ink: UIColor
+        }
+        private var previousMath: PreviousMath?
         var selection: FirasTextSelection?
         var lang: AppLanguage = .arabic
         var openURL: OpenURLAction?
+
+        fileprivate func liveGlyphs(source: AttributedString, current: [String: MathGlyph],
+                                    streaming: Bool, pointSize: CGFloat, ink: UIColor) -> [String: MathGlyph] {
+            guard streaming else { previousMath = nil; return current }
+            var last: (String, MathScanner.Span)?
+            for run in source.runs {
+                if let raw = run[FirasMathAttribute.self], let span = MathScanner.span(for: raw) {
+                    last = (String(source[..<run.range.lowerBound].characters), span)
+                }
+            }
+            guard let (prefix, span) = last else { previousMath = nil; return current }
+            if let glyph = current[span.id] {
+                previousMath = PreviousMath(prefix: prefix, glyph: glyph, pointSize: pointSize, ink: ink)
+                return current
+            }
+            guard let previousMath, previousMath.prefix == prefix,
+                  previousMath.pointSize == pointSize, previousMath.ink == ink else { return current }
+            var visible = current
+            visible[span.id] = previousMath.glyph
+            return visible
+        }
 
         func textView(_ textView: UITextView, primaryActionFor textItem: UITextItem,
                       defaultAction: UIAction) -> UIAction? {
@@ -101,7 +148,8 @@ struct FirasSelectableText: UIViewRepresentable {
         }
     }
 
-    private func attributedText() -> NSAttributedString {
+    func attributedText(maximumMathWidth: CGFloat, resolvedGlyphs: [String: MathGlyph]? = nil) -> NSAttributedString {
+        let glyphs = resolvedGlyphs ?? self.glyphs
         let result = NSMutableAttributedString(string: "")
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = lineSpacing
@@ -129,11 +177,12 @@ struct FirasSelectableText: UIViewRepresentable {
                 attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
             }
             if let raw = run[FirasMathAttribute.self], let span = MathScanner.span(for: raw),
-               let glyph = glyphs[span.id], glyph.size.width <= 240, glyph.size.height <= 120 {
+               let glyph = glyphs[span.id], glyph.size.width > 0, glyph.size.height > 0 {
                 let attachment = NSTextAttachment()
                 attachment.image = glyph.image
-                attachment.bounds = CGRect(x: 0, y: -(glyph.size.height - glyph.baseline),
-                                           width: glyph.size.width, height: glyph.size.height)
+                let fit = Self.mathAttachmentScale(glyph.size, maximumWidth: maximumMathWidth)
+                attachment.bounds = CGRect(x: 0, y: -(glyph.size.height - glyph.baseline) * fit,
+                                           width: glyph.size.width * fit, height: glyph.size.height * fit)
                 let piece = NSMutableAttributedString(attachment: attachment)
                 attributes[.firasCopyText] = plain
                 piece.addAttributes(attributes, range: NSRange(location: 0, length: piece.length))
@@ -143,6 +192,43 @@ struct FirasSelectableText: UIViewRepresentable {
             }
         }
         return result
+    }
+
+    static func mathAttachmentScale(_ size: CGSize, maximumWidth: CGFloat) -> CGFloat {
+        guard size.width.isFinite, size.width > 0, maximumWidth.isFinite, maximumWidth > 0 else { return 1 }
+        return min(1, max(1, maximumWidth - 2) / size.width)
+    }
+
+    fileprivate struct RenderSignature: Equatable {
+        struct Glyph: Equatable {
+            let image: ObjectIdentifier
+            let size: CGSize
+            let baseline: CGFloat
+        }
+        let source: AttributedString
+        let glyphs: [String: Glyph]
+        let pointSize: CGFloat
+        let semibold: Bool
+        let lineSpacing: CGFloat
+        let ink: UIColor
+        let accent: UIColor
+        let codeBackground: UIColor
+        let lang: AppLanguage
+        let width: CGFloat
+
+        init(source: AttributedString, glyphs: [String: MathGlyph], pointSize: CGFloat,
+             semibold: Bool, lineSpacing: CGFloat, palette: FirasPalette, lang: AppLanguage, width: CGFloat) {
+            self.source = source
+            self.glyphs = glyphs.mapValues { Glyph(image: ObjectIdentifier($0.image), size: $0.size, baseline: $0.baseline) }
+            self.pointSize = pointSize
+            self.semibold = semibold
+            self.lineSpacing = lineSpacing
+            self.ink = UIColor(palette.textPrimary)
+            self.accent = UIColor(palette.accent)
+            self.codeBackground = UIColor(palette.surfaceSunken)
+            self.lang = lang
+            self.width = width
+        }
     }
 }
 

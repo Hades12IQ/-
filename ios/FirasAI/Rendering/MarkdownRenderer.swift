@@ -1,21 +1,41 @@
 import Foundation
 
-/// The entry point every surface uses to turn an answer into blocks, and the reason a 50 000
-/// character reply does not re-parse ten times a second while it streams.
-///
-/// The chunk strings from `MarkdownBlocks.split` are compared by index against the previous parse:
-/// everything that still matches is reused verbatim, and only the blocks from the first difference
-/// onward are parsed again. In practice that is the last block and nothing else.
+/// Palette-independent parsing. Layout and glyph notifications reuse the exact parsed document;
+/// only changed source rebuilds its live tail and discovers new mathematical spans.
 enum MarkdownRenderer {
+    struct Row: Identifiable, Sendable {
+        let id: Int
+        let block: MDBlock
+    }
 
-    /// One message's last parse. Immutable, so it is safe to hand between reads of the cache.
     final class ParsedBlocks: Sendable {
+        let source: String
+        let renderingSource: String
+        let streaming: Bool
         let chunks: [String]
-        let blocks: [MDBlock]
+        let rows: [Row]
+        let mathItems: [MathIslandItem]
+        let mathKey: String
+        let previewMathID: String?
 
-        init(chunks: [String], blocks: [MDBlock]) {
+        init(source: String, renderingSource: String, streaming: Bool, chunks: [String], rows: [Row]) {
+            self.source = source
+            self.renderingSource = renderingSource
+            self.streaming = streaming
             self.chunks = chunks
-            self.blocks = blocks
+            self.rows = rows
+            var seen: Set<String> = []
+            let spans = MathScanner.spans(in: renderingSource)
+            self.mathItems = spans.map { MathIslandItem(span: $0) }.filter { seen.insert($0.id).inserted }
+            self.mathKey = mathItems.map(\.id).joined(separator: "|")
+            if renderingSource != source, let candidate = spans.last?.id,
+               !MathScanner.spans(in: source).contains(where: { $0.id == candidate }) {
+                self.previewMathID = candidate
+            } else {
+                // A repeated provisional prefix can share a glyph with a real completed span.
+                // That completed occurrence already permits persistence and normal queue ownership.
+                self.previewMathID = nil
+            }
         }
     }
 
@@ -26,70 +46,39 @@ enum MarkdownRenderer {
         return cache
     }()
 
-    /// While `streaming`, the last block is returned separately as the live tail: the caller draws
-    /// the caret on it and everything before it is settled and cheap.
-    static func blocks(
-        for markdown: String,
-        messageID: String,
-        streaming: Bool,
-        lang: AppLanguage
-    ) -> (settled: [MDBlock], tail: MDBlock?) {
-        let chunks = MarkdownBlocks.split(markdown, streaming: streaming)
-        guard !chunks.isEmpty else { return ([], nil) }
-
+    static func blocks(for markdown: String, messageID: String, streaming: Bool, lang: AppLanguage) -> ParsedBlocks {
         let key = cacheKey(messageID: messageID, lang: lang)
-        var parsed: [MDBlock] = []
-        parsed.reserveCapacity(chunks.count)
+        let previous = key.flatMap { cache.object(forKey: $0) }
+        if let previous, previous.source == markdown, previous.streaming == streaming { return previous }
 
-        var reused = 0
-        var cachedChunks = -1
-        if let key, let previous = cache.object(forKey: key) {
-            cachedChunks = previous.chunks.count
-            let limit = min(previous.chunks.count, min(previous.blocks.count, chunks.count))
-            while reused < limit, previous.chunks[reused] == chunks[reused] { reused += 1 }
-            if reused > 0 { parsed.append(contentsOf: previous.blocks[0..<reused]) }
+        // Synthetic closure belongs only to this preview, never to the stored message.
+        let renderingSource = streaming ? MathScanner.streamingPreview(markdown) : markdown
+        let chunks = MarkdownBlocks.split(renderingSource, streaming: streaming)
+        var rows: [Row] = []
+        rows.reserveCapacity(chunks.count)
+        for (index, chunk) in chunks.enumerated() {
+            if let previous, index < previous.chunks.count, previous.chunks[index] == chunk {
+                rows.append(previous.rows[index])
+            } else {
+                // Position is scoped to this message's ForEach. It survives stream completion
+                // and parser-cache eviction; source/style checks still update the row's content.
+                rows.append(Row(id: index, block: MarkdownBlocks.parse(chunk, lang: lang)))
+            }
         }
-
-        var index = reused
-        while index < chunks.count {
-            parsed.append(MarkdownBlocks.parse(chunks[index], lang: lang))
-            index += 1
-        }
-
-        /* WRITTEN ONLY WHEN SOMETHING MOVED. A message is re-laid-out for reasons that have
-           nothing to do with its text — a maths glyph landing redraws every answer on screen at
-           once, because they all read the same observed store — and every one of those redraws
-           came back through here to write an identical parse: a fresh `ParsedBlocks`, a fresh
-           cost, and a fresh eviction decision, per message, per frame. When every chunk was
-           reused and the entry already describes exactly this list, there is nothing to say. */
-        if let key, reused < chunks.count || cachedChunks != chunks.count {
-            cache.setObject(
-                ParsedBlocks(chunks: chunks, blocks: parsed),
-                forKey: key,
-                cost: max(1, markdown.utf8.count)
-            )
-        }
-
-        if streaming, let last = parsed.last {
-            return (Array(parsed.dropLast()), last)
-        }
-        return (parsed, nil)
+        let parsed = ParsedBlocks(source: markdown, renderingSource: renderingSource,
+            streaming: streaming, chunks: chunks, rows: rows)
+        if let key { cache.setObject(parsed, forKey: key, cost: max(1, markdown.utf8.count * 2)) }
+        return parsed
     }
 
-    /// Called when a message is regenerated, edited, or switched to another version — the text
-    /// under the same id changed in a way the prefix comparison must not paper over.
     static func invalidate(messageID: String) {
         guard !messageID.isEmpty else { return }
         for lang in AppLanguage.allCases {
-            if let key = cacheKey(messageID: messageID, lang: lang) {
-                cache.removeObject(forKey: key)
-            }
+            if let key = cacheKey(messageID: messageID, lang: lang) { cache.removeObject(forKey: key) }
         }
     }
 
-    static func invalidateAll() {
-        cache.removeAllObjects()
-    }
+    static func invalidateAll() { cache.removeAllObjects() }
 
     private static func cacheKey(messageID: String, lang: AppLanguage) -> NSString? {
         guard !messageID.isEmpty else { return nil }

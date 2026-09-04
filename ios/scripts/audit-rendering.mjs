@@ -15,6 +15,7 @@ const typesetter = raw(read('Rendering/MathIsland+Typesetting.swift'));
 for (const script of read('Rendering/Documents/DocumentPrinter.swift').matchAll(/#"""([\s\S]*?)"""#/g)) {
   new vm.Script(script[1]);
 }
+new vm.Script(raw(read('Rendering/Documents/DocumentPrinter+Layout.swift')));
 const assets = raw(read('Rendering/MathIsland+Assets.swift'))
   .replace('\\#(typesettingScript)', typesetter);
 for (const script of assets.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
@@ -39,6 +40,15 @@ const expressions = [
   String.raw`\ce{2H2 + O2 -> 2H2O}`,
   String.raw`\pu{9.81 m s-2}`,
   String.raw`\bra{\psi}\hat H\ket{\psi}`,
+  // Native recovery preserves the source for copy and gives the shared typesetter these forms.
+  String.raw`dv = \cot \theta d\theta \Rightarrow v = \ln (\sin \theta)`,
+  String.raw`\pi /4 \ln (\sin (\pi /4)) = \pi /4 \ln (1/(\sqrt{2})) = -\pi /8`,
+  String.raw`\frac{\pi}{4}\ln\left(\sin\frac{\pi}{4}\right)=\frac{\pi}{4}\ln\frac{1}{\sqrt2}=-\frac{\pi}{8}\ln2`,
+  // Incomplete streaming previews use empty TeX groups, never invented numerical arguments.
+  String.raw`\frac{}{}`,
+  String.raw`\frac{1}{}`,
+  String.raw`\sqrt{}`,
+  String.raw`\begin{aligned}a&=1\\b&=2\end{aligned}`,
 ];
 for (const tex of expressions) {
   const result = context.renderMath(tex, true);

@@ -10,14 +10,24 @@ struct ReliabilitySmokeView: View {
     @State private var ran = false
     @State private var status = "Checking document pagination and mathematical rendering…"
     @State private var selection = FirasTextSelection()
+    @State private var showMath = false
+    @State private var liveSource = ""
+    @State private var liveFinished = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Firas AI · Reliability").font(.headline)
                 Text(status).font(.caption).foregroundStyle(env.prefs.palette.textMuted)
-                MarkdownView(markdown: Self.sample, messageID: "reliability-smoke", streaming: false,
-                    lang: .arabic, palette: env.prefs.palette, prefs: env.prefs, onFence: { _ in nil })
+                if showMath {
+                    StreamingText(text: liveSource, isStreaming: !liveFinished, motionOn: true,
+                        identity: "live-math-smoke") { shown in
+                        MarkdownView(markdown: shown, messageID: "live-math-smoke", streaming: !liveFinished,
+                            lang: .arabic, palette: env.prefs.palette, prefs: env.prefs, onFence: { _ in nil })
+                    }
+                    MarkdownView(markdown: Self.sample, messageID: "reliability-smoke", streaming: false,
+                        lang: .arabic, palette: env.prefs.palette, prefs: env.prefs, onFence: { _ in nil })
+                }
             }
             .padding(20)
         }
@@ -33,6 +43,12 @@ struct ReliabilitySmokeView: View {
 
     private static let sample = #"""
     ## رياضيات واضحة وثابتة
+    $dv = \cot\theta\,d\theta \Rightarrow v=\ln(\sin\theta)$
+
+    عند التعويض: $\frac{\pi}{4}\ln(\sin(\pi/4))=\frac{\pi}{4}\ln(1/\sqrt{2})=-\frac{\pi}{8}\ln2$.
+
+    dv = cotθ dθ ⇒ v = ln(sinθ)
+
     يمكن تحديد أي كلمة ونسخها أو اختيار **اسأل فِراس**. المساحة $A = \pi r^2$، والتكامل $\int_0^1 x\,dx=\frac12$.
 
     $$x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}$$
@@ -45,13 +61,92 @@ struct ReliabilitySmokeView: View {
     The cost is $5 and coffee is $3. These prices remain text.
     """#
 
+    @MainActor private func checkLiveMath(directory: URL) async -> RenderingPerformanceChecks.Result {
+        var failures: [String] = []
+        var metrics: [String: Double] = [:]
+        let style = MathIslandStyle(palette: env.prefs.palette, background: env.prefs.palette.background, fontScale: env.prefs.fontScale)
+        failures += MathIsland.previewReliabilityFailures(style: style)
+        let open = #"الحل $z^{17}$ ثم $\frac{47}{83}"#
+        let initial = MathScanner.spans(in: MathScanner.streamingPreview(open))
+        guard initial.count == 2 else { return .init(failures: ["Live fixture did not contain both expressions"], metrics: [:]) }
+        let start = Date()
+        liveSource = open
+        while Date().timeIntervalSince(start) < 35 {
+            if initial.allSatisfy({ MathIsland.shared.peekForReliability($0.id, style: style) != nil }) { break }
+            await JobClock.rest(0.1)
+        }
+        metrics["initialMathMilliseconds"] = Date().timeIntervalSince(start) * 1000
+        let settled = MathIsland.shared.peekForReliability(initial[0].id, style: style)
+        if settled == nil || MathIsland.shared.peekForReliability(initial[1].id, style: style) == nil {
+            failures.append("Mounted streaming view did not draw mathematics before its closing delimiter")
+        }
+        await MathGlyphDiskCache.flushPendingWrites()
+        if MathGlyphDiskCache.readPersisted(style.key + "/" + initial[1].id) != nil {
+            failures.append("A synthetic live preview was persisted as a completed expression")
+        }
+        saveScreen(directory.appendingPathComponent("streaming-math.png"))
+        liveSource = open + #" + \theta"#
+        guard let grown = MathScanner.spans(in: MathScanner.streamingPreview(liveSource)).last else {
+            return .init(failures: failures + ["Growing preview disappeared from scanner"], metrics: metrics)
+        }
+        let growingStart = Date()
+        while Date().timeIntervalSince(growingStart) < 20 {
+            if let settled, MathIsland.shared.peekForReliability(initial[0].id, style: style)?.image !== settled.image {
+                failures.append("Completed equation changed while another equation streamed"); break
+            }
+            if MathIsland.shared.peekForReliability(grown.id, style: style) != nil { break }
+            await JobClock.rest(0.1)
+        }
+        if MathIsland.shared.peekForReliability(grown.id, style: style) == nil {
+            failures.append("Mounted view failed to update its unfinished formula")
+        }
+        liveSource += "$ ثم يستمر الشرح."
+        let promotionDeadline = Date().addingTimeInterval(5)
+        while Date() < promotionDeadline {
+            await JobClock.rest(0.1)
+            await MathGlyphDiskCache.flushPendingWrites()
+            if MathGlyphDiskCache.readPersisted(style.key + "/" + grown.id) != nil { break }
+        }
+        if MathGlyphDiskCache.readPersisted(style.key + "/" + grown.id) == nil {
+            failures.append("Completed live formula was not persisted while the answer continued")
+        }
+        liveFinished = true
+        metrics["completedFormulaStayedStable"] = failures.contains(where: { $0.contains("Completed equation changed") }) ? 0 : 1
+        metrics["renderedBeforeDelimiter"] = MathIsland.shared.peekForReliability(initial[1].id, style: style) == nil ? 0 : 1
+        return .init(failures: failures, metrics: metrics)
+    }
+
+    @MainActor private func saveScreen(_ url: URL) {
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+              let window = scene.windows.first(where: \.isKeyWindow) else { return }
+        let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
+        let bytes = renderer.pngData { _ in window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) }
+        try? bytes.write(to: url, options: .atomic)
+    }
+
     @MainActor private func run() async {
         var errors = ChatReliabilityChecks.failures()
         errors += await CodeReliabilityChecks.failures()
         var report: [String: Any] = [:]
+        errors += MathScannerReliabilityChecks.failures()
+        errors += DocumentRevisionChecks.failures()
+        errors += await DocumentAssetCache.reliabilityFailures()
+        let streamChecks = StreamPerformanceChecks.run()
+        errors += streamChecks.failures
+        report["streamPerformance"] = streamChecks.metrics
+        let cacheChecks = await MathCachePerformanceChecks.run()
+        errors += cacheChecks.failures
+        report["cachePerformance"] = cacheChecks.metrics
         let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         do { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
         catch { errors.append("Could not create smoke output directory") }
+        let viewerChecks = await MediaViewerReliabilityChecks.run(env: env)
+        errors += viewerChecks.failures
+        report["mediaViewer"] = viewerChecks.metrics
+        showMath = true
+        let liveChecks = await checkLiveMath(directory: directory)
+        errors += liveChecks.failures
+        report["liveMath"] = liveChecks.metrics
 
         let selectable = SelectableTextView()
         selectable.isEditable = false
@@ -107,11 +202,10 @@ struct ReliabilitySmokeView: View {
         }
         let style = MathIslandStyle(palette: env.prefs.palette, background: env.prefs.palette.background, fontScale: env.prefs.fontScale)
         let items = MathScanner.spans(in: Self.sample).map { MathIslandItem(span: $0) }
-        MathIsland.shared.request(items, style: style, persist: true)
         let deadline = Date().addingTimeInterval(35)
         var rendered = 0
         while Date() < deadline {
-            rendered = items.filter { MathIsland.shared.glyph(for: $0.id, style: style) != nil }.count
+            rendered = items.filter { MathIsland.shared.peekForReliability($0.id, style: style) != nil }.count
             if rendered == items.count { break }
             await JobClock.rest(0.2)
         }
@@ -120,13 +214,18 @@ struct ReliabilitySmokeView: View {
         if rendered != items.count { errors.append("Some mathematical glyphs never completed") }
 
         // Read actual on-disk records, bypassing the island's memory dictionary.
-        let diskCount = items.filter { MathGlyphDiskCache.read(style.key + "/" + $0.id) != nil }.count
+        await MathGlyphDiskCache.flushPendingWrites()
+        let diskCount = items.filter { MathGlyphDiskCache.readPersisted(style.key + "/" + $0.id) != nil }.count
         report["persistedMathGlyphCount"] = diskCount
         if diskCount != items.count { errors.append("Completed glyphs did not persist") }
         if let first = items.first,
-           MathGlyphDiskCache.read(style.key + "different-theme/" + first.id) != nil {
+           MathGlyphDiskCache.readPersisted(style.key + "different-theme/" + first.id) != nil {
             errors.append("Disk glyph key failed to distinguish the theme")
         }
+        let wideChecks = RenderingPerformanceChecks.run(sample: Self.sample, style: style,
+            palette: env.prefs.palette, pointSize: 17 * env.prefs.fontScale.factor)
+        errors += wideChecks.failures
+        report["renderingPerformance"] = wideChecks.metrics
 
         var table = "<table><thead><tr><th>السطر</th><th>المحتوى</th></tr></thead><tbody>"
         for row in 1...100 {
@@ -166,6 +265,9 @@ struct ReliabilitySmokeView: View {
             }
         } else { errors.append("Native PDF printer failed") }
 
+        let documentChecks = await DocumentLayoutReliabilityChecks.run()
+        errors += documentChecks.failures
+        report["documentLayout"] = documentChecks.report
         report["status"] = errors.isEmpty ? "passed" : "failed"
         report["errors"] = errors
         status = errors.isEmpty ? "Passed · paginated PDF and persisted mathematics" : errors.joined(separator: " · ")

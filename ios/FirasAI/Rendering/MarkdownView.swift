@@ -82,12 +82,10 @@ struct MarkdownView: View {
             ground: ground ?? palette.background,
             codeCompanions: companions
         )
-        let settled = parsed.settled
-        let tail = parsed.tail
+        let rows = parsed.rows
 
         // Captured as values so the priming task holds no reference to the view or to the store.
-        let source = markdown
-        let identity = messageID
+        let items = parsed.mathItems
         let paint = palette
         let draws = drawsIslands
         // The same value the rows below will read the island with. Taken from the style rather
@@ -95,25 +93,18 @@ struct MarkdownView: View {
         // it exactly — see `MarkdownStyle.ground`.
         let paintGround = style.ground
         let mathStyle = MathIslandStyle(palette: paint, background: paintGround, fontScale: scale)
-        let primeKey = identity + "#" + MathScanner.identifier(tex: source, isDisplay: false)
-            + "#" + mathStyle.key + "#" + String(streaming)
+        let shouldPersist = persistenceAllowed
+        let previewID = parsed.previewMathID
+        let previewGroup = messageID + "#" + mathStyle.key
+        let primeKey = parsed.mathKey + "#" + mathStyle.key + "#" + String(shouldPersist) + "#" + (previewID ?? "")
 
         return VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(settled.indices), id: \.self) { index in
+            ForEach(rows) { row in
                 MarkdownBlockRow(
-                    block: settled[index],
+                    block: row.block,
                     style: style,
-                    isFirst: index == 0,
-                    showsCaret: false,
-                    onFence: onFence
-                )
-            }
-            if let tail {
-                MarkdownBlockRow(
-                    block: tail,
-                    style: style,
-                    isFirst: settled.isEmpty,
-                    showsCaret: streaming,
+                    isFirst: row.id == rows.first?.id,
+                    showsCaret: streaming && row.id == rows.last?.id,
                     onFence: onFence
                 )
             }
@@ -121,14 +112,8 @@ struct MarkdownView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .task(id: primeKey) {
             guard draws else { return }
-            await MathBlockView.prime(
-                markdown: source,
-                messageID: identity,
-                palette: paint,
-                background: paintGround,
-                fontScale: scale,
-                persist: persistenceAllowed && !streaming
-            )
+            MathIsland.shared.request(items, style: mathStyle, persist: shouldPersist,
+                previewGroup: previewGroup, previewID: previewID)
         }
     }
 
@@ -237,7 +222,7 @@ private struct MarkdownBlockRow: View {
         let plain = String(text.characters)
         let painted = MarkdownInline.styled(text, palette: style.palette)
         let glyphs = inlineGlyphs(in: painted)
-        var label = (glyphs.isEmpty ? Text(painted) : MarkdownInline.composed(painted, glyphs: glyphs))
+        var label = (!style.drawsIslands && !glyphs.isEmpty ? MarkdownInline.composed(painted, glyphs: glyphs) : Text(painted))
             .font(font)
         if let weight { label = label.fontWeight(weight) }
         return HStack(alignment: .bottom, spacing: 4) {
@@ -245,7 +230,7 @@ private struct MarkdownBlockRow: View {
                 FirasSelectableText(
                     source: painted, glyphs: glyphs, pointSize: nativePointSize,
                     semibold: weight != nil, lineSpacing: style.lineSpacing,
-                    palette: style.palette, lang: style.lang
+                    palette: style.palette, lang: style.lang, streaming: showsCaret
                 )
             } else {
             spoken(
@@ -434,7 +419,8 @@ private struct MarkdownBlockRow: View {
             lang: style.lang,
             fontScale: style.scale,
             background: style.ground,
-            motionOn: style.motionOn
+            motionOn: style.motionOn,
+            streaming: showsCaret
         )
     }
 

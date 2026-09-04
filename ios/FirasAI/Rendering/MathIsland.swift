@@ -163,12 +163,18 @@ final class MathIsland {
     private struct Pending {
         let item: MathIslandItem
         let style: MathIslandStyle
+        var previewGroup: String? = nil
     }
 
     @ObservationIgnored private var queued: [Pending] = []
     /// Membership of `queued`. A read asks on every redraw of every row it appears in, and a
     /// linear scan of 240 pending equations per read is a scroll dropped on the floor.
     @ObservationIgnored private var queuedKeys: Set<String> = []
+    @ObservationIgnored private var previewGroups: [String: String] = [:]
+    // Only the current page can be promoted while it is outside `queued`; both sets are
+    // bounded by chunkSize and are cleared when that page resolves.
+    @ObservationIgnored private var inFlightKeys: Set<String> = []
+    @ObservationIgnored private var inFlightPromotions: Set<String> = []
     /// Composite keys already sent to a page — drawn or refused. Never retried in the same style.
     @ObservationIgnored private var attempted: Set<String> = []
     /// The equations `attempted` is holding that nothing on screen can ever ask for again, with
@@ -204,6 +210,62 @@ final class MathIsland {
     private init() {}
 
     // MARK: - Reading
+
+#if DEBUG
+    /// Evidence must observe the mounted view's requests, never create a request by polling.
+    func peekForReliability(_ id: String, style: MathIslandStyle) -> MathGlyph? {
+        store[Self.key(id, style)]
+    }
+
+    /// Exercise the real queue/retry paths without booting a page or changing shared state.
+    static func previewReliabilityFailures(style: MathIslandStyle) -> [String] {
+        let island = MathIsland()
+        let item = MathIslandItem(tex: "\\frac{47}{83}", isDisplay: false)
+        let newer = MathIslandItem(tex: "\\frac{47}{83}+x", isDisplay: false)
+        let key = Self.key(item.id, style)
+        let pending = Pending(item: item, style: style, previewGroup: "first")
+        var failures: [String] = []
+
+        island.previewGroups["first"] = Self.key(newer.id, style)
+        island.queuedKeys.insert(key) // A page had already picked up the older prefix.
+        island.requeue([pending])
+        if !island.queued.isEmpty || island.queuedKeys.contains(key) {
+            failures.append("Superseded math preview survived page retry")
+        }
+        if island.release(pending, era: island.epoch) || !island.retries.isEmpty {
+            failures.append("Superseded math preview spent another snapshot attempt")
+        }
+        island.exhausted[key] = pending
+        if island.forgiveRetired() || !island.queued.isEmpty {
+            failures.append("Retired math preview returned after its source changed")
+        }
+
+        island.previewGroups["second"] = key
+        island.requeue([pending])
+        if island.queued.first?.previewGroup != "second" {
+            failures.append("Shared math preview lost its remaining visible owner")
+        }
+        island.queued.removeAll()
+        island.queuedKeys.removeAll()
+        island.previewGroups.removeAll()
+        island.inFlightPromotions.insert(key)
+        island.requeue([pending])
+        if island.queued.count != 1 || island.queued.first?.previewGroup != nil {
+            failures.append("Closing a live formula failed to promote its in-flight preview")
+        }
+
+        island.queued.removeAll()
+        island.queuedKeys.removeAll()
+        island.inFlightPromotions.removeAll()
+        let previousEra = island.epoch
+        island.epoch &+= 1
+        let completed = Pending(item: item, style: style)
+        if island.release(completed, era: previousEra) || !island.queued.isEmpty || !island.retries.isEmpty {
+            failures.append("Old-owner snapshot repopulated the queue after identity reset")
+        }
+        return failures
+    }
+#endif
 
     /// The bitmap for one equation in one style, or `nil` while it is still being drawn — and
     /// forever, if it can never be drawn. `nil` is not an error state: the caller is already
@@ -288,8 +350,26 @@ final class MathIsland {
     /// Register equations. Calls coalesce: every block of one answer lands in the same batch, and a
     /// batch that arrives while a page is already open is picked up by the pass after it.
     ///
-    /// Nothing here removes anything. An equation that has been drawn stays drawn.
-    func request(_ items: [MathIslandItem], style: MathIslandStyle, persist: Bool = false) {
+    /// Drawn equations stay drawn. Superseded, unfinished previews need no further page work.
+    func request(_ items: [MathIslandItem], style: MathIslandStyle, persist: Bool = false,
+                 previewGroup: String? = nil, previewID: String? = nil) {
+        if let previewGroup {
+            previewGroups[previewGroup] = previewID.map { Self.key($0, style) }
+        }
+        // Promotion must precede pruning: the closing delimiter can turn the same prefix
+        // into a complete expression while its page is still awaiting a snapshot.
+        for item in items where item.id != previewID {
+            let composite = Self.key(item.id, style)
+            if inFlightKeys.contains(composite) { inFlightPromotions.insert(composite) }
+            for index in queued.indices where Self.key(queued[index].item.id, queued[index].style) == composite {
+                queued[index].previewGroup = nil
+            }
+            if var pending = exhausted[composite] {
+                pending.previewGroup = nil
+                exhausted[composite] = pending
+            }
+        }
+        pruneObsoletePreviews()
         guard !items.isEmpty else { return }
 
         /* REGISTERED BEFORE ANYTHING BELOW IS ALLOWED TO REFUSE THEM. `known` is the only way a
@@ -307,7 +387,7 @@ final class MathIsland {
         for item in items {
             guard !item.tex.isEmpty, MathScanner.isTypesettable(item.tex) else { continue }
             let composite = Self.key(item.id, style)
-            if persist {
+            if persist && item.id != previewID {
                 persistentKeys.insert(composite)
                 if let glyph = store[composite] { MathGlyphDiskCache.write(glyph, key: composite) }
             }
@@ -315,9 +395,11 @@ final class MathIsland {
                 remember(saved, key: composite)
             }
             if attempted.contains(composite) || store[composite] != nil { continue }
-            if queuedKeys.contains(composite) { continue }
+            if queuedKeys.contains(composite) {
+                continue
+            }
             guard queued.count < Self.maximumQueue else { break }
-            queued.append(Pending(item: item, style: style))
+            queued.append(Pending(item: item, style: style, previewGroup: item.id == previewID ? previewGroup : nil))
             queuedKeys.insert(composite)
             added = true
         }
@@ -327,6 +409,29 @@ final class MathIsland {
            what made that state permanent. Opening the conversation again, or scrolling the row
            back on screen, now restarts the island instead of confirming its silence. */
         if added || !queued.isEmpty { schedule() }
+    }
+
+    /// An in-flight preview keeps its ownership through retries. Another visible message
+    /// asking for the same expression can take ownership; a completed request makes it normal.
+    private func currentPending(_ pending: Pending) -> Pending? {
+        guard let group = pending.previewGroup else { return pending }
+        let composite = Self.key(pending.item.id, pending.style)
+        if inFlightPromotions.contains(composite) {
+            return Pending(item: pending.item, style: pending.style)
+        }
+        if previewGroups[group] == composite { return pending }
+        guard let other = previewGroups.first(where: { $0.value == composite }) else { return nil }
+        return Pending(item: pending.item, style: pending.style, previewGroup: other.key)
+    }
+
+    private func pruneObsoletePreviews() {
+        let oldKeys = Set(queued.map { Self.key($0.item.id, $0.style) })
+        queued = queued.compactMap { currentPending($0) }
+        let keptKeys = Set(queued.map { Self.key($0.item.id, $0.style) })
+        for key in oldKeys.subtracting(keptKeys) where !inFlightKeys.contains(key) {
+            queuedKeys.remove(key)
+        }
+        exhausted = exhausted.compactMapValues { currentPending($0) }
     }
 
     /// A message that failed while the phone was in a lift is allowed to try again later. The
@@ -396,6 +501,9 @@ final class MathIsland {
         clock = 0
         queued.removeAll()
         queuedKeys.removeAll()
+        previewGroups.removeAll()
+        inFlightKeys.removeAll()
+        inFlightPromotions.removeAll()
         attempted.removeAll()
         retries.removeAll()
         exhausted.removeAll()
@@ -425,9 +533,9 @@ final class MathIsland {
        all. The reader got the Unicode form for the rest of the launch.
        So the item and its style are kept, and the island asks again itself once the page has had
        time to become an ordinary warm page. */
-    private func retire(_ key: String, item: MathIslandItem, style: MathIslandStyle) {
+    private func retire(_ key: String, pending: Pending) {
         if exhausted.count >= Self.maximumRetired, exhausted[key] == nil { exhausted.removeAll() }
-        exhausted[key] = Pending(item: item, style: style)
+        exhausted[key] = pending
         scheduleAmnesty()
     }
 
@@ -473,7 +581,8 @@ final class MathIsland {
         let retired = exhausted
         exhausted.removeAll()
         var added = false
-        for (key, pending) in retired {
+        for (key, oldPending) in retired {
+            guard let pending = currentPending(oldPending) else { continue }
             // It may have been drawn since, by a pass for another row asking the same thing.
             guard store[key] == nil else { continue }
             attempted.remove(key)
@@ -521,16 +630,18 @@ final class MathIsland {
     }
 
     private struct Batch {
-        let items: [MathIslandItem]
+        let pending: [Pending]
         let style: MathIslandStyle
+        var items: [MathIslandItem] { pending.map(\.item) }
     }
 
     /// The next page's worth of work: up to `chunkSize` equations that share one style, because the
     /// page paints its ink and its ground once per run.
     private func nextBatch() -> Batch? {
+        pruneObsoletePreviews()
         while !queued.isEmpty {
             let style = queued[0].style
-            var items: [MathIslandItem] = []
+            var items: [Pending] = []
             var rest: [Pending] = []
             var taken: Set<String> = []
             for pending in queued {
@@ -550,18 +661,26 @@ final class MathIsland {
                     continue
                 }
                 guard taken.insert(pending.item.id).inserted else { continue }
-                items.append(pending.item)
+                items.append(pending)
             }
             queued = rest
-            if !items.isEmpty { return Batch(items: items, style: style) }
+            if !items.isEmpty { return Batch(pending: items, style: style) }
         }
         return nil
     }
 
-    private func requeue(_ items: [MathIslandItem], style: MathIslandStyle) {
-        let back = items.map { Pending(item: $0, style: style) }
+    private func requeue(_ pending: [Pending]) {
+        var existing = Set(queued.map { Self.key($0.item.id, $0.style) })
+        let back = pending.compactMap { currentPending($0) }.filter {
+            existing.insert(Self.key($0.item.id, $0.style)).inserted
+        }
+        let kept = Set(back.map { Self.key($0.item.id, $0.style) })
+        for item in pending {
+            let composite = Self.key(item.item.id, item.style)
+            if !kept.contains(composite), !existing.contains(composite) { queuedKeys.remove(composite) }
+        }
         queued.insert(contentsOf: back, at: 0)
-        for item in items { queuedKeys.insert(Self.key(item.id, style)) }
+        for item in back { queuedKeys.insert(Self.key(item.item.id, item.style)) }
         if queued.count > Self.maximumQueue {
             let excess = queued.count - Self.maximumQueue
             for pending in queued.suffix(excess) {
@@ -581,6 +700,12 @@ final class MathIsland {
         var failures = 0
         var stalled = false
         while !isUnavailable, let batch = nextBatch() {
+            inFlightKeys = Set(batch.pending.map { Self.key($0.item.id, $0.style) })
+            inFlightPromotions.removeAll()
+            defer {
+                inFlightKeys.removeAll()
+                inFlightPromotions.removeAll()
+            }
             /* NOWHERE TO PAINT IS NOT THE SAME AS FAILING TO PAINT, and confusing the two is
                how a launch loses its equations. A cold launch delivers the first rows — and
                therefore the first request — while the scene is still `foregroundInactive`;
@@ -593,7 +718,7 @@ final class MathIsland {
                Waiting two seconds for the scene instead costs nothing and spends nothing:
                no attempt, no failure, no cooldown. */
             guard Self.hasForegroundScene() else {
-                requeue(batch.items, style: batch.style)
+                requeue(batch.pending)
                 stalled = true
                 break
             }
@@ -607,17 +732,17 @@ final class MathIsland {
             let era = epoch
             guard await MathIslandAssets.shared.prepare() else {
                 guard era == epoch else { break }
-                requeue(batch.items, style: batch.style)
+                requeue(batch.pending)
                 markUnavailable()
                 break
             }
-            let rendered = await renderChunk(batch.items, style: batch.style, era: era)
+            let rendered = await renderChunk(batch, era: era)
             guard era == epoch else { break }
             if rendered {
                 failures = 0
                 continue
             }
-            requeue(batch.items, style: batch.style)
+            requeue(batch.pending)
             teardownPage()
             failures += 1
             if failures >= 2 { markUnavailable() }
@@ -665,13 +790,26 @@ final class MathIsland {
 
     /// One page-load worth of equations. Returns `false` only when the *page* failed — an
     /// expression KaTeX could not parse is a missing glyph, not an unhealthy island.
-    private func renderChunk(_ items: [MathIslandItem], style: MathIslandStyle, era: Int) async -> Bool {
-        guard let json = Self.payload(items: items, style: style) else { return false }
+    private func renderChunk(_ original: Batch, era: Int) async -> Bool {
         guard let view = await bootedWebView() else { return false }
         guard era == epoch else { return true }
+        // Asset/page boot can span many streamed prefixes. Only the latest wanted work
+        // reaches JavaScript, and stale keys must stop claiming they are still in flight.
+        let pending = original.pending.compactMap { currentPending($0) }
+        let kept = Set(pending.map { Self.key($0.item.id, $0.style) })
+        for item in original.pending {
+            let key = Self.key(item.item.id, item.style)
+            if !kept.contains(key) { queuedKeys.remove(key) }
+        }
+        guard !pending.isEmpty else { return true }
+        let batch = Batch(pending: pending, style: original.style)
+        let items = batch.items
+        let style = batch.style
+        guard let json = Self.payload(items: items, style: style) else { return false }
 
         view.evaluateJavaScript("window.firasRun(" + json + ");", completionHandler: nil)
         guard case .done(let firstFrames, let size) = await wait(seconds: 12) else { return false }
+        guard era == epoch else { return true }
 
         var frames = firstFrames
         if size.width > canvas.width + 0.5 || size.height > canvas.height + 0.5 {
@@ -681,6 +819,7 @@ final class MathIsland {
             view.frame = CGRect(origin: view.frame.origin, size: canvas)
             view.evaluateJavaScript("window.firasMeasure();", completionHandler: nil)
             guard case .done(let grown, _) = await wait(seconds: 10) else { return false }
+            guard era == epoch else { return true }
             frames = grown
         }
 
@@ -708,10 +847,10 @@ final class MathIsland {
             reported.insert(frame.index)
         }
         for index in items.indices where !reported.contains(index) {
-            release(Self.key(items[index].id, style), item: items[index], style: style)
+            release(batch.pending[index], era: era)
         }
 
-        let drawn = await capture(frames, items: items, style: style, view: view, era: era)
+        let drawn = await capture(frames, pending: batch.pending, style: style, view: view, era: era)
         guard era == epoch else { return true }
 
         /* A PAGE THAT DREW NOTHING AT ALL IS ONE BAD PAGE, NOT TWELVE BAD EQUATIONS. Every
@@ -746,10 +885,12 @@ final class MathIsland {
     /// offers it one more round in `grantAmnesty`. Settling into the Unicode form has to be
     /// something the island decides three times over, not something a cold first page does once.
     @discardableResult
-    private func release(_ key: String, item: MathIslandItem, style: MathIslandStyle) -> Bool {
+    private func release(_ original: Pending, era: Int) -> Bool {
+        guard era == epoch, let pending = currentPending(original) else { return false }
+        let key = Self.key(pending.item.id, pending.style)
         let count = (retries[key] ?? 0) + 1
         guard count <= Self.maximumRetries else {
-            retire(key, item: item, style: style)
+            retire(key, pending: pending)
             return false
         }
         retries[key] = count
@@ -762,7 +903,7 @@ final class MathIsland {
            and the equations sat there un-asked-for with the island perfectly healthy. The island
            keeps hold of them; `maximumRetries` still says how many times. */
         if !queuedKeys.contains(key), queued.count < Self.maximumQueue {
-            queued.append(Pending(item: item, style: style))
+            queued.append(pending)
             queuedKeys.insert(key)
         }
         return true
@@ -770,17 +911,18 @@ final class MathIsland {
 
     private func capture(
         _ frames: [MathIslandFrame],
-        items: [MathIslandItem],
+        pending: [Pending],
         style: MathIslandStyle,
         view: WKWebView,
         era: Int
     ) async -> Int {
+        guard era == epoch else { return 0 }
+        let items = pending.map(\.item)
         let bounds = view.bounds
         guard bounds.width > 1, bounds.height > 1 else {
             // There is no page to read pixels out of. Not one of these is the LaTeX's fault.
             for frame in frames where frame.ok && frame.index >= 0 && frame.index < items.count {
-                let item = items[frame.index]
-                release(Self.key(item.id, style), item: item, style: style)
+                release(pending[frame.index], era: era)
             }
             return 0
         }
@@ -801,20 +943,22 @@ final class MathIsland {
                   box.minX >= -0.5, box.minY >= -0.5,
                   box.maxX <= bounds.width + 0.5, box.maxY <= bounds.height + 0.5 else {
                 // Measured against a canvas that is no longer this shape. Ask on the next page.
-                release(key, item: item, style: style)
+                release(pending[frame.index], era: era)
                 continue
             }
 
             let padded = box.insetBy(dx: -1, dy: -1).intersection(bounds)
             guard padded.width > 1, padded.height > 1 else {
-                release(key, item: item, style: style)
+                release(pending[frame.index], era: era)
                 continue
             }
 
             let configuration = WKSnapshotConfiguration()
             configuration.rect = padded
-            guard let image = await snapshot(view, configuration: configuration) else {
-                release(key, item: item, style: style)
+            let snapshotImage = await snapshot(view, configuration: configuration)
+            guard era == epoch else { return 0 }
+            guard let image = snapshotImage else {
+                release(pending[frame.index], era: era)
                 continue
             }
             // A BLANK BITMAP IS WORSE THAN NO BITMAP. It has the right size and a right
@@ -837,7 +981,10 @@ final class MathIsland {
             var look = 0
             while !ready && look < 2 {
                 try? await Task.sleep(nanoseconds: beat)
-                if let again = await snapshot(view, configuration: configuration), Self.hasInk(again) {
+                guard era == epoch else { return 0 }
+                let again = await snapshot(view, configuration: configuration)
+                guard era == epoch else { return 0 }
+                if let again, Self.hasInk(again) {
                     bitmap = again
                     ready = true
                 }
@@ -845,7 +992,7 @@ final class MathIsland {
                 look += 1
             }
             guard ready else {
-                release(key, item: item, style: style)
+                release(pending[frame.index], era: era)
                 continue
             }
 

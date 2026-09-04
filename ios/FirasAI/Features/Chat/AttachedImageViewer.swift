@@ -16,8 +16,12 @@ struct AttachedImageViewer: View {
     private let image: UIImage
     private let palette: FirasPalette
     private let lang: AppLanguage
+    private let onClose: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
+    #if DEBUG
+    @Environment(\.viewerCloseReliabilityProbe) private var closeProbe
+    #endif
 
     /// The settled zoom, and the live pinch on top of it. Kept apart so a gesture that ends
     /// mid-pinch does not lose the scale it had before the finger landed.
@@ -26,10 +30,11 @@ struct AttachedImageViewer: View {
     @State private var offset: CGSize = .zero
     @State private var drag: CGSize = .zero
 
-    init(image: UIImage, palette: FirasPalette, lang: AppLanguage) {
+    init(image: UIImage, palette: FirasPalette, lang: AppLanguage, onClose: (() -> Void)? = nil) {
         self.image = image
         self.palette = palette
         self.lang = lang
+        self.onClose = onClose
     }
 
     private var zoom: CGFloat { max(1, min(scale * pinch, 6)) }
@@ -51,6 +56,7 @@ struct AttachedImageViewer: View {
         }
         .overlay(alignment: .top) { bar }
         .statusBarHidden(true)
+        .accessibilityAction(.escape) { close() }
     }
 
     // MARK: - Chrome
@@ -58,17 +64,30 @@ struct AttachedImageViewer: View {
     private var bar: some View {
         HStack(spacing: 12) {
             Button {
-                dismiss()
+                close()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 38, height: 38)
                     .background(Circle().fill(Color.black.opacity(0.42)))
-                    .contentShape(Circle())
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+                    .background {
+                        #if DEBUG
+                        GeometryReader { geometry in
+                            Color.clear.onAppear {
+                                closeProbe?.buttonSize = geometry.size
+                                closeProbe?.action = close
+                            }
+                        }
+                        .allowsHitTesting(false)
+                        #endif
+                    }
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text(Strings.Common.close(lang)))
+            .accessibilityIdentifier("attached-image-viewer-close")
 
             Spacer(minLength: 0)
 
@@ -87,6 +106,11 @@ struct AttachedImageViewer: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
+    }
+
+    private func close() {
+        onClose?()
+        dismiss()
     }
 
     // MARK: - Gestures

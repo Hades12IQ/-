@@ -88,7 +88,7 @@ struct UserTurnView: View, Equatable {
         .frame(maxWidth: .infinity, alignment: .trailing)
         .task(id: message.imageThumbs?.count ?? 0) { await loadThumbnails() }
         .fullScreenCover(item: $opened) { preview in
-            AttachedImageViewer(image: preview.image, palette: palette, lang: lang)
+            AttachedImageViewer(image: preview.image, palette: palette, lang: lang) { opened = nil }
         }
     }
 

@@ -159,6 +159,7 @@ enum ExportText {
     static func temporaryURL(name: String, extension ext: String) -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("FirasExports", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
         _ = try? FileManager.default.createDirectory(
             at: directory,
             withIntermediateDirectories: true

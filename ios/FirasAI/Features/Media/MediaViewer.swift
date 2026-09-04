@@ -14,6 +14,11 @@ struct MediaViewer: View {
     private let env: AppEnvironment
     private let creationID: String
 
+    @Environment(\.dismiss) private var dismiss
+    #if DEBUG
+    @Environment(\.viewerCloseReliabilityProbe) private var closeProbe
+    #endif
+
     @State private var selection: String
     @State private var isSaving = false
 
@@ -29,13 +34,15 @@ struct MediaViewer: View {
     private var current: MediaCreation? { items.first { $0.id == selection } }
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
             palette.background.ignoresSafeArea()
             pages
-            header
         }
+        // Keep controls outside the paging/zoom host so the image's gestures never own this area.
+        .overlay(alignment: .top) { header }
         .overlay(alignment: .bottom) { actionBar }
         .task { await prepare() }
+        .accessibilityAction(.escape) { close() }
     }
 
     /// A main-actor method rather than an inline `.task` body: that body is `@Sendable` and does
@@ -78,17 +85,30 @@ struct MediaViewer: View {
     private var header: some View {
         HStack(spacing: 12) {
             Button {
-                SongPlayer.shared.stop()
-                env.router.cover = nil
+                close()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(palette.textPrimary)
                     .frame(width: 40, height: 40)
+                    .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+                    .background {
+                        #if DEBUG
+                        GeometryReader { geometry in
+                            Color.clear.onAppear {
+                                closeProbe?.buttonSize = geometry.size
+                                closeProbe?.action = close
+                            }
+                        }
+                        .allowsHitTesting(false)
+                        #endif
+                    }
             }
             .buttonStyle(.plain)
-            .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
             .accessibilityLabel(Text(Strings.Common.close(lang)))
+            .accessibilityIdentifier("media-viewer-close")
 
             Spacer(minLength: 8)
 
@@ -103,6 +123,14 @@ struct MediaViewer: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
+    }
+
+    private func close() {
+        SongPlayer.shared.stop()
+        // Dismiss the actual presentation as well as clearing its router source. This also works
+        // when the viewer is presented from a local cover instead of AppShell's router binding.
+        dismiss()
+        if case .mediaViewer? = env.router.cover { env.router.cover = nil }
     }
 
     @ViewBuilder

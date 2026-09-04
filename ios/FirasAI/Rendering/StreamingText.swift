@@ -10,8 +10,8 @@ import UIKit
 /// deliver 2.5 seconds of answer in one go. Painting that directly is what the owner reads as
 /// broken — the answer lurches forward a paragraph at a time and then sits still. This view keeps a
 /// display cursor between the reader and the buffer: incoming text becomes a target, and the cursor
-/// walks towards it on the display link, fast when it is far behind and slow when the model is
-/// slow, so the answer is always moving and never jumps.
+/// walks towards it on the display link. It catches up within a short window instead of replaying
+/// a server snapshot for several seconds after the words have already arrived.
 ///
 /// Wrap it around anything that renders a growing answer — the closure is handed one revealed
 /// prefix and draws it, e.g. `MarkdownView(markdown: shown, messageID: …, streaming: …)`. What it
@@ -25,7 +25,7 @@ import UIKit
 /// * It repaints at a capped rate that falls as the answer gets longer — 60 Hz for a short reply,
 ///   12 Hz past 32 000 bytes — so a long answer reveals in slightly larger runs instead of melting
 ///   the phone. The renderer's own block cache does the rest: only the tail block re-parses.
-/// * When the turn ends the remaining characters always land, inside about a third of a second, or
+/// * When the turn ends the remaining characters always land, inside about a sixth of a second, or
 ///   at once when there are too many left to read anyway.
 /// * With Reduce Motion on — the system switch or the in-app one — there is no cursor at all.
 struct StreamingText<Content: View>: View {
@@ -64,7 +64,7 @@ struct StreamingText<Content: View>: View {
 
     var body: some View {
         content(shown)
-            .onAppear { apply() }
+            .onAppear { reveal.resume(); apply() }
             .onChange(of: text) { _, _ in apply() }
             .onChange(of: isStreaming) { _, _ in apply() }
             .onChange(of: animates) { _, _ in apply() }
@@ -122,6 +122,7 @@ final class StreamReveal {
     @ObservationIgnored private var pending: Substring = ""
     @ObservationIgnored private var pendingBytes: Int = 0
     @ObservationIgnored private var revealedBytes: Int = 0
+    @ObservationIgnored private var trailingGraphemeBytes: Int = 0
 
     // MARK: Pacing state
 
@@ -136,17 +137,21 @@ final class StreamReveal {
     @ObservationIgnored private var arrivalInterval: Double = 0
     @ObservationIgnored private var isFinishing = false
     @ObservationIgnored private var finishDeadline: CFTimeInterval = 0
+    @ObservationIgnored private var catchupDeadline: CFTimeInterval = 0
+    @ObservationIgnored private var isPaused = false
+    private let clock: () -> CFTimeInterval
 
     // MARK: Constants
 
     /// Seconds to close the gap, before any cadence has been measured, then its clamp.
-    private static let defaultTau: Double = 0.45
-    private static let minimumTau: Double = 0.35
-    private static let maximumTau: Double = 2.2
-    /// Slowest and fastest the cursor may move, in UTF-8 bytes per second. The floor is about 22
+    private static let defaultTau: Double = 0.16
+    private static let minimumTau: Double = 0.10
+    private static let maximumTau: Double = 0.24
+    private static let catchupWindow: CFTimeInterval = 0.24
+    /// Slowest and fastest the cursor may move, in UTF-8 bytes per second. The floor is about 40
     /// Arabic letters a second; the ceiling keeps a burst reading as writing, not teleporting.
-    private static let minimumRate: Double = 45
-    private static let maximumRate: Double = 9_000
+    private static let minimumRate: Double = 80
+    private static let maximumRate: Double = 64_000
     /// Past this much unrevealed text there is nothing to be gained by pacing: the reader has
     /// already missed it, and crawling through it is worse than showing it. Then the same
     /// judgement at the end of a turn.
@@ -156,16 +161,18 @@ final class StreamReveal {
     /// was off screen. Catch up in one step rather than replaying a backlog.
     private static let suspendedGap: CFTimeInterval = 0.5
     /// The window the last characters get once the turn is over.
-    private static let finishWindow: CFTimeInterval = 0.32
+    private static let finishWindow: CFTimeInterval = 0.16
 
-    init() {}
+    init(clock: @escaping () -> CFTimeInterval = { CACurrentMediaTime() }) {
+        self.clock = clock
+    }
 
     // MARK: - Input
 
     /// The whole contract with the view: here is everything that has arrived, here is whether more
     /// is coming, here is whether we are allowed to animate at all.
     func present(text: String, isStreaming: Bool, animated: Bool) {
-        guard animated else {
+        guard animated, !isPaused else {
             snap(to: text)
             return
         }
@@ -186,7 +193,10 @@ final class StreamReveal {
         }
         push(text)
         if isStreaming {
-            start()
+            // Show the beginning on arrival, including after a thinking-only response. The final
+            // grapheme is still held so a following harakah or emoji joiner stays intact.
+            if visible.isEmpty { consume(bytes: min(24, availableBytes())) }
+            if availableBytes() > 0 { start() } else { stop() }
         } else {
             finish()
         }
@@ -198,8 +208,10 @@ final class StreamReveal {
         pending = ""
         pendingBytes = 0
         revealedBytes = 0
+        trailingGraphemeBytes = 0
         isFinishing = false
         finishDeadline = 0
+        catchupDeadline = 0
         arrivalRate = 0
         arrivalInterval = 0
         lastArrivalAt = 0
@@ -207,15 +219,14 @@ final class StreamReveal {
         if !visible.isEmpty { visible = "" }
     }
 
-    /// The row left the screen. The link stops, but a turn that was in the middle of landing its
-    /// last characters lands them now — they are never dropped.
+    /// Offscreen rows catch up without running a display link. Reappearing never replays words
+    /// that arrived while the reader was elsewhere in the conversation.
     func pause() {
-        if isFinishing {
-            settle()
-            return
-        }
-        stop()
+        isPaused = true
+        settle()
     }
+
+    func resume() { isPaused = false }
 
     // MARK: - Target
 
@@ -224,6 +235,8 @@ final class StreamReveal {
             pending = ""
             pendingBytes = 0
             revealedBytes = 0
+            trailingGraphemeBytes = 0
+            catchupDeadline = 0
             if !visible.isEmpty { visible = "" }
             return
         }
@@ -234,12 +247,17 @@ final class StreamReveal {
             revealedBytes = 0
             pendingBytes = 0
             pending = ""
+            trailingGraphemeBytes = 0
+            catchupDeadline = 0
         }
 
         let total = next.utf8.count
         let arrived = total - (revealedBytes + pendingBytes)
         if arrived > 0 {
-            let now = CACurrentMediaTime()
+            let now = clock()
+            if catchupDeadline == 0 || availableBytes() == 0 {
+                catchupDeadline = now + Self.catchupWindow
+            }
             if lastArrivalAt > 0 {
                 let dt = max(0.016, now - lastArrivalAt)
                 let rate = Double(arrived) / dt
@@ -255,8 +273,10 @@ final class StreamReveal {
             // than O(the answer): `pending` keeps that storage alive and re-slices itself.
             let remainder = String(decoding: next.utf8.dropFirst(revealedBytes), as: UTF8.self)
             pending = remainder[remainder.startIndex...]
+            trailingGraphemeBytes = pending.suffix(1).utf8.count
         } else {
             pending = ""
+            trailingGraphemeBytes = 0
         }
     }
 
@@ -270,7 +290,7 @@ final class StreamReveal {
             return
         }
         isFinishing = true
-        finishDeadline = CACurrentMediaTime() + Self.finishWindow
+        finishDeadline = clock() + Self.finishWindow
         start()
     }
 
@@ -279,8 +299,10 @@ final class StreamReveal {
         stop()
         pending = ""
         pendingBytes = 0
+        trailingGraphemeBytes = 0
         isFinishing = false
         finishDeadline = 0
+        catchupDeadline = 0
         revealedBytes = text.utf8.count
         if isRevealing { isRevealing = false }
         if visible != text { visible = text }
@@ -294,8 +316,10 @@ final class StreamReveal {
             pending = ""
             pendingBytes = 0
         }
+        trailingGraphemeBytes = 0
         isFinishing = false
         finishDeadline = 0
+        catchupDeadline = 0
         if isRevealing { isRevealing = false }
         stop()
     }
@@ -312,7 +336,7 @@ final class StreamReveal {
         created.add(to: .main, forMode: .common)
         ticker = target
         link = created
-        lastTickAt = CACurrentMediaTime()
+        lastTickAt = clock()
     }
 
     private func stop() {
@@ -334,9 +358,11 @@ final class StreamReveal {
         let available = availableBytes()
 
         if available <= 0 {
-            // Idle frames must not bank credit: without this, a slow model would look suspended and
-            // then dump its next chunk in one step.
+            // No 60/120 Hz callbacks while waiting for the next network chunk. `present` restarts
+            // the link when there is something to reveal, with a fresh clock and no banked credit.
             lastTickAt = now
+            catchupDeadline = 0
+            stop()
             if isFinishing, pendingBytes == 0 { settle() }
             return
         }
@@ -345,6 +371,11 @@ final class StreamReveal {
             lastTickAt = now
             consume(bytes: available)
             if isFinishing, pendingBytes == 0 { settle() }
+            return
+        }
+
+        if !isFinishing, catchupDeadline > 0, now >= catchupDeadline {
+            consume(bytes: available)
             return
         }
 
@@ -361,6 +392,9 @@ final class StreamReveal {
         }
 
         var rate = max(Double(available) / tau(), Self.minimumRate)
+        if catchupDeadline > now {
+            rate = max(rate, Double(available) / max(0.016, catchupDeadline - now))
+        }
         if arrivalRate > 0 { rate = max(rate, arrivalRate * 1.15) }
         rate = min(rate, Self.maximumRate)
         if isFinishing {
@@ -381,10 +415,7 @@ final class StreamReveal {
     private func availableBytes() -> Int {
         guard pendingBytes > 0 else { return 0 }
         if isFinishing { return pendingBytes }
-        guard !pending.isEmpty else { return 0 }
-        let last = pending.index(before: pending.endIndex)
-        let tail = pending[last...].utf8.count
-        return max(0, pendingBytes - tail)
+        return max(0, pendingBytes - trailingGraphemeBytes)
     }
 
     /// Reveal by grapheme cluster, never by scalar and never by word: one cluster is one thing the
@@ -406,12 +437,15 @@ final class StreamReveal {
         pending = pending[cursor...]
         pendingBytes = max(0, pendingBytes - moved)
         revealedBytes += moved
+        if availableBytes() == 0 {
+            catchupDeadline = 0
+            stop()
+        }
     }
 
     /// How long the cursor should take to close the current gap, tuned to the cadence it is being
-    /// fed at. A live stream (~0.1 s between deltas) gets a tight 0.35 s; a queued job (~2.5 s
-    /// between snapshots) gets 2.2 s, which is what turns a poll into continuous writing instead of
-    /// a burst followed by silence.
+    /// fed at. Polling intervals must not add seconds of artificial delay to text that has already
+    /// arrived; the short catch-up deadline bounds either delivery mode.
     private func tau() -> Double {
         guard arrivalInterval > 0 else { return Self.defaultTau }
         return min(Self.maximumTau, max(Self.minimumTau, arrivalInterval * 0.95))
@@ -433,6 +467,11 @@ final class StreamReveal {
         guard next.utf8.count >= bytes else { return false }
         return next.utf8.prefix(bytes).elementsEqual(visible.utf8)
     }
+
+    #if DEBUG
+    var debugHasDisplayLink: Bool { link != nil }
+    func debugAdvance(to time: CFTimeInterval) { step(at: time) }
+    #endif
 }
 
 // MARK: - Display link target

@@ -111,7 +111,7 @@ enum MarkdownInline {
                 continue
             }
             let flattened = MathText.unicode(span.tex)
-            let body = flattened.isEmpty ? span.tex : flattened
+            let body = span.isRecovered ? span.raw : (flattened.isEmpty ? span.tex : flattened)
             var replacement = AttributedString(isolated(body))
             replacement[FirasMathAttribute.self] = span.raw
             target.replaceSubrange(range, with: replacement)

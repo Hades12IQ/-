@@ -371,6 +371,16 @@ extension SendPipeline {
         }
     }
 
+    /// Ordinary chat jobs retain vision images. Long-document/file workers do not. Measure the
+    /// actual encoded envelope, including escaped source and base64, before packing a handoff.
+    static func fitsDurableQueue(_ request: ChatJobRequest, isTemporary: Bool, hasStorage: Bool) -> Bool {
+        guard !isTemporary, hasStorage else { return false }
+        let images = request.messages.contains { !($0.images ?? []).isEmpty }
+        guard request.kind == JobKind.chat.rawValue || !images else { return false }
+        guard let encoded = try? JSONEncoder().encode(request) else { return false }
+        return encoded.count <= jobPayloadCeiling
+    }
+
     static func isPlanning(_ turn: PlanTurnKind) -> Bool {
         switch turn {
         case .clarifyOrPlan, .forcedPlan, .revision, .execute: return true

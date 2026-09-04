@@ -23,7 +23,7 @@ enum MathScanner {
     }
 
     static func protect(_ text: String) -> (text: String, spans: [String]) {
-        guard text.contains("$") || text.contains("\\") else { return (text, []) }
+        guard text.contains("$") || text.contains("\\") || hasRecoveryCue(text) else { return (text, []) }
         let chars = Array(text)
         let regions = scan(chars)
         guard !regions.isEmpty else { return (text, []) }
@@ -65,7 +65,7 @@ enum MathScanner {
         let end: Int
     }
 
-    private static func scan(_ s: [Character]) -> [Region] {
+    private static func scan(_ s: [Character], unfinished: inout (start: Int, opener: String, closer: String)?) -> [Region] {
         let n = s.count
         var math: [Region] = []
         let fences = fenceRegions(s)
@@ -80,6 +80,8 @@ enum MathScanner {
             }
 
             let c = s[i]
+            // A query string is not algebra. This also protects destinations in Markdown links.
+            if let end = recoveryURLend(s, from: i) { i = end; continue }
             if c == "\\" {
                 guard i + 1 < n else { break }
                 let d = s[i + 1]
@@ -100,6 +102,15 @@ enum MathScanner {
                         continue
                     }
                 }
+                if d == "[", unfinishedTail(s, from: i + 2, explicit: true) {
+                    unfinished = (i, "\\[", "\\]")
+                    i = n
+                    continue
+                } else if d == "(", unfinishedTail(s, from: i + 2, explicit: true) {
+                    unfinished = (i, "\\(", "\\)")
+                    i = n
+                    continue
+                }
                 i += 2
                 continue
             }
@@ -111,7 +122,7 @@ enum MathScanner {
                 if let close = indexOfRun(s, "`", count: runLength, from: k) {
                     i = close + runLength
                 } else {
-                    i = k
+                    i = s[k...].firstIndex(of: "\n") ?? n
                 }
                 continue
             }
@@ -135,6 +146,11 @@ enum MathScanner {
                         i = end + 2
                         continue
                     }
+                    if end == -1, unfinishedTail(s, from: i + 2, explicit: true) {
+                        unfinished = (i, "$$", "$$")
+                        i = n
+                        continue
+                    }
                     i += 2
                     continue
                 }
@@ -147,7 +163,15 @@ enum MathScanner {
                 }
                 // No partner anywhere ahead: it cannot mis-pair, so it stays a literal dollar.
                 // This is also every opening delimiter of an equation still being streamed.
-                if end == -1 { i += 1; continue }
+                if end == -1 {
+                    if unfinishedTail(s, from: i + 1, explicit: false) {
+                        unfinished = (i, "$", "$")
+                        i = n
+                        continue
+                    }
+                    i += 1
+                    continue
+                }
                 let body = String(s[(i + 1)..<end])
                 let after: Character? = end + 1 < n ? s[end + 1] : nil
                 if acceptsInline(body: body, after: after) {
@@ -159,9 +183,128 @@ enum MathScanner {
                 continue
             }
 
+            if let end = recoveredEnd(s, from: i) {
+                math.append(Region(start: i, end: end))
+                i = end
+                continue
+            }
             i += 1
         }
         return math.sorted { $0.start < $1.start }
+    }
+
+    private static func scan(_ s: [Character]) -> [Region] {
+        var unfinished: (start: Int, opener: String, closer: String)?
+        return scan(s, unfinished: &unfinished)
+    }
+
+    /// A derived view of an in-flight message. Neither storage nor copying should use this value.
+    /// The same scan which protects completed math records an eligible unclosed tail, outside code.
+    static func streamingPreview(_ markdown: String) -> String {
+        guard markdown.contains("$") || markdown.contains("\\") else { return markdown }
+        let chars = Array(markdown)
+        var unfinished: (start: Int, opener: String, closer: String)?
+        _ = scan(chars, unfinished: &unfinished)
+        guard let pending = unfinished else { return markdown }
+        let from = pending.start + pending.opener.count
+        var body = String(chars[from...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        while let last = body.last, last == "^" || last == "_" { body.removeLast(); body = body.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let tail = Array(body)
+        var commandStart = tail.count
+        while commandStart > 0, isASCIILetter(tail[commandStart - 1]) { commandStart -= 1 }
+        if commandStart > 0, tail[commandStart - 1] == "\\" {
+            let name = String(tail[commandStart...])
+            let completeCommands: Set<String> = [
+                "frac", "dfrac", "tfrac", "binom", "sqrt", "text", "mathrm", "mathbf", "mathbb", "vec", "hat", "bar", "overline", "underline", "boxed",
+                "int", "iint", "iiint", "oint", "sum", "prod", "lim", "infty", "partial", "nabla", "pi", "theta", "alpha", "beta", "gamma", "delta", "epsilon", "lambda", "mu", "sigma", "phi", "omega", "Delta", "Omega", "Gamma",
+                "zeta", "eta", "iota", "kappa", "nu", "xi", "rho", "tau", "upsilon", "chi", "psi", "varepsilon", "vartheta", "varphi", "varrho", "varsigma", "hbar", "ell", "imath", "jmath", "Theta", "Lambda", "Xi", "Pi", "Sigma", "Upsilon", "Phi", "Psi", "ce", "pu",
+                "sin", "cos", "tan", "cot", "sec", "csc", "ln", "log", "exp", "quad", "qquad", "cdot", "times", "pm", "mp"
+            ]
+            if name.isEmpty || !completeCommands.contains(name) {
+                body = String(tail[..<(commandStart - 1)]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+        while let last = body.last, last == "^" || last == "_" { body.removeLast(); body = body.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard !body.isEmpty else { return markdown }
+        body = completePreviewArguments(balancedBraces(body))
+        // A started display environment remains local to this preview; never rewrite the response.
+        if let regex = try? NSRegularExpression(pattern: #"\\(begin|end)\{([a-zA-Z*]+)\}"#) {
+            let value = body as NSString
+            var environments: [String] = []
+            for match in regex.matches(in: body, range: NSRange(location: 0, length: value.length)) {
+                let command = value.substring(with: match.range(at: 1))
+                let name = value.substring(with: match.range(at: 2))
+                if command == "begin" { environments.append(name) }
+                else if environments.last == name { environments.removeLast() }
+            }
+            for name in environments.reversed() { body += "\\end{" + name + "}" }
+        }
+        guard isTypesettable(body) else { return markdown }
+        return String(chars[..<pending.start]) + pending.opener + body + pending.closer
+    }
+
+    private static func unfinishedTail(_ s: [Character], from start: Int, explicit: Bool) -> Bool {
+        guard start < s.count, s.count - start <= displayBracketReach else { return false }
+        let raw = String(s[start...])
+        if !explicit, raw.first?.isWhitespace == true { return false }
+        guard !raw.contains("$"), !raw.contains("`"), !containsBlankLine(raw) else { return false }
+        var body = strippingTextGroups(raw).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !body.isEmpty, !containsArabic(body) else { return false }
+        // Chemical symbols and units can be long Latin runs (NaOH, H2SO4, mol). Their explicit
+        // mhchem command already establishes that this is math, including a still-open argument.
+        body = body.replacingOccurrences(of: #"\\(?:ce|pu)\{[^{}]*(?:\}|$)"#, with: "x", options: .regularExpression)
+        body = body.replacingOccurrences(of: #"\\(?:begin|end)\{[a-zA-Z*]+\}"#, with: "", options: .regularExpression)
+        body = body.replacingOccurrences(of: #"\\[a-zA-Z]+"#, with: "x", options: .regularExpression)
+        let latinLetters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        let words = body.components(separatedBy: latinLetters.inverted).filter { !$0.isEmpty }
+        guard words.allSatisfy({ $0.count <= 2 || recoveredFunctions.contains($0) }) else { return false }
+        if !explicit, raw.first?.isNumber == true,
+           !raw.contains(where: { "\\=+−-*/^_√".contains($0) || recoveredGreek.contains($0) }) { return false }
+        return true
+    }
+
+    /// TeX permits an empty argument. Filling only missing argument slots with {} shows a partial
+    /// fraction/root without inventing a coefficient, denominator, or other mathematical content.
+    private static func completePreviewArguments(_ body: String) -> String {
+        let chars = Array(body)
+        let arity = ["frac": 2, "dfrac": 2, "tfrac": 2, "binom": 2, "sqrt": 1, "text": 1, "mathrm": 1, "mathbf": 1, "mathbb": 1, "vec": 1, "hat": 1, "bar": 1, "overline": 1, "underline": 1, "boxed": 1, "ce": 1, "pu": 1]
+        var additions: [Int: String] = [:]
+        var i = 0
+        while i < chars.count {
+            guard chars[i] == "\\" else { i += 1; continue }
+            var end = i + 1
+            while end < chars.count, isASCIILetter(chars[end]) { end += 1 }
+            let name = String(chars[(i + 1)..<end])
+            if let count = arity[name] {
+                var cursor = end
+                for remaining in (1...count).reversed() {
+                    while cursor < chars.count, chars[cursor].isWhitespace { cursor += 1 }
+                    if cursor == chars.count || chars[cursor] == "}" {
+                        additions[cursor, default: ""] += String(repeating: "{}", count: remaining)
+                        break
+                    }
+                    if chars[cursor] == "{" {
+                        var depth = 1
+                        cursor += 1
+                        while cursor < chars.count, depth > 0 {
+                            if chars[cursor] == "{" { depth += 1 }
+                            if chars[cursor] == "}" { depth -= 1 }
+                            cursor += 1
+                        }
+                    } else if chars[cursor] == "\\" {
+                        cursor += 1
+                        while cursor < chars.count, isASCIILetter(chars[cursor]) { cursor += 1 }
+                    } else { cursor += 1 }
+                }
+            }
+            i = max(i + 1, end)
+        }
+        var out = ""
+        for index in 0...chars.count {
+            out += additions[index] ?? ""
+            if index < chars.count { out.append(chars[index]) }
+        }
+        return out
     }
 
     /// Fenced code blocks, by line. An UNTERMINATED fence runs to the end of the text: mid-stream
@@ -397,6 +540,9 @@ extension MathScanner {
         let tex: String
         let isDisplay: Bool
 
+        /// Undelimited recovery carries the original text for fallback and selected copy.
+        var isRecovered: Bool { MathScanner.isRecoveredMath(raw) }
+
         /// Content-derived, so the same formula asked for twice is rendered once, and a block view
         /// finds the glyph a whole-message pass already produced without agreeing on an order.
         var id: String { MathScanner.identifier(tex: tex, isDisplay: isDisplay) }
@@ -404,10 +550,9 @@ extension MathScanner {
 
     /// Every **complete** math run in `text`, in reading order.
     ///
-    /// Completeness is the contract: `scan` only ever emits a run whose closing delimiter it has
-    /// actually seen, so a `$$` still being streamed, an unpaired `\[`, and a lone `$` in prose are
-    /// all absent here rather than present as a half expression. A typesetter can therefore render
-    /// everything it is given without a second opinion about where the math ends.
+    /// Delimited runs need their closing delimiter; conservative undelimited recovery needs a
+    /// complete mathematical expression. A still-open delimiter belongs to `streamingPreview`,
+    /// which makes a derived string for display without changing the stored response.
     static func spans(in text: String) -> [Span] {
         protect(text).spans.compactMap { span(for: $0) }
     }
@@ -431,7 +576,8 @@ extension MathScanner {
             body = String(body.dropFirst().dropLast())
         }
 
-        let tex = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        let bare = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        let tex = body == trimmed && isRecoveredMath(trimmed) ? MathText.texForRecoveredMath(bare) : bare
         guard !tex.isEmpty else { return nil }
         return Span(raw: trimmed, tex: tex, isDisplay: isDisplay)
     }

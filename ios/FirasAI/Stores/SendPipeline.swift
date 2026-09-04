@@ -139,7 +139,17 @@ final class SendPipeline {
         let lang = store.lang
         let reattach = Self.reattachment(for: trimmed, state: state, hasOwnImages: !folded.images.isEmpty)
         let hasImages = !folded.images.isEmpty || !reattach.isEmpty
-        let kind = RequestClassifier.classify(trimmed, hasImages: hasImages, lang: lang)
+        let previousDocument = DocumentRevisionContext.latestMessage(in: store.conversation(key)?.messages ?? [], request: trimmed)
+        let revisionFormat = DocumentRevisionContext.format(for: trimmed, candidate: previousDocument,
+            history: store.conversation(key)?.messages ?? [])
+        if revisionFormat != nil, DocumentRevisionContext.completeSource(from: previousDocument) == nil {
+            let oversized = previousDocument.flatMap { DocumentHTML.authored(in: $0.content) }
+                .map { $0.utf8.count > DocumentRevisionContext.maximumSourceBytes } ?? false
+            toasts.show((oversized ? DocumentRevisionContext.tooLarge : DocumentRevisionContext.unavailable)(lang), isError: true)
+            return
+        }
+        let kind = revisionFormat.map { RequestKind.file(format: $0, explicitPages: nil) }
+            ?? RequestClassifier.classify(trimmed, hasImages: hasImages, lang: lang)
 
         // A render is refused for a guest before anything is written, because the server answers
         // 403 `signin_required` for every guest media request and the upsell is the same answer
@@ -161,7 +171,7 @@ final class SendPipeline {
         let quotedContext = quote.isEmpty ? "" : PromptCatalog.quotePrefix(passages: [(text: quote, lang: lang.rawValue)])
         let contextText = [quotedContext, folded.fileText].filter { !$0.isEmpty }.joined(separator: "\n\n")
         user.fileText = contextText.isEmpty ? nil : contextText
-        user.intent = Self.intent(for: kind)
+        user.intent = revisionFormat ?? Self.intent(for: kind)
         user.status = .sending
 
         let planTurn = state.plan.userSent(user, liveMode: prefs.responseMode, product: product)

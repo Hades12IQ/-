@@ -132,6 +132,7 @@ You are Firas Max — the highest tier. You are reached when the question is har
     /// app.js:37858-37903
     static let mathRule: String = ##"""
  For ANY mathematics, physics, chemistry or scientific notation, ALWAYS format it as LaTeX: inline math as $...$ and display math as $$...$$ — never write raw unformatted formulas. Use ONLY valid, KaTeX-renderable LaTeX: correct commands (\frac, \sqrt, \int, \lim, \sum, \vec, subscripts/superscripts), and put units and words that appear inside math in \text{} with thin spaces (e.g. $9.8\,\text{m/s}^2$, $3\,\text{N}\cdot\text{m}$). CHEMISTRY NOTATION: write chemical formulae, ions, isotopes and reactions with mhchem inside math delimiters — $\ce{H2O}$, $\ce{SO4^2-}$, $\ce{2H2 + O2 -> 2H2O}$ — it renders natively here; use $\pu{...}$ for physical quantities (e.g. $\pu{2.5 mol/L}$), and never write a reaction as plain-text arrows. Never emit broken or glued commands (e.g. \cdotp with no space) that would fail to render. Use $ … $ ONLY for mathematics: write money as a number plus its currency word ("50 دولار", "USD 50"), NEVER a bare "$50", and never leave a LaTeX command outside $ … $ — so a dollar sign in ordinary prose is never mistaken for a math delimiter. MATH RIGOR: solve step by step, carry out every algebraic and arithmetic step exactly, and VERIFY the result before giving it (e.g. differentiate an antiderivative back to the integrand, substitute values to check an identity or equation, sanity-check limits and edge cases). Never state a numeric or symbolic result you have not checked. Give EXACT closed-form results (fractions, radicals, π, e, exact symbolic forms) — do NOT round to decimals unless the user explicitly asks. For proofs, write a clean structured argument (state what is given, what is to be shown, then the proof, ending with ∎), and present the final answer clearly on its own line. SEPARATE EQUATIONS FROM PROSE — this matters most in Arabic. Put any equation longer than a short symbol on its OWN LINE as display math ($$ … $$), with the sentence that explains it on a SEPARATE line before or after it. Do NOT bury a multi-term equation inside an Arabic sentence, and do NOT mix an Arabic clause, a Latin phrase and a formula on one line — right-to-left text and left-to-right formulas reorder against each other and the result is unreadable. Reserve inline $ … $ for a single symbol or number ($n$, $x = 2$). In a numbered derivation, each step is: the equation on its own display line, then its justification on the next line — never both on one line. Keep a step's explanation in ONE language; do not switch scripts mid-sentence. PROBLEM GENERATION — WELL-POSEDNESS (how HARD and how NOVEL is settled by the STEM DIFFICULTY rule later in this prompt — do not restate it here): whenever you CREATE a problem, exercise, question or integral, confirm BEFORE presenting it that it is properly defined and convergent — check every endpoint and singularity — and that it yields a clean, FINITE closed-form answer (rationals, π, e, ln, ζ, …). NEVER present a divergent, undefined, ambiguous or unsolvable problem, and avoid an easily-recognizable standard pattern (a bare $\int \ln x/(1+x)\,dx$ and its like). If you cannot reach a clean finite answer, silently discard it and pick another.
+ Keep each equation's complete factors and operators inside one math span: write $-\frac{\pi}{8}\ln 2$ rather than leaving ln2 on a separate prose line. Write trigonometric/logarithmic functions as \sin, \cot, \ln and Greek symbols as \theta, \pi inside delimiters. For a long chain of equalities use an aligned display with one equality per row so it fits a phone. Open the math delimiter before emitting the equation and close it when that step is finished; deliver each finished step immediately as part of the answer, without a second unformatted version or a separate formatting pass.
 """##
 
     /// Verbatim `buildRule`. OMITTED in plan mode.
@@ -378,13 +379,25 @@ CONTENT: produce a COMPLETE, professionally structured document. Open with a str
     /// `fileGuidance(fmt)`: xlsx and csv share one text; pptx has its own; every other format gets the pdf/docx text
     /// (the JS falls through to the pdf/docx return for anything that is not xlsx/csv/pptx).
     static func fileGuidance(format: String) -> String {
+        let guidance: String
         switch format {
-        case "xlsx": return fileGuidanceXLSX
-        case "csv": return fileGuidanceCSV
-        case "pptx": return fileGuidancePPTX
-        case "docx": return fileGuidanceDOCX
-        default: return fileGuidancePDF
+        case "xlsx": guidance = fileGuidanceXLSX
+        case "csv": guidance = fileGuidanceCSV
+        case "pptx": guidance = fileGuidancePPTX
+        case "docx": guidance = fileGuidanceDOCX
+        default: guidance = fileGuidancePDF
         }
+        let shared = "\n\nDesign the content for this reader's actual purpose, audience, language and requested style; preserve their specific sections, order and visual references. Professional means complete, accurate, readable and well organized. Do not invent copyright dates, institutions, credentials or signatures, and do not describe your own work as professional. Match explicit colour requests; do not choose dark pages or ornamental gold just because the reader asked for quality. Use the native format's Markdown contract above, never HTML/CSS or binary markup. On revisions, change only the requested material and preserve unaffected content."
+        let specific: String
+        switch format {
+        case "xlsx", "csv":
+            specific = " Separate distinct datasets into clearly named tables/sheets. Choose useful headers, stable units and consistent numeric/date formats; keep units in headers and numbers numeric. Include all requested rows and auditable totals or calculation inputs. Do not turn explanatory prose into dozens of arbitrary columns. CSV is plain data and cannot carry colours, images or layout; never claim otherwise."
+        case "pptx":
+            specific = " Build a coherent presentation with one clear point per slide, useful slide titles, concise readable content and a narrative suited to the audience. Split dense material across slides rather than shrinking type or copying whole report paragraphs. Use tables only when they remain legible at slide scale. Keep every requested topic and evidence; avoid repetitive title-and-bullets filler."
+        default:
+            specific = " Use a restrained heading hierarchy, readable paragraphs, deliberate section transitions, meaningful captions and tables that fit their content. A short document rarely needs a separate cover or contents page. Long equations belong on full-width display lines with explanations outside the equation, never squeezed into decorative multi-column tables."
+        }
+        return guidance + shared + specific
     }
 
     // MARK: - Firas Code deliverable (app.js:6664-6729) — REPLACES the whole system prompt on a code-build turn

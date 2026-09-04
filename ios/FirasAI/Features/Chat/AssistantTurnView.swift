@@ -128,7 +128,6 @@ struct AssistantTurnView: View, Equatable {
         .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: isStreaming) { _, streaming in
             if !streaming {
-                MarkdownRenderer.invalidate(messageID: message.id)
                 MathBlockView.invalidate(messageID: message.id)
             }
             reveal()

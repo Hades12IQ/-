@@ -5,6 +5,7 @@ enum ChatReliabilityChecks {
     /// Executed by the simulator smoke route; no requests or customer data are involved.
     static func failures() -> [String] {
         var failures: [String] = []
+        failures += MediaIntentChecks.failures()
         let paragraphs = (0..<40).map { "فقرة \($0): شرح التجربة ونتائجها. A complete paragraph." }
         let long = paragraphs.joined(separator: "\n\n")
         let chunks = TranslationService.chunks(long, limit: 160)

@@ -150,7 +150,8 @@ extension AssistantTurnView {
         let title = conversationTitle
         let settled = answerFinished
         Task {
-            let built = await controller.document(for: meta, markdown: source, title: title)
+            let built = await controller.document(for: meta, markdown: source, title: title,
+                conversationID: conversationID, messageID: message.id)
             isPreparingFile = false
             guard let built else { return }
             preparedFile = built

@@ -42,18 +42,6 @@ enum RequestClassifier {
         let raw = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else { return .chat }
 
-        /* 0. A PICTURE IS THE INPUT, NOT THE SUBJECT. «حوّل هالصورة لفيديو» is the classifier's
-              own worked example, and it answers *video, not edit-image* — "the picture is the
-              input; the clip is what they are asking for". Every transform verb it uses (حوّل,
-              خلّي, turn … into) is also an image-edit verb, so the edit branch below claimed the
-              sentence and the reader got a recoloured still. Asked first, and only when a picture
-              is actually in play, so a clip named in a message with no photo is untouched. */
-        if hasImages, matches(imageToClipPattern, raw) || matches(videoMotionPattern, raw) {
-            return .video
-        }
-        // 1. A picture is in play and the verbs act on it → edit, never a fresh generation.
-        if hasImages, isImageEditRequest(raw) { return .imageEdit }
-
         let format = detectFileRequest(raw, hasAttachment: hasImages)
 
         /* A NAMED FORMAT OUTRANKS THE MEDIA VOCABULARY. The web never reaches these fallbacks for a
@@ -63,9 +51,16 @@ enum RequestClassifier {
            gate claimed it and the deck was never written; «سوّي لي pdf فيه صورة القمر» carried
            «صورة» within the image gate's 24-character window. A prompt that names pptx/xlsx/docx/
            pdf/csv/txt outright is asking for that file, and nothing else. */
-        let namesDocument = format != nil && namesDocumentExplicitly(raw)
+        let namesDocument = format != nil && (namesDocumentExplicitly(raw)
+            || hasGenericDocumentDestination(raw) || isDocumentRevisionRequest(raw))
+        let mediaIntent = MediaRequestIntent.resolve(raw, hasImages: hasImages)
 
-        if !namesDocument {
+        if !namesDocument, mediaIntent != .nonMedia, !detectCodeRequest(raw) {
+            if case .media(let kind) = mediaIntent,
+               kind != .image || !matches(mathFigurePattern, raw) { return kind }
+            // A photo can be the source of a clip, rather than the image to edit.
+            if hasImages, matches(imageToClipPattern, raw) || matches(videoMotionPattern, raw) { return .video }
+            if hasImages, isImageEditRequest(raw) { return .imageEdit }
             // 2. Image generation. A turn that carries a photo is vision or an edit, never generation.
             if !hasImages, detectImageRequest(raw) { return .image }
             // 3. Video, 4. music.
@@ -155,6 +150,7 @@ enum RequestClassifier {
     /// last attached or generated picture.
     static func refersToPreviousImage(_ text: String) -> Bool {
         guard !text.isEmpty else { return false }
+        if MediaRequestIntent.refersToPreviousImage(text) { return true }
         if matches(imageTransformArabicPattern, text) { return true }
         if matches(imageTransformEnglishPattern, text) { return true }
         return matches(priorImagePattern, text)
@@ -281,6 +277,11 @@ enum RequestClassifier {
 
         // A named DESTINATION decides the format first, so "حوّل هذا البي دي اف كملف وورد" is docx.
         if let target = outputFormatTarget(s) { return target }
+        if isDocumentRevisionRequest(s) {
+            // Honour a named Word/Excel/etc. target below; a generic existing document defaults
+            // to the PDF path, where the conversation supplies the source being revised.
+            if !namesDocumentExplicitly(s) { return "pdf" }
+        }
 
         // Reading, not producing: a comprehension verb pointed at something that already exists.
         let points = matches(refersExistingPattern, s) || hasAttachment
@@ -296,6 +297,7 @@ enum RequestClassifier {
         for entry in strong where matches(entry.pattern, s) && (hasVerb || !isQuestion) {
             return entry.format
         }
+        if isDesignedDocumentRequest(s) { return "pdf" }
 
         // Source code is not a document; the code path owns it.
         if detectCodeRequest(text) { return nil }
@@ -361,6 +363,12 @@ enum RequestClassifier {
         var cursor = index - 1
         while cursor >= 0 {
             if messages[cursor].role == .user {
+                let history = Array(messages[..<cursor])
+                let request = messages[cursor].content
+                let previous = DocumentRevisionContext.latestMessage(in: history, request: request)
+                if let revision = DocumentRevisionContext.format(for: request, candidate: previous, history: history) {
+                    return revision
+                }
                 return documentFormat(for: messages[cursor])
             }
             cursor -= 1

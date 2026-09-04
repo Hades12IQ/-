@@ -15,6 +15,78 @@ import Foundation
 /// he reports all three.
 enum MathText {
 
+    /// Rendering-only normalization after MathScanner has accepted a bare mathematical run.
+    /// Never feed prose here, and never persist this derived form in place of the source.
+    static func texForRecoveredMath(_ source: String) -> String {
+        let greek: [Character: String] = [
+            "α":"alpha", "β":"beta", "γ":"gamma", "δ":"delta", "ε":"epsilon", "ζ":"zeta", "η":"eta", "θ":"theta",
+            "ι":"iota", "κ":"kappa", "λ":"lambda", "μ":"mu", "ν":"nu", "ξ":"xi", "π":"pi", "ρ":"rho", "σ":"sigma",
+            "τ":"tau", "υ":"upsilon", "φ":"phi", "χ":"chi", "ψ":"psi", "ω":"omega", "Γ":"Gamma", "Δ":"Delta",
+            "Θ":"Theta", "Λ":"Lambda", "Ξ":"Xi", "Π":"Pi", "Σ":"Sigma", "Υ":"Upsilon", "Φ":"Phi", "Ψ":"Psi", "Ω":"Omega",
+            "ϑ":"vartheta", "ϕ":"varphi", "ϵ":"varepsilon"
+        ]
+        let symbols: [Character: String] = ["⇒":"\\Rightarrow ", "⇔":"\\Leftrightarrow ", "≤":"\\le ", "≥":"\\ge ", "≠":"\\ne ", "≈":"\\approx ", "×":"\\times ", "÷":"\\div ", "·":"\\cdot ", "−":"-", "′":"'"]
+        let upper = Array("⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁽⁾")
+        let lower = Array("₀₁₂₃₄₅₆₇₈₉₊₋₍₎")
+        let normal = Array("0123456789+-()")
+        let chars = Array(source)
+        var out = ""
+        var i = 0
+        while i < chars.count {
+            let c = chars[i]
+            if let name = greek[c] { out += "\\" + name + " "; i += 1; continue }
+            if let mapped = symbols[c] { out += mapped; i += 1; continue }
+            if upper.contains(c) || lower.contains(c) {
+                let table = upper.contains(c) ? upper : lower
+                out += upper.contains(c) ? "^{" : "_{"
+                while i < chars.count, let index = table.firstIndex(of: chars[i]) {
+                    out.append(normal[index])
+                    i += 1
+                }
+                out += "}"
+                continue
+            }
+            if c == "√" {
+                var start = i + 1
+                while start < chars.count, chars[start] == " " { start += 1 }
+                if start < chars.count, chars[start] == "(" {
+                    var depth = 1
+                    var end = start + 1
+                    while end < chars.count, depth > 0 {
+                        if chars[end] == "(" { depth += 1 }
+                        if chars[end] == ")" { depth -= 1 }
+                        end += 1
+                    }
+                    if depth == 0 {
+                        out += "\\sqrt{" + texForRecoveredMath(String(chars[(start + 1)..<(end - 1)])) + "}"
+                        i = end
+                        continue
+                    }
+                }
+                if start < chars.count {
+                    var end = start + 1
+                    if chars[start].isNumber {
+                        while end < chars.count, chars[end].isNumber || chars[end] == "." { end += 1 }
+                    }
+                    out += "\\sqrt{" + texForRecoveredMath(String(chars[start..<end])) + "}"
+                    i = end
+                    continue
+                }
+            }
+            if MathScanner.isASCIILetter(c) {
+                var end = i + 1
+                while end < chars.count, MathScanner.isASCIILetter(chars[end]) { end += 1 }
+                let word = String(chars[i..<end])
+                out += MathScanner.recoveredFunctions.contains(word) ? "\\" + word + " " : word
+                i = end
+                continue
+            }
+            out.append(c)
+            i += 1
+        }
+        return out.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// `$…$`, `$$…$$`, `\(…\)`, `\[…\]` → the bare TeX inside.
     static func stripDelimiters(_ raw: String) -> String {
         var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)

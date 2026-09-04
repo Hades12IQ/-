@@ -28,10 +28,11 @@ xcrun simctl io "$DEVICE_ID" screenshot "$ARTIFACT_ROOT/simulator-smoke.png"
 test -f "$REPORT"
 cp "$REPORT" "$ARTIFACT_ROOT/"
 find "$CONTAINER/Documents" -maxdepth 1 -name '*.pdf' -exec cp {} "$ARTIFACT_ROOT/" \;
+find "$CONTAINER/Documents" -maxdepth 1 -name '*.png' -exec cp {} "$ARTIFACT_ROOT/" \;
 cat "$REPORT"
 xcrun swift ios/scripts/render-smoke-pdf.swift "$ARTIFACT_ROOT"
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("status")=="passed", d' "$REPORT"
 (
   cd "$ARTIFACT_ROOT"
-  zip -q FirasAI-smoke-evidence.zip reliability-smoke.json simulator-smoke.png *.pdf *-page-*.png
+  zip -q FirasAI-smoke-evidence.zip reliability-smoke.json *.png *.pdf
 )

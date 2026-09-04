@@ -56,6 +56,29 @@ final class DocumentPrinter {
         // UIKit owns physical margins. Zero the CSS page margin to avoid applying it twice.
         do { _ = try await view.evaluateJavaScript(Self.printPreparationScript) }
         catch { record(error, stage: "print-preparation") }
+        // Measure at the physical printable width, after math and fonts have their final sizes.
+        // The old A4 screen viewport made a narrow three-column formula gallery look admissible;
+        // printing then let the formulas overlap neighbouring cells and the page edge.
+        view.frame.size.width = renderer.printableRect.width * 96 / 72
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        do {
+            let value = try await view.evaluateJavaScript(Self.layoutValidationScript)
+            if let layout = value as? [String: Any] {
+                diagnostics["layout"] = layout
+                let overflow = (layout["mathOverflow"] as? NSNumber)?.intValue ?? 0
+                let broken = (layout["brokenImages"] as? NSNumber)?.intValue ?? 0
+                let width = (layout["bodyOverflow"] as? NSNumber)?.doubleValue ?? 0
+                guard overflow == 0, broken == 0, width <= 2 else {
+                    diagnostics["stage"] = broken > 0 ? "missing-document-image" : "document-overflow"
+                    return nil
+                }
+            }
+        } catch {
+            record(error, stage: "layout-validation")
+            diagnostics["stage"] = "layout-validation-failed"
+            return nil
+        }
 
         var counts: [Int] = []
         for attempt in 0..<3 {

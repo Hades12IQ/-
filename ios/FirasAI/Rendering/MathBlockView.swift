@@ -7,9 +7,8 @@ import UIKit
 /// the answer streams and then disappears. Three rules hold that shut, and this view is where two
 /// of them are visible:
 ///
-/// * **Never typeset an unclosed delimiter.** `MathScanner.spans` only returns runs whose closing
-///   delimiter has arrived, and `MathScanner.isTypesettable` refuses a half-streamed expression
-///   here as well, so an equation still being typed stays plain text until it is whole.
+/// * Open streamed expressions use a balanced, display-only scanner preview. The last successful
+///   glyph stays visible while the next prefix renders; preview text never changes the message.
 /// * **An equation that rendered is never removed.** Bitmaps are keyed by the expression and the
 ///   theme, not by the message, so end of stream, a regenerate, a version switch and a theme change
 ///   all leave what is on screen exactly where it is.
@@ -41,6 +40,9 @@ struct MathBlockView: View {
     private let fontScale: FontScale
     private let background: Color
     private let motionOn: Bool
+    private let streaming: Bool
+    @State private var previousGlyph: MathGlyph?
+    @State private var previousStyle: String?
     @Environment(\.firasTextSelection) private var selection
 
     /// - Parameters:
@@ -57,7 +59,8 @@ struct MathBlockView: View {
         lang: AppLanguage,
         fontScale: FontScale = .medium,
         background: Color? = nil,
-        motionOn: Bool = true
+        motionOn: Bool = true,
+        streaming: Bool = false
     ) {
         self.tex = tex.trimmingCharacters(in: .whitespacesAndNewlines)
         self.isDisplay = display
@@ -67,6 +70,7 @@ struct MathBlockView: View {
         self.fontScale = fontScale
         self.background = background ?? palette.background
         self.motionOn = motionOn
+        self.streaming = streaming
     }
 
     var body: some View {
@@ -81,8 +85,12 @@ struct MathBlockView: View {
         let unicode = MathText.unicode(tex)
         let line = unicode.isEmpty ? tex : unicode
 
-        return layout(glyph, line: line)
+        let visibleGlyph = glyph ?? (streaming && previousStyle == style.key ? previousGlyph : nil)
+        return layout(visibleGlyph, line: line)
             .transaction { $0.animation = nil }
+            .onChange(of: glyph.map { ObjectIdentifier($0.image) }, initial: true) {
+                if let glyph { previousGlyph = glyph; previousStyle = style.key }
+            }
             .contextMenu {
                 Button(lang == .arabic ? "نسخ" : "Copy", systemImage: "doc.on.doc") {
                     UIPasteboard.general.string = line
@@ -100,6 +108,9 @@ struct MathBlockView: View {
     /// and came back asks again — which is what lets the island's LRU evict without stranding a
     /// visible equation.
     private func request(_ style: MathIslandStyle) {
+        // The message batches and replaces its live preview; a second request here would
+        // promote an obsolete prefix into the normal queue on every streamed character.
+        guard !streaming else { return }
         guard !tex.isEmpty, MathScanner.isTypesettable(tex) else { return }
         MathIsland.shared.request([MathIslandItem(tex: tex, isDisplay: isDisplay)], style: style)
     }

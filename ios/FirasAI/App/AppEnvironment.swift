@@ -193,8 +193,10 @@ final class AppEnvironment {
         wireMediaHandoff()
         wireMemoryHandoff()
         wireCallHandoff()
-        session.onWillSignOut = { [weak code] in
+        session.onWillSignOut = { [weak code, weak session] in
+            let owner = session?.identityID
             await code?.prepareForSignOut()
+            if let owner { await DocumentAssetCache.shared.clear(ownerID: owner) }
         }
 
         // Idempotent, and the only call site that is guaranteed to run whatever shell renders:
@@ -255,6 +257,10 @@ final class AppEnvironment {
         let changed = (adoptedOwner != owner)
         if changed, adoptedOwner != nil { dropRenderedText() }
         adoptedOwner = owner
+        if changed {
+            await DocumentAssetCache.shared.activate(ownerID: owner)
+            guard session.identityID == owner else { return }
+        }
         await jobs.resumeAll(owner: owner)
 
         // `SidebarView` loads the same list from its own `.task(id: identityID)`. `ChatStore` sets
@@ -308,7 +314,9 @@ final class AppEnvironment {
     /// An unavailable engine produces an explicit status, never a prose answer with internal prompts.
     private func wireMediaHandoff() {
         chat.onMediaRequest = { [weak self] kind, prompt, conversationID in
-            guard let self else { return false }
+            guard let self, let owner = self.session.identityID else { return false }
+            let images = self.chat.state(for: conversationID).lastTurnImages
+            let intent = RequestClassifier.classify(prompt, hasImages: !images.isEmpty, lang: self.prefs.lang)
             if self.media.unavailableKinds.contains(kind) {
                 self.chat.state(for: conversationID).errorStrip = ChatMediaPreparation.unavailable(kind, lang: self.prefs.lang)
                 return true
@@ -320,17 +328,21 @@ final class AppEnvironment {
             }
             switch kind {
             case .image:
-                await self.media.createImage(
-                    prompt: prompt,
-                    shape: nil,
-                    in: conversationID,
-                    recordQuestion: false
-                )
+                if intent == .imageEdit, let encoded = images.first {
+                    let raw = encoded.hasPrefix("data:") ? String(encoded.split(separator: ",", maxSplits: 1).last ?? "") : encoded
+                    guard let bytes = Data(base64Encoded: raw), !bytes.isEmpty else {
+                        self.chat.state(for: conversationID).errorStrip = Strings.Media.editBadImage(self.prefs.lang)
+                        return true
+                    }
+                    await self.media.editImage(sourceData: bytes, prompt: prompt, in: conversationID, recordQuestion: false)
+                } else {
+                    await self.media.createImage(prompt: prompt, shape: nil, in: conversationID, recordQuestion: false)
+                }
             case .video:
                 await self.media.createVideo(
                     prompt: prompt,
                     seconds: self.media.videoDefaultSeconds,
-                    firstFrameJPEGBase64: nil,
+                    firstFrameJPEGBase64: images.first,
                     in: conversationID,
                     recordQuestion: false
                 )
@@ -343,6 +355,7 @@ final class AppEnvironment {
                     recordQuestion: false
                 )
             }
+            guard self.session.identityID == owner else { return true }
             return true
         }
     }

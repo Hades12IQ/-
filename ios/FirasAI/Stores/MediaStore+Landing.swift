@@ -398,7 +398,7 @@ extension MediaStore {
     }
 
     /// The same edit from a photo the user just picked.
-    func editImage(sourceData: Data, prompt: String, in conversationID: String?) async {
+    func editImage(sourceData: Data, prompt: String, in conversationID: String?, recordQuestion: Bool = true) async {
         let instruction = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !instruction.isEmpty else {
             present(Strings.Media.promptRequired(lang))
@@ -414,20 +414,24 @@ extension MediaStore {
             present(Strings.Media.editBadImage(lang))
             return
         }
-        await submitEdit(imageBase64: encoded, instruction: instruction, in: conversationID, owner: owner)
+        await submitEdit(imageBase64: encoded, instruction: instruction, in: conversationID, owner: owner,
+            recordQuestion: recordQuestion)
     }
 
     /// `POST /api/image/edit` is **synchronous** — no job, no pointer, no push — and holds the
     /// request for as long as the engine takes (up to ~3 min). Losing the answer is survivable:
     /// the result is cached under `sha1(edit|engine|prompt|sha1(source))`, so repeating the same
     /// edit is free and instant rather than a second render.
-    private func submitEdit(imageBase64: String, instruction: String, in conversationID: String?, owner: String) async {
+    private func submitEdit(imageBase64: String, instruction: String, in conversationID: String?, owner: String,
+                            recordQuestion: Bool = true) async {
         guard ownsMediaRequest(owner) else { return }
         let target = await resolveConversation(conversationID)
         guard ownsMediaRequest(owner) else { return }
         let cid = IDs.cid()
-        await chat.appendUserTurn(ChatMessage.user(instruction, cid: cid, lang: lang), in: target.local)
-        guard ownsMediaRequest(owner) else { return }
+        if recordQuestion {
+            await chat.appendUserTurn(ChatMessage.user(instruction, cid: cid, lang: lang), in: target.local)
+            guard ownsMediaRequest(owner) else { return }
+        }
 
         do {
             let response = try await api.editImage(

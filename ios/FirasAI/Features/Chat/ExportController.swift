@@ -230,7 +230,7 @@ final class ExportController {
 
     // MARK: - State
 
-    private let env: AppEnvironment
+    let env: AppEnvironment
 
     private(set) var isWorking = false
     private(set) var lastError: LText?
@@ -278,14 +278,18 @@ final class ExportController {
 
     /// Builds the document a ```` ```firas-file ```` card names and returns it without touching
     /// `result` — the card opens it in QuickLook, shares it or saves it to Files itself.
-    func document(for meta: FileMeta, markdown: String, title: String) async -> Export? {
+    func document(for meta: FileMeta, markdown: String, title: String,
+                  conversationID: String? = nil, messageID: String? = nil) async -> Export? {
+        let owner = env.session.identityID
+        let resolved = await resolveDocumentImages(markdown, conversationID: conversationID, messageID: messageID)
+        guard env.session.identityID == owner else { return nil }
         let format = Format.named(meta.format) ?? .pdf
         let raw = meta.name ?? meta.title ?? title
         let name = ExportText.withoutExtension(raw)
         return await produce(
             format,
             source: .document(
-                markdown: markdown,
+                markdown: resolved,
                 template: DocTemplate.named(meta.template),
                 subtitle: meta.subtitle ?? ""
             ),
@@ -363,6 +367,7 @@ final class ExportController {
         publish: Bool
     ) async -> Export? {
         guard !isWorking else { return nil }
+        let exportOwner = env.session.identityID
 
         let lang = env.prefs.lang
         if case .document(let markdown, _, _) = source,
@@ -430,6 +435,10 @@ final class ExportController {
             }.value
         }
 
+        guard env.session.identityID == exportOwner else {
+            try? FileManager.default.removeItem(at: url)
+            return nil
+        }
         guard wrote else {
             lastError = ExportCopy.unavailable
             env.toasts.show(ExportCopy.unavailable(lang), isError: true)

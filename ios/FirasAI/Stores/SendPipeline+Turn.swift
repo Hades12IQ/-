@@ -186,7 +186,41 @@ extension SendPipeline {
             ? Self.reattachment(for: user.content, state: state, hasOwnImages: false)
             : []
         let hasImages = !ownImages.isEmpty || !reattach.isEmpty
-        let kind = RequestClassifier.classify(user.content, hasImages: hasImages, lang: lang)
+        let previousDocument = DocumentRevisionContext.latestMessage(in: history, request: user.content)
+        let revisionFormat = DocumentRevisionContext.format(for: user.content, candidate: previousDocument, history: history)
+        let revision = revisionFormat == nil ? nil : DocumentRevisionContext.completeSource(from: previousDocument)
+        if revisionFormat != nil, revision == nil {
+            let oversized = previousDocument.flatMap { DocumentHTML.authored(in: $0.content) }
+                .map { $0.utf8.count > DocumentRevisionContext.maximumSourceBytes } ?? false
+            await failTurn(key: key, assistantID: assistantID,
+                action: .toast(oversized ? DocumentRevisionContext.tooLarge : DocumentRevisionContext.unavailable), context: context)
+            return
+        }
+        let kind = revisionFormat.map { RequestKind.file(format: $0, explicitPages: nil) }
+            ?? RequestClassifier.classify(user.content, hasImages: hasImages, lang: lang)
+        let createsDocument: Bool
+        switch kind {
+        case .file, .longfile: createsDocument = true
+        default: createsDocument = false
+        }
+        var assets = createsDocument ? DocumentAssetInventory.entries(in: conversation, throughMessageID: user.id) : []
+        let owner = session.identityID
+        if createsDocument, !conversation.ephemeral, let owner, !owner.isEmpty {
+            let offered = Set(DocumentAssetInventory.promptEntries(assets, retaining: revision?.source).map(\.id))
+            for index in assets.indices where offered.contains(assets[index].id) {
+                let asset = assets[index]
+                guard case .attached(let encoded) = asset.source else { continue }
+                if asset.isThumbnail {
+                    if let original = await DocumentAssetCache.shared.data(id: asset.id, ownerID: owner) {
+                        assets[index] = DocumentAssetInventory.Entry(id: asset.id, messageID: asset.messageID,
+                            source: .attached(original.base64EncodedString()), role: asset.role, isThumbnail: false)
+                    }
+                } else {
+                    await DocumentAssetCache.shared.store(encoded, id: asset.id, ownerID: owner)
+                }
+                guard !Task.isCancelled, session.identityID == owner else { return }
+            }
+        }
 
         var searchContext: String?
         var searchWasEmpty = false
@@ -198,7 +232,7 @@ extension SendPipeline {
         if trigger != .none {
             state.phase = .searching
             let result = await SearchContext.run(api: api, text: user.content, trigger: trigger, lang: lang)
-            if Task.isCancelled { return }
+            if Task.isCancelled || session.identityID != owner { return }
             searchContext = result.context
             searchWasEmpty = result.wasEmpty
             state.phase = .thinking
@@ -218,9 +252,17 @@ extension SendPipeline {
             history: history,
             lastUser: user,
             reattachImages: reattach.isEmpty ? nil : reattach,
-            explicitSearch: trigger == .explicit
+            explicitSearch: trigger == .explicit,
+            documentRevision: revision,
+            documentAssets: assets
         )
         let output = PromptBuilder.build(input)
+        // A revision never silently truncates its mandatory source. This also catches a huge
+        // latest question/file attachment that HistoryWindow intentionally keeps in full.
+        if revision != nil, output.messages.reduce(0, { $0 + $1.content.utf8.count }) > Self.jobPayloadCeiling {
+            await failTurn(key: key, assistantID: assistantID, action: .toast(DocumentRevisionContext.tooLarge), context: context)
+            return
+        }
         if output.tier != context.tier {
             store.mutate(key) { conversation in
                 guard let index = conversation.messages.firstIndex(where: { $0.id == assistantID && $0.role == .assistant }) else { return }
@@ -232,42 +274,33 @@ extension SendPipeline {
         if !context.isAutoRetry {
             if session.isMember, serverChatID == nil {
                 serverChatID = await store.ensureServerChat(key)
+                guard !Task.isCancelled, session.identityID == owner else { return }
             }
             // Before the job, never after: the queue saves the assistant turn only.
             await store.persist(key)
         }
-        if Task.isCancelled { return }
+        if Task.isCancelled || session.identityID != owner { return }
 
-        let payload = output.messages.reduce(0) { $0 + $1.content.count }
-            + ownImages.reduce(0) { $0 + $1.count }
-            + reattach.reduce(0) { $0 + $1.count }
         let jobKind = Self.jobKind(for: kind)
+        let title = store.conversation(key)?.title ?? ""
+        let queueRequest = Self.jobRequest(output: output, context: context, kind: kind,
+            jobKind: jobKind, chatID: serverChatID ?? "", title: title, task: user.content, lang: lang)
         // The queue leaves the answer in server storage so it can be recovered later, and
         // recovering it later is exactly what must not be possible in a temporary conversation —
         // for a guest that is the ONLY thing standing between the two, since a guest never has a
         // `serverChatID` to disqualify it. The plain stream below carries the same messages to the
         // same model and leaves neither an answer nor a job pointer behind.
         let isTemporary = store.conversation(key)?.ephemeral ?? false
-        let canQueue = !hasImages && payload <= Self.jobPayloadCeiling && !isTemporary
-            && (session.isGuest || serverChatID != nil)
+        let canQueue = Self.fitsDurableQueue(queueRequest, isTemporary: isTemporary,
+            hasStorage: session.isGuest || serverChatID != nil)
 
         // Packed now, whichever path runs. If the turn streams, this is the whole cost of leaving:
         // one POST of a body that is already in memory.
         var plan: ChatHandoff?
         if canQueue {
-            let title = store.conversation(key)?.title ?? ""
             let started = Date()
             plan = ChatHandoff(
-                request: Self.jobRequest(
-                    output: output,
-                    context: context,
-                    kind: kind,
-                    jobKind: jobKind,
-                    chatID: serverChatID ?? "",
-                    title: title,
-                    task: user.content,
-                    lang: lang
-                ),
+                request: queueRequest,
                 draft: JobPointer(
                     id: context.turnCID,
                     kind: jobKind,

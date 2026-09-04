@@ -1,4 +1,5 @@
 import Foundation
+import QuartzCore
 
 /// The coalescer between an arriving answer and the screen — the **data** half of the streaming
 /// feel. The pacing half is `Rendering/StreamingText.swift`, which walks a display cursor towards
@@ -9,7 +10,8 @@ import Foundation
 /// what we hold, and that must never shorten it (an older, slower read overtaking a newer one is
 /// how a half-written answer suddenly loses its tail).
 ///
-/// Both are published into `ConversationState` at **at most ten times a second**. That ceiling is
+/// Updates are coalesced into `ConversationState` at ten times a second, with the first visible
+/// answer published immediately even if thinking just published. That ceiling is
 /// the fix for `audit-ios-chat.md §Critical C5`: the server writes its snapshot every 2.5 s and the
 /// stream can deliver hundreds of frames a second, and repainting a 50 000-character `Text` on
 /// every one of them is what made the app read as frozen. The ceiling is not what the reader sees —
@@ -24,8 +26,8 @@ import Foundation
 /// `SendPipeline` reads `text` once per SSE frame to decide `.thinking` vs `.streaming`, which made
 /// a long answer quadratic in the number of frames. It is now incremental: each delta is fed
 /// through a small state machine that knows whether it is inside a `<think>` block, so appending
-/// costs the length of the delta and reading costs nothing. A job snapshot, which replaces
-/// everything, rebuilds through the same machine — that path runs at most once every 2.5 s.
+/// costs the length of the delta and reading costs nothing. An extending job snapshot feeds only
+/// its new suffix through that same machine; a replacement snapshot rebuilds it.
 @MainActor
 final class StreamBuffer {
 
@@ -36,6 +38,8 @@ final class StreamBuffer {
     /// beginning of a tag?" test cannot drift from the tags themselves.
     private static let openTag = "<think>"
     private static let closeTag = "</think>"
+    private static let openTagBytes = Array(openTag.utf8)
+    private static let closeTagBytes = Array(closeTag.utf8)
 
     private weak var state: ConversationState?
 
@@ -58,7 +62,13 @@ final class StreamBuffer {
     private var carry: String = ""
 
     private var publishTask: Task<Void, Never>?
-    private var lastPublish: Date = .distantPast
+    private var lastPublish: CFTimeInterval = -.infinity
+
+    #if DEBUG
+    /// Work counters for the simulator fixture; never contain the answer itself.
+    private(set) var debugIngestedBytes = 0
+    private(set) var debugPublishCount = 0
+    #endif
 
     init(state: ConversationState) {
         self.state = state
@@ -97,7 +107,11 @@ final class StreamBuffer {
         splitReasoning = ""
         thinkOpen = false
         carry = ""
-        lastPublish = .distantPast
+        lastPublish = -.infinity
+        #if DEBUG
+        debugIngestedBytes = 0
+        debugPublishCount = 0
+        #endif
         state?.liveText = ""
         state?.liveReasoning = ""
     }
@@ -119,9 +133,17 @@ final class StreamBuffer {
     /// and a stale read is dropped rather than painted.
     func adopt(text: String, reasoning: String) {
         var changed = false
-        if text.utf8.count > rawText.utf8.count {
+        let previousBytes = rawText.utf8.count
+        if text.utf8.count > previousBytes {
+            let extends = text.utf8.starts(with: rawText.utf8)
             rawText = text
-            rebuildSplit(from: text)
+            if extends {
+                // The previous string ends on a UTF-8 scalar boundary, even when the new suffix
+                // adds a combining mark to its final grapheme. Decode only that valid suffix.
+                ingest(String(decoding: text.utf8.dropFirst(previousBytes), as: UTF8.self))
+            } else {
+                rebuildSplit(from: text)
+            }
             changed = true
         }
         if reasoning.utf8.count > rawReasoning.utf8.count {
@@ -145,15 +167,16 @@ final class StreamBuffer {
         let thinking = mergedReasoning()
         state?.liveText = splitText
         state?.liveReasoning = thinking
-        lastPublish = Date()
+        lastPublish = CACurrentMediaTime()
         return (splitText, thinking)
     }
 
     // MARK: - Publishing
 
     private func schedulePublish() {
-        let elapsed = Date().timeIntervalSince(lastPublish)
-        if elapsed >= Self.interval {
+        let elapsed = CACurrentMediaTime() - lastPublish
+        let firstAnswer = !splitText.isEmpty && state?.liveText.isEmpty == true
+        if firstAnswer || elapsed >= Self.interval {
             publish()
             return
         }
@@ -168,8 +191,15 @@ final class StreamBuffer {
     }
 
     private func publish() {
-        lastPublish = Date()
+        // A first-answer publish can overtake a queued thinking update. Do not leave that older
+        // timer alive to publish again a few milliseconds later.
+        publishTask?.cancel()
+        publishTask = nil
+        lastPublish = CACurrentMediaTime()
         guard let state else { return }
+        #if DEBUG
+        debugPublishCount += 1
+        #endif
         if state.liveText != splitText { state.liveText = splitText }
         let thinking = mergedReasoning()
         if state.liveReasoning != thinking { state.liveReasoning = thinking }
@@ -187,6 +217,9 @@ final class StreamBuffer {
     /// few characters held over from the previous one.
     private func ingest(_ chunk: String) {
         guard !chunk.isEmpty else { return }
+        #if DEBUG
+        debugIngestedBytes += chunk.utf8.count
+        #endif
         var work = carry + chunk
         carry = ""
 
@@ -218,7 +251,7 @@ final class StreamBuffer {
         }
     }
 
-    /// A snapshot replaces everything, so the machine restarts on it. Runs at most once per poll.
+    /// A replacement snapshot restarts the machine. Ordinary extending snapshots never come here.
     private func rebuildSplit(from raw: String) {
         splitText = ""
         splitReasoning = ""
@@ -241,11 +274,13 @@ final class StreamBuffer {
     /// Zero when the tail cannot possibly grow into one, which is the overwhelmingly common case.
     private static func partialTagLength(in work: String, expectingClose: Bool) -> Int {
         guard !work.isEmpty else { return 0 }
-        let marker = expectingClose ? closeTag : openTag
-        var length = min(marker.count - 1, work.count)
+        let marker = expectingClose ? closeTagBytes : openTagBytes
+        // Both markers are ASCII. Inspect at most seven bytes, never count every grapheme in a
+        // large paragraph merely to decide whether its very last characters begin a tag.
+        let tail = Array(work.utf8.suffix(marker.count - 1))
+        var length = tail.count
         while length > 0 {
-            let tail = String(work.suffix(length))
-            if marker.hasPrefix(tail) { return length }
+            if tail.suffix(length).elementsEqual(marker.prefix(length)) { return length }
             length -= 1
         }
         return 0
