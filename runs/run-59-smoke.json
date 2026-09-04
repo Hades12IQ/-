@@ -1,0 +1,10 @@
+{
+  "errors" : [
+    "Native PDF printer failed"
+  ],
+  "mathExpectedCount" : 5,
+  "mathGlyphCount" : 5,
+  "persistedMathGlyphCount" : 5,
+  "selectionEnabled" : true,
+  "status" : "failed"
+}
