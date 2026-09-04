@@ -5,7 +5,7 @@ extension DocumentPrinter {
     /// while leaving ordinary data tables and every authored colour/font untouched.
     static let layoutValidationScript = #"""
     (() => {
-      const report = {reflowedMathTables:0,wrappedMath:0,mathOverflow:0,brokenImages:0,bodyOverflow:0};
+      const report = {reflowedMathTables:0,reflowedContainers:0,reflowedMathGrids:0,wrappedMath:0,mathOverflow:0,brokenImages:0,bodyOverflow:0};
       const style = document.createElement('style');
       style.textContent = `html,body{width:auto!important;height:auto!important;min-height:0!important;overflow:visible!important}body{margin:0!important}
         main,article,.document,.page,.sheet{max-width:100%!important;box-sizing:border-box!important}
@@ -28,7 +28,60 @@ extension DocumentPrinter {
         const natural = bases.reduce((sum, base) => sum + base.getBoundingClientRect().width, 0);
         return Math.max(natural, node.getBoundingClientRect().width, html ? html.getBoundingClientRect().width : 0);
       }
-      function container(node) { return node.closest('td,th') || node.parentElement; }
+      function container(node) {
+        const cell = node.closest('td,th');
+        if (cell) return cell;
+        // The math walker inserts an inline span. Inline spans have clientWidth=0 even when
+        // their visible equation fits perfectly; only a real layout box owns available width.
+        for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+          const display = getComputedStyle(parent).display;
+          if (display !== 'inline' && display !== 'contents' && parent.clientWidth > 0) return parent;
+        }
+        return document.body;
+      }
+      // Authored A4 wrappers often include the full 210mm paper width plus padding. UIKit
+      // already reserves margins. Fit those boxes to the printable area without scaling text.
+      for (const node of document.querySelectorAll('main,article,section,header,footer,aside,div,figure,ol,ul')) {
+        if (node.closest('.katex,.katex-display,svg')) continue;
+        const display = getComputedStyle(node).display;
+        if (display === 'inline' || display === 'contents') continue;
+        const parent = container(node);
+        if (parent && node.getBoundingClientRect().width > innerWidth(parent) + 2) {
+          node.style.setProperty('max-width','100%','important');
+          node.style.setProperty('min-width','0','important');
+          node.style.setProperty('box-sizing','border-box','important');
+          report.reflowedContainers++;
+        }
+      }
+      for (const math of document.querySelectorAll('.katex')) {
+        let parent = container(math);
+        if (!parent) continue;
+        for (let layout = parent; layout && layout !== document.body; layout = layout.parentElement) {
+          const css = getComputedStyle(layout);
+          const cramped = mathWidth(math) > innerWidth(parent) + 2 || layout.scrollWidth > layout.clientWidth + 2;
+          let changed = false;
+          if (cramped && (css.display === 'grid' || css.display === 'inline-grid') && layout.children.length > 1) {
+            layout.style.setProperty('grid-template-columns','minmax(0,1fr)','important');
+            layout.style.setProperty('grid-auto-flow','row','important');
+            for (const child of layout.children) {
+              child.style.setProperty('grid-column','auto','important');
+              child.style.setProperty('min-width','0','important');
+            }
+            report.reflowedMathGrids++;
+            changed = true;
+          } else if (cramped && css.display === 'flex' && css.flexDirection.startsWith('row') && layout.children.length > 1) {
+            layout.style.setProperty('flex-direction','column','important');
+            report.reflowedMathGrids++;
+            changed = true;
+          } else if (cramped && parseInt(css.columnCount,10) > 1) {
+            layout.style.setProperty('columns','auto','important');
+            report.reflowedMathGrids++;
+            changed = true;
+          }
+          parent = container(math);
+          if (changed && mathWidth(math) <= innerWidth(parent) + 2) break;
+        }
+      }
       for (const table of document.querySelectorAll('table')) {
         const cells = Array.from(table.querySelectorAll('td'));
         const formulas = cells.filter(cell => cell.querySelector('.katex'));

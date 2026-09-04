@@ -182,4 +182,25 @@ enum ExportCopy {
         ar: "هذا التنسيق غير متاح حاليًا.",
         en: "That format is unavailable right now."
     )
+
+    static let writeFailed = LText(ar: "تعذر حفظ الملف. تأكد من وجود مساحة كافية ثم أعد المحاولة.",
+                                  en: "The file could not be saved. Check available storage and retry.")
+
+    static func pdfFailure(stage: String?) -> LText {
+        switch stage {
+        case "document-overflow":
+            return LText(ar: "تعذر احتواء أحد عناصر المستند ضمن الصفحة. اطلب إعادة تنسيق العنصر العريض ثم افتح الملف.",
+                         en: "A document element still exceeds the page. Ask Firas to reflow the wide element, then open the file.")
+        case "missing-document-image":
+            return LText(ar: "إحدى صور المستند غير متاحة. أعد إرفاقها أو اطلب استبدالها ثم افتح الملف.",
+                         en: "A document image is unavailable. Attach it again or ask to replace it, then open the file.")
+        case "page-limit":
+            return LText(ar: "تجاوز المستند حد 500 صفحة. اطلب تقسيمه إلى ملفات أصغر.",
+                         en: "The document exceeds 500 pages. Ask to split it into smaller files.")
+        case "completed": return writeFailed
+        default:
+            return LText(ar: "تعذر تجهيز صفحات PDF على الجهاز. أبقِ التطبيق مفتوحاً وأعد المحاولة؛ محتوى المستند محفوظ.",
+                         en: "The PDF pages could not be prepared on this device. Keep the app open and retry; the document source is retained.")
+        }
+    }
 }

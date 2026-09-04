@@ -127,10 +127,12 @@ struct ReliabilitySmokeView: View {
 
     @MainActor private func run() async {
         var errors = ChatReliabilityChecks.failures()
+        errors += await NetworkReliabilityChecks.run()
         errors += await CodeReliabilityChecks.failures()
         var report: [String: Any] = [:]
         errors += MathScannerReliabilityChecks.failures()
         errors += DocumentRevisionChecks.failures()
+        errors += DocumentCompletionReliabilityChecks.failures()
         errors += await DocumentAssetCache.reliabilityFailures()
         let streamChecks = StreamPerformanceChecks.run()
         errors += streamChecks.failures
@@ -269,6 +271,14 @@ struct ReliabilitySmokeView: View {
         let documentChecks = await DocumentLayoutReliabilityChecks.run()
         errors += documentChecks.failures
         report["documentLayout"] = documentChecks.report
+        let cardChecks = await FileCardReliabilityChecks.run(env: env,
+            request: DocumentExportReliabilityFixture.request,
+            markdown: DocumentExportReliabilityFixture.markdown,
+            expectedMarkers: DocumentExportReliabilityFixture.expectedMarkers,
+            expectedMathCount: 200)
+        errors += cardChecks.failures
+        report["fileCardExport"] = cardChecks.metrics
+        report["fileCardExportDiagnostics"] = cardChecks.diagnostics
         report["status"] = errors.isEmpty ? "passed" : "failed"
         report["errors"] = errors
         status = errors.isEmpty ? "Passed · paginated PDF and persisted mathematics" : errors.joined(separator: " · ")

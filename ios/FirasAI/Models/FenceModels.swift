@@ -379,21 +379,26 @@ enum FirasFence: Sendable, Equatable {
     static func firstFence(in markdown: String) -> (name: String, body: String, range: Range<String.Index>)? {
         var lineStart = markdown.startIndex
         while lineStart < markdown.endIndex {
-            let lineEnd = markdown[lineStart...].firstIndex(of: "\n") ?? markdown.endIndex
+            let lineEnd = markdown[lineStart...].firstIndex(where: \.isNewline) ?? markdown.endIndex
             let line = markdown[lineStart..<lineEnd]
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            if trimmed.hasPrefix("```") {
-                let info = String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+            if let marker = trimmed.first, marker == "`" || marker == "~" {
+                let markerCount = trimmed.prefix(while: { $0 == marker }).count
+                guard markerCount >= 3 else {
+                    lineStart = lineEnd < markdown.endIndex ? markdown.index(after: lineEnd) : markdown.endIndex
+                    continue
+                }
+                let info = String(trimmed.dropFirst(markerCount)).trimmingCharacters(in: .whitespaces)
                 let name = String(info.prefix(while: { !$0.isWhitespace })).lowercased()
                 if recognisedNames.contains(name) {
                     let inline = String(info.dropFirst(name.count)).trimmingCharacters(in: .whitespaces)
-                    let closes = closingLines(in: markdown, after: lineEnd)
+                    let closes = closingLines(in: markdown, after: lineEnd, marker: marker, minimumCount: markerCount)
                     guard let close = (name == "firas-code" ? closes.last : closes.first) else { return nil }
 
                     let bodyStart = lineEnd < markdown.endIndex ? markdown.index(after: lineEnd) : markdown.endIndex
                     var body = bodyStart <= close.start ? String(markdown[bodyStart..<close.start]) : ""
-                    if body.hasSuffix("\n") { body.removeLast() }
+                    if body.last?.isNewline == true { body.removeLast() }
                     if !inline.isEmpty {
                         body = body.isEmpty ? inline : inline + "\n" + body
                     }
@@ -409,13 +414,16 @@ enum FirasFence: Sendable, Equatable {
     /// Every standalone ```` ``` ```` line after `searchFrom`, as (line start, line end).
     private static func closingLines(
         in markdown: String,
-        after searchFrom: String.Index
+        after searchFrom: String.Index,
+        marker: Character = "`",
+        minimumCount: Int = 3
     ) -> [(start: String.Index, end: String.Index)] {
         var found: [(start: String.Index, end: String.Index)] = []
         var cursor = searchFrom < markdown.endIndex ? markdown.index(after: searchFrom) : markdown.endIndex
         while cursor < markdown.endIndex {
-            let lineEnd = markdown[cursor...].firstIndex(of: "\n") ?? markdown.endIndex
-            if markdown[cursor..<lineEnd].trimmingCharacters(in: .whitespaces) == "```" {
+            let lineEnd = markdown[cursor...].firstIndex(where: \.isNewline) ?? markdown.endIndex
+            let line = markdown[cursor..<lineEnd].trimmingCharacters(in: .whitespacesAndNewlines)
+            if line.count >= minimumCount && line.allSatisfy({ $0 == marker }) {
                 found.append((start: cursor, end: lineEnd))
             }
             cursor = lineEnd < markdown.endIndex ? markdown.index(after: lineEnd) : markdown.endIndex

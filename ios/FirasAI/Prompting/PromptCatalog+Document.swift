@@ -30,6 +30,9 @@ extension PromptCatalog {
             out += " look outranks every default above:\n"
             out += wanted
         }
+        if let items = DocumentItemRequest.parse(wanted) {
+            out += "\n\n" + items.htmlInstruction
+        }
         out += lang == "en"
             ? "\n\nUse English unless the reader requests another document language."
             : "\n\nاستخدم العربية للمستند ما لم يطلب القارئ لغة أخرى."
@@ -72,6 +75,9 @@ extension PromptCatalog {
     ```
 
     No commentary before, between or after. No explanation of what you built.
+    The metadata names the document; it does not create a file by itself. The complete HTML body
+    is mandatory. Do not invent a download URL, sandbox path, artifact ID or job ID. The app creates
+    the actual PDF from the HTML, then supplies its real file location.
 
     THE PAGE — this is what makes it a document rather than a web page:
     * Set the paper and the margins yourself, and give them room:
@@ -92,6 +98,8 @@ extension PromptCatalog {
 
     THE TYPE
     * Use a readable body size of 12–14pt, captions at least 10pt. Do not reduce text to force a page.
+      If the reader requests larger type, increase the readable sizes and allow more pages; do not
+      squeeze the requested content into fewer pages or reduce the number of items.
     * Local variable fonts are loaded for you, including their bold weights. Arabic stack:
       `"Firas Document Arabic", "Firas Document Sans", "Geeza Pro", system-ui, sans-serif`.
       Latin, Greek and Cyrillic: `"Firas Document Sans", "Firas Document Arabic", system-ui, sans-serif`.

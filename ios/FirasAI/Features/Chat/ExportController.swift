@@ -234,6 +234,10 @@ final class ExportController {
 
     private(set) var isWorking = false
     private(set) var lastError: LText?
+    /// Counts and failure stages only; never stores HTML, document text or upstream responses.
+    @ObservationIgnored private(set) var documentDiagnostics: [String: Any] = [:]
+
+    func recordDocumentDiagnostics(_ value: [String: Any]) { documentDiagnostics = value }
     /// Settable so a view can bind `.sheet(item:)` to it and clear it on dismiss.
     var result: Export?
 
@@ -279,8 +283,26 @@ final class ExportController {
     /// Builds the document a ```` ```firas-file ```` card names and returns it without touching
     /// `result` — the card opens it in QuickLook, shares it or saves it to Files itself.
     func document(for meta: FileMeta, markdown: String, title: String,
-                  conversationID: String? = nil, messageID: String? = nil) async -> Export? {
+                  conversationID: String? = nil, messageID: String? = nil, request: String? = nil) async -> Export? {
         let owner = env.session.identityID
+        var originalRequest = request
+        if originalRequest == nil, let conversationID, let messageID,
+           let conversation = env.chat.conversation(conversationID),
+           let index = conversation.messages.firstIndex(where: { $0.id == messageID }) {
+            originalRequest = conversation.messages[..<index].last(where: { $0.role == .user })?.visibleContent
+        }
+        if let originalRequest {
+            let completeness = DocumentCompletionChecks.validate(markdown: markdown, request: originalRequest)
+            if !completeness.isComplete {
+                let error = LText(ar: completeness.message(lang: .arabic) ?? ExportCopy.empty(.arabic),
+                                 en: completeness.message(lang: .english) ?? ExportCopy.empty(.english))
+                documentDiagnostics = ["stage": "incomplete-content", "itemCount": completeness.itemCount,
+                                       "solutionCount": completeness.solutionCount]
+                lastError = error
+                env.toasts.show(error(env.prefs.lang), isError: true)
+                return nil
+            }
+        }
         let resolved = await resolveDocumentImages(markdown, conversationID: conversationID, messageID: messageID)
         guard env.session.identityID == owner else { return nil }
         let format = Format.named(meta.format) ?? .pdf
@@ -385,6 +407,7 @@ final class ExportController {
 
         isWorking = true
         lastError = nil
+        documentDiagnostics = [:]
         picturePages = []
         if publish { result = nil }
         // One turn of the runloop so the caller's spinner paints before a long render blocks it.
@@ -405,7 +428,9 @@ final class ExportController {
             // glyphs are asked for and waited on here, before a single block is measured; what
             // does not arrive in time falls back to the Unicode form, which is what the document
             // would have carried anyway.
-            await primeMath(input.mathSources, palette: exportPalette)
+            // PDF has its own vector KaTeX page. Rasterising every equation in MathIsland first
+            // duplicates up to 240 snapshots, stalls Open, and competes with the print WebView.
+            if format == .image { await primeMath(input.mathSources, palette: exportPalette) }
             /* THE PAGE FIRST, THE HAND-WRITTEN RENDERER SECOND.
                `writePDF` below measures and packs blocks into a CGContext by hand - a print
                engine written from scratch, and every part of one failed in turn: the margin,
@@ -424,6 +449,7 @@ final class ExportController {
                 // A failed designed PDF must not silently become a listing of its HTML source.
                 wrote = false
             } else {
+                if format == .pdf { await primeMath(input.mathSources, palette: exportPalette) }
                 wrote = format == .pdf
                     ? writePDF(input: input, title: heading, to: url)
                     : writePicture(input: input, title: heading, to: url)
@@ -440,8 +466,11 @@ final class ExportController {
             return nil
         }
         guard wrote else {
-            lastError = ExportCopy.unavailable
-            env.toasts.show(ExportCopy.unavailable(lang), isError: true)
+            let error = format == .pdf
+                ? ExportCopy.pdfFailure(stage: documentDiagnostics["stage"] as? String)
+                : ExportCopy.writeFailed
+            lastError = error
+            env.toasts.show(error(lang), isError: true)
             return nil
         }
 

@@ -46,6 +46,9 @@ struct FileCard: View {
     let meta: FileMeta
     let palette: FirasPalette
     let lang: AppLanguage
+    #if DEBUG
+    @Environment(\.fileCardReliabilityProbe) private var reliabilityProbe
+    #endif
 
     /* THE CARD ARRIVES BEFORE THE FILE DOES.
        The ```firas-file``` block is the FIRST thing the model writes in a document turn; the
@@ -119,7 +122,19 @@ struct FileCard: View {
 
     @ViewBuilder
     private var content: some View {
-        if isWorking {
+        if let errorText, !errorText.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                headline
+                failure(errorText)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(displayName + " — " + errorText))
+            .onAppear {
+                #if DEBUG
+                reliabilityProbe?.blockedReason = errorText
+                #endif
+            }
+        } else if isWorking {
             working
         } else if isUnsupportedFormat {
             unavailable
@@ -197,9 +212,6 @@ struct FileCard: View {
     private var ready: some View {
         VStack(alignment: .leading, spacing: 12) {
             headline
-            if let errorText, !errorText.isEmpty {
-                failure(errorText)
-            }
             if hasActions {
                 actions
             }
@@ -255,6 +267,16 @@ struct FileCard: View {
                     .background(Capsule().fill(palette.accent))
                     .frame(minHeight: 44)
                     .contentShape(Capsule())
+                    .background {
+                        #if DEBUG
+                        GeometryReader { geometry in
+                            Color.clear.onAppear {
+                                reliabilityProbe?.buttonSize = geometry.size
+                                reliabilityProbe?.open = onOpen
+                            }
+                        }.allowsHitTesting(false)
+                        #endif
+                    }
                 }
                 .buttonStyle(.plain)
                 .disabled(isPreparing)

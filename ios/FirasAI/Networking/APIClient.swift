@@ -36,6 +36,21 @@ actor APIClient {
         unauthorizedContinuation = pipe.continuation
     }
 
+    #if DEBUG
+    /// A private-protocol session keeps native fault checks completely off the real network.
+    init(configuration: AppConfiguration, testingSession: URLSession) {
+        baseURL = configuration.apiBaseURL
+        standardSession = testingSession
+        uploadSession = testingSession
+        downloadSession = testingSession
+        encoder = JSONEncoder()
+        decoder = JSONDecoder()
+        let pipe = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        unauthorized = pipe.stream
+        unauthorizedContinuation = pipe.continuation
+    }
+    #endif
+
     // MARK: - Requests
 
     func json<T: Decodable & Sendable>(

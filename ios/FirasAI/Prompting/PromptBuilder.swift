@@ -104,7 +104,8 @@ enum PromptBuilder {
             lang: input.lang.rawValue,
             think: think,
             requestKind: catalogRequestKind(input.kind),
-            requestedCount: 0,
+            requestedCount: documentFormat(input.kind) != nil
+                ? (DocumentItemRequest.parse(input.lastUser.content)?.count ?? 0) : 0,
             userRequirements: "",
             difficultyLevel: PromptCatalog.difficultyDefault,
             includeDifficultyRule: true,

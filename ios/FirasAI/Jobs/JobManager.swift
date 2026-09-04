@@ -154,7 +154,9 @@ final class JobManager: JobWatcherDelegate {
             return existing
         }
 
-        let response = try await api.startChatJob(request)
+        let response = try await ChatJobSubmission.submit(request,
+            ownerIsCurrent: { self.session.identityID == draft.ownerID },
+            operation: { try await self.api.startChatJob($0) })
         let jobID = (response.jobId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !jobID.isEmpty else { throw APIError.decoding("chat job start returned no id") }
 

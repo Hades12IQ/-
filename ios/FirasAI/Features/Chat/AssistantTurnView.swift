@@ -50,6 +50,11 @@ struct AssistantTurnView: View, Equatable {
     @State var preparedFile: ExportController.Export?
     /// One build at a time, and the card says so instead of looking inert.
     @State var isPreparingFile = false
+    @State var fileBuildID: UUID?
+    @State var fileBuildError: String?
+    #if DEBUG
+    @Environment(\.fileCardReliabilityProbe) var fileCardProbe
+    #endif
     /// ONE sheet for preview, share and save. Three `.sheet(item:)` on a single view is a known way
     /// to get a sheet that silently never presents.
     @State var fileSheet: AssistantFileSheet?
@@ -133,6 +138,14 @@ struct AssistantTurnView: View, Equatable {
             reveal()
         }
         .onAppear { if !isStreaming { revealed = true } }
+        .onChange(of: message.visibleContent) { _, _ in resetFilePresentation() }
+        .onChange(of: message.altAt) { _, _ in resetFilePresentation() }
+        .onChange(of: message.status) { _, _ in resetFilePresentation() }
+        .onChange(of: env.session.identityID) { _, _ in resetFilePresentation() }
+        .onDisappear {
+            fileBuildID = nil
+            isPreparingFile = false
+        }
         .sheet(item: $fileSheet) { route in
             switch route.intent {
             // `export:` and not `url:` on all three. A picture export comes out as one PNG per
@@ -140,6 +153,11 @@ struct AssistantTurnView: View, Equatable {
             // app, which is the silent half of a crop.
             case .preview:
                 FirasDocumentPreview(export: route.export)
+                    .onAppear {
+                        #if DEBUG
+                        fileCardProbe?.previewAppeared = true
+                        #endif
+                    }
             case .share:
                 FirasActivitySheet(export: route.export)
             case .save:
@@ -147,6 +165,14 @@ struct AssistantTurnView: View, Equatable {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private func resetFilePresentation() {
+        fileBuildID = nil
+        isPreparingFile = false
+        preparedFile = nil
+        fileBuildError = nil
+        fileSheet = nil
     }
 
     // MARK: - Head
@@ -262,7 +288,15 @@ struct AssistantTurnView: View, Equatable {
         // that gets hidden - is keyed on the fence being there.
         let text = FirasFence.fencingBareMarkers(in: text)
         guard text.contains("firas-file") else { return text }
-        guard let fence = htmlFenceRange(in: text) else { return text }
+        guard let fence = htmlFenceRange(in: text) else {
+            if DocumentHTML.bareAuthoredCandidate(in: text) != nil,
+               let metadata = FirasFence.firstFence(in: text), metadata.name == "firas-file" {
+                // Keep the metadata card; the complete or still-growing bare HTML is private
+                // generation source. Use the original range so CRLF source is hidden too.
+                return String(text[..<metadata.range.upperBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            return text
+        }
         var out = text
         out.removeSubrange(fence)
         return out.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -276,7 +310,7 @@ struct AssistantTurnView: View, Equatable {
         var lineStart = text.startIndex
         var opened: (marker: Character, start: String.Index)?
         while lineStart < text.endIndex {
-            let lineEnd = text[lineStart...].firstIndex(of: "\n") ?? text.endIndex
+            let lineEnd = text[lineStart...].firstIndex(where: \.isNewline) ?? text.endIndex
             let trimmed = text[lineStart..<lineEnd].trimmingCharacters(in: .whitespaces)
             let next = lineEnd == text.endIndex ? text.endIndex : text.index(after: lineEnd)
             if let open = opened {

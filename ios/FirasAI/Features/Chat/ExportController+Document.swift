@@ -73,7 +73,10 @@ extension ExportController {
             origin: origin,
             lang: lang
         )
-        return await DocumentPrinter().pdf(html: html)
+        let printer = DocumentPrinter()
+        let data = await printer.pdf(html: html)
+        recordDocumentDiagnostics(printer.diagnostics)
+        return data
     }
 
     /// The same page as one tall picture, for the image export.

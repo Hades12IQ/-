@@ -93,6 +93,7 @@ extension AssistantTurnView {
         }
         let durableJob = meta.jobId.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
         let isDurable = !durableJob.isEmpty
+        let readiness = documentReadiness(meta)
 
         // Written out rather than folded into the call: a `cond ? nil : { … }` expression is one of
         // the few places Swift's inference genuinely struggles, and nobody here can compile.
@@ -116,10 +117,9 @@ extension AssistantTurnView {
                HTML design was still streaming, and pressing Open printed whatever fragment had
                landed. A DURABLE file is the one exception and keeps its Open: its bytes are on
                the server already and owe nothing to the text still arriving here. */
-            isAnswerFinished: isDurable || answerFinished,
+            isAnswerFinished: readiness.canOpen,
             sizeBytes: size,
-            errorText: !isDurable && answerFinished && DocumentHTML.hasIncompleteAuthoredDocument(in: message.visibleContent)
-                ? DocumentHTML.incompleteDocumentMessage(lang) : nil,
+            errorText: readiness.errorText ?? fileBuildError,
             isPreparing: isPreparingFile,
             motionOn: motionOn,
             onOpen: {
@@ -134,40 +134,56 @@ extension AssistantTurnView {
         )
     }
 
-    /// Whether the answer that describes this turn's file has finished arriving.
-    ///
-    /// The same two tests the action row uses: a row that is still being written has nothing
-    /// settled, and one short of a terminal status may still change under the button.
-    var answerFinished: Bool {
-        !isStreaming && message.status.isTerminal
+    private func documentReadiness(_ meta: FileMeta) -> DocumentCardReadiness {
+        DocumentCardReadiness.evaluate(message: message, meta: meta,
+            request: DocumentCardReadiness.request(for: message.id, in: env.chat.conversation(conversationID)),
+            isStreaming: isStreaming, lang: lang)
     }
 
     func buildFile(_ meta: FileMeta, intent: AssistantFileSheet.Intent) {
-        guard !isPreparingFile, answerFinished else { return }
+        guard !isPreparingFile, documentReadiness(meta).canOpen else { return }
         isPreparingFile = true
+        fileBuildError = nil
+        let buildID = UUID()
+        fileBuildID = buildID
         let controller = ExportController(env: env)
         let source = ChatTurnActions.markdown(message)
         let title = conversationTitle
-        let settled = answerFinished
+        let snapshot = DocumentCardSnapshot(message: message, ownerID: env.session.identityID)
+        #if DEBUG
+        fileCardProbe?.sourceReceived = source
+        fileCardProbe?.exportStarted?()
+        #endif
         Task {
             let built = await controller.document(for: meta, markdown: source, title: title,
                 conversationID: conversationID, messageID: message.id)
+            #if DEBUG
+            fileCardProbe?.buildCompleted = true
+            fileCardProbe?.diagnostics = controller.documentDiagnostics
+            #endif
+            let current = env.chat.conversation(conversationID)?.messages.first {
+                $0.id == message.id && $0.role == .assistant
+            }
+            guard fileBuildID == buildID,
+                  snapshot.matches(current, ownerID: env.session.identityID) else { return }
+            fileBuildID = nil
             isPreparingFile = false
-            guard let built else { return }
+            guard let built else {
+                fileBuildError = controller.lastError?.text(lang) ?? DocumentCardReadiness.failed(lang)
+                return
+            }
             preparedFile = built
-            /* THE SECOND LOCK. `FileCard` no longer draws these buttons before the answer is
-               finished, which closes the door the reader can see. This closes the one they
-               cannot: `DocumentHTML.authored` accepts an unterminated ```html fence as a
-               finished page — deliberately — so a preview raised mid-stream does not fail, it
-               succeeds, and hands over a real PDF of half a document. `route` refuses instead. */
-            fileSheet = AssistantFileSheet.route(intent, export: built, answerFinished: settled)
+            #if DEBUG
+            fileCardProbe?.export = built
+            #endif
+            fileSheet = AssistantFileSheet.route(intent, export: built, answerFinished: true)
         }
     }
 
     /// The document format the user asked for in the turn this answer belongs to, or `nil` when
     /// the conversation is no longer in memory.
     func requestedDocumentFormat() -> String? {
-        guard let conversation = env.chat.conversations[conversationID] else { return nil }
+        guard let conversation = env.chat.conversation(conversationID) else { return nil }
         guard let index = conversation.messages.firstIndex(where: { $0.id == message.id }) else {
             return nil
         }
@@ -175,7 +191,7 @@ extension AssistantTurnView {
     }
 
     var conversationTitle: String {
-        let stored = env.chat.conversations[conversationID]?.title
+        let stored = env.chat.conversation(conversationID)?.title
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return stored.isEmpty ? Strings.Chat.newChat(lang) : stored
     }

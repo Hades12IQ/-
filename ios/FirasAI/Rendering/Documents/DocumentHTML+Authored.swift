@@ -28,9 +28,7 @@ extension DocumentHTML {
         if let fenced = fencedHTML(in: markdown) {
             return complete(fenced.source, fenceClosed: fenced.closed) ? fenced.source : nil
         }
-        let trimmed = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
-        let head = trimmed.prefix(200).lowercased()
-        if head.hasPrefix("<!doctype html") || head.hasPrefix("<html") {
+        if let trimmed = bareAuthoredCandidate(in: markdown) {
             return complete(trimmed, fenceClosed: false) ? trimmed : nil
         }
         return nil
@@ -40,10 +38,40 @@ extension DocumentHTML {
         if let fenced = fencedHTML(in: markdown) {
             return !complete(fenced.source, fenceClosed: fenced.closed)
         }
+        guard let trimmed = bareAuthoredCandidate(in: markdown) else { return false }
+        return !complete(trimmed, fenceClosed: false)
+    }
+
+    /// Some models omit only the HTML fence after a valid file metadata fence. Accept that exact
+    /// envelope without searching ordinary prose/code for a document that happens to be quoted.
+    static func bareAuthoredCandidate(in markdown: String) -> String? {
         let trimmed = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
-        let head = trimmed.prefix(200).lowercased()
-        return (head.hasPrefix("<!doctype html") || head.hasPrefix("<html"))
-            && !complete(trimmed, fenceClosed: false)
+        func document(_ value: String) -> String? {
+            let head = value.prefix(200).lowercased()
+            return head.hasPrefix("<!doctype html") || head.hasPrefix("<html") ? value : nil
+        }
+        if let whole = document(trimmed) { return whole }
+        let firstEnd = trimmed.firstIndex(where: \.isNewline) ?? trimmed.endIndex
+        let first = trimmed[..<firstEnd].trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let marker = first.first, marker == "`" || marker == "~", firstEnd < trimmed.endIndex else { return nil }
+        let fenceLength = first.prefix(while: { $0 == marker }).count
+        guard fenceLength >= 3,
+              first.dropFirst(fenceLength).trimmingCharacters(in: .whitespaces).lowercased() == "firas-file" else { return nil }
+        let metadataStart = trimmed.index(after: firstEnd)
+        var cursor = metadataStart
+        while cursor < trimmed.endIndex {
+            let end = trimmed[cursor...].firstIndex(where: \.isNewline) ?? trimmed.endIndex
+            let line = trimmed[cursor..<end].trimmingCharacters(in: .whitespacesAndNewlines)
+            let next = end == trimmed.endIndex ? end : trimmed.index(after: end)
+            if line.count >= fenceLength, line.allSatisfy({ $0 == marker }) {
+                let metadata = String(trimmed[metadataStart..<cursor])
+                guard let data = metadata.data(using: .utf8),
+                      (try? JSONSerialization.jsonObject(with: data)) is [String: Any] else { return nil }
+                return document(trimmed[next...].trimmingCharacters(in: .whitespacesAndNewlines))
+            }
+            cursor = next
+        }
+        return nil
     }
 
     private static func complete(_ source: String, fenceClosed: Bool) -> Bool {
@@ -68,9 +96,9 @@ extension DocumentHTML {
         var body = ""
 
         while lineStart < markdown.endIndex {
-            let lineEnd = markdown[lineStart...].firstIndex(of: "\n") ?? markdown.endIndex
+            let lineEnd = markdown[lineStart...].firstIndex(where: \.isNewline) ?? markdown.endIndex
             let line = markdown[lineStart..<lineEnd]
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             let next = lineEnd == markdown.endIndex ? markdown.endIndex : markdown.index(after: lineEnd)
 
             if let open = opened {

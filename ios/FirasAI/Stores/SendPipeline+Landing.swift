@@ -371,6 +371,17 @@ extension SendPipeline {
         }
     }
 
+    static func shouldStreamFirst(kind: RequestKind, planTurn: PlanTurnKind, readerIsPresent: Bool) -> Bool {
+        guard readerIsPresent, jobKind(for: kind) == .chat else { return false }
+        if case .file = kind {
+            switch planTurn {
+            case .auto, .execute: return false
+            case .clarifyOrPlan, .revision, .forcedPlan: return true
+            }
+        }
+        return true
+    }
+
     /// Ordinary chat jobs retain vision images. Long-document/file workers do not. Measure the
     /// actual encoded envelope, including escaped source and base64, before packing a handoff.
     static func fitsDurableQueue(_ request: ChatJobRequest, isTemporary: Bool, hasStorage: Bool) -> Bool {

@@ -319,11 +319,10 @@ extension SendPipeline {
             )
         }
 
-        /* LOCAL FIRST. An ordinary turn with a reader in front of it goes down one socket and paints
-           as the model emits. A long document and a long file have no live path at all — they are
-           written in slices over hours by a worker — so they go straight to the queue, exactly as
-           they always did. */
-        let streamFirst = (jobKind == .chat) && readerIsPresent
+        // File generation must survive a lost socket even while the reader stays on this screen.
+        // It uses the existing chat worker with the complete design prompt; no page count is guessed.
+        let streamFirst = Self.shouldStreamFirst(kind: kind, planTurn: context.planTurn,
+            readerIsPresent: readerIsPresent)
         var useStream = !canQueue || streamFirst
 
         if let plan, !streamFirst {

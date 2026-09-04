@@ -34,7 +34,7 @@ enum ErrorPresenter {
         if error is DeadlineError { return .toast(Strings.Errors.timeout) }
 
         if let urlError = error as? URLError {
-            return urlError.code == .cancelled ? .silent : .toast(Strings.Errors.offline)
+            return transportAction(urlError)
         }
 
         guard let apiError = error as? APIError else {
@@ -51,9 +51,17 @@ enum ErrorPresenter {
         case .deadline:
             return .toast(Strings.Errors.timeout)
         case .transport(let urlError):
-            return urlError.code == .cancelled ? .silent : .toast(Strings.Errors.offline)
+            return transportAction(urlError)
         case .http(let status, let server, _):
             return httpAction(status: status, server: server, feature: feature, isGuest: isGuest, lang: lang)
+        }
+    }
+
+    private static func transportAction(_ error: URLError) -> ErrorAction {
+        switch error.code {
+        case .cancelled: return .silent
+        case .timedOut: return .toast(Strings.Errors.timeout)
+        default: return .toast(Strings.Errors.offline)
         }
     }
 
