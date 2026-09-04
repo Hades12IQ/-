@@ -231,9 +231,17 @@ final class AppEnvironment {
     /// server-side work, which keeps running and is picked up again after re-authentication.
     func adoptCurrentIdentity() async {
         code.identityDidChange(to: session.identityID)
+        chat.identityDidChange(to: session.identityID)
+        media.identityDidChange(to: session.identityID)
         guard !isAdoptingIdentity else { return }
         isAdoptingIdentity = true
-        defer { isAdoptingIdentity = false }
+        defer {
+            isAdoptingIdentity = false
+            // An identity notification may arrive while disk/network work is suspended.
+            if session.identityID != adoptedOwner {
+                Task { @MainActor [weak self] in await self?.adoptCurrentIdentity() }
+            }
+        }
 
         guard let owner = session.identityID, !owner.isEmpty else {
             if let previous = adoptedOwner {
@@ -255,6 +263,7 @@ final class AppEnvironment {
         if changed, !chat.isLoadingList {
             await chat.loadConversations()
         }
+        if changed { await media.reload() }
     }
 
     /// Signing out, deleting one's data, or switching accounts must leave nothing of the previous
@@ -305,6 +314,7 @@ final class AppEnvironment {
                 return true
             }
             if self.media.isSubmitting {
+                self.chat.state(for: conversationID).errorStrip = Strings.Chat.busyWait(self.prefs.lang)
                 self.toasts.show(Strings.Chat.busyWait(self.prefs.lang), isError: true)
                 return true
             }

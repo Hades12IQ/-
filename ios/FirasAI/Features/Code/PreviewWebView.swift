@@ -96,14 +96,16 @@ struct PreviewWebView: View {
     private var lang: AppLanguage { env.prefs.lang }
     private var isCompact: Bool { sizeClass == .compact }
 
-    /// Cheap enough to recompute per body pass: file count plus every path and byte length.
-    private var signature: String {
-        guard let project = env.code.project else { return "none" }
-        var value = String(project.files.count)
+    /// Content participates: replacing "red" with "tan" must refresh the preview too.
+    private var signature: Int {
+        guard let project = env.code.project else { return 0 }
+        var hasher = Hasher()
+        hasher.combine(env.code.openProjectID)
         for file in project.files {
-            value += "|" + file.path + ":" + String(file.content.utf8.count)
+            hasher.combine(file.path)
+            hasher.combine(file.content)
         }
-        return value
+        return hasher.finalize()
     }
 
     var body: some View {
@@ -680,7 +682,7 @@ private struct PreviewCanvas: UIViewRepresentable {
                 decisionHandler(.allow)
                 return
             }
-            if scheme == "http" || scheme == "https" {
+            if (scheme == "http" || scheme == "https"), navigationAction.navigationType == .linkActivated {
                 UIApplication.shared.open(url)
             }
             decisionHandler(.cancel)

@@ -43,7 +43,8 @@ enum CodeExport {
         while out.hasPrefix("-") { out.removeFirst() }
         while out.hasSuffix("-") { out.removeLast() }
         let trimmed = String(out.prefix(60))
-        return trimmed.isEmpty ? "project" : trimmed
+        // A title of ".." must never make the ZIP root the shared tmp directory.
+        return trimmed.isEmpty || trimmed == "." || trimmed == ".." ? "project" : trimmed
     }
 
     private static func writeArchive(files: [CodeFile], folder: String) throws -> URL {
@@ -51,7 +52,10 @@ enum CodeExport {
         let root = manager.temporaryDirectory
             .appendingPathComponent("firas-code-" + UUID().uuidString, isDirectory: true)
         let directory = root.appendingPathComponent(folder, isDirectory: true)
-        try manager.createDirectory(at: directory, withIntermediateDirectories: true)
+        try manager.createDirectory(at: root, withIntermediateDirectories: true,
+                                    attributes: [.protectionKey: FileProtectionType.complete])
+        try manager.createDirectory(at: directory, withIntermediateDirectories: true,
+                                    attributes: [.protectionKey: FileProtectionType.complete])
 
         var wrote = false
         for file in files {
@@ -62,7 +66,7 @@ enum CodeExport {
                 at: destination.deletingLastPathComponent(),
                 withIntermediateDirectories: true
             )
-            try Data(file.content.utf8).write(to: destination, options: .atomic)
+            try Data(file.content.utf8).write(to: destination, options: [.atomic, .completeFileProtection])
             wrote = true
         }
         guard wrote else { throw ExportError.noFiles }
@@ -80,13 +84,14 @@ enum CodeExport {
         let root = manager.temporaryDirectory
             .appendingPathComponent("firas-preview-" + UUID().uuidString, isDirectory: true)
         do {
-            try manager.createDirectory(at: root, withIntermediateDirectories: true)
+            try manager.createDirectory(at: root, withIntermediateDirectories: true,
+                                        attributes: [.protectionKey: FileProtectionType.complete])
         } catch {
             throw ExportError.writeFailed
         }
         let url = root.appendingPathComponent(folderName(name) + ".html")
         do {
-            try Data(html.utf8).write(to: url, options: .atomic)
+            try Data(html.utf8).write(to: url, options: [.atomic, .completeFileProtection])
         } catch {
             throw ExportError.writeFailed
         }

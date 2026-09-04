@@ -80,8 +80,9 @@ extension PromptCatalog {
       Latin, Greek and Cyrillic: `"Firas Document Sans", "Firas Document Arabic", system-ui, sans-serif`.
       Other languages use their iOS system fallback. Respect the language the reader requested.
       For a serif document: `"New York", "Times New Roman", Georgia, serif`.
-    * `dir="rtl"` on the document, and `dir="ltr"` on any block that is genuinely Latin — a code
-      listing, a formula, a URL. Getting this wrong is what drags English text to the wrong edge.
+    * Choose the document's direction from its language: `dir="rtl"` for Arabic and other RTL
+      scripts, `dir="ltr"` for English and other LTR scripts. Isolate code, formulae and URLs as
+      LTR blocks. A mixed-language paragraph keeps the direction of its own prose.
 
     MATHEMATICS
     * Write it as LaTeX in the page: `$…$` inline, `$$…$$` on its own line. KaTeX is loaded for you

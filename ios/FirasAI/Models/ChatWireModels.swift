@@ -146,6 +146,8 @@ struct ChatJobRequest: Encodable, Sendable {
     var pages: Int?
     var targetPages: Int?
     var prompt: String?
+    /// Internal Code helpers omit personal memory and use the helper-model route.
+    var nomem: Bool?
     var nokb: Bool?
     var agent: Bool?
 
@@ -165,6 +167,7 @@ struct ChatJobRequest: Encodable, Sendable {
         pages: Int? = nil,
         targetPages: Int? = nil,
         prompt: String? = nil,
+        nomem: Bool? = nil,
         nokb: Bool? = nil,
         agent: Bool? = nil
     ) {
@@ -183,6 +186,7 @@ struct ChatJobRequest: Encodable, Sendable {
         self.pages = pages
         self.targetPages = targetPages
         self.prompt = prompt
+        self.nomem = nomem
         self.nokb = nokb
         self.agent = agent
     }

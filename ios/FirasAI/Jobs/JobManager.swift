@@ -145,6 +145,7 @@ final class JobManager: JobWatcherDelegate {
     /// live stream rather than lose the turn.
     func startChatQueueJob(_ request: ChatJobRequest, pointer draft: JobPointer) async throws -> JobPointer {
         await ensureLoaded()
+        guard session.identityID == draft.ownerID else { throw CancellationError() }
         // The queue is idempotent per owner + cid, so a second POST would answer with the same job
         // — but it would also cost a round trip on the way out of the app, which is exactly the
         // moment there is no time for one. If we already hold the pointer, that IS the answer.
@@ -203,6 +204,7 @@ final class JobManager: JobWatcherDelegate {
 
     func startMediaJob(kind: MediaKind, request: any Encodable & Sendable, pointer draft: JobPointer) async throws -> JobPointer {
         await ensureLoaded()
+        guard session.identityID == draft.ownerID else { throw CancellationError() }
         let response: MediaJobStartResponse
         switch kind {
         case .image:
@@ -358,11 +360,17 @@ final class JobManager: JobWatcherDelegate {
     func refreshOnce(budgetSeconds: Double) async -> Bool {
         // A cold launch straight into the background task has never called `resumeAll`.
         await ensureLoaded()
-        let snapshot = pointers.filter { belongsToActiveOwner($0) && !delivering.contains($0.id) }
+        guard let owner = session.identityID else { return false }
+        // `activeOwner` is the watcher/UI adoption state and may still be nil, or belong to the
+        // previous account. Authentication, including on a cold background launch, owns this read.
+        let snapshot = pointers.filter { $0.ownerID == owner && !delivering.contains($0.id) }
         guard !snapshot.isEmpty else { return false }
+        // Session bootstrap spends this same background allowance. Keep the pointers for the next
+        // slot rather than starting a fresh one-second read after the allowance was exhausted.
+        guard budgetSeconds > 0, !Task.isCancelled else { return true }
 
         let client = api
-        let budget = Swift.max(1, budgetSeconds)
+        let budget = budgetSeconds
         let results: [JobReadResult] = await withTaskGroup(of: JobReadResult.self) { group in
             for target in snapshot {
                 let driver = Self.driver(for: target.kind)
@@ -393,7 +401,9 @@ final class JobManager: JobWatcherDelegate {
         }
 
         for result in results {
-            guard let target = pointer(id: result.pointerID), let read = result.read else { continue }
+            guard session.identityID == owner else { break }
+            guard let target = pointer(id: result.pointerID), target.ownerID == owner,
+                  let read = result.read else { continue }
             switch read {
             case .running(let snap):
                 var updated = target
@@ -415,7 +425,8 @@ final class JobManager: JobWatcherDelegate {
             }
         }
         await store.save(pointers, immediate: true)
-        return pointers.contains { belongsToActiveOwner($0) && Self.isLive($0.lastPhase) }
+        guard session.identityID == owner else { return false }
+        return pointers.contains { $0.ownerID == owner && Self.isLive($0.lastPhase) }
     }
 
     /// A `@Sendable` adapter for `BackgroundRefresh.register(handler:)`.
@@ -467,6 +478,7 @@ final class JobManager: JobWatcherDelegate {
     // MARK: - JobWatcherDelegate
 
     func watcher(_ watcher: JobWatcher, didProgress snapshot: JobSnapshot, pointer: JobPointer) {
+        guard session.identityID == pointer.ownerID else { return }
         let storedPhase = self.pointer(id: pointer.id)?.lastPhase
         var updated = pointer
         // Same rule as `refreshOnce`: `.expired` is the client's own record that this pointer has
@@ -489,7 +501,8 @@ final class JobManager: JobWatcherDelegate {
     func watcherNeedsReauthentication(_ watcher: JobWatcher, pointer: JobPointer) {
         suspend(owner: pointer.ownerID)
         Task { @MainActor [weak self] in
-            await self?.session.handleUnauthorized()
+            guard let self, self.session.identityID == pointer.ownerID else { return }
+            await self.session.handleUnauthorized()
         }
     }
 
@@ -506,6 +519,7 @@ final class JobManager: JobWatcherDelegate {
     /// The server keeps the output fetchable for six hours, so waiting costs nothing — dropping the
     /// pointer is irreversible.
     private func deliver(_ pointer: JobPointer, _ terminal: JobTerminal) async {
+        guard session.identityID == pointer.ownerID else { return }
         guard !delivering.contains(pointer.id) else { return }
         delivering.insert(pointer.id)
         watchers[pointer.id]?.stop()
@@ -535,10 +549,22 @@ final class JobManager: JobWatcherDelegate {
             // case worth waiting on: 15 × 4 s, then give up rather than hold the pointer forever.
             for _ in 0..<15 {
                 await JobClock.rest(4)
+                guard session.identityID == current.ownerID else {
+                    delivering.remove(pointer.id)
+                    await store.save(pointers, immediate: true)
+                    return
+                }
                 landed = await notifyObservers(current, terminal)
                 if landed { break }
             }
             if !landed { Log.jobs.error("code build result was never landed") }
+        }
+
+        // Keep the durable result for its owner if a store suspended while the account changed.
+        guard session.identityID == current.ownerID else {
+            delivering.remove(pointer.id)
+            await store.save(pointers, immediate: true)
+            return
         }
 
         // Media only: a deadline is not proof of failure, because the server answers `running`
@@ -578,6 +604,7 @@ final class JobManager: JobWatcherDelegate {
     private func notifyObservers(_ pointer: JobPointer, _ terminal: JobTerminal) async -> Bool {
         var landed = false
         for box in observers[pointer.kind] ?? [] {
+            guard session.identityID == pointer.ownerID else { return landed }
             guard let observer = box.value else { continue }
             let ok = await observer.job(pointer, didFinish: terminal)
             landed = landed || ok
@@ -588,6 +615,7 @@ final class JobManager: JobWatcherDelegate {
     // MARK: - Plumbing
 
     private func attachWatcher(for pointer: JobPointer, mode: JobWatcher.Mode) {
+        guard session.identityID == pointer.ownerID else { return }
         if let existing = watchers[pointer.id] {
             existing.poke()
             return

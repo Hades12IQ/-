@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import Observation
 
 /// Everything the Studio knows: what has been made, what is being made, and what the day's
@@ -36,6 +37,7 @@ final class MediaStore: JobObserver {
 
     private(set) var isReloading = false
     private(set) var isSubmitting = false
+    @ObservationIgnored private var submittingOwner: String?
 
     /// The last refusal, already localized, for the create form's inline plate.
     private(set) var lastFailureText: String?
@@ -71,6 +73,9 @@ final class MediaStore: JobObserver {
        on its way. Keyed by creation id, cleared when the task settles. */
     @ObservationIgnored private var inFlight: [String: Task<URL?, Never>] = [:]
     @ObservationIgnored private var indexLoaded = false
+    @ObservationIgnored private var loadedIndexOwner: String?
+    @ObservationIgnored private var reloadingOwner: String?
+    @ObservationIgnored private var visibleOwner: String?
 
     /// Armed once; re-armed from its own callback for as long as the app lives.
     @ObservationIgnored private var observingConversations = false
@@ -87,6 +92,16 @@ final class MediaStore: JobObserver {
     static let indexPath = "media-index.json"
     static let legacyIndexPath = "media/index.json"
     static let keptAssets = 200
+
+    nonisolated static func ownerIndexPath(_ owner: String) -> String {
+        let digest = SHA256.hash(data: Data(owner.utf8)).map { String(format: "%02x", $0) }.joined()
+        return "media-index-" + digest + ".json"
+    }
+
+    nonisolated static func ownedCreations(_ items: [MediaCreation], owner: String) -> [MediaCreation] {
+        guard !owner.isEmpty else { return [] }
+        return items.filter { $0.ownerID == owner }
+    }
 
     init(
         api: APIClient,
@@ -163,22 +178,60 @@ final class MediaStore: JobObserver {
 
     // MARK: - Loading
 
+    /// Clear the previous account's visible state before any asynchronous reload starts.
+    /// In-flight durable jobs remain owned by JobManager and are never cancelled here.
+    func identityDidChange(to owner: String?) {
+        let owner = owner ?? ""
+        guard visibleOwner != owner else { return }
+        visibleOwner = owner
+        creations = Self.ownedCreations(creations, owner: owner)
+        indexLoaded = false
+        loadedIndexOwner = nil
+        scannedMessageCounts = [:]
+        imageQuota = nil
+        imageQuotaBlocked = false
+        imageQuotaLimit = nil
+        videoDefaultSeconds = 10
+        unavailableKinds = []
+        freesInMinutes = [:]
+        lastFailureText = nil
+        pendingEditSourceID = nil
+        if submittingOwner != owner { setSubmitting(false) }
+    }
+
     /// Rebuilds the library: the persisted index first (it carries the real dates and the local
     /// filenames), then every media fence in the conversations already in memory, deduplicated by
     /// cache key so a creation this device made does not appear twice.
     func reload() async {
-        guard !isReloading else { return }
-        isReloading = true
-        defer { isReloading = false }
-
         let owner = session.identityID ?? ""
-        var stored = await DiskStore.shared.read([MediaCreation].self, at: Self.indexPath) ?? []
-        if stored.isEmpty {
-            stored = await DiskStore.shared.read([MediaCreation].self, at: Self.legacyIndexPath) ?? []
+        identityDidChange(to: owner)
+        guard !isReloading || reloadingOwner != owner else { return }
+        isReloading = true
+        reloadingOwner = owner
+        defer {
+            if reloadingOwner == owner {
+                isReloading = false
+                reloadingOwner = nil
+            }
+        }
+        guard !owner.isEmpty else { return }
+
+        let scoped = await DiskStore.shared.read([MediaCreation].self, at: Self.ownerIndexPath(owner))
+        guard session.identityID == owner else { return }
+        var stored = scoped ?? []
+        if scoped == nil {
+            // Read-only migration: legacy indexes remain intact for their other owners.
+            stored = await DiskStore.shared.read([MediaCreation].self, at: Self.indexPath) ?? []
+            guard session.identityID == owner else { return }
+            if stored.isEmpty {
+                stored = await DiskStore.shared.read([MediaCreation].self, at: Self.legacyIndexPath) ?? []
+                guard session.identityID == owner else { return }
+            }
         }
         indexLoaded = true
+        loadedIndexOwner = owner
 
-        var merged = stored.filter { owner.isEmpty || $0.ownerID.isEmpty || $0.ownerID == owner }
+        var merged = Self.ownedCreations(stored, owner: owner)
         var positions: [String: Int] = [:]
         for (position, item) in merged.enumerated() { positions[item.id] = position }
         var seen = Set(merged.map { Self.dedupeKey($0) })
@@ -188,7 +241,7 @@ final class MediaStore: JobObserver {
            is here and not there is a render that started before the read came back, and the old
            rebuild simply dropped it: its card was left on a phase nothing could ever update, and
            the picture that eventually landed had no record to be filed under. */
-        for item in creations where owner.isEmpty || item.ownerID.isEmpty || item.ownerID == owner {
+        for item in creations where item.ownerID == owner {
             if let position = positions[item.id] {
                 merged[position] = item
                 continue
@@ -261,6 +314,7 @@ final class MediaStore: JobObserver {
     /// read yet. Only the tail of each transcript is scanned, so a streaming answer costs nothing.
     func adoptLoadedFences() async {
         let owner = session.identityID ?? ""
+        guard !owner.isEmpty, loadedIndexOwner == owner else { return }
         var seen = Set(creations.map { Self.dedupeKey($0) })
         var turns = Set(creations.compactMap { Self.turnKey($0) })
         var adopted: [MediaCreation] = []
@@ -288,17 +342,19 @@ final class MediaStore: JobObserver {
     /// The two allowance probes. Neither is required for a render to start — a failure leaves the
     /// panel saying so rather than blocking the form.
     func refreshQuota() async {
-        guard session.isMember else {
+        guard let owner = session.identityID, ownsMediaRequest(owner) else {
             imageQuota = nil
             imageQuotaBlocked = false
             return
         }
         do {
             let quota = try await api.imageQuota()
+            guard ownsMediaRequest(owner) else { return }
             imageQuota = quota
             imageQuotaLimit = quota.limit
             imageQuotaBlocked = false
         } catch {
+            guard ownsMediaRequest(owner) else { return }
             let failure = error as? APIError
             if failure?.status == 429 {
                 imageQuota = nil
@@ -308,8 +364,10 @@ final class MediaStore: JobObserver {
                 imageQuota = nil
             }
         }
+        guard ownsMediaRequest(owner) else { return }
         do {
             let video = try await api.videoQuota()
+            guard ownsMediaRequest(owner) else { return }
             if let seconds = video.seconds, seconds >= 2, seconds <= 30 {
                 videoDefaultSeconds = seconds
             }
@@ -349,6 +407,20 @@ final class MediaStore: JobObserver {
     /// `isSubmitting` is `private(set)`, so the landing file flips it through here.
     func setSubmitting(_ value: Bool) {
         isSubmitting = value
+        submittingOwner = value ? session.identityID : nil
+    }
+
+    func ownsMediaRequest(_ owner: String) -> Bool {
+        !owner.isEmpty && session.isMember && session.identityID == owner
+    }
+
+    func finishSubmitting(owner: String) {
+        guard submittingOwner == owner else { return }
+        setSubmitting(false)
+    }
+
+    func mediaRequestGuard(owner: String) -> MediaPromptPipeline.RequestGuard {
+        { [weak self] in await self?.ownsMediaRequest(owner) == true }
     }
 
     // One download per creation at a time: two tiles asking for the same 200 MB clip would
@@ -366,9 +438,11 @@ final class MediaStore: JobObserver {
        library with that one row — and every earlier creation lost the local filename that is the
        only reason reopening a conversation is instant. */
     func persistIndex() async {
-        guard indexLoaded else { return }
-        let snapshot = Array(creations.prefix(400))
-        try? await DiskStore.shared.write(snapshot, at: Self.indexPath)
+        guard indexLoaded, let owner = session.identityID, !owner.isEmpty,
+              loadedIndexOwner == owner else { return }
+        let snapshot = Array(Self.ownedCreations(creations, owner: owner).prefix(400))
+        // The captured path stays with the snapshot across the disk actor suspension.
+        try? await DiskStore.shared.write(snapshot, at: Self.ownerIndexPath(owner))
     }
 
     // MARK: - Gates and presentation

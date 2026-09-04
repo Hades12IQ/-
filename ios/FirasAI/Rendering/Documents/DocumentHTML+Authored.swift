@@ -25,15 +25,44 @@ extension DocumentHTML {
     /// ```html block, or a bare document that opens with `<!DOCTYPE` or `<html`. Anything else is
     /// not a design and the caller composes from markdown instead.
     static func authored(in markdown: String) -> String? {
-        if let fenced = fencedHTML(in: markdown) { return fenced }
+        if let fenced = fencedHTML(in: markdown) {
+            return complete(fenced.source, fenceClosed: fenced.closed) ? fenced.source : nil
+        }
         let trimmed = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
         let head = trimmed.prefix(200).lowercased()
-        if head.hasPrefix("<!doctype html") || head.hasPrefix("<html") { return trimmed }
+        if head.hasPrefix("<!doctype html") || head.hasPrefix("<html") {
+            return complete(trimmed, fenceClosed: false) ? trimmed : nil
+        }
         return nil
     }
 
+    static func hasIncompleteAuthoredDocument(in markdown: String) -> Bool {
+        if let fenced = fencedHTML(in: markdown) {
+            return !complete(fenced.source, fenceClosed: fenced.closed)
+        }
+        let trimmed = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
+        let head = trimmed.prefix(200).lowercased()
+        return (head.hasPrefix("<!doctype html") || head.hasPrefix("<html"))
+            && !complete(trimmed, fenceClosed: false)
+    }
+
+    private static func complete(_ source: String, fenceClosed: Bool) -> Bool {
+        let lower = source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !lower.isEmpty else { return false }
+        if lower.contains("<html") || lower.contains("<!doctype") {
+            return lower.contains("</html>") && (!lower.contains("<body") || lower.contains("</body>"))
+        }
+        // Legacy designs may be a complete HTML fragment instead of a document shell.
+        return fenceClosed
+    }
+
+    static let incompleteDocumentMessage = LText(
+        ar: "توقف إنشاء المستند قبل اكتماله. اضغط «متابعة» لإكمال الملف، ثم افتحه من جديد.",
+        en: "The document stopped before it was complete. Choose Continue to finish it, then open the file again."
+    )
+
     /// The first ```html fence, whole.
-    private static func fencedHTML(in markdown: String) -> String? {
+    private static func fencedHTML(in markdown: String) -> (source: String, closed: Bool)? {
         var lineStart = markdown.startIndex
         var opened: (marker: Character, bodyStart: String.Index)?
         var body = ""
@@ -47,7 +76,7 @@ extension DocumentHTML {
             if let open = opened {
                 if let first = trimmed.first, first == open.marker, trimmed.count >= 3,
                    trimmed.allSatisfy({ $0 == open.marker }) {
-                    return body.isEmpty ? nil : body
+                    return (body, true)
                 }
                 body += line + "\n"
             } else if let first = trimmed.first, first == "`" || first == "~", trimmed.count >= 3 {
@@ -62,8 +91,8 @@ extension DocumentHTML {
             if lineEnd == markdown.endIndex { break }
             lineStart = next
         }
-        // A truncated file is not a completed deliverable. Let the caller take its recovery path.
-        return nil
+        guard opened != nil else { return nil }
+        return (body, false)
     }
 
     /// The model's document, with the three things it cannot provide for itself put in.

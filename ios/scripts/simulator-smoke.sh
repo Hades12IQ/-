@@ -29,8 +29,8 @@ test -f "$REPORT"
 cp "$REPORT" "$ARTIFACT_ROOT/"
 find "$CONTAINER/Documents" -maxdepth 1 -name '*.pdf' -exec cp {} "$ARTIFACT_ROOT/" \;
 cat "$REPORT"
-python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("status")=="passed", d' "$REPORT"
 xcrun swift ios/scripts/render-smoke-pdf.swift "$ARTIFACT_ROOT"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("status")=="passed", d' "$REPORT"
 (
   cd "$ARTIFACT_ROOT"
   zip -q FirasAI-smoke-evidence.zip reliability-smoke.json simulator-smoke.png *.pdf *-page-*.png

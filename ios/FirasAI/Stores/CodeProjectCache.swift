@@ -75,6 +75,10 @@ struct CodeBuildTicket: Codable, Sendable, Equatable, Identifiable {
     /// this row exists only so the pointer can be rebuilt if `jobs.json` is ever lost.
     var handedOff: Bool
     var jobID: String?
+    /// Persist the plan before writing files so a background answer cannot silently omit them.
+    var plannedPaths: [String]
+    /// Only these checkpoint files reached the end of a foreground file request.
+    var completedPaths: [String]
 
     var id: String { projectID }
 
@@ -88,7 +92,9 @@ struct CodeBuildTicket: Codable, Sendable, Equatable, Identifiable {
         lang: String,
         startedAt: Double,
         handedOff: Bool = false,
-        jobID: String? = nil
+        jobID: String? = nil,
+        plannedPaths: [String] = [],
+        completedPaths: [String] = []
     ) {
         self.projectID = projectID
         self.cid = cid
@@ -100,6 +106,8 @@ struct CodeBuildTicket: Codable, Sendable, Equatable, Identifiable {
         self.startedAt = startedAt
         self.handedOff = handedOff
         self.jobID = jobID
+        self.plannedPaths = plannedPaths
+        self.completedPaths = completedPaths
     }
 
     init(from decoder: Decoder) throws {
@@ -114,6 +122,8 @@ struct CodeBuildTicket: Codable, Sendable, Equatable, Identifiable {
         startedAt = LenientJSON.double(container, "startedAt") ?? 0
         handedOff = LenientJSON.bool(container, "handedOff") ?? false
         jobID = LenientJSON.string(container, "jobID")
+        plannedPaths = LenientJSON.array(container, "plannedPaths", of: String.self) ?? []
+        completedPaths = LenientJSON.array(container, "completedPaths", of: String.self) ?? []
     }
 
     func encode(to encoder: Encoder) throws {
@@ -128,6 +138,8 @@ struct CodeBuildTicket: Codable, Sendable, Equatable, Identifiable {
         try container.encode(startedAt, forKey: AnyCodingKey("startedAt"))
         try container.encode(handedOff, forKey: AnyCodingKey("handedOff"))
         try container.encodeIfPresent(jobID, forKey: AnyCodingKey("jobID"))
+        try container.encode(plannedPaths, forKey: AnyCodingKey("plannedPaths"))
+        try container.encode(completedPaths, forKey: AnyCodingKey("completedPaths"))
     }
 }
 
@@ -167,14 +179,15 @@ actor CodeProjectCache {
         return await disk.read(CodeProject.self, at: Self.projectPath(key, ownerID: ownerID))
     }
 
-    func save(_ p: CodeProject, id: String, ownerID: String) async {
+    @discardableResult
+    func save(_ p: CodeProject, id: String, ownerID: String) async -> Bool {
         let key = Self.key(for: id)
-        guard !key.isEmpty, !ownerID.isEmpty else { return }
+        guard !key.isEmpty, !ownerID.isEmpty else { return false }
         do {
             try await disk.write(p, at: Self.projectPath(key, ownerID: ownerID))
         } catch {
             Log.ui.error("code project cache write failed")
-            return
+            return false
         }
         var records = await loadIndex(ownerID: ownerID)
         records[id] = CodeProjectRecord(
@@ -184,6 +197,7 @@ actor CodeProjectCache {
             updatedAt: Date().timeIntervalSince1970
         )
         await writeIndex(records, ownerID: ownerID)
+        return true
     }
 
     func delete(id: String, ownerID: String) async {

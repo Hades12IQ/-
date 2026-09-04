@@ -365,6 +365,13 @@ final class ExportController {
         guard !isWorking else { return nil }
 
         let lang = env.prefs.lang
+        if case .document(let markdown, _, _) = source,
+           format == .pdf || format == .image,
+           DocumentHTML.hasIncompleteAuthoredDocument(in: markdown) {
+            lastError = DocumentHTML.incompleteDocumentMessage
+            env.toasts.show(DocumentHTML.incompleteDocumentMessage(lang), isError: true)
+            return nil
+        }
         guard let input = buildInput(for: source) else {
             lastError = ExportCopy.empty
             env.toasts.show(ExportCopy.empty(lang), isError: true)
@@ -407,6 +414,10 @@ final class ExportController {
                let printed = await printedPDF(source: source, title: heading, lang: lang),
                (try? printed.write(to: url, options: .atomic)) != nil {
                 wrote = true
+            } else if format == .pdf, case .document(let markdown, _, _) = source,
+                      DocumentHTML.authored(in: markdown) != nil {
+                // A failed designed PDF must not silently become a listing of its HTML source.
+                wrote = false
             } else {
                 wrote = format == .pdf
                     ? writePDF(input: input, title: heading, to: url)

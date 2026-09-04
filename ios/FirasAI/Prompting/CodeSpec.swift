@@ -9,12 +9,8 @@ import Foundation
 /// JavaScript INSIDE this one file", and the model did as it was told. The reader asked for Python
 /// and got a web page, every time, in every language.
 ///
-/// The order below is the web's and it matters. `webby` is checked against each candidate rather
-/// than once at the top, because a request can legitimately name two things — "a Python script that
-/// generates an HTML report" is a Python file, but "a website" with the word python in a sentence
-/// about the backend is still a page. The web resolves that by letting an explicit web word veto
-/// every other language, and by falling through to HTML when nothing else matched, which is the
-/// dominant case and the only safe default.
+/// Explicit programming languages precede the HTML fallback. A Python script that produces an
+/// HTML report still needs Python source; the report format must not override the requested runtime.
 struct CodeSpec: Sendable, Equatable {
 
     /// The fence's language tag: `python`, `cpp`, `html`…

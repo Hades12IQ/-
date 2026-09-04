@@ -57,6 +57,8 @@ struct FirasSelectableText: UIViewRepresentable {
         context.coordinator.lang = lang
         context.coordinator.openURL = openURL
         view.tintColor = UIColor(palette.accent)
+        view.linkTextAttributes = [.foregroundColor: UIColor(palette.accent), .underlineStyle: NSUnderlineStyle.single.rawValue]
+        view.accessibilityValue = String(source.characters)
         let text = attributedText()
         guard !view.attributedText.isEqual(to: text) else { return }
         let previous = view.selectedRange

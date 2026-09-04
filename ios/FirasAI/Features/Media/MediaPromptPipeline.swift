@@ -12,6 +12,7 @@ import UIKit
 /// failure is never fatal — the raw text is always a usable fallback
 /// (`web-media-ux.md §3.1, §5.1, §6.1–6.3`).
 enum MediaPromptPipeline {
+    typealias RequestGuard = @Sendable () async -> Bool
 
     // MARK: - Result shapes
 
@@ -52,7 +53,7 @@ enum MediaPromptPipeline {
     /// One `pro` call that turns the request into a single rich English prompt, then the same
     /// cleaning the web does: quotes and backticks off the ends, whitespace collapsed, 1000 chars.
     /// The raw text (≤1000) is the fallback, because a missing rewrite must never cancel a render.
-    static func imagePrompt(api: APIClient, rawText: String, lang: AppLanguage) async -> String {
+    static func imagePrompt(api: APIClient, rawText: String, lang: AppLanguage, isCurrent: @escaping RequestGuard) async -> String {
         let seed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !seed.isEmpty else { return "" }
         let fallback = String(seed.prefix(1_000))
@@ -61,7 +62,8 @@ enum MediaPromptPipeline {
             system: PromptCatalog.imagePromptEnhancerSystem,
             user: String(seed.prefix(1_000)),
             deadlineSeconds: 30,
-            characterCap: 4_000
+            characterCap: 4_000,
+            isCurrent: isCurrent
         ) else {
             return fallback
         }
@@ -88,7 +90,8 @@ enum MediaPromptPipeline {
         api: APIClient,
         rawText: String,
         seconds: Int,
-        hasPhoto: Bool
+        hasPhoto: Bool,
+        isCurrent: @escaping RequestGuard
     ) async -> String {
         let seed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !seed.isEmpty else { return "" }
@@ -99,7 +102,8 @@ enum MediaPromptPipeline {
             system: system,
             user: String(seed.prefix(1_000)),
             deadlineSeconds: 30,
-            characterCap: 4_000
+            characterCap: 4_000,
+            isCurrent: isCurrent
         ) else {
             return fallback
         }
@@ -184,7 +188,8 @@ enum MediaPromptPipeline {
         rawText: String,
         userLyrics: String?,
         genreHint: String?,
-        lang: AppLanguage
+        lang: AppLanguage,
+        isCurrent: @escaping RequestGuard
     ) async -> SongPlan {
         let ask = String(rawText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(4_000))
         let supplied = (userLyrics ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -211,7 +216,8 @@ enum MediaPromptPipeline {
                 system: lyricAuthorSystem,
                 user: ask,
                 deadlineSeconds: 60,
-                characterCap: 8_000
+                characterCap: 8_000,
+                isCurrent: isCurrent
             ) ?? ""
         )
         if parsed.lyrics.isEmpty {
@@ -221,7 +227,8 @@ enum MediaPromptPipeline {
                     system: lyricAuthorRetrySystem,
                     user: ask,
                     deadlineSeconds: 45,
-                    characterCap: 8_000
+                    characterCap: 8_000,
+                    isCurrent: isCurrent
                 ) ?? ""
             )
         }
@@ -334,7 +341,8 @@ enum MediaPromptPipeline {
         system: String,
         user: String,
         deadlineSeconds: Double,
-        characterCap: Int
+        characterCap: Int,
+        isCurrent: @escaping RequestGuard
     ) async -> String? {
         let request = ChatStreamRequest(
             messages: [
@@ -353,8 +361,10 @@ enum MediaPromptPipeline {
         do {
             let collected = try await withDeadline(seconds: deadlineSeconds) { () async throws -> String in
                 var text = ""
+                guard await isCurrent() else { throw CancellationError() }
                 let stream = await api.chatStream(request)
                 for try await frame in stream {
+                    guard await isCurrent() else { throw CancellationError() }
                     let payload = frame.data.trimmingCharacters(in: .whitespacesAndNewlines)
                     if payload.isEmpty { continue }
                     if payload == "[DONE]" { break }

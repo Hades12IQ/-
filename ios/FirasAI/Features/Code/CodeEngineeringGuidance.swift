@@ -21,7 +21,8 @@ enum CodeEngineeringGuidance {
         if name.hasPrefix(".env") { return true }
         if [".npmrc", ".pypirc", ".netrc", "id_rsa", "id_ed25519", "credentials", "credentials.json"].contains(name) { return true }
         if ["pem", "key", "p12", "pfx", "keystore", "mobileprovision"].contains((name as NSString).pathExtension) { return true }
-        return lower.contains("/.ssh/") || lower.contains("/.aws/")
+        return lower.hasPrefix(".ssh/") || lower.hasPrefix(".aws/")
+            || lower.contains("/.ssh/") || lower.contains("/.aws/")
             || name.contains("service-account") || name.contains("service_account")
             || name.contains("serviceaccount") || name.contains("credentials.")
             || name.hasPrefix("secrets.") || name.hasPrefix("secret.")

@@ -16,10 +16,12 @@ extension MediaStore {
                      recordQuestion: Bool = true) async {
         let raw = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard requirePrompt(raw), requireMember(.image), !isSubmitting else { return }
+        guard let owner = session.identityID, ownsMediaRequest(owner) else { return }
         setSubmitting(true)
-        defer { setSubmitting(false) }
+        defer { finishSubmitting(owner: owner) }
 
         await refreshQuota()
+        guard ownsMediaRequest(owner) else { return }
         if imageQuotaBlocked {
             if let limit = imageQuotaLimit {
                 present(Strings.Errors.imageDailyLimit.fmt(lang, ArabicText.count(limit, lang)))
@@ -30,20 +32,25 @@ extension MediaStore {
         }
 
         let target = await resolveConversation(conversationID)
+        guard ownsMediaRequest(owner) else { return }
         let cid = IDs.cid()
         /* ONLY WHEN NOBODY ELSE HAS ASKED. A request typed into the chat already has the
            reader's sentence in the transcript — writing it again put the same words on screen
            twice for the whole planning round trip, and then took one away. */
         if recordQuestion {
             await chat.appendUserTurn(ChatMessage.user(raw, cid: cid, lang: lang), in: target.local)
+            guard ownsMediaRequest(owner) else { return }
         }
-        await placeCard(kind: .image, meta: MediaMeta(kind: .image, prompt: raw), target: target, cid: cid)
-        let english = await MediaPromptPipeline.imagePrompt(api: api, rawText: raw, lang: lang)
+        await placeCard(kind: .image, meta: MediaMeta(kind: .image, prompt: raw), target: target, cid: cid, owner: owner)
+        guard ownsMediaRequest(owner) else { return }
+        let english = await MediaPromptPipeline.imagePrompt(api: api, rawText: raw, lang: lang, isCurrent: mediaRequestGuard(owner: owner))
+        guard ownsMediaRequest(owner) else { return }
         let chosen = shape ?? MediaPromptPipeline.pickShape(raw)
 
         let meta = MediaMeta(kind: .image, prompt: english, w: chosen.width, h: chosen.height)
         let request = ImageJobRequest(prompt: english, w: chosen.width, h: chosen.height, chatId: target.server)
-        await start(kind: .image, meta: meta, request: request, target: target, cid: cid, rawText: raw)
+        await start(kind: .image, meta: meta, request: request, target: target, cid: cid, rawText: raw, owner: owner)
+        guard ownsMediaRequest(owner) else { return }
     }
 
     /// A clip. The first frame, when there is one, is part of the job's identity on the server, so
@@ -52,30 +59,37 @@ extension MediaStore {
                      in conversationID: String?, recordQuestion: Bool = true) async {
         let raw = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard requirePrompt(raw), requireMember(.video), !isSubmitting else { return }
+        guard let owner = session.identityID, ownsMediaRequest(owner) else { return }
         setSubmitting(true)
-        defer { setSubmitting(false) }
+        defer { finishSubmitting(owner: owner) }
 
         let clamped = min(max(seconds, 2), 30)
         let frame = Self.dataURI(from: firstFrameJPEGBase64)
         let target = await resolveConversation(conversationID)
+        guard ownsMediaRequest(owner) else { return }
         let cid = IDs.cid()
         /* ONLY WHEN NOBODY ELSE HAS ASKED. A request typed into the chat already has the
            reader's sentence in the transcript — writing it again put the same words on screen
            twice for the whole planning round trip, and then took one away. */
         if recordQuestion {
             await chat.appendUserTurn(ChatMessage.user(raw, cid: cid, lang: lang), in: target.local)
+            guard ownsMediaRequest(owner) else { return }
         }
-        await placeCard(kind: .video, meta: MediaMeta(kind: .video, prompt: raw), target: target, cid: cid)
+        await placeCard(kind: .video, meta: MediaMeta(kind: .video, prompt: raw), target: target, cid: cid, owner: owner)
+        guard ownsMediaRequest(owner) else { return }
         let english = await MediaPromptPipeline.videoPrompt(
             api: api,
             rawText: raw,
             seconds: clamped,
-            hasPhoto: frame != nil
+            hasPhoto: frame != nil,
+            isCurrent: mediaRequestGuard(owner: owner)
         )
+        guard ownsMediaRequest(owner) else { return }
 
         let meta = MediaMeta(kind: .video, prompt: english, seconds: clamped, src: frame == nil ? nil : "photo")
         let request = VideoJobRequest(prompt: english, seconds: clamped, image: frame, chatId: target.server)
-        await start(kind: .video, meta: meta, request: request, target: target, cid: cid, rawText: raw)
+        await start(kind: .video, meta: meta, request: request, target: target, cid: cid, rawText: raw, owner: owner)
+        guard ownsMediaRequest(owner) else { return }
     }
 
     /// A song. `prompt` on the wire is the English production tag line and `lyrics` the sung words —
@@ -85,11 +99,13 @@ extension MediaStore {
         let raw = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         let supplied = (lyrics ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard requirePrompt(raw.isEmpty ? supplied : raw), requireMember(.music), !isSubmitting else { return }
+        guard let owner = session.identityID, ownsMediaRequest(owner) else { return }
         setSubmitting(true)
-        defer { setSubmitting(false) }
+        defer { finishSubmitting(owner: owner) }
 
         let clamped = min(max(seconds, 10), 150)
         let target = await resolveConversation(conversationID)
+        guard ownsMediaRequest(owner) else { return }
         let cid = IDs.cid()
         let userText = raw.isEmpty ? supplied : raw
         /* ONLY WHEN NOBODY ELSE HAS ASKED. A request typed into the chat already has the
@@ -97,6 +113,7 @@ extension MediaStore {
            twice for the whole planning round trip, and then took one away. */
         if recordQuestion {
             await chat.appendUserTurn(ChatMessage.user(userText, cid: cid, lang: lang), in: target.local)
+            guard ownsMediaRequest(owner) else { return }
         }
         /* THE READER'S OWN WORDS AS THE TITLE, while the song is being written. The card no
            longer falls back to `prompt` for its title, and `prompt` here would be the
@@ -107,15 +124,19 @@ extension MediaStore {
             kind: .music,
             meta: MediaMeta(kind: .music, prompt: userText, title: String(userText.prefix(60))),
             target: target,
-            cid: cid
+            cid: cid,
+            owner: owner
         )
+        guard ownsMediaRequest(owner) else { return }
         let plan = await MediaPromptPipeline.songPlan(
             api: api,
             rawText: raw,
             userLyrics: supplied.isEmpty ? nil : supplied,
             genreHint: nil,
-            lang: lang
+            lang: lang,
+            isCurrent: mediaRequestGuard(owner: owner)
         )
+        guard ownsMediaRequest(owner) else { return }
 
 
         let meta = MediaMeta(
@@ -134,7 +155,8 @@ extension MediaStore {
             seconds: clamped,
             chatId: target.server
         )
-        await start(kind: .music, meta: meta, request: request, target: target, cid: cid, rawText: userText)
+        await start(kind: .music, meta: meta, request: request, target: target, cid: cid, rawText: userText, owner: owner)
+        guard ownsMediaRequest(owner) else { return }
         // The author coming back empty no longer refuses the song — it makes an instrumental and
         // says so, AFTER the job is under way so the notice annotates work in progress.
         if let notice = plan.notice { present(notice(lang)) }
@@ -146,11 +168,13 @@ extension MediaStore {
         let raw = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         let supplied = (lyrics ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard requirePrompt(raw.isEmpty ? supplied : raw), requireMember(.music), !isSubmitting else { return }
+        guard let owner = session.identityID, ownsMediaRequest(owner) else { return }
         setSubmitting(true)
-        defer { setSubmitting(false) }
+        defer { finishSubmitting(owner: owner) }
 
         let clamped = min(max(seconds, 10), 150)
         let target = await resolveConversation(conversationID)
+        guard ownsMediaRequest(owner) else { return }
         let cid = IDs.cid()
         let userText = raw.isEmpty ? supplied : raw
         /* ONLY WHEN NOBODY ELSE HAS ASKED. A request typed into the chat already has the
@@ -158,6 +182,7 @@ extension MediaStore {
            twice for the whole planning round trip, and then took one away. */
         if recordQuestion {
             await chat.appendUserTurn(ChatMessage.user(userText, cid: cid, lang: lang), in: target.local)
+            guard ownsMediaRequest(owner) else { return }
         }
         /* THE READER'S OWN WORDS AS THE TITLE, while the song is being written. The card no
            longer falls back to `prompt` for its title, and `prompt` here would be the
@@ -168,15 +193,19 @@ extension MediaStore {
             kind: .music,
             meta: MediaMeta(kind: .music, prompt: userText, title: String(userText.prefix(60))),
             target: target,
-            cid: cid
+            cid: cid,
+            owner: owner
         )
+        guard ownsMediaRequest(owner) else { return }
         let plan = await MediaPromptPipeline.songPlan(
             api: api,
             rawText: raw,
             userLyrics: supplied.isEmpty ? nil : supplied,
             genreHint: styleOverride,
-            lang: lang
+            lang: lang,
+            isCurrent: mediaRequestGuard(owner: owner)
         )
+        guard ownsMediaRequest(owner) else { return }
 
         let meta = MediaMeta(
             kind: .music,
@@ -187,50 +216,59 @@ extension MediaStore {
             style: plan.style
         )
         let request = MusicJobRequest(prompt: plan.style, lyrics: plan.lyrics, seconds: clamped, chatId: target.server)
-        await start(kind: .music, meta: meta, request: request, target: target, cid: cid, rawText: userText)
+        await start(kind: .music, meta: meta, request: request, target: target, cid: cid, rawText: userText, owner: owner)
+        guard ownsMediaRequest(owner) else { return }
         if let notice = plan.notice { present(notice(lang)) }
     }
 
     /// A re-roll. Identical inputs are the same cache key on the server, so the prompt has to
     /// change or the user is handed back the picture they already have (`server-media.md §6.8`).
     func regenerate(_ creationID: String) async {
-        guard let item = creation(id: creationID) else { return }
+        guard let item = creation(id: creationID), ownsMediaRequest(item.ownerID) else { return }
         let attempt = MediaPromptPipeline.rerollAttempt(in: item.meta.prompt) + 1
         let conversation = item.conversationID.isEmpty ? nil : item.conversationID
 
         switch item.kind {
         case .image:
             guard requireMember(.image), !isSubmitting else { return }
+            guard let owner = session.identityID, ownsMediaRequest(owner) else { return }
             setSubmitting(true)
-            defer { setSubmitting(false) }
+            defer { finishSubmitting(owner: owner) }
             let prompt = MediaPromptPipeline.rerolled(item.meta.prompt, attempt: attempt)
             let shape = ImageShape.matching(width: item.meta.w, height: item.meta.h)
             let target = await resolveConversation(conversation)
+            guard ownsMediaRequest(owner) else { return }
             let cid = IDs.cid()
             let meta = MediaMeta(kind: .image, prompt: prompt, w: shape.width, h: shape.height)
             let request = ImageJobRequest(prompt: prompt, w: shape.width, h: shape.height, chatId: target.server)
-            await start(kind: .image, meta: meta, request: request, target: target, cid: cid, rawText: prompt)
+            await start(kind: .image, meta: meta, request: request, target: target, cid: cid, rawText: prompt, owner: owner)
+            guard ownsMediaRequest(owner) else { return }
 
         case .video:
             guard requireMember(.video), !isSubmitting else { return }
+            guard let owner = session.identityID, ownsMediaRequest(owner) else { return }
             setSubmitting(true)
-            defer { setSubmitting(false) }
+            defer { finishSubmitting(owner: owner) }
             let prompt = MediaPromptPipeline.rerolled(item.meta.prompt, attempt: attempt)
             let seconds = min(max(item.meta.seconds ?? videoDefaultSeconds, 2), 30)
             let target = await resolveConversation(conversation)
+            guard ownsMediaRequest(owner) else { return }
             let cid = IDs.cid()
             let meta = MediaMeta(kind: .video, prompt: prompt, seconds: seconds)
             let request = VideoJobRequest(prompt: prompt, seconds: seconds, image: nil, chatId: target.server)
-            await start(kind: .video, meta: meta, request: request, target: target, cid: cid, rawText: prompt)
+            await start(kind: .video, meta: meta, request: request, target: target, cid: cid, rawText: prompt, owner: owner)
+            guard ownsMediaRequest(owner) else { return }
 
         case .music:
             guard requireMember(.music), !isSubmitting else { return }
+            guard let owner = session.identityID, ownsMediaRequest(owner) else { return }
             setSubmitting(true)
-            defer { setSubmitting(false) }
+            defer { finishSubmitting(owner: owner) }
             let style = MediaPromptPipeline.rerolled(item.meta.prompt, attempt: attempt)
             let words = item.meta.lyrics ?? ""
             let seconds = min(max(item.meta.seconds ?? 150, 10), 150)
             let target = await resolveConversation(conversation)
+            guard ownsMediaRequest(owner) else { return }
             let cid = IDs.cid()
             let meta = MediaMeta(
                 kind: .music,
@@ -243,7 +281,8 @@ extension MediaStore {
                 style: style
             )
             let request = MusicJobRequest(prompt: style, lyrics: words, seconds: seconds, chatId: target.server)
-            await start(kind: .music, meta: meta, request: request, target: target, cid: cid, rawText: item.meta.title ?? style)
+            await start(kind: .music, meta: meta, request: request, target: target, cid: cid, rawText: item.meta.title ?? style, owner: owner)
+            guard ownsMediaRequest(owner) else { return }
         }
     }
 
@@ -259,12 +298,14 @@ extension MediaStore {
         kind: MediaKind,
         meta: MediaMeta,
         target: (local: String, server: String?),
-        cid: String
+        cid: String,
+        owner: String
     ) async {
+        guard ownsMediaRequest(owner) else { return }
         upsert(
             MediaCreation(
                 id: "media:" + cid,
-                ownerID: session.identityID ?? "",
+                ownerID: owner,
                 kind: kind,
                 meta: meta,
                 conversationID: target.local,
@@ -303,9 +344,10 @@ extension MediaStore {
         request: any Encodable & Sendable,
         target: (local: String, server: String?),
         cid: String,
-        rawText: String
+        rawText: String,
+        owner: String
     ) async {
-        let owner = session.identityID ?? ""
+        guard ownsMediaRequest(owner) else { return }
         let creationID = "media:" + cid
         let draftCreation = MediaCreation(
             id: creationID,
@@ -338,7 +380,9 @@ extension MediaStore {
             ),
             in: target.local
         )
+        guard ownsMediaRequest(owner) else { return }
         await persistIndex()
+        guard ownsMediaRequest(owner) else { return }
 
         let spec = JobKindSpecs.spec(kind.jobKind)
         let started = Date()
@@ -360,21 +404,26 @@ extension MediaStore {
         )
 
         do {
+            guard ownsMediaRequest(owner) else { return }
             let pointer = try await jobs.startMediaJob(kind: kind, request: request, pointer: draft)
+            guard ownsMediaRequest(owner) else { return }
             if var live = creation(id: creationID) {
                 live.jobID = pointer.id
                 if live.phase.isLive { live.phase = pointer.lastPhase }
                 upsert(live)
                 await persistIndex()
             }
+            guard ownsMediaRequest(owner) else { return }
             clearFailure()
         } catch {
+            guard ownsMediaRequest(owner) else { return }
             if var live = creation(id: creationID) {
                 live.phase = .failed
                 live.errorCode = (error as? APIError)?.server?.code
                 upsert(live)
                 await persistIndex()
             }
+            guard ownsMediaRequest(owner) else { return }
             presentFailure(error, kind: kind)
         }
     }

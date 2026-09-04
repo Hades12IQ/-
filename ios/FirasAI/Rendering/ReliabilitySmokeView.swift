@@ -47,10 +47,40 @@ struct ReliabilitySmokeView: View {
 
     @MainActor private func run() async {
         var errors = ChatReliabilityChecks.failures()
+        errors += await CodeReliabilityChecks.failures()
         var report: [String: Any] = [:]
         let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         do { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
         catch { errors.append("Could not create smoke output directory") }
+
+        let selectable = SelectableTextView()
+        selectable.isEditable = false
+        selectable.isSelectable = true
+        let selectionSource = "هذه كلمة مختارة داخل شرح English، دون نسخ الفقرة كلها."
+        selectable.attributedText = NSAttributedString(string: selectionSource)
+        let wordRange = (selectionSource as NSString).range(of: "مختارة")
+        selectable.selectedRange = wordRange
+        let selectedWord = selectable.selectedPlainText(wordRange)
+        if selectedWord != "مختارة" { errors.append("Native text selection did not preserve the selected Arabic word") }
+        selectable.copy(nil)
+        if UIPasteboard.general.string != "مختارة" { errors.append("Copy used the whole answer instead of the selected word") }
+        let coordinator = FirasSelectableText.Coordinator()
+        coordinator.selection = selection
+        coordinator.lang = .arabic
+        let menu = coordinator.textView(selectable, editMenuForTextIn: wordRange, suggestedActions: [])
+        let hasAskAction = menu?.children.contains { ($0 as? UIAction)?.title == "اسأل فِراس" } == true
+        if !hasAskAction { errors.append("Native selection menu is missing Ask Firas") }
+        selection.ask(selectedWord)
+        if selection.request?.text != selectedWord { errors.append("Ask Firas lost the selected quotation") }
+        let attachmentText = NSMutableAttributedString(string: "القيمة \u{FFFC}")
+        attachmentText.addAttribute(NSAttributedString.Key("firasCopyText"), value: "x²",
+            range: NSRange(location: attachmentText.length - 1, length: 1))
+        selectable.attributedText = attachmentText
+        if selectable.selectedPlainText(NSRange(location: 0, length: attachmentText.length)) != "القيمة x²" {
+            errors.append("Copy lost the mathematical attachment's text")
+        }
+        report["nativeWordSelection"] = selectedWord == "مختارة"
+        report["nativeAskMenu"] = hasAskAction
 
         let fixtures: [(String, Int)] = [
             (#"التكلفة $ ثم $x^2$ و $\int_0^1 x\,dx=\frac12$ و $$e^{i\pi}+1=0$$"#, 3),
@@ -61,6 +91,19 @@ struct ReliabilitySmokeView: View {
         ]
         for (index, fixture) in fixtures.enumerated() {
             if MathScanner.spans(in: fixture.0).count != fixture.1 { errors.append("Math scanner fixture \(index) failed") }
+        }
+        let completeHTML = "<!doctype html><html><body><p>Finished</p></body></html>"
+        let completeWithoutFence = "```html\n" + completeHTML
+        let incompleteWithFence = "```html\n<!doctype html><html><body><p>Unfinished\n```"
+        if DocumentHTML.authored(in: completeWithoutFence) == nil {
+            errors.append("A complete HTML document lost only its closing fence")
+        }
+        if !DocumentHTML.hasIncompleteAuthoredDocument(in: incompleteWithFence)
+            || DocumentHTML.authored(in: incompleteWithFence) != nil {
+            errors.append("A truncated designed document was accepted for export")
+        }
+        if DocumentHTML.hasIncompleteAuthoredDocument(in: "Ordinary transcript with $x^2$.") {
+            errors.append("Ordinary transcript was mistaken for an incomplete document")
         }
         let style = MathIslandStyle(palette: env.prefs.palette, background: env.prefs.palette.background, fontScale: env.prefs.fontScale)
         let items = MathScanner.spans(in: Self.sample).map { MathIslandItem(span: $0) }
@@ -100,7 +143,10 @@ struct ReliabilitySmokeView: View {
         """# + table + "<p dir='ltr'>FIRAS-END-MARKER-9427</p></body></html>"
         let html = DocumentHTML.printable(authored: authored)
         if !html.contains("data:font/ttf;base64,") { errors.append("Bundled document fonts are missing") }
-        if let bytes = await DocumentPrinter().pdf(html: html), let document = PDFDocument(data: bytes) {
+        let printer = DocumentPrinter()
+        let pdfBytes = await printer.pdf(html: html)
+        report["pdfDiagnostics"] = printer.diagnostics
+        if let bytes = pdfBytes, let document = PDFDocument(data: bytes) {
             let output = directory.appendingPathComponent("reliability-long-arabic.pdf")
             do { try bytes.write(to: output, options: .atomic) }
             catch { errors.append("Could not write PDF evidence") }
@@ -122,7 +168,6 @@ struct ReliabilitySmokeView: View {
 
         report["status"] = errors.isEmpty ? "passed" : "failed"
         report["errors"] = errors
-        report["selectionEnabled"] = true
         status = errors.isEmpty ? "Passed · paginated PDF and persisted mathematics" : errors.joined(separator: " · ")
         if let data = try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]) {
             try? data.write(to: directory.appendingPathComponent("reliability-smoke.json"), options: .atomic)

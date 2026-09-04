@@ -48,7 +48,13 @@ enum CodeAskAI {
         let text = String(instruction.prefix(requestLimit)).components(separatedBy: "\n")
             .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix(">") }
             .joined(separator: "\n")
-        if mentionsDocumentFormat(text), isDocumentKind(RequestClassifier.classify(text, hasImages: false, lang: lang)) {
+        let normalized = ArabicText.normalize(text)
+        let sourceRequest = ["code", "script", "cli", "program", "function", "api", "library", "app", "software"].contains {
+            containsToken(text.lowercased(), $0)
+        } || ["كود", "سكربت", "برنامج", "دالة", "تطبيق", "واجهة برمجية"].contains {
+            normalized.contains(ArabicText.normalize($0))
+        }
+        if !sourceRequest, mentionsDocumentFormat(text), isDocumentKind(RequestClassifier.classify(text, hasImages: false, lang: lang)) {
             return .documentRedirect
         }
         return isQuestion(text) ? .question : .edit

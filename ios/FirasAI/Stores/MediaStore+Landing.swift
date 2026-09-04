@@ -20,6 +20,7 @@ extension MediaStore {
     }
 
     func job(_ pointer: JobPointer, didFinish terminal: JobTerminal) async -> Bool {
+        guard ownsMediaRequest(pointer.ownerID) else { return false }
         guard let kind = pointer.kind.mediaKind else { return false }
         let creationID = pointer.creationID ?? ("media:" + pointer.cid)
 
@@ -38,7 +39,7 @@ extension MediaStore {
                 creationID: creationID,
                 ownerID: pointer.ownerID
             )
-            return true
+            return ownsMediaRequest(pointer.ownerID)
 
         case .refused(_, let server):
             markFailed(creationID, kind: kind, code: server.code, pointer: pointer)
@@ -52,6 +53,7 @@ extension MediaStore {
                 kind: kind
             )
             await landFailure(kind: kind, code: server.code, pointer: pointer)
+            guard ownsMediaRequest(pointer.ownerID) else { return false }
             if let minutes = server.freesInMin { noteFreesIn(minutes) }
             return true
 
@@ -59,7 +61,7 @@ extension MediaStore {
             markFailed(creationID, kind: kind, code: code, pointer: pointer)
             present(Strings.Media.failureText(kind, code: code, lang: lang))
             await landFailure(kind: kind, code: code, pointer: pointer)
-            return true
+            return ownsMediaRequest(pointer.ownerID)
 
         case .expired:
             // Not proof of failure: the server answers `running` forever for an id it has forgotten,
@@ -67,7 +69,7 @@ extension MediaStore {
             // look, and the tile offers a regenerate rather than pretending it is still working.
             markFailed(creationID, kind: kind, code: "timeout", pointer: pointer)
             await landFailure(kind: kind, code: "timeout", pointer: pointer)
-            return true
+            return ownsMediaRequest(pointer.ownerID)
 
         case .cancelled, .unauthorized, .forbidden:
             markFailed(creationID, kind: kind, code: nil, pointer: pointer)
@@ -90,6 +92,7 @@ extension MediaStore {
         creationID: String,
         ownerID: String
     ) async {
+        guard ownsMediaRequest(ownerID) else { return }
         let messageID = ChatMessage.identity(role: .assistant, cid: cid)
         /* WRITTEN UNCONDITIONALLY. `start` now puts a keyless placeholder fence here the moment
            the reader asks, so a message with this id already exists by the time the job lands —
@@ -109,6 +112,7 @@ extension MediaStore {
             )
             await chat.appendAssistantTurn(message, in: conversationID)
         }
+        guard ownsMediaRequest(ownerID) else { return }
 
         var item = creation(id: creationID) ?? MediaCreation(
             id: creationID,
@@ -123,6 +127,7 @@ extension MediaStore {
         item.errorCode = nil
         upsert(item)
         await persistIndex()
+        guard ownsMediaRequest(ownerID) else { return }
 
         announceCompletion(kind)
         _ = await localURL(for: item)
@@ -370,17 +375,24 @@ extension MediaStore {
             return
         }
         guard requireMember(.image), !isSubmitting else { return }
+        guard let owner = session.identityID, ownsMediaRequest(owner) else { return }
+        setSubmitting(true)
+        defer { finishSubmitting(owner: owner) }
 
         do {
             let downloaded = try await api.downloadMedia(kind: .image, key: key)
             let data = (try? Data(contentsOf: downloaded.url)) ?? Data()
             try? FileManager.default.removeItem(at: downloaded.url)
-            guard let encoded = await MediaPromptPipeline.editSourceBase64(from: data) else {
+            guard ownsMediaRequest(owner) else { return }
+            let encoded = await MediaPromptPipeline.editSourceBase64(from: data)
+            guard ownsMediaRequest(owner) else { return }
+            guard let encoded else {
                 present(Strings.Media.editBadImage(lang))
                 return
             }
-            await submitEdit(imageBase64: encoded, instruction: instruction, in: conversationID)
+            await submitEdit(imageBase64: encoded, instruction: instruction, in: conversationID, owner: owner)
         } catch {
+            guard ownsMediaRequest(owner) else { return }
             presentFailure(error, kind: .image)
         }
     }
@@ -393,29 +405,35 @@ extension MediaStore {
             return
         }
         guard requireMember(.image), !isSubmitting else { return }
-        guard let encoded = await MediaPromptPipeline.editSourceBase64(from: sourceData) else {
+        guard let owner = session.identityID, ownsMediaRequest(owner) else { return }
+        setSubmitting(true)
+        defer { finishSubmitting(owner: owner) }
+        let encoded = await MediaPromptPipeline.editSourceBase64(from: sourceData)
+        guard ownsMediaRequest(owner) else { return }
+        guard let encoded else {
             present(Strings.Media.editBadImage(lang))
             return
         }
-        await submitEdit(imageBase64: encoded, instruction: instruction, in: conversationID)
+        await submitEdit(imageBase64: encoded, instruction: instruction, in: conversationID, owner: owner)
     }
 
     /// `POST /api/image/edit` is **synchronous** — no job, no pointer, no push — and holds the
     /// request for as long as the engine takes (up to ~3 min). Losing the answer is survivable:
     /// the result is cached under `sha1(edit|engine|prompt|sha1(source))`, so repeating the same
     /// edit is free and instant rather than a second render.
-    private func submitEdit(imageBase64: String, instruction: String, in conversationID: String?) async {
-        setSubmitting(true)
-        defer { setSubmitting(false) }
-
+    private func submitEdit(imageBase64: String, instruction: String, in conversationID: String?, owner: String) async {
+        guard ownsMediaRequest(owner) else { return }
         let target = await resolveConversation(conversationID)
+        guard ownsMediaRequest(owner) else { return }
         let cid = IDs.cid()
         await chat.appendUserTurn(ChatMessage.user(instruction, cid: cid, lang: lang), in: target.local)
+        guard ownsMediaRequest(owner) else { return }
 
         do {
             let response = try await api.editImage(
                 ImageEditRequest(image: imageBase64, prompt: instruction, chatId: target.server)
             )
+            guard ownsMediaRequest(owner) else { return }
             let key = (response.key ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             guard !key.isEmpty else {
                 present(Strings.Media.editErrorText(code: response.error, lang: lang))
@@ -429,9 +447,10 @@ extension MediaStore {
                 conversationID: target.local,
                 cid: cid,
                 creationID: "media:" + cid,
-                ownerID: session.identityID ?? ""
+                ownerID: owner
             )
         } catch {
+            guard ownsMediaRequest(owner) else { return }
             let code = (error as? APIError)?.server?.code
             present(Strings.Media.editErrorText(code: code, lang: lang))
         }

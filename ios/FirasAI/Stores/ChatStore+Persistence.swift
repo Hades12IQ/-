@@ -11,37 +11,25 @@ extension ChatStore {
 
     func persist(_ id: String) async {
         let key = resolve(id)
-        guard let conversation = conversations[key] else { return }
+        guard let owner = session.identityID, let conversation = conversations[key] else { return }
         // A single refusal at the top is what makes "never written" true instead of true in the
         // places somebody remembered (`ChatConversation.ephemeral`).
         guard !conversation.ephemeral else { return }
+        // Save the immutable snapshot under its original owner before network suspension.
+        // A logout must neither reassign this answer nor make a failed final PUT lose it.
+        await guestChats.save(conversation, owner: owner)
+        guard session.identityID == owner else { return }
         if session.isMember {
             guard let serverID = conversation.serverID else { return }
             let messages = MessageSerializer.persisted(conversation)
             do {
                 try await api.updateChat(id: serverID, UpdateChatRequest(messages: messages))
             } catch {
+                guard session.identityID == owner else { return }
                 // A failed save is not worth interrupting a turn for: the durable job still holds
                 // the answer, and the next successful write sends the whole array again.
                 Log.net.error("chat persist failed: \(String(describing: error), privacy: .public)")
             }
-            /* AND A COPY STAYS ON THE DEVICE, whether that write succeeded or not.
-               Until this line, a member's conversation lived on the server and NOWHERE
-               else: `persistLocalOnly` refuses outright when `isMember`, the list comes
-               from the server and so does the transcript. So a turn whose PUT failed
-               — a timeout, a 5xx, a lost connection — existed only in memory, survived
-               until the app was killed, and died with it. The reader saw the answer, the
-               app was restarted, and the answer was gone: «من رستت التطبيق ورجعت
-               اختفت». The comment above promised a next write would carry it, which is
-               true only if a next write ever happens.
-               This is a MIRROR, not a second source of truth: the server stays
-               authoritative and `open(_:)` merges this underneath it. A failed write now
-               costs a round trip rather than an answer. */
-            if let owner = session.identityID {
-                await guestChats.save(conversation, owner: owner)
-            }
-        } else if let owner = session.identityID {
-            await guestChats.save(conversation, owner: owner)
         }
     }
 
@@ -77,8 +65,11 @@ extension ChatStore {
     @discardableResult
     func refreshFromServer(_ id: String) async -> [ChatMessage] {
         let key = resolve(id)
-        guard session.isMember, var conversation = conversations[key], let serverID = conversation.serverID else { return [] }
+        guard session.isMember, let owner = session.identityID,
+              let snapshot = conversations[key], let serverID = snapshot.serverID else { return [] }
         guard let fetched = try? await api.getChat(id: serverID) else { return [] }
+        guard session.identityID == owner, var conversation = conversations[key],
+              conversation.serverID == serverID else { return [] }
         conversation.messages = MessageSerializer.merge(local: conversation.messages, server: fetched.messages)
         if !fetched.title.isEmpty, !renamed.contains(key) {
             conversation.title = fetched.title
@@ -173,6 +164,7 @@ extension ChatStore {
     /// (`web-chat-ux.md §11.1`).
     func autoTitleIfNeeded(_ id: String) async {
         let key = resolve(id)
+        let owner = session.identityID
         guard let conversation = conversations[key], conversation.product == .ai else { return }
         // A temporary chat has no row for a title to land in, so this would spend a model call —
         // and one more request carrying the user's question — on a string nothing will render.
@@ -187,7 +179,7 @@ extension ChatStore {
             firstAnswer: answers[0].content,
             lang: lang
         ) else { return }
-        guard !renamed.contains(key), var current = conversations[key] else { return }
+        guard session.identityID == owner, !renamed.contains(key), var current = conversations[key] else { return }
         current.title = title
         setConversation(current, forKey: key)
         rebuildSummaries()

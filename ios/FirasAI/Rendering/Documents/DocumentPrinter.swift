@@ -8,15 +8,12 @@ import WebKit
 /// UIPrintPageRenderer asks WebKit's print formatter to paginate. WKWebView.createPDF captures
 /// the scrolling document as one page and does not provide this pagination contract.
 ///
-/// **Nothing here is a cliff.** Every failure path returns `nil`, and the caller keeps the renderer
-/// it has. A reader who asked for a document gets a document even on the day WebKit refuses.
+/// A failed print returns nil so the caller can explain the failure without exporting source code.
 @MainActor
 final class DocumentPrinter {
 
-    /// The page is 794 × 1123 points — A4 at 96 dpi, which is the size a browser means by A4. The
-    /// PAPER, though, is the stylesheet's business: `@page` in the template decides the sheet and
-    /// its margins, and setting a rect here would silently overrule it. This size only gives the
-    /// layout a sensible width to lay out against before printing.
+    /// Screen layout uses A4 at 96 dpi. Physical paper and margins are read from authored @page
+    /// rules and applied once by the print renderer in points at 72 dpi.
     private static let layout = CGSize(width: 794, height: 1123)
 
     /// How long the page is given to load, typeset its mathematics and settle its fonts. A document
@@ -30,6 +27,8 @@ final class DocumentPrinter {
     /// Named apart from `page(for:)` on purpose: a stored property and a method that share a
     /// base name compile, and read as a typo forever after.
     private var pageSource: PageHandler?
+    /// Safe stage/geometry diagnostics only. Never includes document text, HTML, URLs, or payloads.
+    private(set) var diagnostics: [String: Any] = [:]
 
     /// The document's own scheme. Must not collide with the island's (`firas-katex`) or the
     /// code preview's (`firas-proj`).
@@ -39,30 +38,85 @@ final class DocumentPrinter {
 
     /// The PDF for `html`, or `nil` if WebKit would not produce one.
     func pdf(html: String) async -> Data? {
+        diagnostics = ["stage": "loading"]
         guard let view = await page(for: html) else { return nil }
         defer { teardown() }
         await settle(view)
-        let settings = (try? await view.evaluateJavaScript(Self.printSettingsScript)) as? [String: String] ?? [:]
+        await recordPageState(view)
+        let settingsValue: Any?
+        do { settingsValue = try await view.evaluateJavaScript(Self.printSettingsScript) }
+        catch {
+            settingsValue = nil
+            record(error, stage: "settings")
+        }
+        let settings: [String: String] = (settingsValue as? [String: String]) ?? Dictionary()
         let renderer = PaginatedRenderer(settings: settings)
+        diagnostics["paperRect"] = Self.geometry(renderer.paperRect)
+        diagnostics["printableRect"] = Self.geometry(renderer.printableRect)
         // UIKit owns physical margins. Zero the CSS page margin to avoid applying it twice.
-        _ = try? await view.evaluateJavaScript(Self.printPreparationScript)
-        view.setNeedsLayout()
-        view.layoutIfNeeded()
-        let formatter = view.viewPrintFormatter()
-        formatter.perPageContentInsets = .zero
-        formatter.maximumContentWidth = renderer.printableRect.width
-        formatter.maximumContentHeight = renderer.printableRect.height
-        renderer.addPrintFormatter(formatter, startingAtPageAt: 0)
-        let count = renderer.numberOfPages
-        guard count > 0, count <= 500 else { return nil }
-        renderer.prepare(forDrawingPages: NSRange(location: 0, length: count))
-        let data = UIGraphicsPDFRenderer(bounds: renderer.paperRect).pdfData { context in
-            for page in 0..<count {
-                context.beginPage()
-                renderer.drawPage(at: page, in: renderer.paperRect)
+        do { _ = try await view.evaluateJavaScript(Self.printPreparationScript) }
+        catch { record(error, stage: "print-preparation") }
+
+        var counts: [Int] = []
+        for attempt in 0..<3 {
+            // WebKit commits layout in its own process. Let the CSS change reach it before UIKit
+            // asks for a synchronous print layout; retry a zero count with a fresh formatter.
+            view.setNeedsLayout()
+            view.layoutIfNeeded()
+            _ = try? await view.evaluateJavaScript("document.documentElement.offsetHeight")
+            await JobClock.rest(attempt == 0 ? 0.12 : 0.25)
+            let formatter = view.viewPrintFormatter()
+            formatter.perPageContentInsets = .zero
+            formatter.maximumContentWidth = renderer.printableRect.width
+            formatter.maximumContentHeight = renderer.printableRect.height
+            renderer.addPrintFormatter(formatter, startingAtPageAt: 0)
+            diagnostics["formatterFirstRect"] = Self.geometry(formatter.rectForPage(at: 0))
+            diagnostics["formatterNextRect"] = Self.geometry(formatter.rectForPage(at: 1))
+            diagnostics["stage"] = "paginating"
+            var count = 0
+            // Request pagination inside the actual PDF drawing context, as during a print job.
+            let data = UIGraphicsPDFRenderer(bounds: renderer.paperRect).pdfData { context in
+                count = renderer.numberOfPages
+                guard count > 0, count <= 500 else { return }
+                renderer.prepare(forDrawingPages: NSRange(location: 0, length: count))
+                for page in 0..<count {
+                    context.beginPage()
+                    renderer.drawPage(at: page, in: renderer.paperRect)
+                }
+            }
+            counts.append(count)
+            diagnostics["pageCounts"] = counts
+            diagnostics["pdfBytes"] = data.count
+            formatter.removeFromPrintPageRenderer()
+            if count > 500 { diagnostics["stage"] = "page-limit"; return nil }
+            if count > 0, !data.isEmpty {
+                diagnostics["stage"] = "completed"
+                return data
             }
         }
-        return data.isEmpty ? nil : data
+        diagnostics["stage"] = "pagination-failed"
+        return nil
+    }
+
+    private static func geometry(_ rect: CGRect) -> [Double] {
+        [Double(rect.origin.x), Double(rect.origin.y), Double(rect.width), Double(rect.height)]
+            .map { $0.isFinite ? $0 : 0 }
+    }
+
+    private func record(_ error: Error, stage: String) {
+        let value = error as NSError
+        diagnostics[stage + "Error"] = ["domain": value.domain, "code": value.code]
+    }
+
+    private func recordPageState(_ view: WKWebView) async {
+        let script = """
+        (() => ({readyState:document.readyState,fontsStatus:document.fonts ? document.fonts.status : 'unavailable',
+          bodyWidth:document.body ? document.body.scrollWidth : 0,bodyHeight:document.body ? document.body.scrollHeight : 0,
+          mathCount:document.querySelectorAll('.katex').length,mathErrors:document.querySelectorAll('.katex-error').length,
+          stylesheetCount:document.styleSheets.length,katexLoaded:typeof katex !== 'undefined'}))()
+        """
+        do { diagnostics["page"] = try await view.evaluateJavaScript(script) }
+        catch { record(error, stage: "page-state") }
     }
 
     private static let printSettingsScript = #"""
@@ -86,7 +140,7 @@ final class DocumentPrinter {
     private static let printPreparationScript = #"""
     (() => {
       const style = document.createElement('style');
-      style.textContent = '@page{margin:0!important}@media print{html,body{height:auto!important;min-height:0!important;overflow:visible!important}body{margin:0!important}h1,h2,h3,h4,h5,h6{break-after:avoid;page-break-after:avoid}p,li{orphans:3;widows:3}thead{display:table-header-group}tr,figure,img,.katex-display{break-inside:avoid;page-break-inside:avoid}table{break-inside:auto!important;page-break-inside:auto!important}pre{white-space:pre-wrap;overflow-wrap:anywhere}.katex,.katex-display{direction:ltr;unicode-bidi:isolate}.katex-mathml{display:none!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
+      style.textContent = '@page{margin:0!important}@media print{html,body{height:auto!important;min-height:0!important;overflow:visible!important}body{margin:0!important;width:auto!important}main,article,.document,.page,.sheet{max-width:100%!important;box-sizing:border-box}.page,.sheet{width:auto!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}h1,h2,h3,h4,h5,h6{break-after:avoid;page-break-after:avoid}p,li{orphans:3;widows:3}thead{display:table-header-group}tr,figure,img,.katex-display{break-inside:avoid;page-break-inside:avoid}table{break-inside:auto!important;page-break-inside:auto!important}pre{white-space:pre-wrap;overflow-wrap:anywhere}.katex,.katex-display{direction:ltr;unicode-bidi:isolate}.katex-mathml{display:none!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
       document.head.appendChild(style);
       return true;
     })()
@@ -97,6 +151,7 @@ final class DocumentPrinter {
         private let printable: CGRect
         override var paperRect: CGRect { paper }
         override var printableRect: CGRect { printable }
+        override func currentRenderingQuality(forRequested quality: UIPrintRenderingQuality) -> UIPrintRenderingQuality { .best }
 
         init(settings: [String: String]) {
             let mm: CGFloat = 72 / 25.4
@@ -114,10 +169,12 @@ final class DocumentPrinter {
             if size.contains("landscape"), dimensions.height > dimensions.width {
                 dimensions = CGSize(width: dimensions.height, height: dimensions.width)
             }
-            let top = max(15 * mm, min(60 * mm, Self.points(settings["margin-top"] ?? "") ?? 20 * mm))
-            let right = max(15 * mm, min(60 * mm, Self.points(settings["margin-right"] ?? "") ?? 18 * mm))
-            let bottom = max(15 * mm, min(60 * mm, Self.points(settings["margin-bottom"] ?? "") ?? 20 * mm))
-            let left = max(15 * mm, min(60 * mm, Self.points(settings["margin-left"] ?? "") ?? 18 * mm))
+            let horizontalLimit = min(60 * mm, dimensions.width * 0.3)
+            let verticalLimit = min(60 * mm, dimensions.height * 0.3)
+            let top = max(15 * mm, min(verticalLimit, Self.points(settings["margin-top"] ?? "") ?? 20 * mm))
+            let right = max(15 * mm, min(horizontalLimit, Self.points(settings["margin-right"] ?? "") ?? 18 * mm))
+            let bottom = max(15 * mm, min(verticalLimit, Self.points(settings["margin-bottom"] ?? "") ?? 20 * mm))
+            let left = max(15 * mm, min(horizontalLimit, Self.points(settings["margin-left"] ?? "") ?? 18 * mm))
             paper = CGRect(origin: .zero, size: dimensions)
             printable = CGRect(x: left, y: top, width: dimensions.width - left - right,
                                height: dimensions.height - top - bottom)
@@ -175,7 +232,7 @@ final class DocumentPrinter {
 
         // The bundle has to be in memory before the page asks for it: a stylesheet that arrives
         // after layout is a measurement taken on the wrong fonts.
-        _ = await MathIslandAssets.shared.prepare()
+        diagnostics["mathAssetsReady"] = await MathIslandAssets.shared.prepare()
 
         /* REGISTERED BEFORE THE VIEW EXISTS. `setURLSchemeHandler` on a configuration a web
            view already copied has no effect, which is a silent failure and exactly the trap
@@ -208,6 +265,7 @@ final class DocumentPrinter {
             host.addSubview(view)
             self.window = host
         }
+        diagnostics["hasWindow"] = view.window != nil
 
         /* SERVED, NOT INJECTED. `loadHTMLString` with a custom-scheme base URL is not a
            documented way to reach a scheme handler, and WebKit is free to decline: the page
@@ -225,9 +283,13 @@ final class DocumentPrinter {
         view.load(URLRequest(url: url))
 
         guard await loader.finished(within: DocumentPrinter.patience) else {
+            diagnostics["stage"] = "load-failed"
+            diagnostics["load"] = loader.diagnostics
             teardown()
             return nil
         }
+        diagnostics["load"] = loader.diagnostics
+        diagnostics["stage"] = "loaded"
         return view
     }
 
@@ -240,10 +302,11 @@ final class DocumentPrinter {
         let deadline = Date().addingTimeInterval(DocumentPrinter.patience)
         while Date() < deadline {
             let ready = (try? await view.evaluateJavaScript("window." + DocumentHTML.readyFlag + " === true")) as? Bool
-            if ready == true { return }
+            if ready == true { diagnostics["mathReady"] = true; return }
             await JobClock.rest(0.12)
         }
         Log.ui.error("document page never reported ready; printing as it stands")
+        diagnostics["mathReady"] = false
     }
 
     private func contentHeight(_ view: WKWebView) async -> CGFloat {
@@ -349,12 +412,15 @@ final class DocumentPrinter {
 
         private var waiting: [CheckedContinuation<Bool, Never>] = []
         private var settled: Bool?
+        private(set) var diagnostics: [String: Any] = ["status": "waiting"]
 
         @MainActor
         func finished(within seconds: TimeInterval) async -> Bool {
             if let settled { return settled }
             let timeout = Task { [weak self] in
                 await JobClock.rest(seconds)
+                guard !Task.isCancelled else { return }
+                self?.diagnostics["status"] = "timeout"
                 self?.resolve(false)
             }
             let value = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
@@ -374,10 +440,12 @@ final class DocumentPrinter {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            diagnostics["status"] = "finished"
             resolve(true)
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            record(error, stage: "navigation")
             resolve(false)
         }
 
@@ -386,7 +454,18 @@ final class DocumentPrinter {
             didFailProvisionalNavigation navigation: WKNavigation!,
             withError error: Error
         ) {
+            record(error, stage: "provisional-navigation")
             resolve(false)
+        }
+
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            diagnostics["status"] = "web-process-terminated"
+            resolve(false)
+        }
+
+        private func record(_ error: Error, stage: String) {
+            let value = error as NSError
+            diagnostics = ["status": stage, "errorDomain": value.domain, "errorCode": value.code]
         }
 
         /// The page may talk to the bundle and to nothing else. A document being printed has no

@@ -146,7 +146,7 @@ final class CodeStore: JobObserver {
 
     /// The web's caps. `task` carries the attachment read as well, because the frozen
     /// `ChatJobRequest` has no `attach` field; the worker reads `body.task` either way.
-    static let taskCharacterCap = 6_000
+    static let taskCharacterCap = CodeAskAI.requestLimit
     static let attachmentCharacterCap = 24_000
     static let inIDEAttachmentCap = 60_000
     static let nameCharacterCap = 80
@@ -585,29 +585,28 @@ final class CodeStore: JobObserver {
         commitTask?.cancel()
         commitTask = nil
         saveState = .saving
-
-        let fitted = Self.shrunkToFit(current)
-        if case .failure(let error) = fitted.validatedForSave() {
-            saveState = .editing
-            toasts.show(Self.saveErrorText(error, lang: lang), isError: true)
+        // Cloud limits never remove files or cut a source statement in half.
+        guard await cache.save(current, id: id, ownerID: ownerID) else {
+            if session.identityID == ownerID, openProjectID == id {
+                saveState = .editing
+                toasts.show(Strings.Code.saveFailed(lang), isError: true)
+            }
             return
         }
-        if fitted != current { project = fitted }
-
-        await cache.save(fitted, id: id, ownerID: ownerID)
         await cache.saveThread(conversation, id: id, ownerID: ownerID)
         guard session.identityID == ownerID, openProjectID == id else { return }
-        records[id] = CodeProjectRecord(
-            id: id,
-            name: fitted.name,
-            fileCount: fitted.files.count,
-            updatedAt: Date().timeIntervalSince1970
-        )
-
+        records[id] = CodeProjectRecord(id: id, name: current.name, fileCount: current.files.count,
+                                        updatedAt: Date().timeIntervalSince1970)
         if session.isMember, !id.hasPrefix("ios_") {
+            if case .failure(let error) = current.validatedForSave() {
+                saveState = .editing
+                toasts.show(Self.localOnlyText(error, lang: lang), isError: true)
+                return
+            }
             do {
-                try await push(project: fitted, thread: conversation, to: id)
+                try await push(project: current, thread: conversation, to: id)
             } catch {
+                guard session.identityID == ownerID, openProjectID == id else { return }
                 saveState = .editing
                 toasts.show(Strings.Code.saveFailed(lang), isError: true)
                 return
@@ -1060,7 +1059,8 @@ final class CodeStore: JobObserver {
     /// Every failure here has the same answer, and it is never an error message: the turn goes to
     /// the durable queue under the same `cid` and finishes there. A dropped socket in the middle of
     /// file three is not a failed build.
-    private func runLiveBuild(_ ticket: CodeBuildTicket) async {
+    private func runLiveBuild(_ initialTicket: CodeBuildTicket) async {
+        var ticket = initialTicket
         let projectID = ticket.projectID
         defer { liveBuilds[projectID] = nil }
 
@@ -1090,12 +1090,16 @@ final class CodeStore: JobObserver {
             return
         }
         if Task.isCancelled { return }
-        // `parsePlan` guarantees `index.html` plus a per-kind skeleton, so this only fires if the
-        // plan came back as something that is not a plan at all.
+        // The manifest is persisted before source generation and validates the durable answer.
         guard !steps.isEmpty else {
             handOff(ticket)
             return
         }
+
+        ticket.plannedPaths = steps.map(\.path)
+        tickets[projectID] = ticket
+        await cache.saveTicket(ticket)
+        guard !Task.isCancelled, session.identityID == ticket.ownerID else { return }
 
         var built: [CodeFile] = []
         for step in steps {
@@ -1127,7 +1131,11 @@ final class CodeStore: JobObserver {
             note("log", Strings.Code.buildingHeadline(lang) + " · " + step.path, projectID: projectID)
             // A checkpoint per file, so being killed mid-build still leaves the reader everything
             // they watched being written.
-            await cache.save(CodeProject(name: ticket.name, files: built), id: projectID, ownerID: ticket.ownerID)
+            if await cache.save(CodeProject(name: ticket.name, files: built), id: projectID, ownerID: ticket.ownerID) {
+                ticket.completedPaths = built.map(\.path)
+                tickets[projectID] = ticket
+                await cache.saveTicket(ticket)
+            }
         }
 
         if Task.isCancelled { return }
@@ -1239,19 +1247,25 @@ final class CodeStore: JobObserver {
         if let select { selectedPath = select }
     }
 
-    /// The end of a live build: shrink to the save caps, land the files, push them to the project
+    /// The end of a live build: preserve complete files, land them, push them to the project
     /// chat, and only then forget the ticket. Land before forget, the same rule as the durable path.
     private func finishLiveBuild(_ files: [CodeFile], ticket: CodeBuildTicket) async {
         let projectID = ticket.projectID
         guard session.identityID == ticket.ownerID else { return }
         finishingBuilds.insert(projectID)
         defer { finishingBuilds.remove(projectID) }
-        let fitted = Self.shrunkToFit(CodeProject(name: ticket.name, files: files))
-        if case .failure(let error) = fitted.validatedForSave() {
-            toasts.show(Self.saveErrorText(error, lang: lang), isError: true)
+        let fitted = CodeProject(name: ticket.name, files: files)
+        guard CodeBuildHandoff.isComplete(fitted, ticket: ticket) else {
+            handOff(ticket)
+            return
         }
+        var cloudLimit: CodeSaveError?
+        if case .failure(let error) = fitted.validatedForSave() { cloudLimit = error }
 
-        await cache.save(fitted, id: projectID, ownerID: ticket.ownerID)
+        guard await cache.save(fitted, id: projectID, ownerID: ticket.ownerID) else {
+            handOff(ticket)
+            return
+        }
         guard session.identityID == ticket.ownerID else { return }
         records[projectID] = CodeProjectRecord(
             id: projectID,
@@ -1277,8 +1291,8 @@ final class CodeStore: JobObserver {
             ownerID: ticket.ownerID
         )
 
-        var pushed = true
-        if session.isMember, session.identityID == ticket.ownerID, !projectID.hasPrefix("ios_") {
+        var pushed = cloudLimit == nil
+        if cloudLimit == nil, session.isMember, session.identityID == ticket.ownerID, !projectID.hasPrefix("ios_") {
             do {
                 try await push(project: fitted, thread: conversation, to: projectID)
             } catch {
@@ -1297,8 +1311,15 @@ final class CodeStore: JobObserver {
             saveState = pushed ? .saved : .editing
             note("ok", Strings.Code.serverDone(lang), projectID: projectID)
         }
-        if !pushed { toasts.show(Strings.Code.saveFailed(lang), isError: true) }
-        announceReady(projectID: projectID, name: ticket.name)
+        if let cloudLimit {
+            let message = Self.localOnlyText(cloudLimit, lang: lang)
+            _ = await appendBuildTurn(message, n: nil, projectID: projectID, ownerID: ticket.ownerID)
+            toasts.show(message, isError: true)
+        } else if !pushed {
+            toasts.show(Strings.Code.saveFailed(lang), isError: true)
+        } else {
+            announceReady(projectID: projectID, name: ticket.name)
+        }
     }
 
     // MARK: - Building: the handover
@@ -1345,25 +1366,13 @@ final class CodeStore: JobObserver {
 
         guard session.identityID == ticket.ownerID else { return }
 
-        let task = Self.jobTask(ticket)
-        let request = ChatJobRequest(
-            messages: [OutgoingMessage(role: "user", content: task, images: nil)],
-            tier: ModelTier.pro.rawValue,
-            think: false,
-            cid: ticket.cid,
-            // Always empty: a real id makes the worker append the raw fence as a third message
-            // into the project chat (`server-code-brainask.md §2.1`).
-            chatId: "",
-            product: ProductKind.code.wireValue,
-            kind: JobKind.codebuild.rawValue,
-            lang: ticket.lang,
-            title: ticket.name,
-            task: task
-        )
+        let checkpoint = await cache.load(id: projectID, ownerID: ticket.ownerID)
+        guard session.identityID == ticket.ownerID else { return }
+        let request = CodeBuildHandoff.request(ticket: ticket, checkpoint: checkpoint)
         let started = Date(timeIntervalSince1970: ticket.startedAt)
         let draft = JobPointer(
             id: ticket.cid,
-            kind: .codebuild,
+            kind: CodeBuildHandoff.pointerKind,
             ownerID: ticket.ownerID,
             cid: ticket.cid,
             conversationID: projectID,
@@ -1504,14 +1513,9 @@ final class CodeStore: JobObserver {
             buildElapsed = Date().timeIntervalSince(pointer.startedAt)
             startElapsedTimer()
         }
-        guard !snapshot.text.isEmpty, landedFences[pointer.id] != snapshot.text else { return }
-        guard let checkpoint = try? CodeProject.decode(fromJobText: snapshot.text),
-              !checkpoint.files.isEmpty else { return }
-        landedFences[pointer.id] = snapshot.text
+        // Wait for terminal validation before replacing foreground files.
+        guard let checkpoint = try? CodeProject.decode(fromJobText: snapshot.text) else { return }
         buildFileCount = checkpoint.files.count
-        Task { [weak self] in
-            _ = await self?.land(checkpoint, into: projectID, pointer: pointer)
-        }
     }
 
     func job(_ pointer: JobPointer, didFinish terminal: JobTerminal) async -> Bool {
@@ -1522,16 +1526,22 @@ final class CodeStore: JobObserver {
         liveBuilds[projectID]?.cancel()
         liveBuilds[projectID] = nil
         let name = buildNames[pointer.id] ?? tickets[projectID]?.name ?? pointer.title
-        var landedAnything = landedFences[pointer.id] != nil
+        var landedAnything = false
         var landedCount: Int?
 
-        if let snapshot = terminal.snapshot,
-           let finished = try? CodeProject.decode(fromJobText: snapshot.text),
-           !finished.files.isEmpty {
-            // Land before forget: a false answer here buys another 15 × 4 s of retries.
-            guard await land(finished, into: projectID, pointer: pointer) else { return false }
-            landedAnything = true
-            landedCount = finished.files.count
+        let ticket = tickets[projectID]
+        if terminal.isSuccess, let snapshot = terminal.snapshot,
+           let decoded = try? CodeProject.decode(fromJobText: snapshot.text) {
+            let cached = await cache.load(id: projectID, ownerID: pointer.ownerID)
+            guard session.identityID == pointer.ownerID else { return false }
+            let finished = CodeBuildHandoff.mergingCompletedFiles(decoded, checkpoint: cached, ticket: ticket)
+            if CodeBuildHandoff.isComplete(finished, ticket: ticket) {
+                // Land before forget: a false answer buys persistence retries.
+                guard await land(finished, into: projectID, pointer: pointer) else { return false }
+                guard session.identityID == pointer.ownerID else { return false }
+                landedAnything = true
+                landedCount = finished.files.count
+            }
         }
 
         if openProjectID == projectID { clearBuildDisplay() }
@@ -1572,13 +1582,11 @@ final class CodeStore: JobObserver {
             name: built.name.isEmpty ? pointer.title : built.name,
             files: built.files
         )
-        let fitted = Self.shrunkToFit(named)
-        if case .failure(let error) = fitted.validatedForSave() {
-            toasts.show(Self.saveErrorText(error, lang: lang), isError: true)
-            return true                                   // nothing left to try; release the pointer
-        }
+        let fitted = named
+        var cloudLimit: CodeSaveError?
+        if case .failure(let error) = fitted.validatedForSave() { cloudLimit = error }
 
-        await cache.save(fitted, id: projectID, ownerID: pointer.ownerID)
+        guard await cache.save(fitted, id: projectID, ownerID: pointer.ownerID) else { return false }
         guard session.identityID == pointer.ownerID else { return false }
         records[projectID] = CodeProjectRecord(
             id: projectID,
@@ -1587,13 +1595,14 @@ final class CodeStore: JobObserver {
             updatedAt: Date().timeIntervalSince1970
         )
 
-        if session.isMember, !projectID.hasPrefix("ios_") {
+        if cloudLimit == nil, session.isMember, !projectID.hasPrefix("ios_") {
             let existing: CodeChatThread
             if openProjectID == projectID {
                 existing = thread
             } else {
                 existing = await cache.loadThread(id: projectID, ownerID: pointer.ownerID) ?? CodeChatThread()
             }
+            guard session.identityID == pointer.ownerID else { return false }
             do {
                 try await push(project: fitted, thread: existing, to: projectID)
             } catch {
@@ -1601,12 +1610,16 @@ final class CodeStore: JobObserver {
             }
         }
 
+        guard session.identityID == pointer.ownerID else { return false }
         if openProjectID == projectID {
             project = fitted
             if selectedPath == nil || !fitted.files.contains(where: { $0.path == selectedPath }) {
                 selectedPath = Self.entryPath(of: fitted)
             }
-            saveState = .saved
+            saveState = cloudLimit == nil ? .saved : .editing
+        }
+        if let cloudLimit {
+            toasts.show(Self.localOnlyText(cloudLimit, lang: lang), isError: true)
         }
         return true
     }

@@ -238,6 +238,11 @@ jobs:
           fi
           cp "$ARTIFACT_ROOT/reliability-smoke.json" "$LOGS_DIR/runs/$RUN-smoke.json" 2>/dev/null || true
           cp "$ARTIFACT_ROOT/simulator-smoke.png" "$LOGS_DIR/runs/$RUN-smoke.png" 2>/dev/null || true
+          # Only the unauthenticated smoke fixture writes PDF/page artifacts here.
+          for EVIDENCE in "$ARTIFACT_ROOT"/*.pdf "$ARTIFACT_ROOT"/*-page-*.png; do
+            [ -f "$EVIDENCE" ] || continue
+            cp "$EVIDENCE" "$LOGS_DIR/runs/$RUN-$(basename "$EVIDENCE")"
+          done
           cp "$LOGS_DIR/runs/$RUN.md" "$LOGS_DIR/latest.md"
           cd "$LOGS_DIR"
           git config user.name "firas-ci"

@@ -49,6 +49,7 @@ final class ChatStore: JobObserver {
     @ObservationIgnored var pendingDeletes: [String: ChatConversation] = [:]
     @ObservationIgnored var deleteTasks: [String: Task<Void, Never>] = [:]
     @ObservationIgnored var loadedOwner: String?
+    @ObservationIgnored private var identityGeneration = 0
 
     init(
         api: APIClient,
@@ -114,29 +115,56 @@ final class ChatStore: JobObserver {
 
     // MARK: - The list
 
-    func loadConversations() async {
-        guard let owner = session.identityID else {
-            summaries = []
-            serverRows = []
-            return
-        }
-        if loadedOwner != owner {
-            // A different identity: nothing from the previous one may stay on screen.
+    /// Invalidate local views and pending reads as soon as an account changes.
+    /// Durable jobs and on-disk transcripts retain their existing owner and are
+    /// never cancelled or deleted here.
+    func identityDidChange(to ownerID: String?) {
+        guard loadedOwner != ownerID else { return }
+        // The first screen can create its local conversation before the first
+        // list request. A fresh store has no previous owner's data to discard.
+        let keepStartup = loadedOwner == nil && identityGeneration == 0 && ownerID != nil
+        if !keepStartup {
             conversations = [:]
             states = [:]
             buffers = [:]
-            serverRows = []
-            summaries = []
-            loadedOwner = owner
+            router.selectedConversationID = nil
         }
+        for task in deleteTasks.values { task.cancel() }
+        deleteTasks = [:]
+        pendingDeletes = [:]
+        renamed = []
+        titled = []
+        serverRows = []
+        summaries = []
+        loadingConversations = []
+        isLoadingList = false
+        listError = nil
+        loadedOwner = ownerID
+        identityGeneration += 1
+    }
+
+    private func acceptsIdentity(_ owner: String, generation: Int) -> Bool {
+        loadedOwner == owner && session.identityID == owner && identityGeneration == generation
+    }
+
+    func loadConversations() async {
+        identityDidChange(to: session.identityID)
+        guard let owner = session.identityID, !isLoadingList else { return }
+        let generation = identityGeneration
+        let isMember = session.isMember
         isLoadingList = true
         listError = nil
-        defer { isLoadingList = false }
+        defer {
+            if acceptsIdentity(owner, generation: generation) { isLoadingList = false }
+        }
 
-        if session.isMember {
+        if isMember {
             do {
-                serverRows = try await api.listChats()
+                let fetched = try await api.listChats()
+                guard acceptsIdentity(owner, generation: generation) else { return }
+                serverRows = fetched
             } catch {
+                guard acceptsIdentity(owner, generation: generation) else { return }
                 listError = applyErrorAction(
                     ErrorPresenter.present(error, feature: .generic, isGuest: false, lang: lang),
                     in: nil,
@@ -145,23 +173,35 @@ final class ChatStore: JobObserver {
             }
         } else {
             let stored = await guestChats.load(owner: owner)
+            guard acceptsIdentity(owner, generation: generation) else { return }
             for conversation in stored {
                 conversations[conversation.id] = conversation
             }
         }
+        guard acceptsIdentity(owner, generation: generation) else { return }
         rebuildSummaries()
     }
 
     func open(_ id: String) async {
+        identityDidChange(to: session.identityID)
+        guard let owner = session.identityID else { return }
+        let generation = identityGeneration
+        let isMember = session.isMember
         let key = resolve(id)
         if let existing = conversations[key] {
             ensureState(for: key, conversation: existing)
             return
         }
-        guard session.isMember else {
-            // A guest's transcripts all arrive with the list; nothing else can produce one.
-            guard let owner = session.identityID else { return }
+        guard !loadingConversations.contains(key) else { return }
+        loadingConversations.insert(key)
+        defer {
+            if acceptsIdentity(owner, generation: generation) { loadingConversations.remove(key) }
+        }
+
+        if !isMember {
+            // Guest transcripts come only from this owner's on-disk namespace.
             let stored = await guestChats.load(owner: owner)
+            guard acceptsIdentity(owner, generation: generation) else { return }
             for conversation in stored where conversations[conversation.id] == nil {
                 conversations[conversation.id] = conversation
             }
@@ -172,26 +212,18 @@ final class ChatStore: JobObserver {
             return
         }
 
-        loadingConversations.insert(key)
-        defer { loadingConversations.remove(key) }
         do {
             let fetched = try await api.getChat(id: key)
+            guard acceptsIdentity(owner, generation: generation) else { return }
             let row = serverRows.first { $0.id == key }
-            /* THE DEVICE'S OWN COPY, MERGED UNDER THE SERVER'S.
-               `persist` mirrors every member conversation to disk precisely so a turn
-               whose write to the server failed is not lost when the app restarts. Here is
-               where it comes back. The rule is the merge's own and it is the right one: a
-               local row the server has never seen is KEPT, and a server row replaces a
-               local one only when it is LONGER — so the server remains authoritative and
-               the mirror can only ever add back something missing, never overwrite
-               something better. */
+            // Merge only this request's owner mirror. Never read the identity
+            // again after suspension and accidentally attach another account.
             var restored = fetched.messages
-            if let owner = session.identityID {
-                let mirrored = await guestChats.load(owner: owner)
-                if let mine = mirrored.first(where: { $0.id == key || $0.serverID == key }),
-                   !mine.messages.isEmpty {
-                    restored = MessageSerializer.merge(local: mine.messages, server: fetched.messages)
-                }
+            let mirrored = await guestChats.load(owner: owner)
+            guard acceptsIdentity(owner, generation: generation) else { return }
+            if let mine = mirrored.first(where: { $0.id == key || $0.serverID == key }),
+               !mine.messages.isEmpty {
+                restored = MessageSerializer.merge(local: mine.messages, server: fetched.messages)
             }
             let conversation = ChatConversation(
                 id: key,
@@ -209,8 +241,9 @@ final class ChatStore: JobObserver {
             ensureState(for: key, conversation: conversation)
             rebuildSummaries()
         } catch {
+            guard acceptsIdentity(owner, generation: generation) else { return }
             let message = applyErrorAction(
-                ErrorPresenter.present(error, feature: .generic, isGuest: session.isGuest, lang: lang),
+                ErrorPresenter.present(error, feature: .generic, isGuest: !isMember, lang: lang),
                 in: key,
                 silently: true
             )
@@ -243,7 +276,8 @@ final class ChatStore: JobObserver {
     /// failed, which is the cue to answer over the live stream instead of losing the turn.
     func ensureServerChat(_ id: String) async -> String? {
         let key = resolve(id)
-        guard session.isMember, var conversation = conversations[key] else { return nil }
+        guard session.isMember, let owner = session.identityID,
+              let conversation = conversations[key] else { return nil }
         // The refusal that keeps `serverID` nil forever, which is in turn what disqualifies a
         // temporary conversation from the durable job path below it.
         guard !conversation.ephemeral else { return nil }
@@ -259,11 +293,13 @@ final class ChatStore: JobObserver {
         )
         do {
             let created = try await api.createChat(request)
-            conversation.serverID = created.id
-            conversations[key] = conversation
+            guard session.identityID == owner, var current = conversations[key] else { return nil }
+            current.serverID = created.id
+            conversations[key] = current
             rebuildSummaries()
             return created.id
         } catch {
+            guard session.identityID == owner else { return nil }
             _ = applyErrorAction(
                 ErrorPresenter.present(error, feature: .generic, isGuest: false, lang: lang),
                 in: key,

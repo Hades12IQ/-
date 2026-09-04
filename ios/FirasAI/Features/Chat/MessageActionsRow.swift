@@ -25,6 +25,7 @@ struct MessageActionsRow: View {
     @State private var translationLanguage: TranslationLanguage?
     @State private var showsLanguagePicker = false
     @State private var isTranslating = false
+    @State private var translationRequestID: UUID?
     @State private var isExporting = false
     /// The picker and the file it produced share one route, because they share one `.sheet`.
     @State private var exportSheet: ChatExportRoute?
@@ -59,6 +60,13 @@ struct MessageActionsRow: View {
             translationBlock(palette: palette, lang: lang)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .onChange(of: env.session.identityID) { _, _ in
+            translationRequestID = nil
+            isTranslating = false
+            translation = nil
+            translationLanguage = nil
+            showsLanguagePicker = false
+        }
         .sheet(item: $exportSheet) { route in
             exportSheetBody(route)
         }
@@ -328,20 +336,33 @@ struct MessageActionsRow: View {
 
     private func translate(to target: TranslationLanguage, lang: AppLanguage) {
         guard !isTranslating else { return }
+        guard let owner = env.session.identityID, env.session.isMember else { return }
         let source = ChatTurnActions.markdown(message).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !source.isEmpty else {
             env.toasts.show(Strings.Chat.exportEmpty(lang), isError: true)
             return
         }
         isTranslating = true
+        let requestID = UUID()
+        translationRequestID = requestID
         let api = env.api
+        let session = env.session
         Task {
-            defer { isTranslating = false }
+            defer {
+                if translationRequestID == requestID {
+                    isTranslating = false
+                    translationRequestID = nil
+                }
+            }
             do {
-                let result = try await TranslationService.translate(source, to: target, api: api)
+                let result = try await TranslationService.translate(source, to: target, api: api) {
+                    await MainActor.run { session.isMember && session.identityID == owner }
+                }
+                guard session.isMember, session.identityID == owner, translationRequestID == requestID else { return }
                 translationLanguage = target
                 translation = result
             } catch {
+                guard session.isMember, session.identityID == owner, translationRequestID == requestID else { return }
                 env.toasts.show(Strings.Chat.translateFailed(lang), isError: true)
             }
         }

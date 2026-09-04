@@ -38,6 +38,26 @@ enum ChatReliabilityChecks {
         if preparation.label(.arabic).contains("private production tags") {
             failures.append("media-status-hides-production-prompt")
         }
+        let ownerA = MediaCreation(
+            id: "owner-a-image", ownerID: "owner-a", kind: .image,
+            meta: MediaMeta(kind: .image, key: "fixture-a"), conversationID: "fixture-chat-a"
+        )
+        let ownerB = MediaCreation(
+            id: "owner-b-image", ownerID: "owner-b", kind: .image,
+            meta: MediaMeta(kind: .image, key: "fixture-b"), conversationID: "fixture-chat-b"
+        )
+        let library = [ownerA, ownerB]
+        if MediaStore.ownedCreations(library, owner: "owner-a").map(\.id) != [ownerA.id]
+            || !MediaStore.ownedCreations(library, owner: "").isEmpty
+            || !MediaStore.ownedCreations(library, owner: "different-owner").isEmpty {
+            failures.append("media-library-owner-isolation")
+        }
+        let pathA = MediaStore.ownerIndexPath("owner-a")
+        if pathA != MediaStore.ownerIndexPath("owner-a")
+            || pathA == MediaStore.ownerIndexPath("owner-b")
+            || pathA.contains("owner-a") {
+            failures.append("media-library-owner-scoped-path")
+        }
         return failures
     }
 }

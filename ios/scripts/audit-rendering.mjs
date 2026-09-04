@@ -12,6 +12,9 @@ const raw = text => {
   return match[1];
 };
 const typesetter = raw(read('Rendering/MathIsland+Typesetting.swift'));
+for (const script of read('Rendering/Documents/DocumentPrinter.swift').matchAll(/#"""([\s\S]*?)"""#/g)) {
+  new vm.Script(script[1]);
+}
 const assets = raw(read('Rendering/MathIsland+Assets.swift'))
   .replace('\\#(typesettingScript)', typesetter);
 for (const script of assets.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {

@@ -118,6 +118,8 @@ extension AssistantTurnView {
                the server already and owe nothing to the text still arriving here. */
             isAnswerFinished: isDurable || answerFinished,
             sizeBytes: size,
+            errorText: !isDurable && answerFinished && DocumentHTML.hasIncompleteAuthoredDocument(in: message.visibleContent)
+                ? DocumentHTML.incompleteDocumentMessage(lang) : nil,
             isPreparing: isPreparingFile,
             motionOn: motionOn,
             onOpen: {
@@ -141,7 +143,7 @@ extension AssistantTurnView {
     }
 
     func buildFile(_ meta: FileMeta, intent: AssistantFileSheet.Intent) {
-        guard !isPreparingFile else { return }
+        guard !isPreparingFile, answerFinished else { return }
         isPreparingFile = true
         let controller = ExportController(env: env)
         let source = ChatTurnActions.markdown(message)

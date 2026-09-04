@@ -160,34 +160,11 @@ extension CodeStore {
 
     // MARK: - Save caps
 
-    /// The web's shrink loop: while the payload is over `CW_PAYLOAD_MAX`, cut the largest file to
-    /// 80 % of its length, up to 400 passes, stopping once the largest is under 200 characters.
-    nonisolated static func shrunkToFit(_ project: CodeProject) -> CodeProject {
-        var files = Array(project.files.prefix(CodeProject.maximumFiles)).map { file in
-            CodeFile(
-                path: String(file.path.prefix(CodeProject.maximumPathLength)),
-                content: String(file.content.prefix(CodeProject.maximumFileCharacters))
-            )
-        }
-        let name = String(project.name.prefix(nameCharacterCap))
-        var passes = 0
-        while passes < 400, payloadSize(name: name, files: files) > CodeProject.maximumPayloadCharacters {
-            passes += 1
-            guard let largest = files.indices.max(by: { files[$0].content.count < files[$1].content.count }) else { break }
-            let count = files[largest].content.count
-            guard count > 200 else { break }
-            files[largest] = CodeFile(
-                path: files[largest].path,
-                content: String(files[largest].content.prefix(Int(Double(count) * 0.8)))
-            )
-        }
-        return CodeProject(name: name, files: files)
-    }
-
-    private nonisolated static func payloadSize(name: String, files: [CodeFile]) -> Int {
-        guard let data = try? JSONEncoder().encode(CodeProject(name: name, files: files)),
-              let json = String(data: data, encoding: .utf8) else { return Int.max }
-        return json.count
+    nonisolated static func localOnlyText(_ error: CodeSaveError, lang: AppLanguage) -> String {
+        let detail = saveErrorText(error, lang: lang)
+        return lang == .arabic
+            ? "الملفات محفوظة كاملة على هذا الجهاز ويمكن تصديرها. لم تتم المزامنة: " + detail
+            : "Complete files are saved on this device and can be exported. Cloud sync needs attention: " + detail
     }
 
     nonisolated static func saveErrorText(_ error: CodeSaveError, lang: AppLanguage) -> String {
@@ -499,7 +476,7 @@ extension CodeStore {
     }
 
     /// One sentence of the per-file system prompt, standing in for the worker's `CODE_KINDS` entry.
-    private nonisolated static func kindMandate(_ kind: CodeBuildKind) -> String {
+    nonisolated static func kindMandate(_ kind: CodeBuildKind) -> String {
         switch kind {
         case .site:
             return "This is a real website: real sections with real written content, a considered layout, and working navigation — never a placeholder page."

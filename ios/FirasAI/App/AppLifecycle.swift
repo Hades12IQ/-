@@ -145,7 +145,12 @@ final class AppLifecycle: FirasLifecycleHost {
     /// The `BGAppRefreshTask` body, reached through `FirasAppDelegate.runBackgroundRefresh()`.
     /// One status read per live pointer inside the budget; `true` asks for another slot.
     func refreshJobsInBackground(budgetSeconds: Double) async -> Bool {
-        await env.jobs.refreshOnce(budgetSeconds: budgetSeconds)
+        let started = Date()
+        // A cold background launch has no scene task to restore the cookie's owner. Use the same
+        // bootstrap as foreground activation before reading any account's durable pointers.
+        await env.session.applicationDidBecomeActive()
+        let remaining = Swift.max(0, budgetSeconds - Date().timeIntervalSince(started))
+        return await env.jobs.refreshOnce(budgetSeconds: remaining)
     }
 
     // MARK: - Private

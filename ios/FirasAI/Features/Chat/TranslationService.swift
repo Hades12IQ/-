@@ -6,12 +6,16 @@ import NaturalLanguage
 enum TranslationService {
     enum Failure: Error { case empty, unchanged, incomplete }
 
-    static func translate(_ source: String, to target: TranslationLanguage, api: APIClient) async throws -> String {
+    static func translate(
+        _ source: String, to target: TranslationLanguage, api: APIClient,
+        isCurrent: @escaping @Sendable () async -> Bool
+    ) async throws -> String {
         let parts = chunks(source)
         guard !parts.isEmpty else { throw Failure.empty }
         var translated: [String] = []
         for part in parts {
             try Task.checkCancellation()
+            guard await isCurrent() else { throw CancellationError() }
             let request = ChatStreamRequest(
                 messages: [
                     OutgoingMessage(role: "system", content: instruction(target), images: nil),
@@ -23,9 +27,11 @@ enum TranslationService {
             let answer = try await withDeadline(seconds: 90) { () async throws -> String in
                 var result = ""
                 var completed = false
+                guard await isCurrent() else { throw CancellationError() }
                 let frames = await api.chatStream(request)
                 for try await frame in frames {
                     try Task.checkCancellation()
+                    guard await isCurrent() else { throw CancellationError() }
                     if frame.isDone { completed = true; break }
                     if let delta = StreamBuffer.delta(fromData: frame.data) { result += delta.content }
                 }
