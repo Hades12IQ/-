@@ -13,6 +13,12 @@ struct AgentScreen: View {
     @State private var localConversationID = ""
     @State private var showsCredits = false
     @State private var announcedPhase = ""
+    @State private var textSelection = FirasTextSelection()
+    @State private var quotedText: String?
+    @State private var scrollPosition = ScrollPosition(edge: .bottom)
+    @State private var atBottom = true
+    @State private var followsTail = true
+    @State private var scrollPhase: ScrollPhase = .idle
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -25,7 +31,7 @@ struct AgentScreen: View {
     private var palette: FirasPalette { env.prefs.palette }
     private var lang: AppLanguage { env.prefs.lang }
     private var activeID: String { conversationID ?? localConversationID }
-    private var conversation: ChatConversation? { env.chat.conversations[activeID] }
+    private var conversation: ChatConversation? { env.chat.conversation(activeID) }
     private var mission: AgentJob? { env.agent.missions[activeID] }
     private var blocked: ErrorAction? { env.agent.blocked[activeID] }
 
@@ -41,6 +47,16 @@ struct AgentScreen: View {
             .toolbar { toolbarContent }
         }
         .task(id: conversationID) { await prepare() }
+        .environment(\.firasTextSelection, textSelection)
+        .onChange(of: textSelection.request) { _, request in
+            guard let request else { return }
+            quotedText = String(request.text.prefix(8_000))
+        }
+        .onChange(of: activeID) { _, _ in
+            quotedText = nil
+            followsTail = true
+            scrollToTail(animated: false)
+        }
         .onChange(of: missionPhaseKey) { _, newValue in
             announce(newValue)
         }
@@ -77,7 +93,7 @@ struct AgentScreen: View {
             if activeID.isEmpty {
                 EmptyView()
             } else {
-                AgentComposer(env: env, conversationID: activeID)
+                AgentComposer(env: env, conversationID: activeID, quotedText: $quotedText)
             }
         }
     }
@@ -102,7 +118,7 @@ struct AgentScreen: View {
         } else if rows.isEmpty && mission == nil && blocked == nil {
             welcome
         } else {
-            ScrollViewReader { proxy in
+            Group {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 18) {
                         ForEach(rows) { row in
@@ -115,11 +131,41 @@ struct AgentScreen: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 20)
                     .readingColumn(env.prefs.contentWidth)
+                    .scrollTargetLayout()
                 }
+                .contentShape(Rectangle())
                 .dismissesKeyboardOnTap()
                 .scrollDismissesKeyboard(.interactively)
+                .scrollPosition($scrollPosition)
+                .defaultScrollAnchor(.bottom, for: .initialOffset)
+                .onScrollPhaseChange { _, phase in
+                    scrollPhase = phase
+                    if phase == .tracking || phase == .interacting { followsTail = false }
+                    if phase == .idle { followsTail = atBottom }
+                }
+                .onScrollGeometryChange(for: TranscriptScrollMetrics.self) { TranscriptScrollMetrics($0) } action: { old, new in
+                    atBottom = new.distance < 72
+                    if followsTail, scrollPhase == .idle,
+                       old.height != new.height || old.viewport != new.viewport {
+                        scrollToTail(animated: false)
+                    }
+                }
                 .onChange(of: rows.count) { _, _ in
-                    proxy.scrollTo("agent-live-card", anchor: .bottom)
+                    scrollToTail(animated: false)
+                }
+                .onChange(of: conversation?.messages.last(where: { $0.role == .user })?.id) { _, _ in
+                    followsTail = true
+                    Keyboard.dismiss()
+                    scrollToTail(animated: true)
+                }
+                .overlay(alignment: .bottom) {
+                    if !atBottom {
+                        TranscriptBottomButton(palette: palette, lang: lang) {
+                            Keyboard.dismiss()
+                            followsTail = true
+                            scrollToTail(animated: true)
+                        }
+                    }
                 }
             }
         }
@@ -132,6 +178,15 @@ struct AgentScreen: View {
     }
 
     private var motionOn: Bool { FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion) }
+
+    private func scrollToTail(animated: Bool) {
+        guard followsTail else { return }
+        if animated && motionOn {
+            withAnimation(.easeOut(duration: 0.3)) { scrollPosition.scrollTo(edge: .bottom) }
+        } else {
+            scrollPosition.scrollTo(edge: .bottom)
+        }
+    }
 
     /// History turns. The live mission is appended separately so a snapshot never duplicates the
     /// turn the server already filed under the same `cid`.
@@ -220,6 +275,9 @@ struct AgentScreen: View {
             .frame(maxWidth: .infinity)
             .readingColumn(env.prefs.contentWidth)
         }
+        .contentShape(Rectangle())
+        .dismissesKeyboardOnTap()
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private var templatesStrip: some View {

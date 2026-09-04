@@ -35,6 +35,19 @@ struct FirasAIApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--reliability-smoke") {
+                ReliabilitySmokeView(env: env)
+            } else {
+                liveRoot
+            }
+            #else
+            liveRoot
+            #endif
+        }
+    }
+
+    private var liveRoot: some View {
             env.inject(into: RootView(env: env))
                 .onAppear {
                     // Re-assert it from the value `@State` actually kept: SwiftUI is free to build
@@ -50,7 +63,6 @@ struct FirasAIApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     handle(phase: phase)
                 }
-        }
     }
 
     /// `.inactive` is a transient state (a system alert, the app switcher): nothing is flushed and

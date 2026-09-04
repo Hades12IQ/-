@@ -54,6 +54,8 @@ final class SessionStore {
     var onGuestBecameMember: ((_ previousGuestID: String) async -> Void)?
     /// Fired on a member 401 so `JobManager` can suspend that owner's watchers.
     var onUnauthorized: (() -> Void)?
+    /// Persist/hand over owned work before logout invalidates its credentials.
+    var onWillSignOut: (() async -> Void)?
 
     @ObservationIgnored let api: APIClient
     @ObservationIgnored private let prefs: PreferencesStore

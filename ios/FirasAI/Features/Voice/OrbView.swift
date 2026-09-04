@@ -91,8 +91,10 @@ private final class OrbMotionState {
     private var lastNow: Double = 0
 
     func advance(target: Double, now: Double, moving: Bool) -> Sample {
-        // Rise fast, fall slowly — the web's 0.45 / 0.10 factors, applied per frame.
-        let factor = target > eased ? 0.45 : 0.10
+        // Keep the same response at 30, 60 and 120 Hz.
+        let elapsed = lastNow > 0 ? min(max(now - lastNow, 1.0 / 120.0), 0.1) : 1.0 / 60.0
+        let baseFactor = target > eased ? 0.45 : 0.10
+        let factor = moving ? 1 - pow(1 - baseFactor, elapsed * 60) : 1
         eased += (target - eased) * factor
         if eased < 0.0005 { eased = 0 }
 
@@ -151,7 +153,7 @@ private enum OrbPainter {
         let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
         let radius = side / 2
 
-        body(in: &context, center: center, radius: radius, level: level, colors: colors)
+        body(in: &context, center: center, radius: radius, level: moving ? level : 0, colors: colors)
         aurora(
             in: &context,
             center: center,
@@ -182,7 +184,7 @@ private enum OrbPainter {
         level: Double,
         colors: OrbColors
     ) {
-        let bodyRadius = radius * (0.78 + 0.05 * CGFloat(level))
+        let bodyRadius = radius * (0.78 + 0.09 * CGFloat(level))
         let rect = CGRect(
             x: center.x - bodyRadius,
             y: center.y - bodyRadius,
@@ -215,8 +217,9 @@ private enum OrbPainter {
         moving: Bool
     ) {
         let bodyRadius = radius * 0.78
-        let blobRadius = bodyRadius * CGFloat(0.42 + level * 0.16)
-        let orbit = bodyRadius * CGFloat(0.26 + level * 0.14)
+        let geometricLevel = moving ? level : 0
+        let blobRadius = bodyRadius * CGFloat(0.42 + geometricLevel * 0.16)
+        let orbit = bodyRadius * CGFloat(0.26 + geometricLevel * 0.14)
         let clip = Path(
             ellipseIn: CGRect(
                 x: center.x - bodyRadius,
@@ -262,7 +265,7 @@ private enum OrbPainter {
         mode: OrbView.Mode,
         moving: Bool
     ) {
-        let spread = mode.ringSpread
+        let spread: CGFloat = moving ? mode.ringSpread : 1
         for index in 0..<3 {
             let step = CGFloat(index)
             let breathing: Double
@@ -271,7 +274,8 @@ private enum OrbPainter {
             } else {
                 breathing = 0.5
             }
-            let ringRadius = radius * (0.82 + step * 0.06) + CGFloat(level * 4 + breathing * 2) * spread
+            let geometricLevel = moving ? level : 0
+            let ringRadius = radius * (0.82 + step * 0.06) + CGFloat(geometricLevel * 4 + breathing * 2) * spread
             guard ringRadius > 1 else { continue }
             let rect = CGRect(
                 x: center.x - ringRadius,
@@ -305,7 +309,7 @@ private extension OrbView.Mode {
         case .connecting: return 0.16
         case .listening: return 0.10
         case .thinking: return 0.30
-        case .speaking: return 0.20
+        case .speaking: return 0.03
         }
     }
 

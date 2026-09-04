@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 /// One file of a Firas Code project.
 struct CodeFile: Codable, Sendable, Equatable, Identifiable {
@@ -168,7 +169,8 @@ extension CodeProject {
 }
 
 /// One turn of the Firas Code side thread. On the wire the keys are the web's `text` / `ts`.
-struct CodeChatMessage: Codable, Sendable, Equatable {
+struct CodeChatMessage: Codable, Sendable, Equatable, Identifiable {
+    var id: String
     /// `"user"` or `"ai"`.
     var role: String
     var content: String
@@ -179,6 +181,7 @@ struct CodeChatMessage: Codable, Sendable, Equatable {
     var applied: Bool?
 
     init(role: String, content: String, at: Double? = nil, n: Int? = nil, applied: Bool? = nil) {
+        self.id = UUID().uuidString
         self.role = role
         self.content = content
         self.at = at
@@ -193,10 +196,16 @@ struct CodeChatMessage: Codable, Sendable, Equatable {
         at = LenientJSON.double(container, "ts") ?? LenientJSON.double(container, "at")
         n = LenientJSON.int(container, "n")
         applied = LenientJSON.bool(container, "applied")
+        // Old web turns have no id. Derive one from their original wire data so
+        // reopening a session does not give every rendered answer a new identity.
+        let legacy = role + "|" + String(at ?? 0) + "|" + content
+        id = LenientJSON.string(container, "id")
+            ?? SHA256.hash(data: Data(legacy.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: AnyCodingKey.self)
+        try container.encode(id, forKey: AnyCodingKey("id"))
         try container.encode(role, forKey: AnyCodingKey("role"))
         try container.encode(content, forKey: AnyCodingKey("text"))
         try container.encodeIfPresent(n, forKey: AnyCodingKey("n"))
@@ -217,7 +226,7 @@ struct CodeChatThread: Codable, Sendable, Equatable {
     static let threadBudgetCharacters = 120_000
 
     init(messages: [CodeChatMessage] = []) {
-        self.messages = messages
+        self.messages = Self.uniquelyIdentified(messages)
     }
 
     init(from decoder: Decoder) throws {
@@ -225,6 +234,20 @@ struct CodeChatThread: Codable, Sendable, Equatable {
         messages = LenientJSON.array(container, "turns", of: CodeChatMessage.self)
             ?? LenientJSON.array(container, "messages", of: CodeChatMessage.self)
             ?? []
+        messages = Self.uniquelyIdentified(messages)
+    }
+
+    private static func uniquelyIdentified(_ turns: [CodeChatMessage]) -> [CodeChatMessage] {
+        var seen = Set<String>()
+        return turns.map { turn in
+            var copy = turn
+            var duplicate = 0
+            while !seen.insert(copy.id).inserted {
+                duplicate += 1
+                copy.id = turn.id + "-" + String(duplicate)
+            }
+            return copy
+        }
     }
 
     func encode(to encoder: Encoder) throws {

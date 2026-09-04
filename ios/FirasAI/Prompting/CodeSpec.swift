@@ -31,7 +31,7 @@ struct CodeSpec: Sendable, Equatable {
 
     // MARK: - Detection
 
-    /// A web word anywhere in the request outranks every language name in it.
+    /// A fallback hint when no explicit programming language was requested.
     private static let webbyPattern = ##"\bhtml\b|website|web\s*site|web\s*page|موقع|صفحة|<!doctype"##
 
     /// Each language, in the web's order, with the pattern that claims it.
@@ -48,16 +48,24 @@ struct CodeSpec: Sendable, Equatable {
          CodeSpec(lang: "csharp", ext: "cs", label: "C#", filename: "Program.cs")),
         (##"\brust\b|راست"##,
          CodeSpec(lang: "rust", ext: "rs", label: "Rust", filename: "main.rs")),
-        (##"\bgolang\b|لغة\s*go"##,
+        (##"\bgolang\b|\bgo\s+(?:code|program|script|api|service)\b|لغة\s*go"##,
          CodeSpec(lang: "go", ext: "go", label: "Go", filename: "main.go")),
         (##"\bkotlin\b|كوتلن"##,
          CodeSpec(lang: "kotlin", ext: "kt", label: "Kotlin", filename: "Main.kt")),
-        (##"\bswift\b|سويفت"##,
+        (##"\bswift(?:ui)?\b|سويفت"##,
          CodeSpec(lang: "swift", ext: "swift", label: "Swift", filename: "main.swift")),
         (##"\bphp\b"##,
          CodeSpec(lang: "php", ext: "php", label: "PHP", filename: "index.php")),
         (##"\btypescript\b"##,
          CodeSpec(lang: "typescript", ext: "ts", label: "TypeScript", filename: "main.ts")),
+        (##"\bpowershell\b|باورشل"##,
+         CodeSpec(lang: "powershell", ext: "ps1", label: "PowerShell", filename: "script.ps1")),
+        (##"\bbash\b|shell\s+script|سكربت\s+شل"##,
+         CodeSpec(lang: "bash", ext: "sh", label: "Bash", filename: "script.sh")),
+        (##"\bruby\b|روبي"##,
+         CodeSpec(lang: "ruby", ext: "rb", label: "Ruby", filename: "script.rb")),
+        (##"\bsql\b|استعلام\s+(?:قاعدة|قواعد)"##,
+         CodeSpec(lang: "sql", ext: "sql", label: "SQL", filename: "query.sql")),
         (##"\bcss\b|stylesheet"##,
          CodeSpec(lang: "css", ext: "css", label: "CSS", filename: "styles.css")),
         (##"\bjavascript\b|vanilla\s*js|\bnode(?:\.js)?\b|جافا\s*سكر|جافاسكربت|\bjs\b"##,
@@ -74,8 +82,6 @@ struct CodeSpec: Sendable, Equatable {
     static func detect(_ text: String) -> CodeSpec {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return html }
-        if RequestClassifier.matches(webbyPattern, trimmed) { return html }
-
         for (pattern, spec) in ladder {
             // Java sits between C++ and C# in the web's order.
             if spec.lang == "csharp",
@@ -85,6 +91,7 @@ struct CodeSpec: Sendable, Equatable {
             }
             if RequestClassifier.matches(pattern, trimmed) { return spec }
         }
+        if RequestClassifier.matches(webbyPattern, trimmed) { return html }
         return html
     }
 }

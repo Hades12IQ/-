@@ -15,6 +15,8 @@ struct BrainScreen: View {
     @State private var draft = ""
     @State private var showLibrary = false
     @State private var citedSource: BrainSource?
+    @State private var textSelection = FirasTextSelection()
+    @State private var quotedText: String?
 
     init(env: AppEnvironment, conversationID: String?) {
         self.env = env
@@ -23,6 +25,11 @@ struct BrainScreen: View {
 
     var body: some View {
         layout
+            .environment(\.firasTextSelection, textSelection)
+            .onChange(of: textSelection.request) { _, request in
+                guard let request else { return }
+                quotedText = String(request.text.prefix(8_000))
+            }
             .background {
                 FirasBackground(palette: palette, showHalo: true).ignoresSafeArea()
             }
@@ -47,6 +54,7 @@ struct BrainScreen: View {
                 await store.loadLibrary()
             }
             .onChange(of: conversationID) { _, id in
+                quotedText = nil
                 guard let id, !id.isEmpty else { return }
                 Task { await env.chat.open(id) }
             }
@@ -90,6 +98,7 @@ struct BrainScreen: View {
             BrainComposer(
                 env: env,
                 draft: $draft,
+                quotedText: $quotedText,
                 onSend: { send(outline: false) },
                 onStop: { store.stopAsk() },
                 onSummarize: { send(outline: true) },
@@ -138,7 +147,7 @@ struct BrainScreen: View {
     /// Without it `BrainPassageHighlighter` has nothing to score and marks nothing.
     private var lastQuestion: String? {
         guard let conversationID, !conversationID.isEmpty else { return nil }
-        let messages = env.chat.conversations[conversationID]?.messages ?? []
+        let messages = env.chat.conversation(conversationID)?.messages ?? []
         return messages.last(where: { $0.role == .user })?.visibleContent
     }
 
@@ -154,13 +163,17 @@ struct BrainScreen: View {
 
     private func send(outline: Bool) {
         guard !store.isAsking else { return }
-        let text: String = outline
+        var text: String = outline
             ? Strings.Brain.summarizeAsk(store.activeDocIDs.count, lang)
             : draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+        if !outline, let quote = quotedText, !quote.isEmpty {
+            text = PromptCatalog.quotePrefix(passages: [(quote, lang.rawValue)]) + "\n" + text
+        }
 
         let conversation = ensureConversation()
-        if !outline { draft = "" }
+        if !outline { draft = ""; quotedText = nil }
+        Keyboard.dismiss()
         Haptics.send()
         Task { await store.ask(text, outline: outline, in: conversation) }
     }
@@ -188,6 +201,7 @@ private struct BrainComposer: View {
 
     let env: AppEnvironment
     @Binding var draft: String
+    @Binding var quotedText: String?
     let onSend: () -> Void
     let onStop: () -> Void
     let onSummarize: () -> Void
@@ -198,6 +212,11 @@ private struct BrainComposer: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if let quotedText {
+                QuotedTextContext(text: quotedText, palette: palette, lang: lang) { self.quotedText = nil }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+            }
             SourceChipsRow(store: store, prefs: prefs, onOpenLibrary: onOpenLibrary)
             HStack(alignment: .bottom, spacing: 6) {
                 field
@@ -215,6 +234,9 @@ private struct BrainComposer: View {
         )
         .padding(.horizontal, 12)
         .padding(.bottom, 10)
+        .onChange(of: quotedText) { _, value in
+            if value != nil { focused = true }
+        }
     }
 
     private var store: BrainStore { env.brain }

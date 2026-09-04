@@ -20,8 +20,8 @@ body {
   margin: 0;
   /* Arabic first, because most of these documents are Arabic. The Latin faces follow so an English
      word inside an Arabic sentence is not rendered by the Arabic fallback. */
-  font-family: "SF Arabic", "Geeza Pro", -apple-system, "SF Pro Text", system-ui, "Helvetica Neue", sans-serif;
-  font-size: 11.5pt;
+  font-family: "Firas Document Arabic", "Firas Document Sans", "SF Arabic", "Geeza Pro", -apple-system, system-ui, sans-serif;
+  font-size: 12pt;
   line-height: 1.85;
   color: #16181d;
   background: #ffffff;

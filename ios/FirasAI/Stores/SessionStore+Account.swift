@@ -183,6 +183,7 @@ extension SessionStore {
     func logout() async {
         guard begin(.account) else { return }
         defer { end(.account) }
+        await onWillSignOut?()
 
         if isGuest {
             try? await api.guestEnd()

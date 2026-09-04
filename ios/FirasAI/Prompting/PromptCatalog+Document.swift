@@ -61,8 +61,12 @@ extension PromptCatalog {
       `@page { size: A4; margin: 20mm 18mm; }`. Margins are the single most visible thing about a
       printed document, and text against the edge of a sheet is the fault the reader complained
       about. Never less than 15mm.
-    * `break-after: avoid` on every heading, so no section title is left alone at the foot of a
-      page. `break-inside: avoid` on tables, figures, cards and quotes.
+    * Use normal document flow across as many pages as the content needs. Never put the entire
+      document in a fixed-height page, use viewport heights, shrink-to-fit the whole file, or hide
+      overflowing text. `height:auto` on the body and long content containers.
+    * `break-after: avoid` on every heading. `break-inside: avoid` on figures, table ROWS and short
+      callouts. A long table, code listing or section MUST split naturally; never apply avoid to
+      an entire multi-page table. Use `orphans:3; widows:3` for paragraphs and list items.
     * `thead { display: table-header-group; }` on any table, so its header repeats when it crosses
       a page.
     * Set `line-height` around 1.7–1.9 for Arabic body text and never justify it.
@@ -70,7 +74,11 @@ extension PromptCatalog {
       outside the page box.
 
     THE TYPE
-    * Arabic first in every font stack: `"SF Arabic", "Geeza Pro", -apple-system, system-ui, sans-serif`.
+    * Use a readable body size of 12–14pt, captions at least 10pt. Do not reduce text to force a page.
+    * Local variable fonts are loaded for you, including their bold weights. Arabic stack:
+      `"Firas Document Arabic", "Firas Document Sans", "Geeza Pro", system-ui, sans-serif`.
+      Latin, Greek and Cyrillic: `"Firas Document Sans", "Firas Document Arabic", system-ui, sans-serif`.
+      Other languages use their iOS system fallback. Respect the language the reader requested.
       For a serif document: `"New York", "Times New Roman", Georgia, serif`.
     * `dir="rtl"` on the document, and `dir="ltr"` on any block that is genuinely Latin — a code
       listing, a formula, a URL. Getting this wrong is what drags English text to the wrong edge.
@@ -81,6 +89,9 @@ extension PromptCatalog {
       matrices, \ce{} for chemistry. Do not draw an equation with characters and do not approximate
       one; anything KaTeX can set, the page will set.
     * Give a display equation room: `margin: 4mm 0` and `break-inside: avoid`.
+    * Keep Arabic explanation outside mathematical delimiters. Use symbols and Latin identifiers
+      inside them. Use aligned equations for a long derivation so it fits the printable width.
+      Check balanced braces, matrices, subscripts, superscripts, units, signs and chemistry \ce/\pu.
 
     THE DESIGN ITSELF — make it look like something a professional made. A cover or a masthead
     appropriate to what this document IS: an official paper for an exam, a title page for a thesis,
@@ -92,6 +103,9 @@ extension PromptCatalog {
     THE CONTENT — all of it, finished. If ten problems with solutions were asked for, the document
     contains ten problems and ten full solutions. No placeholders, no "[add here]", no section that
     is a heading with nothing under it, no summary of what the document would contain.
+    Validate every requested item, calculation, heading, table and reference before finishing.
+    Finish both </body></html> and the closing HTML fence. The user receives the completed PDF;
+    HTML, CSS, internal prompts and intermediate drafts stay hidden inside the file generation.
 
     AND: no external resource of any kind. No CDN, no webfont, no remote image — the page prints
     with no network and anything remote will simply be missing. Everything must be CSS you wrote or

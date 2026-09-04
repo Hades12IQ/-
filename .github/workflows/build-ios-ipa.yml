@@ -18,8 +18,9 @@ permissions:
   contents: write
 
 concurrency:
-  group: firasai-unsigned-ipa-${{ github.ref }}
-  cancel-in-progress: true
+  # Every branch publishes the same rolling release; serialize publishers across branches.
+  group: firasai-unsigned-ipa
+  cancel-in-progress: false
 
 jobs:
   build-unsigned-ipa:
@@ -32,6 +33,9 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      - name: Check bundled math and document runtimes
+        run: node ios/scripts/audit-rendering.mjs
 
       - name: Select newest Xcode 26
         shell: bash
@@ -86,6 +90,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             ONLY_ACTIVE_ARCH=NO \
             ENABLE_PREVIEWS=NO \
             COMPILER_INDEX_STORE_ENABLE=NO \
@@ -120,6 +125,10 @@ jobs:
           echo "===== ERROR DIGEST ====="
           cat "$ARTIFACT_ROOT/errors.md"
           exit "$STATUS"
+
+      - name: Verify native rendering and PDF on iPhone Simulator
+        shell: bash
+        run: bash ios/scripts/simulator-smoke.sh
 
       - name: Package Payload as unsigned IPA
         shell: bash
@@ -180,7 +189,7 @@ jobs:
           SHA="$(cut -d' ' -f1 "$ARTIFACT_ROOT/FirasAI-unsigned.ipa.sha256")"
           NOTES="$(printf 'Unsigned FirasAI.ipa - commit %s - run #%s\nSHA-256: %s\n\nSign with a free Apple ID (Sideloadly / AltStore) and install; the certificate lasts 7 days.' "${{ github.sha }}" "${{ github.run_number }}" "$SHA")"
           # Per-build release (kept) + rolling release (replaced every time).
-          gh release create "$BUILD_TAG" "$ARTIFACT_ROOT/FirasAI-unsigned.ipa" "$ARTIFACT_ROOT/FirasAI-unsigned.ipa.sha256" \
+          gh release create "$BUILD_TAG" "$ARTIFACT_ROOT/FirasAI-unsigned.ipa" "$ARTIFACT_ROOT/FirasAI-unsigned.ipa.sha256" "$ARTIFACT_ROOT/FirasAI-smoke-evidence.zip" \
             --title "FirasAI iOS build #${{ github.run_number }}" --notes "$NOTES" --target "${{ github.sha }}" || true
           gh release delete "$TAG" --yes --cleanup-tag || true
           gh release create "$TAG" "$ARTIFACT_ROOT/FirasAI-unsigned.ipa" "$ARTIFACT_ROOT/FirasAI-unsigned.ipa.sha256" \
@@ -195,6 +204,9 @@ jobs:
           path: |
             ${{ runner.temp }}/FirasAI-Artifacts/*.log
             ${{ runner.temp }}/FirasAI-Artifacts/*.md
+            ${{ runner.temp }}/FirasAI-Artifacts/*.json
+            ${{ runner.temp }}/FirasAI-Artifacts/*.png
+            ${{ runner.temp }}/FirasAI-Artifacts/*.pdf
           if-no-files-found: warn
           retention-days: 14
 
@@ -220,6 +232,12 @@ jobs:
               | sed -E 's#/Users/runner/work/[^/]+/[^/]+/##' | head -3000 > "$LOGS_DIR/runs/$RUN.log" || true
           fi
           cp "$ARTIFACT_ROOT/ipa-contents.log" "$LOGS_DIR/runs/$RUN-ipa.log" 2>/dev/null || true
+          if [ -f "$ARTIFACT_ROOT/simulator-build.log" ]; then
+            grep -E 'error:|warning:|BUILD' "$ARTIFACT_ROOT/simulator-build.log" \
+              | head -400 > "$LOGS_DIR/runs/$RUN-simulator.log" || true
+          fi
+          cp "$ARTIFACT_ROOT/reliability-smoke.json" "$LOGS_DIR/runs/$RUN-smoke.json" 2>/dev/null || true
+          cp "$ARTIFACT_ROOT/simulator-smoke.png" "$LOGS_DIR/runs/$RUN-smoke.png" 2>/dev/null || true
           cp "$LOGS_DIR/runs/$RUN.md" "$LOGS_DIR/latest.md"
           cd "$LOGS_DIR"
           git config user.name "firas-ci"

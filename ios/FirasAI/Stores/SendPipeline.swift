@@ -127,7 +127,7 @@ final class SendPipeline {
         let key = store.resolve(id)
         guard store.conversation(key) != nil else { return }
         let state = store.state(for: key)
-        guard !state.isBusy else {
+        guard !state.isBusy, state.mediaPreparation == nil else {
             toasts.show(Strings.Chat.busyWait(store.lang))
             return
         }
@@ -157,7 +157,10 @@ final class SendPipeline {
         user.files = folded.chips.isEmpty ? nil : folded.chips
         user.imageThumbs = folded.thumbs.isEmpty ? nil : folded.thumbs
         user.images = folded.images.isEmpty ? nil : folded.images
-        user.fileText = folded.fileText.isEmpty ? nil : folded.fileText
+        let quote = state.pendingQuote?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let quotedContext = quote.isEmpty ? "" : PromptCatalog.quotePrefix(passages: [(text: quote, lang: lang.rawValue)])
+        let contextText = [quotedContext, folded.fileText].filter { !$0.isEmpty }.joined(separator: "\n\n")
+        user.fileText = contextText.isEmpty ? nil : contextText
         user.intent = Self.intent(for: kind)
         user.status = .sending
 
@@ -173,6 +176,7 @@ final class SendPipeline {
                 conversation.planSnapshotMode = .plan
             }
         }
+        state.pendingQuote = nil
         drafts.clear(DraftStore.key(conversationID: key))
         drafts.clear(DraftStore.key(newIn: product))
 
@@ -189,7 +193,7 @@ final class SendPipeline {
             isAutoRetry: false
         )
 
-        if let mediaKind, let handler = onMediaRequest {
+        if let mediaKind {
             // The question is already on screen. `MediaStore` writes its own question and card, so
             // the second copy of the same sentence is dropped when it arrives; refusals (a spent
             // daily quota, an engine the server has not configured) leave ours standing, which is
@@ -198,16 +202,25 @@ final class SendPipeline {
                 guard let index = conversation.messages.firstIndex(where: { $0.id == user.id && $0.role == .user }) else { return }
                 conversation.messages[index].status = .delivered
             }
+            guard let handler = onMediaRequest else {
+                state.errorStrip = ChatMediaPreparation.unavailable(mediaKind, lang: lang)
+                return
+            }
             let questionID = user.id
+            // Publish before the task can await quota, server chat creation or prompt work.
+            // The transcript hides this as soon as MediaStore supplies this question's card.
+            state.mediaPreparation = ChatMediaPreparation(questionID: questionID, kind: mediaKind)
             Task { [weak self] in
+                defer {
+                    if state.mediaPreparation?.questionID == questionID { state.mediaPreparation = nil }
+                }
                 guard let self else { return }
                 let handled = await handler(mediaKind, trimmed, key)
                 if handled {
                     await self.dropDuplicateQuestion(key: key, keeping: questionID, text: trimmed)
                 } else {
-                    // No engine for this kind. The turn becomes ordinary prose, answered from the
-                    // row that is already in the transcript.
-                    self.beginTurn(context)
+                    // A media request owes a render or a concrete failure, never planning prose.
+                    state.errorStrip = ChatMediaPreparation.unavailable(mediaKind, lang: lang)
                 }
             }
             return
@@ -223,7 +236,7 @@ final class SendPipeline {
         let key = store.resolve(id)
         guard let conversation = store.conversation(key) else { return }
         let state = store.state(for: key)
-        guard !state.isBusy else {
+        guard !state.isBusy, state.mediaPreparation == nil else {
             toasts.show(Strings.Chat.busyWait(store.lang))
             return
         }

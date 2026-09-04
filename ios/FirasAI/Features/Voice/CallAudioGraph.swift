@@ -53,6 +53,7 @@ final class CallAudioGraph: @unchecked Sendable {
     private var downConverters: [Int: AVAudioConverter] = [:]
     private var observers: [NSObjectProtocol] = []
     private var tapInstalled = false
+    private var playbackTapInstalled = false
     private var playerAttached = false
     private var targetRate: Double = 24_000
 
@@ -69,7 +70,9 @@ final class CallAudioGraph: @unchecked Sendable {
     private var scheduleGeneration = 0
     private var playedFrames: Int64 = 0
     private var scheduledFrames: Int64 = 0
+    private var pendingSchedules = 0
     private var playbackLevelValue: Float = 0
+    private var microphoneLevelValue: Float = 0
     private var speakingUntil: CFAbsoluteTime = 0
     private var lastLevelAt: CFAbsoluteTime = 0
 
@@ -88,7 +91,7 @@ final class CallAudioGraph: @unchecked Sendable {
     var isPlaybackArmed: Bool {
         lock.lock()
         defer { lock.unlock() }
-        return CFAbsoluteTimeGetCurrent() < speakingUntil
+        return pendingSchedules > 0 || CFAbsoluteTimeGetCurrent() < speakingUntil
     }
 
     private var isEnding: Bool {
@@ -124,6 +127,7 @@ final class CallAudioGraph: @unchecked Sendable {
             return
         }
         isEndingFlag = true
+        pendingSchedules = 0
         scheduleGeneration &+= 1
         let continuation = sink
         sink = nil
@@ -141,6 +145,10 @@ final class CallAudioGraph: @unchecked Sendable {
                 if tapInstalled {
                     engine.inputNode.removeTap(onBus: 0)
                     tapInstalled = false
+                }
+                if playbackTapInstalled {
+                    player.removeTap(onBus: 0)
+                    playbackTapInstalled = false
                 }
                 if engine.isRunning {
                     engine.stop()
@@ -192,6 +200,7 @@ final class CallAudioGraph: @unchecked Sendable {
             return
         }
         let generation = scheduleGeneration
+        pendingSchedules += 1
         lock.unlock()
         queue.async { [self] in
             scheduleOnQueue(pcm16, sampleRate: sampleRate, generation: generation)
@@ -207,6 +216,7 @@ final class CallAudioGraph: @unchecked Sendable {
         scheduleGeneration &+= 1
         playedFrames = 0
         scheduledFrames = 0
+        pendingSchedules = 0
         playbackLevelValue = 0
         speakingUntil = 0
         let ending = isEndingFlag
@@ -237,6 +247,7 @@ final class CallAudioGraph: @unchecked Sendable {
         playedFrames = 0
         scheduledFrames = 0
         playbackLevelValue = 0
+        pendingSchedules = 0
         speakingUntil = 0
         lock.unlock()
 
@@ -279,6 +290,7 @@ final class CallAudioGraph: @unchecked Sendable {
             playerAttached = true
         }
         engine.connect(player, to: engine.mainMixerNode, format: play)
+        installPlaybackTap()
 
         let stream = AsyncStream<Data>(bufferingPolicy: .bufferingNewest(8)) { continuation in
             lock.lock()
@@ -298,6 +310,10 @@ final class CallAudioGraph: @unchecked Sendable {
             if tapInstalled {
                 engine.inputNode.removeTap(onBus: 0)
                 tapInstalled = false
+            }
+            if playbackTapInstalled {
+                player.removeTap(onBus: 0)
+                playbackTapInstalled = false
             }
             lock.lock()
             let continuation = sink
@@ -399,19 +415,30 @@ extension CallAudioGraph {
         }
     }
 
-    private func publishLevel(_ micLevel: Float) {
+    /// Observe the samples reaching the output, not the last network chunk queued ahead of it.
+    /// Only the RMS scalar leaves this callback; audio content is neither retained nor logged.
+    private func installPlaybackTap() {
+        if playbackTapInstalled { player.removeTap(onBus: 0) }
+        player.installTap(onBus: 0, bufferSize: 1_200, format: nil) { [weak self] buffer, _ in
+            self?.publishLevel(Self.level(of: buffer), playback: true)
+        }
+        playbackTapInstalled = true
+    }
+
+    private func publishLevel(_ value: Float, playback: Bool = false) {
         let now = CFAbsoluteTimeGetCurrent()
         lock.lock()
+        guard !isEndingFlag else { lock.unlock(); return }
+        if playback { playbackLevelValue = value } else { microphoneLevelValue = value }
         guard now - lastLevelAt >= 0.05 else {
             lock.unlock()
             return
         }
         lastLevelAt = now
         let speaking = now < speakingUntil
-        let playback = playbackLevelValue
+        let raw = speaking ? playbackLevelValue : (isMutedFlag ? 0 : microphoneLevelValue)
         lock.unlock()
 
-        let raw = speaking ? Swift.max(micLevel, playback) : micLevel
         onLevel?(Swift.min(1, raw.squareRoot() * 1.35))
     }
 }
@@ -421,6 +448,11 @@ extension CallAudioGraph {
 extension CallAudioGraph {
 
     fileprivate func scheduleOnQueue(_ pcm16: Data, sampleRate: Double, generation: Int) {
+        defer {
+            lock.lock()
+            if generation == scheduleGeneration { pendingSchedules = Swift.max(0, pendingSchedules - 1) }
+            lock.unlock()
+        }
         lock.lock()
         let stale = generation != scheduleGeneration || isEndingFlag
         lock.unlock()
@@ -429,12 +461,10 @@ extension CallAudioGraph {
 
         let frames = Int64(buffer.frameLength)
         let seconds = Double(frames) / Swift.max(1, buffer.format.sampleRate)
-        let level = Self.level(of: buffer)
-
         lock.lock()
         scheduledFrames += frames
-        playbackLevelValue = level
-        speakingUntil = Swift.max(speakingUntil, CFAbsoluteTimeGetCurrent()) + seconds + 0.35
+        // One echo hangover per response, never an extra 350 ms for every network chunk.
+        speakingUntil = Swift.max(speakingUntil - 0.35, CFAbsoluteTimeGetCurrent()) + seconds + 0.35
         lock.unlock()
 
         player.scheduleBuffer(buffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] _ in

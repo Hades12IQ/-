@@ -76,7 +76,8 @@ enum ChatTurnActions {
     /// screen opened by server id found nothing and every one of the three guards above fell open —
     /// regenerate, continue and approve all fired into a conversation that was already answering.
     static func isBusy(conversationID: String, env: AppEnvironment) -> Bool {
-        env.chat.states[env.chat.resolve(conversationID)]?.isBusy ?? false
+        guard let state = env.chat.states[env.chat.resolve(conversationID)] else { return false }
+        return state.isBusy || state.mediaPreparation != nil
     }
 
     // MARK: - Sharing

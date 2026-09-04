@@ -5,10 +5,8 @@ import WebKit
 
 /// Turns a composed page into PDF bytes, through the print engine the device already has.
 ///
-/// `WKWebView.createPDF` is the whole point of this file. Everything the hand-written renderer got
-/// wrong — the margins, the page breaks, tables split across pages, Arabic shaping, and above all
-/// the mathematics — WebKit gets right because it is a browser, and the equations are typeset by
-/// the same KaTeX build the transcript uses.
+/// UIPrintPageRenderer asks WebKit's print formatter to paginate. WKWebView.createPDF captures
+/// the scrolling document as one page and does not provide this pagination contract.
 ///
 /// **Nothing here is a cliff.** Every failure path returns `nil`, and the caller keeps the renderer
 /// it has. A reader who asked for a document gets a document even on the day WebKit refuses.
@@ -42,16 +40,98 @@ final class DocumentPrinter {
     /// The PDF for `html`, or `nil` if WebKit would not produce one.
     func pdf(html: String) async -> Data? {
         guard let view = await page(for: html) else { return nil }
+        defer { teardown() }
         await settle(view)
-        let configuration = WKPDFConfiguration()
-        do {
-            let data = try await view.pdf(configuration: configuration)
-            teardown()
-            return data.isEmpty ? nil : data
-        } catch {
-            Log.ui.error("document pdf failed: \(String(describing: error), privacy: .public)")
-            teardown()
-            return nil
+        let settings = (try? await view.evaluateJavaScript(Self.printSettingsScript)) as? [String: String] ?? [:]
+        let renderer = PaginatedRenderer(settings: settings)
+        // UIKit owns physical margins. Zero the CSS page margin to avoid applying it twice.
+        _ = try? await view.evaluateJavaScript(Self.printPreparationScript)
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        let formatter = view.viewPrintFormatter()
+        formatter.perPageContentInsets = .zero
+        formatter.maximumContentWidth = renderer.printableRect.width
+        formatter.maximumContentHeight = renderer.printableRect.height
+        renderer.addPrintFormatter(formatter, startingAtPageAt: 0)
+        let count = renderer.numberOfPages
+        guard count > 0, count <= 500 else { return nil }
+        renderer.prepare(forDrawingPages: NSRange(location: 0, length: count))
+        let data = UIGraphicsPDFRenderer(bounds: renderer.paperRect).pdfData { context in
+            for page in 0..<count {
+                context.beginPage()
+                renderer.drawPage(at: page, in: renderer.paperRect)
+            }
+        }
+        return data.isEmpty ? nil : data
+    }
+
+    private static let printSettingsScript = #"""
+    (() => {
+      const out = {};
+      for (const sheet of document.styleSheets) {
+        try {
+          for (const rule of sheet.cssRules) {
+            if (rule.type !== 6 || (rule.selectorText && rule.selectorText.trim())) continue;
+            for (const name of ['size','margin-top','margin-right','margin-bottom','margin-left']) {
+              const value = rule.style.getPropertyValue(name);
+              if (value) out[name] = value;
+            }
+          }
+        } catch (_) {}
+      }
+      return out;
+    })()
+    """#
+
+    private static let printPreparationScript = #"""
+    (() => {
+      const style = document.createElement('style');
+      style.textContent = '@page{margin:0!important}@media print{html,body{height:auto!important;min-height:0!important;overflow:visible!important}body{margin:0!important}h1,h2,h3,h4,h5,h6{break-after:avoid;page-break-after:avoid}p,li{orphans:3;widows:3}thead{display:table-header-group}tr,figure,img,.katex-display{break-inside:avoid;page-break-inside:avoid}table{break-inside:auto!important;page-break-inside:auto!important}pre{white-space:pre-wrap;overflow-wrap:anywhere}.katex,.katex-display{direction:ltr;unicode-bidi:isolate}.katex-mathml{display:none!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
+      document.head.appendChild(style);
+      return true;
+    })()
+    """#
+
+    private final class PaginatedRenderer: UIPrintPageRenderer {
+        private let paper: CGRect
+        private let printable: CGRect
+        override var paperRect: CGRect { paper }
+        override var printableRect: CGRect { printable }
+
+        init(settings: [String: String]) {
+            let mm: CGFloat = 72 / 25.4
+            let size = (settings["size"] ?? "a4").lowercased()
+            var dimensions: CGSize
+            if size.contains("a3") { dimensions = CGSize(width: 297 * mm, height: 420 * mm) }
+            else if size.contains("a5") { dimensions = CGSize(width: 148 * mm, height: 210 * mm) }
+            else if size.contains("letter") { dimensions = CGSize(width: 612, height: 792) }
+            else if size.contains("legal") { dimensions = CGSize(width: 612, height: 1008) }
+            else { dimensions = CGSize(width: 210 * mm, height: 297 * mm) }
+            let lengths = size.split(whereSeparator: \.isWhitespace).compactMap { Self.points(String($0)) }
+            if lengths.count == 2, lengths.allSatisfy({ $0 >= 250 && $0 <= 2400 }) {
+                dimensions = CGSize(width: lengths[0], height: lengths[1])
+            }
+            if size.contains("landscape"), dimensions.height > dimensions.width {
+                dimensions = CGSize(width: dimensions.height, height: dimensions.width)
+            }
+            let top = max(15 * mm, min(60 * mm, Self.points(settings["margin-top"] ?? "") ?? 20 * mm))
+            let right = max(15 * mm, min(60 * mm, Self.points(settings["margin-right"] ?? "") ?? 18 * mm))
+            let bottom = max(15 * mm, min(60 * mm, Self.points(settings["margin-bottom"] ?? "") ?? 20 * mm))
+            let left = max(15 * mm, min(60 * mm, Self.points(settings["margin-left"] ?? "") ?? 18 * mm))
+            paper = CGRect(origin: .zero, size: dimensions)
+            printable = CGRect(x: left, y: top, width: dimensions.width - left - right,
+                               height: dimensions.height - top - bottom)
+            super.init()
+        }
+
+        private static func points(_ value: String) -> CGFloat? {
+            let text = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            for (unit, scale) in [("mm", 72.0 / 25.4), ("cm", 72.0 / 2.54), ("in", 72.0), ("pt", 1.0), ("px", 0.75)] {
+                if text.hasSuffix(unit), let number = Double(text.dropLast(unit.count)), number.isFinite {
+                    return CGFloat(number * scale)
+                }
+            }
+            return text == "0" ? 0 : nil
         }
     }
 

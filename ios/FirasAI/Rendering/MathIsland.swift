@@ -141,6 +141,7 @@ final class MathIsland {
     @ObservationIgnored private var lastUse: [String: Int] = [:]
     @ObservationIgnored private var clock = 0
     @ObservationIgnored private var bytes = 0
+    @ObservationIgnored private var persistentKeys: Set<String> = []
 
     /// Every expression the island has ever been asked to draw, by content id.
     ///
@@ -210,6 +211,12 @@ final class MathIsland {
     func glyph(for id: String, style: MathIslandStyle) -> MathGlyph? {
         let composite = Self.key(id, style)
         guard let found = store[composite] else {
+            // Return synchronously so a restored conversation paints its final math immediately.
+            // Do not repopulate the observed LRU from a body read: more visible equations than
+            // its limit would continually evict and reinsert one another, moving the scroll view.
+            if let saved = MathGlyphDiskCache.read(composite) {
+                return saved
+            }
             reopen(id: id, style: style, composite: composite)
             return nil
         }
@@ -282,7 +289,7 @@ final class MathIsland {
     /// batch that arrives while a page is already open is picked up by the pass after it.
     ///
     /// Nothing here removes anything. An equation that has been drawn stays drawn.
-    func request(_ items: [MathIslandItem], style: MathIslandStyle) {
+    func request(_ items: [MathIslandItem], style: MathIslandStyle, persist: Bool = false) {
         guard !items.isEmpty else { return }
 
         /* REGISTERED BEFORE ANYTHING BELOW IS ALLOWED TO REFUSE THEM. `known` is the only way a
@@ -300,6 +307,13 @@ final class MathIsland {
         for item in items {
             guard !item.tex.isEmpty, MathScanner.isTypesettable(item.tex) else { continue }
             let composite = Self.key(item.id, style)
+            if persist {
+                persistentKeys.insert(composite)
+                if let glyph = store[composite] { MathGlyphDiskCache.write(glyph, key: composite) }
+            }
+            if store[composite] == nil, let saved = MathGlyphDiskCache.read(composite) {
+                remember(saved, key: composite)
+            }
             if attempted.contains(composite) || store[composite] != nil { continue }
             if queuedKeys.contains(composite) { continue }
             guard queued.count < Self.maximumQueue else { break }
@@ -338,11 +352,11 @@ final class MathIsland {
     /// closing delimiter has actually arrived, so a `$$` still being typed is not a span yet and is
     /// never typeset. `messageID` is carried for the call site's benefit; the cache is keyed by the
     /// expression, not by the message, so the same formula in two answers costs one render.
-    func prime(markdown: String, messageID: String, style: MathIslandStyle) {
+    func prime(markdown: String, messageID: String, style: MathIslandStyle, persist: Bool = false) {
         guard !markdown.isEmpty else { return }
         let spans = MathScanner.spans(in: markdown)
         guard !spans.isEmpty else { return }
-        request(spans.map { MathIslandItem(span: $0) }, style: style)
+        request(spans.map { MathIslandItem(span: $0) }, style: style, persist: persist)
     }
 
     /// Regenerate, version switch, edit, end of stream. Deliberately **not** a cache flush: a glyph
@@ -374,6 +388,8 @@ final class MathIsland {
         // Before anything is cleared, so a pass already in flight resolves into nothing rather
         // than into the reader who has just signed out.
         epoch &+= 1
+        persistentKeys.removeAll()
+        MathGlyphDiskCache.clear()
         store.removeAll()
         lastUse.removeAll()
         bytes = 0
@@ -949,6 +965,7 @@ final class MathIsland {
     // MARK: - The cache
 
     private func remember(_ glyph: MathGlyph, key: String) {
+        if persistentKeys.contains(key) { MathGlyphDiskCache.write(glyph, key: key) }
         if let old = store[key] { bytes -= Self.cost(old) }
         store[key] = glyph
         bytes += Self.cost(glyph)

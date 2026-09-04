@@ -79,6 +79,7 @@ struct CodeWorkspaceView: View {
     @State private var previewToken = 0
     @State private var pendingPlan: CodeEditPlan?
     @State private var composerPrefill = ""
+    @State private var textSelection = FirasTextSelection()
     @State private var shareItem: CodeWorkspaceShareItem?
     @State private var showsRepositoryPicker = false
     @State private var showsRepositoryFiles = false
@@ -108,6 +109,14 @@ struct CodeWorkspaceView: View {
             content(for: code.project)
         }
         .background(palette.background.ignoresSafeArea())
+        .environment(\.firasTextSelection, textSelection)
+        .onChange(of: textSelection.request) { _, request in
+            guard let request else { return }
+            let quotation = request.text.components(separatedBy: "\n")
+                .map { "> " + $0 }.joined(separator: "\n")
+            composerPrefill = quotation + "\n\n" + (lang == .arabic ? "سؤالي: " : "My question: ")
+            surface = .session
+        }
         .navigationTitle(code.openProjectName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }

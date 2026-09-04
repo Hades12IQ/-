@@ -45,7 +45,9 @@ enum CodeAskAI {
     // MARK: - Routing
 
     static func route(_ instruction: String, lang: AppLanguage) -> Route {
-        let text = String(instruction.prefix(requestLimit))
+        let text = String(instruction.prefix(requestLimit)).components(separatedBy: "\n")
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix(">") }
+            .joined(separator: "\n")
         if mentionsDocumentFormat(text), isDocumentKind(RequestClassifier.classify(text, hasImages: false, lang: lang)) {
             return .documentRedirect
         }
@@ -155,8 +157,8 @@ enum CodeAskAI {
 
     /// `codeDeliverableRedirectText`, verbatim (`web-code-ux.md §6.2.1`).
     static let documentRedirect = LText(
-        ar: "هذا طلب **مستند**، لا مشروع برمجي — وفِراس كود يبني مواقع وتطبيقات فقط، فلو نفّذتُه هنا لخرجت لك ملفات HTML بدل ما طلبت.\n\nافتح **فِراس AI** من مبدّل المنتجات في الأعلى، والصق الطلب نفسه هناك — يبنيه مستندًا حقيقيًا قابلًا للتحميل.",
-        en: "This is a **document** request, not a software project — and Firas Code only builds sites and apps, so running it here would hand you HTML files instead of what you asked for.\n\nOpen **Firas AI** from the product switcher above and paste the same request there; it will build it as a real, downloadable document."
+        ar: "لإنشاء **مستند جاهز للتحميل** مثل PDF أو Word، افتح **فِراس جات** والصق طلبك هناك. أمّا الكود الذي يُنشئ هذه الملفات أو يعالجها فيمكننا بناؤه هنا ضمن المشروع.",
+        en: "For a **finished downloadable document** such as PDF or Word, open **Firas Chat** and paste your request there. Code that creates or processes those files can be built here in the project."
     )
 
     // MARK: - Prompts
@@ -176,10 +178,10 @@ enum CodeAskAI {
     - Output the COMPLETE new content of every file you touch, from its first character to its last. NEVER write "TODO", "FIXME", "... rest of the code", "goes here", "your code here", "omitted for brevity", "remains the same", "keep existing" or any other placeholder — a truncated file is a broken project.
     - Touch only the files the request needs. A file you do not output is left exactly as it is.
     - Keep every existing feature working: the project must still run after your edit.
-    - There is no build step and no npm here. The project runs by opening its HTML file directly, so use plain HTML, CSS and JavaScript, or a CDN library with a pinned version.
-    - The preview runs sandboxed without same-origin access: localStorage, cookies and service workers are unavailable to the previewed page.
+    - Match the existing project's language, runtime and build tools. The no-build browser preview is only for HTML projects; it does not restrict the source languages or dependency manifests you can produce.
+    - Browser previews run sandboxed without same-origin access. Native applications, services and scripts are delivered as source with their own build/run instructions.
     - Do not explain your work after the blocks. The summary line before them is the whole explanation.
-    """#
+    """# + "\n\n" + CodeEngineeringGuidance.core
 
     static let questionSystemPrompt: String = #"""
     You are answering a question about an existing code project. This turn is READ-ONLY.
@@ -246,7 +248,12 @@ enum CodeAskAI {
         for file in focused + rest {
             let isFocus = focusPaths.contains(file.path)
             let header = "===== " + file.path + (isFocus ? " (FOCUS)" : "") + " =====\n"
-            let body = String(file.content.prefix(perFile))
+            guard !CodeEngineeringGuidance.isSensitivePath(file.path),
+                  !CodeEngineeringGuidance.containsPrivateKey(file.content) else { continue }
+            var body = String(file.content.prefix(perFile))
+            if body.count < file.content.count {
+                body += "\n[TRUNCATED SOURCE: the rest was not provided; do not replace this file from this excerpt.]"
+            }
             let cost = header.count + body.count + 2
             if used + cost > fileBudget { break }
             used += cost
@@ -304,7 +311,8 @@ enum CodeAskAI {
                 if more.isEmpty { break }
                 answer += more
             }
-            if openBlock(in: answer) != nil { answer += "\n```\n" }
+            // A closing fence invented here made an incomplete file look safe
+            // to apply. Leave it open: the parser drops incomplete writes.
             return .plan(CodeEditPlan.parse(answer))
         }
     }

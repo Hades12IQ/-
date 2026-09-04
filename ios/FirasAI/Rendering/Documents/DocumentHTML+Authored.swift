@@ -62,8 +62,8 @@ extension DocumentHTML {
             if lineEnd == markdown.endIndex { break }
             lineStart = next
         }
-        // An unterminated fence is still a document: the model ran out of room, not out of design.
-        return body.isEmpty ? nil : body
+        // A truncated file is not a completed deliverable. Let the caller take its recovery path.
+        return nil
     }
 
     /// The model's document, with the three things it cannot provide for itself put in.
@@ -83,7 +83,12 @@ extension DocumentHTML {
             ? ""
             : "\n<style>@page { size: A4; margin: 18mm 16mm; }</style>"
 
-        let injection = assets + paper
+        let injection = assets + paper + "\n<style>" + documentFontCSS + "</style>"
+
+        // Put the policy before any authored resource, rather than after it has already loaded.
+        if let head = out.range(of: "<head>", options: .caseInsensitive) {
+            out.insert(contentsOf: documentCSP, at: head.upperBound)
+        } else { out = documentCSP + out }
 
         if let head = out.range(of: "</head>", options: .caseInsensitive) {
             out.replaceSubrange(head, with: injection + "\n</head>")
@@ -132,6 +137,7 @@ extension DocumentHTML {
 
         <script>
         (function () {
+          \#(MathIslandAssets.typesettingScript)
           // MathScanner.containsArabic, by code point. Ranges, not a character class: a
           // literal Arabic range in a regex puts U+FEFF in the source, invisibly.
           function arabic(s) {
@@ -153,7 +159,10 @@ extension DocumentHTML {
 
           function draw(node, tex, display) {
             try {
-              katex.render(tex, node, { displayMode: display, throwOnError: false, strict: false });
+              if (attempt(tidy(tex), display, node, '#b3261e')) { return; }
+              if (attempt(repair(tex), display, node, '#b3261e')) { return; }
+              katex.render(tex, node, { displayMode: display, throwOnError: false, strict: false,
+                trust: false, output: 'html', macros: copyMacros() });
             } catch (e) {
               node.textContent = tex;
             }
@@ -258,7 +267,12 @@ extension DocumentHTML {
               var left = open.pair.left, right = open.pair.right;
               var from = open.at + left.length;
               var end = closer(text, right, from);
-              if (end < 0) { break; }
+              if (end < 0) {
+                // One unfinished delimiter must not prevent every later complete equation.
+                out.push({ math: false, data: text.slice(at, from) });
+                at = from;
+                continue;
+              }
               var body = text.slice(from, end);
               var after = end + right.length;
               var ok = open.pair.inline
@@ -332,7 +346,11 @@ extension DocumentHTML {
 
           /* THE FLAG IS RAISED WHATEVER HAPPENED ABOVE. A single expression KaTeX will not set
              must not leave the printer waiting for a page that never says it is done. */
-          function finish() { window.\#(readyFlag) = true; }
+          function finish() {
+            requestAnimationFrame(function () { requestAnimationFrame(function () {
+              window.\#(readyFlag) = true;
+            }); });
+          }
           if (document.fonts && document.fonts.ready) {
             document.fonts.ready.then(finish).catch(finish);
           } else { finish(); }

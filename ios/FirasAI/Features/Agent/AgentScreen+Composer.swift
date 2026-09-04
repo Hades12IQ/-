@@ -14,6 +14,7 @@ struct AgentComposer: View {
 
     private let env: AppEnvironment
     private let conversationID: String
+    @Binding private var quotedText: String?
 
     @State private var text = ""
     @State private var attachments: [ComposerAttachmentItem] = []
@@ -23,9 +24,10 @@ struct AgentComposer: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(env: AppEnvironment, conversationID: String) {
+    init(env: AppEnvironment, conversationID: String, quotedText: Binding<String?> = .constant(nil)) {
         self.env = env
         self.conversationID = conversationID
+        _quotedText = quotedText
     }
 
     private var palette: FirasPalette { env.prefs.palette }
@@ -44,6 +46,9 @@ struct AgentComposer: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let quotedText {
+                QuotedTextContext(text: quotedText, palette: palette, lang: lang) { self.quotedText = nil }
+            }
             if !attachments.isEmpty {
                 AttachmentTray(
                     items: attachments,
@@ -95,6 +100,9 @@ struct AgentComposer: View {
         .animation(FirasMotion.gated(FirasMotion.composer, motionOn: motionOn), value: attachments)
         .animation(FirasMotion.gated(FirasMotion.composer, motionOn: motionOn), value: dictating)
         .task(id: conversationID) { text = env.drafts.draft(for: draftKey) }
+        .onChange(of: quotedText) { _, value in
+            if value != nil { fieldFocused = true }
+        }
         .onChange(of: text) { _, newValue in
             env.drafts.set(newValue, for: draftKey)
         }
@@ -209,15 +217,20 @@ struct AgentComposer: View {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let prepared = ready
         guard !trimmed.isEmpty || !prepared.isEmpty else { return }
+        let task = quotedText.map {
+            PromptCatalog.quotePrefix(passages: [($0, lang.rawValue)]) + "\n" + trimmed
+        } ?? trimmed
 
         Haptics.send()
         text = ""
+        quotedText = nil
         attachments = []
         env.drafts.clear(draftKey)
         fieldFocused = false
+        Keyboard.dismiss()
 
         Task {
-            await env.agent.start(task: trimmed, attachments: prepared, in: conversationID)
+            await env.agent.start(task: task, attachments: prepared, in: conversationID)
         }
     }
 

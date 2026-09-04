@@ -33,6 +33,7 @@ struct MarkdownView: View {
     private let onFence: (FirasFence) -> AnyView?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.firasMathPersistenceAllowed) private var persistenceAllowed
 
     init(
         markdown: String,
@@ -93,7 +94,9 @@ struct MarkdownView: View {
         // than recomputed, because the pass that DRAWS and the rows that COLLECT have to agree on
         // it exactly — see `MarkdownStyle.ground`.
         let paintGround = style.ground
-        let primeKey = identity + "#" + String(source.utf8.count) + "#" + scale.rawValue
+        let mathStyle = MathIslandStyle(palette: paint, background: paintGround, fontScale: scale)
+        let primeKey = identity + "#" + MathScanner.identifier(tex: source, isDisplay: false)
+            + "#" + mathStyle.key + "#" + String(streaming)
 
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(settled.indices), id: \.self) { index in
@@ -123,7 +126,8 @@ struct MarkdownView: View {
                 messageID: identity,
                 palette: paint,
                 background: paintGround,
-                fontScale: scale
+                fontScale: scale,
+                persist: persistenceAllowed && !streaming
             )
         }
     }
@@ -237,6 +241,13 @@ private struct MarkdownBlockRow: View {
             .font(font)
         if let weight { label = label.fontWeight(weight) }
         return HStack(alignment: .bottom, spacing: 4) {
+            if style.drawsIslands {
+                FirasSelectableText(
+                    source: painted, glyphs: glyphs, pointSize: nativePointSize,
+                    semibold: weight != nil, lineSpacing: style.lineSpacing,
+                    palette: style.palette, lang: style.lang
+                )
+            } else {
             spoken(
                 label
                     .lineSpacing(style.lineSpacing)
@@ -245,12 +256,21 @@ private struct MarkdownBlockRow: View {
                 as: plain,
                 when: !glyphs.isEmpty
             )
+            }
             if showsCaret {
                 StreamCaret(palette: style.palette, motionOn: style.motionOn)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .bidiIsland(for: plain, fallback: style.lang)
+    }
+
+    private var nativePointSize: CGFloat {
+        let size: CGFloat
+        if case .heading(let level, _) = block {
+            switch level { case 1: size = 22; case 2: size = 19; case 3: size = 17; default: size = 16 }
+        } else { size = 17 }
+        return size * style.scale.factor
     }
 
     /// The bitmaps the island has already drawn for this string's inline equations.
@@ -281,13 +301,8 @@ private struct MarkdownBlockRow: View {
             guard let glyph = MathIsland.shared.glyph(for: span.id, style: mathStyle) else { continue }
             found[span.id] = glyph
         }
-        /* ALL OR NOTHING. A sentence with three equations of which two had been drawn rendered
-           two glyphs and one run of characters — one line carrying two different heights, which
-           then changed again when the third landed. A paragraph is now either wholly text or
-           wholly typeset, so it changes shape once and never halfway. The rest of the pass is
-           still in flight and this row is redrawn when it commits, which is precisely when the
-           whole paragraph can change together. */
-        guard Set(spans.map(\.id)).count == found.count else { return [:] }
+        // Keep each completed formula when a new, still-rendering formula enters this paragraph.
+        // An all-or-nothing gate changed every earlier glyph back to text on every streamed span.
         return found
     }
 
@@ -304,11 +319,16 @@ private struct MarkdownBlockRow: View {
 
     private func rawBlock(_ text: String) -> some View {
         HStack(alignment: .bottom, spacing: 4) {
+            if style.drawsIslands {
+                FirasSelectableText(source: AttributedString(text), glyphs: [:], pointSize: nativePointSize,
+                    semibold: false, lineSpacing: style.lineSpacing, palette: style.palette, lang: style.lang)
+            } else {
             Text(text)
                 .font(style.font)
                 .lineSpacing(style.lineSpacing)
                 .foregroundStyle(style.palette.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
+            }
             if showsCaret {
                 StreamCaret(palette: style.palette, motionOn: style.motionOn)
             }

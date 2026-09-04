@@ -96,6 +96,7 @@ final class CallEngine {
     @ObservationIgnored var threeHopHistory: [OutgoingMessage] = []
     @ObservationIgnored var echoFloor: Float = 0
     @ObservationIgnored var echoRun = 0
+    @ObservationIgnored private var responseAudioDone = false
 
     @ObservationIgnored private var eventTask: Task<Void, Never>?
     @ObservationIgnored private var pumpTask: Task<Void, Never>?
@@ -166,6 +167,7 @@ final class CallEngine {
     }
 
     private func resetForStart() {
+        responseAudioDone = false
         isEnding = false
         isConnected = false
         micGated = false
@@ -348,8 +350,15 @@ final class CallEngine {
     }
 
     private func wire(_ built: CallAudioGraph) {
-        built.onLevel = { [weak self] value in
-            Task { @MainActor in self?.level = value }
+        built.onLevel = { [weak self, weak built] value in
+            Task { @MainActor in
+                guard let self, let built, self.graph === built, !self.isEnding else { return }
+                self.level = value
+                if self.responseAudioDone, self.phase == .speaking,
+                   !built.isPlaybackArmed {
+                    self.phase = .listening
+                }
+            }
         }
         built.onRouteChange = { [weak self] available in
             Task { @MainActor in
@@ -411,11 +420,13 @@ final class CallEngine {
             phase = .thinking
 
         case .responseCreated:
+            responseAudioDone = false
             lastVoiceAt = Date()
             phase = .thinking
             closeMicGate()
 
         case .audio(let data):
+            responseAudioDone = false
             closeMicGate()
             if phase != .speaking { phase = .speaking }
             graph?.schedule(pcm16: data, sampleRate: 24_000)
@@ -425,8 +436,9 @@ final class CallEngine {
             if !trimmed.isEmpty { caption = String(trimmed.prefix(240)) }
 
         case .responseDone:
+            responseAudioDone = true
             lastVoiceAt = Date()
-            if phase != .listening { phase = .listening }
+            if graph?.isPlaybackArmed != true { phase = .listening }
             reopenMicGateSoon()
 
         case .interrupted:

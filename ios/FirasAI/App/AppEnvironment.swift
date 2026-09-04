@@ -193,6 +193,9 @@ final class AppEnvironment {
         wireMediaHandoff()
         wireMemoryHandoff()
         wireCallHandoff()
+        session.onWillSignOut = { [weak code] in
+            await code?.prepareForSignOut()
+        }
 
         // Idempotent, and the only call site that is guaranteed to run whatever shell renders:
         // offline state must come from the monitor, never from a stalled request.
@@ -227,6 +230,7 @@ final class AppEnvironment {
     /// foreground costs nothing. A signed-out device suspends its watchers — it never cancels the
     /// server-side work, which keeps running and is picked up again after re-authentication.
     func adoptCurrentIdentity() async {
+        code.identityDidChange(to: session.identityID)
         guard !isAdoptingIdentity else { return }
         isAdoptingIdentity = true
         defer { isAdoptingIdentity = false }
@@ -292,11 +296,18 @@ final class AppEnvironment {
     /// still gets the sign-up prompt and a member gets a card instead of prose
     /// (`web-media-ux.md §1`, §12.1). `MediaStore` writes both halves of the turn itself.
     ///
-    /// Returning `false` means "not handled" and the pipeline answers the message as prose — which
-    /// is the right fallback for an engine the server has not configured.
+    /// An unavailable engine produces an explicit status, never a prose answer with internal prompts.
     private func wireMediaHandoff() {
         chat.onMediaRequest = { [weak self] kind, prompt, conversationID in
-            guard let self, !self.media.unavailableKinds.contains(kind) else { return false }
+            guard let self else { return false }
+            if self.media.unavailableKinds.contains(kind) {
+                self.chat.state(for: conversationID).errorStrip = ChatMediaPreparation.unavailable(kind, lang: self.prefs.lang)
+                return true
+            }
+            if self.media.isSubmitting {
+                self.toasts.show(Strings.Chat.busyWait(self.prefs.lang), isError: true)
+                return true
+            }
             switch kind {
             case .image:
                 await self.media.createImage(

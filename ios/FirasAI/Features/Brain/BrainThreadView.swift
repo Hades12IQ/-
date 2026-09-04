@@ -14,6 +14,9 @@ struct BrainThreadView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var followsTail = true
+    @State private var atBottom = true
+    @State private var scrollPosition = ScrollPosition(edge: .bottom)
+    @State private var scrollPhase: ScrollPhase = .idle
 
     private static let tailAnchor = "brain-thread-tail"
 
@@ -24,7 +27,7 @@ struct BrainThreadView: View {
     }
 
     var body: some View {
-        ScrollViewReader { proxy in
+        Group {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 22) {
                     if messages.isEmpty && !isAsking {
@@ -46,25 +49,49 @@ struct BrainThreadView: View {
                 .padding(.bottom, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .readingColumn(prefs.contentWidth)
+                .scrollTargetLayout()
             }
+            .contentShape(Rectangle())
             .dismissesKeyboardOnTap()
             .scrollDismissesKeyboard(.interactively)
-            .simultaneousGesture(
-                DragGesture().onChanged { value in
-                    if value.translation.height > 12 { followsTail = false }
+            .scrollPosition($scrollPosition)
+            .defaultScrollAnchor(.bottom, for: .initialOffset)
+            .onScrollPhaseChange { _, phase in
+                scrollPhase = phase
+                if phase == .tracking || phase == .interacting { followsTail = false }
+                if phase == .idle { followsTail = atBottom }
+            }
+            .onScrollGeometryChange(for: TranscriptScrollMetrics.self) { TranscriptScrollMetrics($0) } action: { old, new in
+                atBottom = new.distance < 72
+                if followsTail, scrollPhase == .idle,
+                   old.height != new.height || old.viewport != new.viewport {
+                    scrollToTail(animated: false)
                 }
-            )
+            }
             .onChange(of: liveLength) { _, _ in
-                scrollToTail(proxy, animated: false)
+                scrollToTail(animated: false)
+            }
+            .onChange(of: conversationID) { _, _ in
+                followsTail = true
+                scrollToTail(animated: false)
             }
             .onChange(of: messages.count) { _, _ in
-                followsTail = true
-                scrollToTail(proxy, animated: true)
+                scrollToTail(animated: false)
             }
             .onChange(of: isAsking) { _, running in
                 if running {
                     followsTail = true
-                    scrollToTail(proxy, animated: true)
+                    Keyboard.dismiss()
+                    scrollToTail(animated: true)
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if !atBottom {
+                    TranscriptBottomButton(palette: palette, lang: prefs.lang) {
+                        Keyboard.dismiss()
+                        followsTail = true
+                        scrollToTail(animated: true)
+                    }
                 }
             }
         }
@@ -78,7 +105,7 @@ struct BrainThreadView: View {
 
     private var messages: [ChatMessage] {
         guard let conversationID else { return [] }
-        return env.chat.conversations[conversationID]?.messages ?? []
+        return env.chat.conversation(conversationID)?.messages ?? []
     }
 
     private var isAsking: Bool {
@@ -89,14 +116,14 @@ struct BrainThreadView: View {
 
     private var motionOn: Bool { FirasMotion.isOn(prefs: prefs, reduceMotion: reduceMotion) }
 
-    private func scrollToTail(_ proxy: ScrollViewProxy, animated: Bool) {
+    private func scrollToTail(animated: Bool) {
         guard followsTail else { return }
         if animated && motionOn {
-            withAnimation(FirasMotion.standard) {
-                proxy.scrollTo(Self.tailAnchor, anchor: .bottom)
+            withAnimation(.easeOut(duration: 0.3)) {
+                scrollPosition.scrollTo(edge: .bottom)
             }
         } else {
-            proxy.scrollTo(Self.tailAnchor, anchor: .bottom)
+            scrollPosition.scrollTo(edge: .bottom)
         }
     }
 

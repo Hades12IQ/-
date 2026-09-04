@@ -49,6 +49,7 @@ struct ComposerView: View {
        that was running. `resolve` returns the id unchanged when it is already a key. */
     private var state: ConversationState? { env.chat.states[env.chat.resolve(conversationID)] }
     private var isBusy: Bool { state?.isBusy ?? false }
+    private var isTemporary: Bool { env.chat.conversation(conversationID)?.ephemeral ?? false }
     private var isReading: Bool { attachments.contains { $0.isReading } }
     private var readyAttachments: [PreparedAttachment] { attachments.compactMap { $0.prepared } }
     private var canSend: Bool {
@@ -76,6 +77,9 @@ struct ComposerView: View {
         .animation(FirasMotion.gated(FirasMotion.standard, motionOn: motionOn), value: attachments)
         .task(id: conversationID) { restoreDraft() }
         .onChange(of: text) { _, newValue in draftChanged(newValue) }
+        .onChange(of: state?.pendingQuote) { _, quote in
+            if let quote, !quote.isEmpty { fieldFocused = true }
+        }
         .onChange(of: env.drafts.draft(for: conversationID)) { _, stored in
             adoptExternalDraft(stored)
         }
@@ -139,6 +143,11 @@ struct ComposerView: View {
             in: AnyShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         )
         .overlay {
+            if isTemporary {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(palette.accent.opacity(0.75), style: StrokeStyle(lineWidth: 1.25, dash: [6, 5]))
+                    .allowsHitTesting(false)
+            }
             if dictating {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .strokeBorder(palette.accent, lineWidth: 1)
@@ -310,6 +319,10 @@ struct ComposerView: View {
 
     private func send() {
         guard !isBusy else { return }
+        guard state?.mediaPreparation == nil else {
+            toast(Strings.Chat.busyWait)
+            return
+        }
         if isReading {
             toast(Strings.Composer.stillReading)
             return
@@ -330,6 +343,7 @@ struct ComposerView: View {
            keyboard up covers the answer the reader is waiting for — "يوخر الكيبورد مو يبقيني
            فوق و يبقي الكيبورد". The transcript scrolls to the new turn on the same frame. */
         fieldFocused = false
+        Keyboard.dismiss()
         pulse()
 
         text = ""

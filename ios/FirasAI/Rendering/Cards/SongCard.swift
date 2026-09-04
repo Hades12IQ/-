@@ -79,6 +79,7 @@ struct SongCard: View {
     let palette: FirasPalette
     let lang: AppLanguage
     let phase: Phase
+    let isPreparing: Bool
     let motionOn: Bool
     let startedAt: Date?
     let playback: Playback
@@ -115,6 +116,7 @@ struct SongCard: View {
         palette: FirasPalette,
         lang: AppLanguage,
         phase: Phase = .auto,
+        isPreparing: Bool = false,
         motionOn: Bool = true,
         startedAt: Date? = nil,
         playback: Playback = Playback(),
@@ -129,6 +131,7 @@ struct SongCard: View {
         self.palette = palette
         self.lang = lang
         self.phase = phase
+        self.isPreparing = isPreparing
         self.motionOn = motionOn
         self.startedAt = startedAt
         self.playback = playback
@@ -255,7 +258,7 @@ struct SongCard: View {
             )
         } else {
             VStack(alignment: .leading, spacing: 6) {
-                FirasActivityLabel(text: SongCardCopy.working(lang), palette: palette, motionOn: motionOn)
+                FirasActivityLabel(text: isPreparing ? SongCardCopy.writing(lang) : SongCardCopy.working(lang), palette: palette, motionOn: motionOn)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .bidiIsland(for: SongCardCopy.working(lang), fallback: lang)
 
@@ -264,7 +267,7 @@ struct SongCard: View {
                         .font(FirasType.mono)
                         .foregroundStyle(palette.textMuted)
                         .forceLTR()
-                    Text(SongCardCopy.keepsWorking(lang))
+                    Text(isPreparing ? SongCardCopy.preparingNote(lang) : SongCardCopy.keepsWorking(lang))
                         .font(FirasType.caption)
                         .foregroundStyle(palette.textMuted)
                         .lineLimit(2)
@@ -523,6 +526,8 @@ struct SongCard: View {
 /// `web-media-ux.md §6.4`, Arabic verbatim where the web has a sentence. The progress, stall and
 /// "words without music" lines are new — the web has no honest wording for any of them.
 enum SongCardCopy {
+    static let writing = LText(ar: "يتم كتابة الأغنية…", en: "Writing the song…")
+    static let preparingNote = LText(ar: "تجهيز الكلمات والتوزيع الموسيقي.", en: "Preparing the lyrics and arrangement.")
     static let working = LText(ar: "يلحّن الأغنية… حوالي دقيقة", en: "Composing… about a minute")
 
     static let keepsWorking = LText(

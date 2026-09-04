@@ -23,7 +23,7 @@ import UniformTypeIdentifiers
 /// The box breathes at 8 + 44 + 6 + 44 + 8 = 110 pt, the height of the chat composer.
 struct CodeSessionComposer: View {
 
-    private static let instructionLimit = 1_200
+    private static let instructionLimit = CodeAskAI.requestLimit
 
     /// `owner/repo · branch` is trimmed before the layout ever sees it, and the pill that carries
     /// it is the one that yields width first, so a long branch name can never push send off the
@@ -316,6 +316,7 @@ struct CodeSessionComposer: View {
         Haptics.send()
         isSending = true
         focused = false
+        Keyboard.dismiss()
         let staged = attachments
         let buildFirst = isBlankScaffold && !instruction.isEmpty
 

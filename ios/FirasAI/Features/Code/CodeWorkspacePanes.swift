@@ -88,6 +88,9 @@ struct CodeSessionThread: View {
     private let env: AppEnvironment
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var position = ScrollPosition(edge: .bottom)
+    @State private var nearBottom = true
+    @State private var followsLatest = true
 
     init(env: AppEnvironment) {
         self.env = env
@@ -105,21 +108,57 @@ struct CodeSessionThread: View {
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(Array(turns.enumerated()), id: \.offset) { pair in
-                        turnRow(pair.element)
+                    ForEach(turns) { turn in
+                        turnRow(turn).id(turn.id)
                     }
                     if env.code.isAsking { pendingRow }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
-                /* The composer floats over the bottom of this scroll view, so the last turn needs
-                   more than the top gutter under it or it reads as clipped by the glass. */
-                .padding(.bottom, 24)
+                .padding(.bottom, 16)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .dismissesKeyboardOnTap()
-            .defaultScrollAnchor(.bottom)
+            .scrollPosition($position)
+            .defaultScrollAnchor(.bottom, for: .initialOffset)
+            .defaultScrollAnchor(.top, for: .alignment)
             .scrollDismissesKeyboard(.interactively)
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentSize.height - geometry.visibleRect.maxY < 90
+            } action: { _, isNear in
+                nearBottom = isNear
+            }
+            .onScrollPhaseChange { _, phase in
+                if phase == .interacting { followsLatest = false }
+                if phase == .idle { followsLatest = nearBottom }
+            }
+            .onScrollGeometryChange(for: CGSize.self) { geometry in
+                // Track layout changes as well as turns: dismissing a keyboard
+                // and typesetting a formula both change the reachable bottom.
+                CGSize(width: geometry.containerSize.height, height: geometry.contentSize.height)
+            } action: { _, _ in
+                if followsLatest { position.scrollTo(edge: .bottom) }
+            }
+            .onChange(of: turns.last(where: { $0.role == "user" })?.id) { _, _ in
+                scrollToLatest()
+            }
+            .onChange(of: turns.last?.id) { _, _ in
+                if followsLatest { position.scrollTo(edge: .bottom) }
+            }
+            .overlay(alignment: .bottom) {
+                if !nearBottom {
+                    Button(action: scrollToLatest) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(palette.textSecondary)
+                            .frame(width: 44, height: 44)
+                            .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.bottom, 10)
+                    .accessibilityLabel(Text(Strings.Chat.scrollToBottom(lang)))
+                }
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
@@ -144,17 +183,49 @@ struct CodeSessionThread: View {
         }
         .padding(.horizontal, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .dismissesKeyboardOnTap()
+    }
+
+    private func scrollToLatest() {
+        Keyboard.dismiss()
+        followsLatest = true
+        withAnimation(motionOn ? .smooth(duration: 0.32) : nil) {
+            position.scrollTo(edge: .bottom)
+        }
     }
 
     // MARK: Turns
 
+    @ViewBuilder
     private func turnRow(_ turn: CodeChatMessage) -> some View {
-        let isUser = turn.role == "user"
-        return VStack(alignment: .leading, spacing: 6) {
+        if turn.role == "user" {
+            HStack(spacing: 0) {
+                Spacer(minLength: 40)
+                Text(verbatim: turn.content)
+                    .font(FirasType.prose(lang, scale: scale).font)
+                    .lineSpacing(FirasType.prose(lang, scale: scale).lineSpacing)
+                    .foregroundStyle(palette.userInk)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .bidiIsland(for: turn.content, fallback: lang)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 13)
+                    .background(palette.userFill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .frame(maxWidth: 544, alignment: .trailing)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        } else {
+            assistantRow(turn)
+        }
+    }
+
+    private func assistantRow(_ turn: CodeChatMessage) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(verbatim: isUser ? Strings.CodeUI.youLabel(lang) : Strings.CodeUI.firasLabel(lang))
+                Text(verbatim: Strings.CodeUI.firasLabel(lang))
                     .font(FirasType.scaled(12, scale: scale, weight: .semibold))
-                    .foregroundStyle(isUser ? palette.textSecondary : palette.accent)
+                    .foregroundStyle(palette.accent)
                     .lineLimit(1)
                     .fixedSize()
                 if let changed = turn.n, changed > 0 {
@@ -180,18 +251,9 @@ struct CodeSessionThread: View {
                Arabic and `render.yaml` stays left to right inside it.
                A question stays verbatim below: it is what the reader typed, and rendering their
                own asterisks as formatting would be putting words in their mouth. */
-            if isUser {
-                Text(verbatim: turn.content)
-                    .font(FirasType.scaled(15, scale: scale))
-                    .foregroundStyle(palette.textPrimary)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .bidiIsland(for: turn.content, fallback: lang)
-            } else {
                 MarkdownView(
                     markdown: turn.content,
-                    messageID: "code-" + String(turn.content.hashValue),
+                    messageID: "code-" + turn.id,
                     streaming: false,
                     lang: lang,
                     palette: palette,
@@ -199,11 +261,9 @@ struct CodeSessionThread: View {
                     onFence: { _ in nil }
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)
-            }
         }
-        .padding(12)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .surfaceCard(palette)
     }
 
     private var pendingRow: some View {
@@ -223,8 +283,7 @@ struct CodeSessionThread: View {
                 }
             }
         }
-        .padding(12)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .surfaceCard(palette)
     }
 }

@@ -224,6 +224,7 @@ extension AssistantTurnView {
             palette: palette,
             lang: lang,
             phase: songPhase(creation),
+            isPreparing: creation?.jobID == nil && creation?.phase.isLive == true,
             motionOn: motionOn,
             startedAt: startedAt(creation),
             playback: songPlayback(creation),
@@ -251,9 +252,11 @@ extension AssistantTurnView {
 
     /// The creation this fence belongs to, if the media store has already scanned it in.
     private func creation(for meta: MediaMeta) -> MediaCreation? {
-        env.media.creations.first { candidate in
-            candidate.meta.key == meta.key && !meta.key.isEmpty
-        }
+        env.media.creation(
+            inConversation: env.chat.resolve(conversationID),
+            messageID: message.id,
+            key: meta.key
+        )
     }
 
     /// A render that is genuinely in flight must show progress, not the timeout plate. Without a

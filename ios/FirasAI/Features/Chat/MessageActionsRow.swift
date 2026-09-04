@@ -22,6 +22,8 @@ struct MessageActionsRow: View {
     @State private var copied = false
     @State private var hovering = false
     @State private var translation: String?
+    @State private var translationLanguage: TranslationLanguage?
+    @State private var showsLanguagePicker = false
     @State private var isTranslating = false
     @State private var isExporting = false
     /// The picker and the file it produced share one route, because they share one `.sheet`.
@@ -59,6 +61,11 @@ struct MessageActionsRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .sheet(item: $exportSheet) { route in
             exportSheetBody(route)
+        }
+        .sheet(isPresented: $showsLanguagePicker) {
+            TranslationLanguagePicker(lang: lang, palette: palette) { target in
+                translate(to: target, lang: lang)
+            }
         }
     }
 
@@ -269,10 +276,14 @@ struct MessageActionsRow: View {
 
             if env.session.isMember {
                 Button {
-                    translate(lang: lang)
+                    showsLanguagePicker = true
                 } label: {
-                    Text(translation == nil ? Strings.Chat.translateAction(lang) : Strings.Chat.translateHide(lang))
+                    Text(Strings.Chat.translateAction(lang))
                     Image(systemName: "character.book.closed")
+                }
+                .disabled(isTranslating)
+                if translation != nil {
+                    Button(Strings.Chat.translateHide(lang)) { translation = nil }
                 }
             }
         } label: {
@@ -294,15 +305,18 @@ struct MessageActionsRow: View {
             )
         } else if let translation {
             VStack(alignment: .leading, spacing: 6) {
-                Text(Strings.Chat.translateTitle(lang))
+                Text(translationLanguage?.name ?? Strings.Chat.translateTitle(lang))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(palette.textMuted)
-                Text(translation)
-                    .font(FirasType.scaled(15, scale: env.prefs.fontScale))
-                    .foregroundStyle(palette.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-                    .bidiIsland(for: translation, fallback: lang)
+                MarkdownView(
+                    markdown: translation,
+                    messageID: message.id + ".translation." + (translationLanguage?.id ?? ""),
+                    streaming: false,
+                    lang: lang,
+                    palette: palette,
+                    prefs: env.prefs,
+                    onFence: { _ in nil }
+                )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
@@ -312,33 +326,23 @@ struct MessageActionsRow: View {
         }
     }
 
-    private func translate(lang: AppLanguage) {
-        if translation != nil {
-            withAnimation(FirasMotion.gated(FirasMotion.standard, motionOn: motionOn)) {
-                translation = nil
-            }
-            return
-        }
-        let source = ChatTurnActions.plainText(message)
+    private func translate(to target: TranslationLanguage, lang: AppLanguage) {
+        guard !isTranslating else { return }
+        let source = ChatTurnActions.markdown(message).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !source.isEmpty else {
             env.toasts.show(Strings.Chat.exportEmpty(lang), isError: true)
             return
         }
-        let messageLang = message.lang ?? lang.rawValue
-        let target = messageLang.hasPrefix("ar") ? "en" : "ar"
         isTranslating = true
         let api = env.api
-        let toasts = env.toasts
-        let motion = motionOn
         Task {
-            let result = try? await api.translate(text: source, to: target)
-            isTranslating = false
-            if let result, !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                withAnimation(FirasMotion.gated(FirasMotion.standard, motionOn: motion)) {
-                    translation = result
-                }
-            } else {
-                toasts.show(Strings.Chat.translateFailed(lang), isError: true)
+            defer { isTranslating = false }
+            do {
+                let result = try await TranslationService.translate(source, to: target, api: api)
+                translationLanguage = target
+                translation = result
+            } catch {
+                env.toasts.show(Strings.Chat.translateFailed(lang), isError: true)
             }
         }
     }

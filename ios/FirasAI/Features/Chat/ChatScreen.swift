@@ -57,6 +57,7 @@ struct ChatScreen: View {
 
         return content
             .background { FirasBackground(palette: palette, showHalo: isEmptyConversation) }
+            .environment(\.firasMathPersistenceAllowed, !isTemporary)
             .toolbar { toolbarContent }
             .navigationBarTitleDisplayMode(.inline)
             /* Keyed on the new-chat counter as well as the id: pressing New chat while already on a
@@ -367,17 +368,6 @@ struct ChatScreen: View {
         let lang = env.prefs.lang
 
         VStack(spacing: 6) {
-            if isTemporary {
-                banner(
-                    text: Strings.Chat.temporaryNote(lang),
-                    symbol: "shield.fill",
-                    tint: palette.accent,
-                    palette: palette,
-                    actionTitle: nil,
-                    action: nil
-                )
-            }
-
             if !env.network.isOnline {
                 banner(
                     text: Strings.Chat.offlineBanner(lang),
@@ -435,7 +425,6 @@ struct ChatScreen: View {
     }
 
     private var hasAnyBanner: Bool {
-        if isTemporary { return true }
         if !env.network.isOnline { return true }
         if env.session.sessionExpiredNotice { return true }
         if historyTrimmed { return true }

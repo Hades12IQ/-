@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import CryptoKit
 
 /// One row of the on-disk project index.
 ///
@@ -139,11 +140,13 @@ struct CodeBuildTicket: Codable, Sendable, Equatable, Identifiable {
 actor CodeProjectCache {
 
     private let disk: DiskStore
-    private var index: [String: CodeProjectRecord]?
+    private var indexes: [String: [String: CodeProjectRecord]] = [:]
     private var ticketIndex: [CodeBuildTicket]?
 
     private static let directory = "CodeProjects"
-    private static let indexPath = "CodeProjects/index.json"
+    // Legacy CodeProjects/*.json remain untouched. Without an owner record,
+    // they cannot safely be shown until the server confirms access. A successful
+    // authorized fetch writes its canonical project into the scoped namespace.
     private static let ticketsPath = "CodeProjects/builds.json"
 
     /// The web keeps at most twenty build pointers (`LS_CODE_JOBS`); so do we.
@@ -158,39 +161,39 @@ actor CodeProjectCache {
 
     // MARK: - Projects
 
-    func load(id: String) async -> CodeProject? {
+    func load(id: String, ownerID: String) async -> CodeProject? {
         let key = Self.key(for: id)
-        guard !key.isEmpty else { return nil }
-        return await disk.read(CodeProject.self, at: Self.projectPath(key))
+        guard !key.isEmpty, !ownerID.isEmpty else { return nil }
+        return await disk.read(CodeProject.self, at: Self.projectPath(key, ownerID: ownerID))
     }
 
-    func save(_ p: CodeProject, id: String) async {
+    func save(_ p: CodeProject, id: String, ownerID: String) async {
         let key = Self.key(for: id)
-        guard !key.isEmpty else { return }
+        guard !key.isEmpty, !ownerID.isEmpty else { return }
         do {
-            try await disk.write(p, at: Self.projectPath(key))
+            try await disk.write(p, at: Self.projectPath(key, ownerID: ownerID))
         } catch {
             Log.ui.error("code project cache write failed")
             return
         }
-        var records = await loadIndex()
+        var records = await loadIndex(ownerID: ownerID)
         records[id] = CodeProjectRecord(
             id: id,
             name: p.name,
             fileCount: p.files.count,
             updatedAt: Date().timeIntervalSince1970
         )
-        await writeIndex(records)
+        await writeIndex(records, ownerID: ownerID)
     }
 
-    func delete(id: String) async {
+    func delete(id: String, ownerID: String) async {
         let key = Self.key(for: id)
-        guard !key.isEmpty else { return }
-        await disk.delete(at: Self.projectPath(key))
-        await disk.delete(at: Self.threadPath(key))
-        var records = await loadIndex()
+        guard !key.isEmpty, !ownerID.isEmpty else { return }
+        await disk.delete(at: Self.projectPath(key, ownerID: ownerID))
+        await disk.delete(at: Self.threadPath(key, ownerID: ownerID))
+        var records = await loadIndex(ownerID: ownerID)
         records[id] = nil
-        await writeIndex(records)
+        await writeIndex(records, ownerID: ownerID)
         // A deleted project cannot have a build worth handing to the queue on the next launch.
         await deleteTicket(projectID: id)
     }
@@ -257,17 +260,17 @@ actor CodeProjectCache {
 
     /// `messages[1]` of the project chat, mirrored so the AI conversation survives an offline
     /// launch exactly as the files do.
-    func loadThread(id: String) async -> CodeChatThread? {
+    func loadThread(id: String, ownerID: String) async -> CodeChatThread? {
         let key = Self.key(for: id)
-        guard !key.isEmpty else { return nil }
-        return await disk.read(CodeChatThread.self, at: Self.threadPath(key))
+        guard !key.isEmpty, !ownerID.isEmpty else { return nil }
+        return await disk.read(CodeChatThread.self, at: Self.threadPath(key, ownerID: ownerID))
     }
 
-    func saveThread(_ thread: CodeChatThread, id: String) async {
+    func saveThread(_ thread: CodeChatThread, id: String, ownerID: String) async {
         let key = Self.key(for: id)
-        guard !key.isEmpty else { return }
+        guard !key.isEmpty, !ownerID.isEmpty else { return }
         do {
-            try await disk.write(thread, at: Self.threadPath(key))
+            try await disk.write(thread, at: Self.threadPath(key, ownerID: ownerID))
         } catch {
             Log.ui.error("code thread cache write failed")
         }
@@ -276,39 +279,42 @@ actor CodeProjectCache {
     // MARK: - Index
 
     /// Newest first — the order the launcher grid draws.
-    func records() async -> [CodeProjectRecord] {
-        let records = await loadIndex()
+    func records(ownerID: String) async -> [CodeProjectRecord] {
+        let records = await loadIndex(ownerID: ownerID)
         return records.values.sorted { $0.updatedAt > $1.updatedAt }
     }
 
     /// Renames the cached row without rewriting the whole project blob.
-    func rename(id: String, to name: String) async {
-        var records = await loadIndex()
+    func rename(id: String, to name: String, ownerID: String) async {
+        var records = await loadIndex(ownerID: ownerID)
         guard var record = records[id] else { return }
         record.name = name
         record.updatedAt = Date().timeIntervalSince1970
         records[id] = record
-        await writeIndex(records)
+        await writeIndex(records, ownerID: ownerID)
     }
 
     // MARK: - Private
 
-    private func loadIndex() async -> [String: CodeProjectRecord] {
-        if let index { return index }
-        let stored = await disk.read([CodeProjectRecord].self, at: Self.indexPath) ?? []
+    private func loadIndex(ownerID: String) async -> [String: CodeProjectRecord] {
+        guard !ownerID.isEmpty else { return [:] }
+        if let index = indexes[ownerID] { return index }
+        let path = Self.scopedDirectory(ownerID) + "/index.json"
+        let stored = await disk.read([CodeProjectRecord].self, at: path) ?? []
         var map: [String: CodeProjectRecord] = [:]
         for record in stored where !record.id.isEmpty {
             map[record.id] = record
         }
-        index = map
+        indexes[ownerID] = map
         return map
     }
 
-    private func writeIndex(_ records: [String: CodeProjectRecord]) async {
-        index = records
+    private func writeIndex(_ records: [String: CodeProjectRecord], ownerID: String) async {
+        guard !ownerID.isEmpty else { return }
+        indexes[ownerID] = records
         let list = records.values.sorted { $0.updatedAt > $1.updatedAt }
         do {
-            try await disk.write(list, at: Self.indexPath)
+            try await disk.write(list, at: Self.scopedDirectory(ownerID) + "/index.json")
         } catch {
             Log.ui.error("code project index write failed")
         }
@@ -326,11 +332,16 @@ actor CodeProjectCache {
         return String(String(safe).prefix(80))
     }
 
-    private static func projectPath(_ key: String) -> String {
-        directory + "/" + key + ".json"
+    private static func scopedDirectory(_ ownerID: String) -> String {
+        let ownerKey = SHA256.hash(data: Data(ownerID.utf8)).map { String(format: "%02x", $0) }.joined()
+        return directory + "/owners/" + ownerKey
     }
 
-    private static func threadPath(_ key: String) -> String {
-        directory + "/" + key + ".thread.json"
+    private static func projectPath(_ key: String, ownerID: String) -> String {
+        scopedDirectory(ownerID) + "/" + key + ".json"
+    }
+
+    private static func threadPath(_ key: String, ownerID: String) -> String {
+        scopedDirectory(ownerID) + "/" + key + ".thread.json"
     }
 }

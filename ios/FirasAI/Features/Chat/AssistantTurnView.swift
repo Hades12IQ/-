@@ -92,15 +92,15 @@ struct AssistantTurnView: View, Equatable {
 
     nonisolated static func == (lhs: AssistantTurnView, rhs: AssistantTurnView) -> Bool {
         lhs.message.id == rhs.message.id
-            && lhs.message.content.utf8.count == rhs.message.content.utf8.count
-            && lhs.message.reasoning?.utf8.count == rhs.message.reasoning?.utf8.count
+            && lhs.message.content == rhs.message.content
+            && lhs.message.reasoning == rhs.message.reasoning
             && lhs.message.status == rhs.message.status
             && lhs.message.altAt == rhs.message.altAt
             && lhs.message.alts?.count == rhs.message.alts?.count
             && lhs.message.askAnswered == rhs.message.askAnswered
             && lhs.isStreaming == rhs.isStreaming
-            && lhs.liveText.utf8.count == rhs.liveText.utf8.count
-            && lhs.liveReasoning.utf8.count == rhs.liveReasoning.utf8.count
+            && lhs.liveText == rhs.liveText
+            && lhs.liveReasoning == rhs.liveReasoning
             && lhs.phaseLabel == rhs.phaseLabel
             && lhs.isLatest == rhs.isLatest
             && lhs.showsPlanPill == rhs.showsPlanPill
@@ -126,14 +126,6 @@ struct AssistantTurnView: View, Equatable {
             actions
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contextMenu {
-            MessageContextMenu(
-                env: env,
-                message: message,
-                conversationID: conversationID,
-                product: product
-            )
-        }
         .onChange(of: isStreaming) { _, streaming in
             if !streaming {
                 MarkdownRenderer.invalidate(messageID: message.id)
@@ -350,6 +342,14 @@ struct AssistantTurnView: View, Equatable {
             }
         } else if displayText.isEmpty {
             emptyBody
+        } else if displayText.contains("```firas-") || displayText.contains("~~~firas-") {
+            // Metadata is a complete transaction. Replaying a closed JSON fence character by
+            // character exposes the hidden generation prompt and delays the actual media card.
+            MarkdownView(
+                markdown: displayText, messageID: message.id, streaming: isStreaming,
+                lang: lang, palette: palette, prefs: env.prefs,
+                onFence: { fence in fenceView(fence) }
+            )
         } else {
             // «كانما جاي يكتب بس بنفس الوقت سريع مو بطيء» — the reveal is paced here, not by the
             // network. ONLY the markdown branch is wrapped: the ask panel, the `firas-ask` activity

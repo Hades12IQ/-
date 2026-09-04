@@ -108,6 +108,8 @@ final class CodeStore: JobObserver {
     @ObservationIgnored private var landedFences: [String: String] = [:]
     @ObservationIgnored private var pendingDeletes: Set<String> = []
     @ObservationIgnored private var undoFiles: [CodeFile]?
+    @ObservationIgnored private var activeOwnerID: String?
+    @ObservationIgnored private var handoffTasks: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var buildNames: [String: String] = [:]
     /// The build running in front of the reader, per project. At most one per project, and its
     /// existence is what tells `open`, `job(_:didProgress:)` and the elapsed timer that the copy on
@@ -250,7 +252,52 @@ final class CodeStore: JobObserver {
 
     // MARK: - Projects
 
+    /// Called as soon as the authenticated identity changes. Old credentials
+    /// cannot be used after this point, so only retain old tickets for recovery.
+    func identityDidChange(to ownerID: String?) {
+        guard activeOwnerID != ownerID else { return }
+        if let previous = activeOwnerID, let id = openProjectID, let current = project {
+            let conversation = thread
+            Task {
+                await cache.save(current, id: id, ownerID: previous)
+                await cache.saveThread(conversation, id: id, ownerID: previous)
+            }
+        }
+        for task in liveBuilds.values { task.cancel() }
+        liveBuilds = [:]
+        commitTask?.cancel()
+        commitTask = nil
+        activeOwnerID = ownerID
+        openProjectID = nil
+        project = nil
+        thread = CodeChatThread()
+        projects = []
+        records = [:]
+        selectedPath = nil
+        consoleLines = []
+        pendingDeletes = []
+        pendingBuilds = []
+        tickets = [:]
+        undoFiles = nil
+        canUndoApply = false
+        openError = nil
+        listError = nil
+        isOpening = false
+        isLoadingProjects = false
+        saveState = .saved
+        clearBuildDisplay()
+    }
+
+    /// A user-initiated logout hands live work over before the cookie changes.
+    func prepareForSignOut() async {
+        handOffLiveBuilds()
+        let pending = Array(handoffTasks.values)
+        for task in pending { await task.value }
+    }
+
     func loadProjects() async {
+        identityDidChange(to: session.identityID)
+        guard let ownerID = session.identityID else { return }
         isLoadingProjects = true
         listError = nil
         ensureLifecycleObservers()
@@ -258,10 +305,12 @@ final class CodeStore: JobObserver {
         // The launcher is one of the two doors back into this store, so it is one of the two places
         // an unfinished build gets picked up again.
         await resumeLiveBuilds()
+        guard session.identityID == ownerID else { return }
 
         if session.isMember {
             do {
                 let all = try await api.listChats()
+                guard session.identityID == ownerID else { return }
                 let server = all.filter { $0.codeProj && !pendingDeletes.contains($0.id) }
                 var merged = server.map { summary -> ChatSummary in
                     var row = summary
@@ -276,6 +325,7 @@ final class CodeStore: JobObserver {
                 projects = merged
                 if !merged.isEmpty { deletedLastProject = false }
             } catch {
+                guard session.identityID == ownerID else { return }
                 projects = localSummaries()
                 if projects.isEmpty {
                     listError = presentableText(error)
@@ -289,6 +339,8 @@ final class CodeStore: JobObserver {
     }
 
     func create(name: String, brief: String, attachments: [PreparedAttachment]) async -> String? {
+        identityDidChange(to: session.identityID)
+        guard let ownerID = session.identityID else { return nil }
         guard !isCreating else { return nil }
         guard session.isAuthenticated else {
             router.showSignUp(feature: .generic)
@@ -306,9 +358,11 @@ final class CodeStore: JobObserver {
         let scaffold = CodeProject(name: projectName, files: CodeProject.blankFiles)
 
         guard let id = await mintProject(scaffold) else { return nil }
+        guard session.identityID == ownerID else { return nil }
         deletedLastProject = false
-        await cache.save(scaffold, id: id)
+        await cache.save(scaffold, id: id, ownerID: ownerID)
         await refreshRecords()
+        guard session.identityID == ownerID else { return nil }
         adopt(id: id, project: scaffold, thread: CodeChatThread())
         if !projects.contains(where: { $0.id == id }) {
             projects.insert(summary(for: id, name: projectName), at: 0)
@@ -321,7 +375,8 @@ final class CodeStore: JobObserver {
     }
 
     func open(_ id: String) async {
-        guard !id.isEmpty else { return }
+        identityDidChange(to: session.identityID)
+        guard !id.isEmpty, let ownerID = session.identityID else { return }
         isOpening = true
         openError = nil
         usingCachedCopy = false
@@ -344,30 +399,39 @@ final class CodeStore: JobObserver {
         // is repeated after every await, because the build can start (or the reader can navigate)
         // inside any one of them.
         if liveBuilds[id] == nil,
-           let cached = await cache.load(id: id),
-           liveBuilds[id] == nil {
-            let cachedThread = await cache.loadThread(id: id) ?? CodeChatThread()
-            if liveBuilds[id] == nil {
+           let cached = await cache.load(id: id, ownerID: ownerID),
+           liveBuilds[id] == nil, session.identityID == ownerID, openProjectID == id {
+            let cachedThread = await cache.loadThread(id: id, ownerID: ownerID) ?? CodeChatThread()
+            if liveBuilds[id] == nil, session.identityID == ownerID, openProjectID == id {
                 adopt(id: id, project: cached, thread: cachedThread)
             }
         }
 
+        guard session.identityID == ownerID, openProjectID == id else { return }
         if liveBuilds[id] == nil, session.isMember, !id.hasPrefix("ios_") {
             do {
                 let conversation = try await api.getChat(id: id)
+                guard session.identityID == ownerID, openProjectID == id else { return }
                 if liveBuilds[id] != nil {
                     // A build started while the fetch was in flight; the screen is already newer.
                 } else if let parsed = Self.parse(conversation) {
                     adopt(id: id, project: parsed.project, thread: parsed.thread)
-                    await cache.save(parsed.project, id: id)
-                    await cache.saveThread(parsed.thread, id: id)
+                    await cache.save(parsed.project, id: id, ownerID: ownerID)
+                    await cache.saveThread(parsed.thread, id: id, ownerID: ownerID)
                     await refreshRecords()
                 } else if project == nil {
                     // A codeProj chat whose messages[0] is not a project fence: an empty shell.
                     adopt(id: id, project: CodeProject(name: conversation.title, files: []), thread: CodeChatThread())
                 }
             } catch {
-                if project == nil {
+                guard session.identityID == ownerID, openProjectID == id else { return }
+                let status = (error as? APIError)?.status ?? 0
+                if [401, 403, 404].contains(status) {
+                    project = nil
+                    thread = CodeChatThread()
+                    selectedPath = nil
+                    openError = presentableText(error)
+                } else if project == nil {
                     openError = presentableText(error)
                 } else {
                     usingCachedCopy = true
@@ -375,6 +439,7 @@ final class CodeStore: JobObserver {
             }
         }
 
+        guard session.identityID == ownerID, openProjectID == id else { return }
         if liveBuilds[id] == nil, project == nil, openError == nil {
             openError = Strings.Code.workspaceMissing(lang)
         }
@@ -406,6 +471,7 @@ final class CodeStore: JobObserver {
     }
 
     func delete(_ id: String) async {
+        guard let ownerID = session.identityID else { return }
         let index = projects.firstIndex { $0.id == id }
         let removed = index.map { projects[$0] }
         if let index { projects.remove(at: index) }
@@ -432,7 +498,7 @@ final class CodeStore: JobObserver {
 
         Task { [weak self] in
             await JobClock.rest(7)
-            await self?.commitDelete(id)
+            await self?.commitDelete(id, ownerID: ownerID)
         }
     }
 
@@ -513,7 +579,9 @@ final class CodeStore: JobObserver {
     // MARK: - Saving
 
     func save() async {
-        guard let id = openProjectID, let current = project else { return }
+        guard let id = openProjectID, let current = project,
+              let ownerID = session.identityID, activeOwnerID == ownerID else { return }
+        let conversation = thread
         commitTask?.cancel()
         commitTask = nil
         saveState = .saving
@@ -526,8 +594,9 @@ final class CodeStore: JobObserver {
         }
         if fitted != current { project = fitted }
 
-        await cache.save(fitted, id: id)
-        await cache.saveThread(thread, id: id)
+        await cache.save(fitted, id: id, ownerID: ownerID)
+        await cache.saveThread(conversation, id: id, ownerID: ownerID)
+        guard session.identityID == ownerID, openProjectID == id else { return }
         records[id] = CodeProjectRecord(
             id: id,
             name: fitted.name,
@@ -537,14 +606,14 @@ final class CodeStore: JobObserver {
 
         if session.isMember, !id.hasPrefix("ios_") {
             do {
-                try await push(project: fitted, thread: thread, to: id)
+                try await push(project: fitted, thread: conversation, to: id)
             } catch {
                 saveState = .editing
                 toasts.show(Strings.Code.saveFailed(lang), isError: true)
                 return
             }
         }
-        saveState = .saved
+        if session.identityID == ownerID, openProjectID == id { saveState = .saved }
     }
 
     // MARK: - AI edits
@@ -568,7 +637,9 @@ final class CodeStore: JobObserver {
         attachmentText: String,
         attachmentCount: Int
     ) async -> CodeEditPlan? {
-        guard !isAsking, let current = project else { return nil }
+        guard !isAsking, let current = project,
+              let requestProjectID = openProjectID else { return nil }
+        let requestOwnerID = session.identityID
         var request = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
         if request.isEmpty, !attachmentText.isEmpty {
             request = Strings.Code.attachmentsOnly(lang)
@@ -596,13 +667,16 @@ final class CodeStore: JobObserver {
         }
 
         // 2 — one Code unit, before any model call. Members are unmetered.
-        guard await charge() else { return nil }
+        guard await charge(), openProjectID == requestProjectID,
+              session.identityID == requestOwnerID else { return nil }
 
         // 3 — the repository this session is pointed at, if there is one. It rides in with the
         // attachments because `CodeAskAI` builds both prompts and this store does not own it; the
         // block says loudly, in its first sentence, that it is context and not a second project.
         var context = attachmentText
         let repository = await repositoryContext(for: request)
+        guard openProjectID == requestProjectID,
+              session.identityID == requestOwnerID else { return nil }
         if !repository.isEmpty { context += repository }
 
         do {
@@ -615,6 +689,8 @@ final class CodeStore: JobObserver {
                 attachmentText: context,
                 lang: lang
             )
+            guard openProjectID == requestProjectID,
+                  session.identityID == requestOwnerID else { return nil }
             switch outcome {
             case .redirect(let text):
                 appendThreadTurn(role: "ai", text: text)
@@ -647,6 +723,8 @@ final class CodeStore: JobObserver {
                 return plan
             }
         } catch {
+            guard openProjectID == requestProjectID,
+                  session.identityID == requestOwnerID else { return nil }
             appendThreadTurn(role: "ai", text: Strings.Code.askFailed(lang))
             toasts.show(Strings.Code.askFailed(lang), isError: true)
             await save()
@@ -720,6 +798,8 @@ final class CodeStore: JobObserver {
 
         note("run", Strings.CodeRepo.contextReading.fmt(lang, link.label), projectID: projectID)
         await github.loadTree(api: api, repo: link.repo, ref: link.branch)
+        guard openProjectID == projectID,
+              github.treeKey == CodeGitHubModel.refKey(repo: link.repo, ref: link.branch) else { return "" }
         let tree = github.tree
         guard !tree.isEmpty else { return "" }
 
@@ -738,6 +818,8 @@ final class CodeStore: JobObserver {
                 ref: link.branch,
                 path: path
             ) else { continue }
+            guard openProjectID == projectID else { return "" }
+            guard !CodeEngineeringGuidance.containsPrivateKey(body) else { continue }
             let slice = String(body.prefix(room))
             guard !slice.isEmpty else { continue }
             used += slice.count
@@ -955,7 +1037,7 @@ final class CodeStore: JobObserver {
            and hand it straight to the queue. */
         if openProjectID == projectID, !wanted.isEmpty {
             appendThreadTurn(role: "user", text: wanted)
-            await cache.saveThread(thread, id: projectID)
+            await cache.saveThread(thread, id: projectID, ownerID: ticket.ownerID)
         }
         startingBuilds.remove(projectID)
         beginBuildDisplay(projectID: projectID, startedAt: Date(timeIntervalSince1970: ticket.startedAt))
@@ -1001,7 +1083,7 @@ final class CodeStore: JobObserver {
                 ),
                 tier: .ultra
             )
-            steps = Self.parsePlan(raw, kind: kind)
+            steps = Self.parsePlan(raw, kind: kind, brief: ticket.brief)
         } catch {
             if Task.isCancelled { return }
             handOff(ticket)
@@ -1045,7 +1127,7 @@ final class CodeStore: JobObserver {
             note("log", Strings.Code.buildingHeadline(lang) + " · " + step.path, projectID: projectID)
             // A checkpoint per file, so being killed mid-build still leaves the reader everything
             // they watched being written.
-            await cache.save(CodeProject(name: ticket.name, files: built), id: projectID)
+            await cache.save(CodeProject(name: ticket.name, files: built), id: projectID, ownerID: ticket.ownerID)
         }
 
         if Task.isCancelled { return }
@@ -1085,7 +1167,8 @@ final class CodeStore: JobObserver {
             kind: kind,
             uiLang: uiLang,
             manifest: manifest,
-            written: written.map(\.path)
+            written: written.map(\.path),
+            writtenFiles: written
         )
 
         while true {
@@ -1160,6 +1243,7 @@ final class CodeStore: JobObserver {
     /// chat, and only then forget the ticket. Land before forget, the same rule as the durable path.
     private func finishLiveBuild(_ files: [CodeFile], ticket: CodeBuildTicket) async {
         let projectID = ticket.projectID
+        guard session.identityID == ticket.ownerID else { return }
         finishingBuilds.insert(projectID)
         defer { finishingBuilds.remove(projectID) }
         let fitted = Self.shrunkToFit(CodeProject(name: ticket.name, files: files))
@@ -1167,7 +1251,8 @@ final class CodeStore: JobObserver {
             toasts.show(Self.saveErrorText(error, lang: lang), isError: true)
         }
 
-        await cache.save(fitted, id: projectID)
+        await cache.save(fitted, id: projectID, ownerID: ticket.ownerID)
+        guard session.identityID == ticket.ownerID else { return }
         records[projectID] = CodeProjectRecord(
             id: projectID,
             name: fitted.name,
@@ -1188,11 +1273,12 @@ final class CodeStore: JobObserver {
         let conversation = await appendBuildTurn(
             Strings.CodeBuild.doneTurn(lang),
             n: fitted.files.count,
-            projectID: projectID
+            projectID: projectID,
+            ownerID: ticket.ownerID
         )
 
         var pushed = true
-        if session.isMember, !projectID.hasPrefix("ios_") {
+        if session.isMember, session.identityID == ticket.ownerID, !projectID.hasPrefix("ios_") {
             do {
                 try await push(project: fitted, thread: conversation, to: projectID)
             } catch {
@@ -1237,11 +1323,12 @@ final class CodeStore: JobObserver {
     /// breath, and a cancelled task cannot make the request that saves the turn.
     private func handOff(_ ticket: CodeBuildTicket) {
         let projectID = ticket.projectID
+        guard session.identityID == ticket.ownerID else { return }
         guard !handingOff.contains(projectID) else { return }
         handingOff.insert(projectID)
         liveBuilds[projectID]?.cancel()
         liveBuilds[projectID] = nil
-        Task { @MainActor [weak self] in
+        handoffTasks[projectID] = Task { @MainActor [weak self] in
             await self?.performHandOff(ticket)
         }
     }
@@ -1253,7 +1340,10 @@ final class CodeStore: JobObserver {
         defer {
             hold.end()
             handingOff.remove(projectID)
+            handoffTasks[projectID] = nil
         }
+
+        guard session.identityID == ticket.ownerID else { return }
 
         let task = Self.jobTask(ticket)
         let request = ChatJobRequest(
@@ -1291,6 +1381,7 @@ final class CodeStore: JobObserver {
             handed.handedOff = true
             handed.jobID = pointer.id
             await cache.saveTicket(handed)
+            guard session.identityID == ticket.ownerID else { return }
             tickets[projectID] = handed
             handoffAttempts[projectID] = nil
             pendingBuilds.remove(projectID)      // the spine answers for it from here on
@@ -1301,9 +1392,10 @@ final class CodeStore: JobObserver {
             }
             // A toast is gone in four seconds and the reader may not even be looking at the app.
             // The conversation is where they will look next, so the conversation is told as well.
-            _ = await appendBuildTurn(Strings.CodeBuild.movedTurn(lang), n: nil, projectID: projectID)
+            _ = await appendBuildTurn(Strings.CodeBuild.movedTurn(lang), n: nil, projectID: projectID, ownerID: ticket.ownerID)
             toasts.show(Strings.Code.serverKeep(lang))
         } catch {
+            guard session.identityID == ticket.ownerID else { return }
             guard let status = (error as? APIError)?.status else {
                 // Transport, not refusal. The ticket stays exactly where it is, and this is the one
                 // path on which "leaving must not lose the work" rests when the network is down —
@@ -1327,7 +1419,7 @@ final class CodeStore: JobObserver {
             pendingBuilds.remove(projectID)
             handoffAttempts[projectID] = nil
             if openProjectID == projectID { clearBuildDisplay() }
-            _ = await appendBuildTurn(Strings.CodeBuild.refusedTurn(lang), n: nil, projectID: projectID)
+            _ = await appendBuildTurn(Strings.CodeBuild.refusedTurn(lang), n: nil, projectID: projectID, ownerID: ticket.ownerID)
             present(refusal: error, status: status)
         }
     }
@@ -1337,6 +1429,7 @@ final class CodeStore: JobObserver {
     func resumeLiveBuilds() async {
         guard let owner = session.identityID, !owner.isEmpty else { return }
         let rows = await cache.tickets()
+        guard session.identityID == owner else { return }
         let mine = rows.filter { $0.ownerID == owner }
 
         for ticket in mine {
@@ -1399,7 +1492,8 @@ final class CodeStore: JobObserver {
     // MARK: - JobObserver
 
     func job(_ pointer: JobPointer, didProgress snapshot: JobSnapshot) {
-        guard pointer.kind == .codebuild, let projectID = pointer.projectID else { return }
+        guard pointer.kind == .codebuild, session.identityID == pointer.ownerID,
+              let projectID = pointer.projectID else { return }
         // A build still running in front of the reader owns this project's files. (Only reachable
         // if a pointer and a live build coexist, which the start guard prevents — but a checkpoint
         // landing over a file being typed is bad enough to be worth the one line.)
@@ -1422,6 +1516,7 @@ final class CodeStore: JobObserver {
 
     func job(_ pointer: JobPointer, didFinish terminal: JobTerminal) async -> Bool {
         guard pointer.kind == .codebuild else { return false }
+        guard session.identityID == pointer.ownerID else { return false }
         guard let projectID = pointer.projectID else { return true }
         // The server's answer is the authority for this project from here on.
         liveBuilds[projectID]?.cancel()
@@ -1464,7 +1559,7 @@ final class CodeStore: JobObserver {
         } else {
             lastWord = Strings.CodeBuild.failedTurn(lang)
         }
-        _ = await appendBuildTurn(lastWord, n: landedCount, projectID: projectID)
+        _ = await appendBuildTurn(lastWord, n: landedCount, projectID: projectID, ownerID: pointer.ownerID)
         announce(projectID: projectID, name: name, landed: landedAnything, terminal: terminal)
         return true
     }
@@ -1472,6 +1567,7 @@ final class CodeStore: JobObserver {
     // MARK: - Landing
 
     private func land(_ built: CodeProject, into projectID: String, pointer: JobPointer) async -> Bool {
+        guard session.identityID == pointer.ownerID else { return false }
         let named = CodeProject(
             name: built.name.isEmpty ? pointer.title : built.name,
             files: built.files
@@ -1482,7 +1578,8 @@ final class CodeStore: JobObserver {
             return true                                   // nothing left to try; release the pointer
         }
 
-        await cache.save(fitted, id: projectID)
+        await cache.save(fitted, id: projectID, ownerID: pointer.ownerID)
+        guard session.identityID == pointer.ownerID else { return false }
         records[projectID] = CodeProjectRecord(
             id: projectID,
             name: fitted.name,
@@ -1495,7 +1592,7 @@ final class CodeStore: JobObserver {
             if openProjectID == projectID {
                 existing = thread
             } else {
-                existing = await cache.loadThread(id: projectID) ?? CodeChatThread()
+                existing = await cache.loadThread(id: projectID, ownerID: pointer.ownerID) ?? CodeChatThread()
             }
             do {
                 try await push(project: fitted, thread: existing, to: projectID)
@@ -1644,11 +1741,11 @@ final class CodeStore: JobObserver {
         }
     }
 
-    private func commitDelete(_ id: String) async {
-        guard pendingDeletes.contains(id) else { return }
+    private func commitDelete(_ id: String, ownerID: String) async {
+        guard pendingDeletes.contains(id), session.identityID == ownerID else { return }
         pendingDeletes.remove(id)
         // `cache.delete` drops the build ticket with the project; the in-memory mirror goes here.
-        await cache.delete(id: id)
+        await cache.delete(id: id, ownerID: ownerID)
         records[id] = nil
         tickets[id] = nil
         pendingBuilds.remove(id)
@@ -1713,15 +1810,15 @@ final class CodeStore: JobObserver {
     /// app, and a reader who is not in the app at all. Only the first has `thread` loaded, so the
     /// other two are served through the cached copy — otherwise the record of a build that finished
     /// while the reader was away simply would not exist when they came back to read it.
-    private func appendBuildTurn(_ text: String, n: Int?, projectID: String) async -> CodeChatThread {
+    private func appendBuildTurn(_ text: String, n: Int?, projectID: String, ownerID: String) async -> CodeChatThread {
         guard !projectID.isEmpty else { return thread }
-        if openProjectID == projectID {
+        if openProjectID == projectID, session.identityID == ownerID {
             appendThreadTurn(role: "ai", text: text, n: n)
-            await cache.saveThread(thread, id: projectID)
+            await cache.saveThread(thread, id: projectID, ownerID: ownerID)
             return thread
         }
 
-        var stored = await cache.loadThread(id: projectID) ?? CodeChatThread()
+        var stored = await cache.loadThread(id: projectID, ownerID: ownerID) ?? CodeChatThread()
         stored.messages.append(
             CodeChatMessage(
                 role: "ai",
@@ -1733,7 +1830,7 @@ final class CodeStore: JobObserver {
         if stored.messages.count > CodeChatThread.maximumTurns {
             stored.messages.removeFirst(stored.messages.count - CodeChatThread.maximumTurns)
         }
-        await cache.saveThread(stored, id: projectID)
+        await cache.saveThread(stored, id: projectID, ownerID: ownerID)
         return stored
     }
 
@@ -1829,7 +1926,9 @@ final class CodeStore: JobObserver {
     }
 
     private func refreshRecords() async {
-        let rows = await cache.records()
+        guard let ownerID = session.identityID else { records = [:]; return }
+        let rows = await cache.records(ownerID: ownerID)
+        guard session.identityID == ownerID else { return }
         var map: [String: CodeProjectRecord] = [:]
         for row in rows { map[row.id] = row }
         records = map

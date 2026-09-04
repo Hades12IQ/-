@@ -41,6 +41,7 @@ struct MathBlockView: View {
     private let fontScale: FontScale
     private let background: Color
     private let motionOn: Bool
+    @Environment(\.firasTextSelection) private var selection
 
     /// - Parameters:
     ///   - tex: the bare expression, with no delimiters (`MDBlock.mathDisplay` carries exactly this).
@@ -75,14 +76,23 @@ struct MathBlockView: View {
         let glyph: MathGlyph? = typesettable
             ? MathIsland.shared.glyph(for: identifier, style: style)
             : nil
-        let fade: Animation? = motionOn ? Animation.easeOut(duration: 0.16) : nil
         // Flattened once per body, not once per label: a landing bitmap redraws every math row on
         // screen, and `MathText.unicode` is a full pass over the expression.
         let unicode = MathText.unicode(tex)
         let line = unicode.isEmpty ? tex : unicode
 
         return layout(glyph, line: line)
-            .animation(fade, value: glyph != nil)
+            .transaction { $0.animation = nil }
+            .contextMenu {
+                Button(lang == .arabic ? "نسخ" : "Copy", systemImage: "doc.on.doc") {
+                    UIPasteboard.general.string = line
+                }
+                if let selection {
+                    Button(lang == .arabic ? "اسأل فِراس" : "Ask Firas", systemImage: "text.bubble") {
+                        selection.ask(line)
+                    }
+                }
+            }
             .task(id: identifier + "|" + style.key) { await request(style) }
     }
 
@@ -197,7 +207,8 @@ extension MathBlockView {
         messageID: String,
         palette: FirasPalette,
         background: Color? = nil,
-        fontScale: FontScale = .medium
+        fontScale: FontScale = .medium,
+        persist: Bool = false
     ) {
         guard !markdown.isEmpty else { return }
         let style = MathIslandStyle(
@@ -205,7 +216,7 @@ extension MathBlockView {
             background: background ?? palette.background,
             fontScale: fontScale
         )
-        MathIsland.shared.prime(markdown: markdown, messageID: messageID, style: style)
+        MathIsland.shared.prime(markdown: markdown, messageID: messageID, style: style, persist: persist)
     }
 
     /// Regenerate, version switch, edit, end of stream.

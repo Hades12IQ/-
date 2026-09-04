@@ -48,6 +48,9 @@ final class ConversationState {
     /// Text the user selected and chose to quote in the next message.
     var pendingQuote: String?
 
+    /// Visible immediately while quota/chat setup runs; the actual card replaces this status.
+    var mediaPreparation: ChatMediaPreparation?
+
     /// The assistant row `liveText` belongs to. Only that row re-renders while streaming, so the
     /// transcript reads it — it must stay observed.
     var streamingMessageID: String?

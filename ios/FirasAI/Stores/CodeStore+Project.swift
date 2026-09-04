@@ -13,6 +13,19 @@ enum CodeBuildKind: String, Sendable, Equatable {
     case dashboard
     case mobile
     case desktop
+    case native
+    case cli
+    case api
+    case library
+    case data
+    case software
+
+    var usesBrowserPreview: Bool {
+        switch self {
+        case .site, .game, .dashboard: return true
+        case .mobile, .desktop, .native, .cli, .api, .library, .data, .software: return false
+        }
+    }
 }
 
 /// One planned file: the path the build will write, and the one line the planner said it does.
@@ -228,7 +241,8 @@ extension CodeStore {
         for entry in tree {
             let path = entry.path
             let lowerPath = path.lowercased()
-            guard !isVendoredPath(lowerPath), isReadableSourcePath(lowerPath) else { continue }
+            guard !isVendoredPath(lowerPath), isReadableSourcePath(lowerPath),
+                  !CodeEngineeringGuidance.isSensitivePath(path) else { continue }
             guard entry.size <= repositoryFileByteCeiling else { continue }
             let name = entry.name.lowercased()
 
@@ -301,7 +315,9 @@ extension CodeStore {
             out += "… and " + String(tree.count - rows) + " more files not listed\n"
         }
 
-        for file in files where !file.content.isEmpty {
+        for file in files where !file.content.isEmpty
+            && !CodeEngineeringGuidance.isSensitivePath(file.path)
+            && !CodeEngineeringGuidance.containsPrivateKey(file.content) {
             out += "\n===== REPO FILE: " + file.path + " =====\n"
             out += file.content
             out += "\n===== END REPO FILE: " + file.path + " =====\n"
@@ -429,6 +445,13 @@ extension CodeStore {
     nonisolated static func buildKind(for brief: String) -> CodeBuildKind {
         let lowered = String(brief.prefix(2_000)).lowercased()
         let normalized = ArabicText.normalize(String(brief.prefix(2_000)))
+        // An explicit runtime must survive incidental words such as an HTML
+        // report produced by Python, or an iOS game written in Swift.
+        let spec = CodeSpec.detect(brief)
+        if ["swift", "kotlin"].contains(spec.lang) { return .native }
+        if ["python", "rust", "go", "java", "csharp", "cpp", "c", "ruby", "php", "bash", "powershell", "sql", "r"].contains(spec.lang) {
+            return .software
+        }
         for (kind, latin, arabic) in kindNouns {
             for token in latin where CodeAskAI.containsToken(lowered, token) {
                 return kind
@@ -442,6 +465,10 @@ extension CodeStore {
 
     private nonisolated static var kindNouns: [(CodeBuildKind, [String], [String])] {
         [
+            (.cli, ["cli", "command-line", "command line", "shell script"], ["سطر الأوامر", "سكربت", "أتمتة"]),
+            (.api, ["api", "backend", "rest", "graphql", "server", "microservice"], ["واجهة برمجية", "خادم", "باك اند"]),
+            (.library, ["library", "sdk", "package", "plugin"], ["مكتبة برمجية", "حزمة برمجية"]),
+            (.data, ["data analysis", "data pipeline", "machine learning", "notebook", "sql"], ["تحليل بيانات", "تعلم آلي", "قاعدة بيانات"]),
             (.game,
              ["game", "arcade", "platformer", "shooter", "puzzle"],
              ["لعبة", "لعبه", "العاب", "ألعاب"]),
@@ -460,12 +487,13 @@ extension CodeStore {
 
     /// The worker's per-kind skeleton, used only when the planner came back with fewer than two
     /// usable files (`§2.3` step 5).
-    nonisolated static func skeleton(for kind: CodeBuildKind) -> [String] {
+    nonisolated static func skeleton(for kind: CodeBuildKind, brief: String = "") -> [String] {
         switch kind {
         case .game: return ["styles.css", "js/game.js", "js/state.js"]
         case .dashboard: return ["styles.css", "js/data.js", "js/charts.js", "js/app.js"]
-        case .mobile: return ["styles.css", "js/app.js", "capacitor.config.json", "package.json", "README.md"]
-        case .desktop: return ["styles.css", "js/app.js", "main.js", "package.json", "README.md"]
+        case .mobile, .desktop, .native, .cli, .api, .library, .data, .software:
+            let spec = CodeSpec.detect(brief)
+            return spec.lang == "html" ? ["README.md"] : [spec.filename, "README.md"]
         case .site: return ["styles.css", "js/app.js"]
         }
     }
@@ -480,9 +508,21 @@ extension CodeStore {
         case .dashboard:
             return "This is a dashboard: generated but plausible data, real charts drawn in code or via one pinned CDN library, and filters that actually filter."
         case .mobile:
-            return "This is a phone app interface: one screen at a time, thumb-sized controls, safe-area padding, and no hover-only affordances."
+            return "This is a phone app. Honor the requested native or cross-platform stack; include its app entry, build configuration and setup instructions. Respect safe areas, accessibility and thumb-sized controls. Use a web wrapper only if it was requested."
         case .desktop:
-            return "This is a desktop program interface: panels, a menu or toolbar, and keyboard shortcuts for the primary actions."
+            return "This is a desktop application. Honor the requested platform and runtime, with its build configuration, window lifecycle, keyboard actions and setup instructions. Do not substitute an HTML mockup."
+        case .native:
+            return "This is native application source. Use the explicitly requested platform APIs and language, correct lifecycle and state ownership, cancellation/error handling, accessibility, and real project configuration. No HTML replacement."
+        case .cli:
+            return "This is a command-line tool or automation. Include argument parsing, useful help, validation, exit codes, deterministic output and safe filesystem behavior."
+        case .api:
+            return "This is a service/API. Include concrete routes and schemas, authentication when needed, validation, bounded requests, safe errors, configuration and focused endpoint tests."
+        case .library:
+            return "This is a reusable library/SDK. Include a small documented API, package manifest, working usage examples and focused tests. Avoid side effects on import."
+        case .data:
+            return "This is a data/analysis project. Include explicit input schemas, missing-value handling, correct calculations, reproducible execution and labeled outputs; distinguish demonstration data from supplied measurements."
+        case .software:
+            return "This is source code in the runtime the request names. Deliver runnable source, matching dependencies and setup instructions, and relevant tests; a browser preview is not required."
         }
     }
 
@@ -492,18 +532,18 @@ extension CodeStore {
     /// the time it returns.
     private nonisolated static var planSystemPrompt: String {
         #"""
-        You are the architect of a small, complete web project. Plan its files and NOTHING else.
+        You are the architect of the software requested by the user. Plan its files and NOTHING else.
 
         STRICT OUTPUT FORMAT: one JSON array and nothing around it — no prose, no markdown fence:
-        [{"path":"index.html","does":"one short sentence"}, …]
+        [{"path":"relative/path.ext","does":"one short sentence"}]
 
         RULES:
-        - Between 3 and 10 files. Exactly one index.html, and it comes first.
-        - Plain HTML, CSS and JavaScript only. There is no build step and no npm: the project runs by opening index.html directly. One pinned CDN UMD library is allowed; Google Fonts, Font Awesome and picsum.photos are always allowed.
+        - Plan the number of files the request needs, normally 1–20. Put the entry point or essential shared interfaces first. Native apps, scripts, APIs, libraries, data projects and configuration do not require any HTML file.
+        - Respect the user's requested language/runtime and existing conventions. Include build/dependency configuration and README instructions when needed. For a browser-only website, use index.html with plain HTML/CSS/JS and pinned CDN libraries when useful.
         - Paths are relative, use forward slashes, contain no "..", and are at most 120 characters.
         - Plan only files you would actually write in full. A file nobody can fill is a broken project.
-        - Split the work so that no single file has to carry everything: markup, styling and behaviour live in separate files.
-        """#
+        - Split responsibilities when useful; do not invent unrelated files to reach a file count. Keep each file below 60000 characters and the complete project below 180000 characters without truncating source.
+        """# + "\n\n" + CodeEngineeringGuidance.core
     }
 
     nonisolated static func planMessages(
@@ -517,6 +557,7 @@ extension CodeStore {
             user += "\n\n" + String(attach.prefix(planAttachmentLimit))
         }
         user += "\n\nUI LANGUAGE: " + (uiLang == .arabic ? "Arabic" : "English")
+        user += "\n\nPROJECT REQUIREMENTS: " + kindMandate(buildKind(for: brief))
         return [
             OutgoingMessage(role: "system", content: planSystemPrompt),
             OutgoingMessage(role: "user", content: user)
@@ -537,9 +578,9 @@ extension CodeStore {
         RULES:
         - Write the file from its first character to its last. NEVER write "TODO", "FIXME", "... rest of the code", "goes here", "your code here", "omitted for brevity", "remains the same" or any other placeholder — a truncated file is a broken project.
         - Match the manifest exactly: every path you reference must be one of the planned paths, spelled the same way.
-        - There is no build step and no npm here. The project runs by opening its HTML file directly, so use plain HTML, CSS and JavaScript, or a CDN library with a pinned version.
-        - The preview runs sandboxed without same-origin access: localStorage, cookies and service workers are unavailable to the previewed page.
-        """# + "\n- " + language + "\n- " + kindMandate(kind)
+        - Use the language and runtime the brief and manifest require. The app's HTML preview does not restrict the file types you can write. Browser previews have no same-origin storage; native apps and services follow their own runtime rules.
+        - Keep this file complete and below 60000 characters. Match shared interfaces in the previously written files.
+        """# + "\n- " + language + "\n- " + kindMandate(kind) + "\n\n" + CodeEngineeringGuidance.core
     }
 
     nonisolated static func fileMessages(
@@ -550,7 +591,8 @@ extension CodeStore {
         kind: CodeBuildKind,
         uiLang: AppLanguage,
         manifest: [CodeBuildStep],
-        written: [String]
+        written: [String],
+        writtenFiles: [CodeFile] = []
     ) -> [OutgoingMessage] {
         var user = "PROJECT: " + projectName + "\n\nWHAT THE USER ASKED FOR:\n"
             + String(brief.prefix(fileBriefLimit))
@@ -562,6 +604,15 @@ extension CodeStore {
             user += "- " + entry.path + (entry.does.isEmpty ? "" : " — " + entry.does) + "\n"
         }
         user += "\nALREADY WRITTEN: " + (written.isEmpty ? "nothing yet" : written.joined(separator: ", "))
+        var remainingContext = 24_000
+        for file in writtenFiles.reversed() where remainingContext > 0 {
+            guard !CodeEngineeringGuidance.isSensitivePath(file.path),
+                  !CodeEngineeringGuidance.containsPrivateKey(file.content) else { continue }
+            let excerpt = String(file.content.prefix(min(8_000, remainingContext)))
+            remainingContext -= excerpt.count
+            user += "\n\nEXISTING INTERFACE: " + file.path + "\n" + excerpt
+            if excerpt.count < file.content.count { user += "\n[Excerpt; remaining source omitted from context.]" }
+        }
         user += "\n\nYOUR FILE: " + step.path
             + (step.does.isEmpty ? "" : " — " + step.does)
             + "\nOutput its complete content and nothing else."
@@ -602,7 +653,7 @@ extension CodeStore {
     /// `[{path, does}]`, with the worker's repairs: paths cleaned, duplicates dropped, `index.html`
     /// forced to the front, a skeleton appended when the planner produced almost nothing, and the
     /// whole thing cut to the number of files this client can actually save.
-    nonisolated static func parsePlan(_ raw: String, kind: CodeBuildKind) -> [CodeBuildStep] {
+    nonisolated static func parsePlan(_ raw: String, kind: CodeBuildKind, brief: String = "") -> [CodeBuildStep] {
         var steps: [CodeBuildStep] = []
         if let start = raw.firstIndex(of: "["),
            let end = raw.lastIndex(of: "]"),
@@ -612,7 +663,7 @@ extension CodeStore {
            let rows = object as? [[String: Any]] {
             for row in rows {
                 let path = sanitizePath((row["path"] as? String) ?? "")
-                guard !path.isEmpty, path.contains(".") else { continue }
+                guard !path.isEmpty, path != ".", !path.hasSuffix("/") else { continue }
                 guard !steps.contains(where: { $0.path == path }) else { continue }
                 let does = String(((row["does"] as? String) ?? "").prefix(200))
                 steps.append(CodeBuildStep(path: path, does: does))
@@ -620,14 +671,14 @@ extension CodeStore {
         }
 
         // `index.html` is not optional: it is the file the preview opens.
-        if let index = steps.firstIndex(where: { $0.path.lowercased() == "index.html" }) {
+        if kind.usesBrowserPreview, let index = steps.firstIndex(where: { $0.path.lowercased() == "index.html" }) {
             let entry = steps.remove(at: index)
             steps.insert(entry, at: 0)
-        } else {
+        } else if kind.usesBrowserPreview {
             steps.insert(CodeBuildStep(path: "index.html", does: ""), at: 0)
         }
-        if steps.count < 2 {
-            for path in skeleton(for: kind) where !steps.contains(where: { $0.path == path }) {
+        if steps.isEmpty || (kind.usesBrowserPreview && steps.count < 2) {
+            for path in skeleton(for: kind, brief: brief) where !steps.contains(where: { $0.path == path }) {
                 steps.append(CodeBuildStep(path: path, does: ""))
             }
         }
