@@ -1,0 +1,54 @@
+Archive:  /Users/runner/work/_temp/FirasAI-Artifacts/FirasAI-unsigned.ipa
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+        0  09-04-2026 22:28   Payload/
+        0  09-04-2026 22:20   Payload/FirasAI.app/
+    13568  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Typewriter-Regular.woff2
+        0  09-04-2026 22:15   Payload/FirasAI.app/ar.lproj/
+     1033  09-04-2026 22:15   Payload/FirasAI.app/ar.lproj/InfoPlist.strings
+     1262  09-04-2026 22:15   Payload/FirasAI.app/doc-academic.css
+    28076  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_AMS-Regular.woff2
+     1289  09-04-2026 22:15   Payload/FirasAI.app/doc-magazine.css
+     3624  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Size3-Regular.woff2
+        0  09-04-2026 22:15   Payload/FirasAI.app/en.lproj/
+      685  09-04-2026 22:15   Payload/FirasAI.app/en.lproj/InfoPlist.strings
+    26272  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Main-Regular.woff2
+     6912  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Caligraphic-Bold.woff2
+    12216  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_SansSerif-Bold.woff2
+    16440  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Math-Italic.woff2
+     4928  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Size4-Regular.woff2
+    11348  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Fraktur-Bold.woff2
+    12028  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_SansSerif-Italic.woff2
+    25324  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Main-Bold.woff2
+     4382  09-04-2026 22:15   Payload/FirasAI.app/NotoSansArabic-OFL.txt
+    10344  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_SansSerif-Regular.woff2
+     1392  09-04-2026 22:15   Payload/FirasAI.app/AppIcon60x60@2x.png
+    16780  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Main-BoldItalic.woff2
+    11316  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Fraktur-Regular.woff2
+     8144  09-04-2026 22:15   Payload/FirasAI.app/doc-base.css
+        0  09-04-2026 22:15   Payload/FirasAI.app/ZIPFoundation_ZIPFoundation.bundle/
+      599  09-04-2026 22:15   Payload/FirasAI.app/ZIPFoundation_ZIPFoundation.bundle/PrivacyInfo.xcprivacy
+      726  09-04-2026 22:15   Payload/FirasAI.app/ZIPFoundation_ZIPFoundation.bundle/Info.plist
+     9644  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Script-Regular.woff2
+     1145  09-04-2026 22:15   Payload/FirasAI.app/doc-corporate.css
+     4396  09-04-2026 22:15   Payload/FirasAI.app/NotoSans-OFL.txt
+    23335  09-04-2026 22:15   Payload/FirasAI.app/katex.min.css
+ 31610520  09-04-2026 22:20   Payload/FirasAI.app/FirasAI
+    60408  09-04-2026 22:16   Payload/FirasAI.app/Assets.car
+   104120  09-04-2026 22:15   Payload/FirasAI.app/FirasComplete.wav
+    16400  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Math-BoldItalic.woff2
+     1600  09-04-2026 22:15   Payload/FirasAI.app/AppIcon76x76@2x~ipad.png
+   844676  09-04-2026 22:15   Payload/FirasAI.app/NotoSansArabic.ttf
+    16988  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Main-Italic.woff2
+   275414  09-04-2026 22:15   Payload/FirasAI.app/katex.min.js
+     5468  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Size1-Regular.woff2
+   101474  09-04-2026 22:15   Payload/FirasAI.app/done.wav
+     1195  09-04-2026 22:15   Payload/FirasAI.app/doc-ministry.css
+  2049096  09-04-2026 22:15   Payload/FirasAI.app/NotoSans.ttf
+    33730  09-04-2026 22:15   Payload/FirasAI.app/mhchem.min.js
+     2657  09-04-2026 22:16   Payload/FirasAI.app/Info.plist
+     5208  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Size2-Regular.woff2
+     6908  09-04-2026 22:15   Payload/FirasAI.app/KaTeX_Caligraphic-Regular.woff2
+        8  09-04-2026 22:16   Payload/FirasAI.app/PkgInfo
+---------                     -------
+ 35393078                     49 files
