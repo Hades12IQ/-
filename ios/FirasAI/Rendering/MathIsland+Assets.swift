@@ -491,15 +491,25 @@ final class MathIslandAssets: NSObject, @preconcurrency WKURLSchemeHandler {
       /* Fonts decide glyph widths, so a box measured before they land is the wrong box. */
       function settle(done) {
         var fired = false;
-        var go = function () {
+        var started = false;
+        var timer = setTimeout(finish, 1500);
+        function finish() {
           if (fired) { return; }
           fired = true;
-          requestAnimationFrame(function () { requestAnimationFrame(done); });
+          clearTimeout(timer);
+          done();
+        }
+        var go = function () {
+          if (fired || started) { return; }
+          started = true;
+          requestAnimationFrame(function () {
+            if (fired) { return; }
+            requestAnimationFrame(finish);
+          });
         };
         try {
           if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === "function") {
-            document.fonts.ready.then(go);
-            setTimeout(go, 1500);
+            document.fonts.ready.then(go, go);
           } else {
             go();
           }
