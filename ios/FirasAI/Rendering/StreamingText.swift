@@ -18,8 +18,8 @@ import UIKit
 /// guarantees to whatever it wraps:
 ///
 /// * The string handed to `content` is always a **grapheme-cluster prefix** of the text that has
-///   arrived, so an Arabic letter never appears without the harakah that belongs to it and a
-///   markdown block splitter never sees half a character.
+///   arrived. Its last cluster is held briefly for a following harakah or emoji joiner, then
+///   released on idle; any later extension joins the already visible cluster immediately.
 /// * It only ever grows, unless the answer itself was replaced mid-turn (a retry), in which case it
 ///   restarts rather than splicing two attempts together.
 /// * It repaints at a capped rate that falls as the answer gets longer — 60 Hz for a short reply,
@@ -123,6 +123,9 @@ final class StreamReveal {
     @ObservationIgnored private var pendingBytes: Int = 0
     @ObservationIgnored private var revealedBytes: Int = 0
     @ObservationIgnored private var trailingGraphemeBytes: Int = 0
+    @ObservationIgnored private var trailingIsAvailable = false
+    @ObservationIgnored private var trailingTimer: Timer?
+    @ObservationIgnored private var trailingDeadline: CFTimeInterval = 0
 
     // MARK: Pacing state
 
@@ -148,6 +151,9 @@ final class StreamReveal {
     private static let minimumTau: Double = 0.10
     private static let maximumTau: Double = 0.24
     private static let catchupWindow: CFTimeInterval = 0.24
+    /// One coalescer interval plus a small joining allowance. A quiet stream must still expose the
+    /// final received letter of a word/control sequence without waiting for another network event.
+    private static let trailingIdleWindow: CFTimeInterval = 0.12
     /// Slowest and fastest the cursor may move, in UTF-8 bytes per second. The floor is about 40
     /// Arabic letters a second; the ceiling keeps a burst reading as writing, not teleporting.
     private static let minimumRate: Double = 80
@@ -191,10 +197,11 @@ final class StreamReveal {
             finishDeadline = 0
             if !isRevealing { isRevealing = true }
         }
-        push(text)
+        let changed = push(text)
         if isStreaming {
+            if changed { scheduleTrailingRelease() }
             // Show the beginning on arrival, including after a thinking-only response. The final
-            // grapheme is still held so a following harakah or emoji joiner stays intact.
+            // grapheme is held briefly so a following harakah or emoji joiner stays intact.
             if visible.isEmpty { consume(bytes: min(24, availableBytes())) }
             if availableBytes() > 0 { start() } else { stop() }
         } else {
@@ -205,10 +212,12 @@ final class StreamReveal {
     /// Throws the cursor away — a different message is about to use this driver.
     func reset() {
         stop()
+        cancelTrailingRelease()
         pending = ""
         pendingBytes = 0
         revealedBytes = 0
         trailingGraphemeBytes = 0
+        trailingIsAvailable = false
         isFinishing = false
         finishDeadline = 0
         catchupDeadline = 0
@@ -230,19 +239,22 @@ final class StreamReveal {
 
     // MARK: - Target
 
-    private func push(_ next: String) {
+    private func push(_ next: String) -> Bool {
         guard !next.isEmpty else {
+            let changed = revealedBytes + pendingBytes > 0
             pending = ""
             pendingBytes = 0
             revealedBytes = 0
             trailingGraphemeBytes = 0
             catchupDeadline = 0
             if !visible.isEmpty { visible = "" }
-            return
+            return changed
         }
 
         // A retry replaces the partial answer instead of extending it. Never splice two attempts.
+        var replaced = false
         if !Self.utf8Prefix(next, matches: visible, bytes: revealedBytes) {
+            replaced = true
             visible = ""
             revealedBytes = 0
             pendingBytes = 0
@@ -267,20 +279,41 @@ final class StreamReveal {
             lastArrivalAt = now
         }
 
+        // Idle release cannot predict a later combining mark or ZWJ. If new bytes extend the
+        // visible final cluster, append that extension atomically before slicing the paced tail.
+        // String.Index(_:within:) succeeds only at an actual extended-grapheme boundary.
+        if revealedBytes > 0, revealedBytes < total {
+            let oldBoundary = next.utf8.index(next.utf8.startIndex, offsetBy: revealedBytes)
+            if String.Index(oldBoundary, within: next) == nil {
+                let previousTailBytes = visible.suffix(1).utf8.count
+                let tailBytes = next.utf8.index(oldBoundary, offsetBy: -previousTailBytes)
+                if let tailStart = String.Index(tailBytes, within: next) {
+                    let tailEnd = next.index(after: tailStart)
+                    let extensionText = String(decoding: next.utf8[oldBoundary..<tailEnd], as: UTF8.self)
+                    visible.append(extensionText)
+                    revealedBytes += extensionText.utf8.count
+                }
+            }
+        }
+
         pendingBytes = max(0, total - revealedBytes)
+        var pendingChanged = false
         if pendingBytes > 0 {
             // Sliced from its own storage, so every later advance is O(the run revealed) rather
             // than O(the answer): `pending` keeps that storage alive and re-slices itself.
             let remainder = String(decoding: next.utf8.dropFirst(revealedBytes), as: UTF8.self)
+            pendingChanged = !pending.utf8.elementsEqual(remainder.utf8)
             pending = remainder[remainder.startIndex...]
             trailingGraphemeBytes = pending.suffix(1).utf8.count
         } else {
             pending = ""
             trailingGraphemeBytes = 0
         }
+        return replaced || arrived != 0 || pendingChanged
     }
 
     private func finish() {
+        cancelTrailingRelease()
         if pendingBytes <= 0 {
             settle()
             return
@@ -297,9 +330,11 @@ final class StreamReveal {
     /// Everything at once: Reduce Motion, a version switch, a message this driver never paced.
     private func snap(to text: String) {
         stop()
+        cancelTrailingRelease()
         pending = ""
         pendingBytes = 0
         trailingGraphemeBytes = 0
+        trailingIsAvailable = false
         isFinishing = false
         finishDeadline = 0
         catchupDeadline = 0
@@ -310,6 +345,7 @@ final class StreamReveal {
 
     /// Puts the rest of the answer on screen and comes to rest.
     private func settle() {
+        cancelTrailingRelease()
         if pendingBytes > 0 {
             visible.append(contentsOf: pending)
             revealedBytes += pendingBytes
@@ -317,11 +353,45 @@ final class StreamReveal {
             pendingBytes = 0
         }
         trailingGraphemeBytes = 0
+        trailingIsAvailable = false
         isFinishing = false
         finishDeadline = 0
         catchupDeadline = 0
         if isRevealing { isRevealing = false }
         stop()
+    }
+
+    private func scheduleTrailingRelease() {
+        cancelTrailingRelease()
+        trailingIsAvailable = false
+        guard pendingBytes > 0 else { return }
+        trailingDeadline = clock() + Self.trailingIdleWindow
+        let timer = Timer(timeInterval: Self.trailingIdleWindow, repeats: false) { [weak self] _ in
+            self?.releaseTrailing()
+        }
+        trailingTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func cancelTrailingRelease() {
+        trailingTimer?.invalidate()
+        trailingTimer = nil
+        trailingDeadline = 0
+    }
+
+    private func releaseTrailing() {
+        guard trailingDeadline > 0, isRevealing, !isFinishing, !isPaused else {
+            cancelTrailingRelease()
+            return
+        }
+        cancelTrailingRelease()
+        trailingIsAvailable = true
+        if pendingBytes == trailingGraphemeBytes {
+            // A single held cluster needs one publication, not another display-link lifecycle.
+            consume(bytes: pendingBytes)
+        } else if pendingBytes > 0 {
+            start()
+        }
     }
 
     // MARK: - The link
@@ -410,11 +480,11 @@ final class StreamReveal {
     }
 
     /// How far the cursor may go this frame. While text is still arriving the trailing grapheme is
-    /// held back: a bare Arabic letter can still gain its harakah in the next chunk, and revealing
-    /// it early is exactly the pop the owner is complaining about.
+    /// held briefly: a bare Arabic letter can still gain its harakah in the next chunk. The idle
+    /// timer releases it when nothing else arrives, including the last letter of a TeX command.
     private func availableBytes() -> Int {
         guard pendingBytes > 0 else { return 0 }
-        if isFinishing { return pendingBytes }
+        if isFinishing || trailingIsAvailable { return pendingBytes }
         return max(0, pendingBytes - trailingGraphemeBytes)
     }
 
@@ -470,7 +540,11 @@ final class StreamReveal {
 
     #if DEBUG
     var debugHasDisplayLink: Bool { link != nil }
-    func debugAdvance(to time: CFTimeInterval) { step(at: time) }
+    var debugHasTrailingTimer: Bool { trailingTimer != nil }
+    func debugAdvance(to time: CFTimeInterval) {
+        if trailingDeadline > 0, time >= trailingDeadline { releaseTrailing() }
+        step(at: time)
+    }
     #endif
 }
 

@@ -100,6 +100,7 @@ struct ReliabilitySmokeView: View {
         if MathIsland.shared.peekForReliability(grown.id, style: style) == nil {
             failures.append("Mounted view failed to update its unfinished formula")
         }
+        metrics["updatedPreviewMilliseconds"] = Date().timeIntervalSince(growingStart) * 1000
         liveSource += "$ ثم يستمر الشرح."
         let promotionDeadline = Date().addingTimeInterval(5)
         while Date() < promotionDeadline {
