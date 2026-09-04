@@ -1,0 +1,61 @@
+{
+  "errors" : [
+
+  ],
+  "mathExpectedCount" : 5,
+  "mathGlyphCount" : 5,
+  "nativeAskMenu" : true,
+  "nativeWordSelection" : true,
+  "pdfBytes" : 69561,
+  "pdfDiagnostics" : {
+    "formatterFirstRect" : [
+      51.023622047244103,
+      56.692913385826778,
+      493.22834645669298,
+      728.50393700787424
+    ],
+    "formatterNextRect" : [
+      51.023622047244103,
+      56.692913385826778,
+      493.22834645669298,
+      728.50393700787424
+    ],
+    "hasWindow" : true,
+    "load" : {
+      "status" : "finished"
+    },
+    "mathAssetsReady" : true,
+    "mathReady" : true,
+    "page" : {
+      "bodyHeight" : 6272,
+      "bodyWidth" : 964,
+      "fontsStatus" : "loaded",
+      "katexLoaded" : true,
+      "mathCount" : 102,
+      "mathErrors" : 0,
+      "readyState" : "complete",
+      "stylesheetCount" : 3
+    },
+    "pageCounts" : [
+      6
+    ],
+    "paperRect" : [
+      0,
+      0,
+      595.27559055118115,
+      841.8897637795277
+    ],
+    "pdfBytes" : 69561,
+    "printableRect" : [
+      51.023622047244103,
+      56.692913385826778,
+      493.22834645669298,
+      728.50393700787424
+    ],
+    "stage" : "completed"
+  },
+  "pdfPageCount" : 6,
+  "pdfPath" : "\/Users\/runner\/Library\/Developer\/CoreSimulator\/Devices\/2A6DC5A9-CE8C-4BC5-959D-F98D5F4BD9AA\/data\/Containers\/Data\/Application\/F50BB6EA-D894-4AC7-A178-33F3374AAA9A\/Documents\/reliability-long-arabic.pdf",
+  "persistedMathGlyphCount" : 5,
+  "status" : "passed"
+}
