@@ -42,7 +42,6 @@ final class DocumentPrinter {
         guard let view = await page(for: html) else { return nil }
         defer { teardown() }
         await settle(view)
-        await recordPageState(view)
         let settingsValue: Any?
         do { settingsValue = try await view.evaluateJavaScript(Self.printSettingsScript) }
         catch {
@@ -62,7 +61,11 @@ final class DocumentPrinter {
         view.frame.size.width = renderer.printableRect.width * 96 / 72
         view.setNeedsLayout()
         view.layoutIfNeeded()
+        // Missing viewport metadata leaves iOS WebKit at its 980px desktop layout even after
+        // resizing the native view. Give the page one layout commit at the physical print width.
+        await JobClock.rest(0.12)
         do {
+            _ = try await view.evaluateJavaScript("document.documentElement.dataset.firasPrintableHeight = '\(Double(renderer.printableRect.height * 96 / 72))'")
             let value = try await view.evaluateJavaScript(Self.layoutValidationScript)
             if let layout = value as? [String: Any] {
                 diagnostics["layout"] = layout
@@ -79,6 +82,7 @@ final class DocumentPrinter {
             diagnostics["stage"] = "layout-validation-failed"
             return nil
         }
+        await recordPageState(view)
 
         var counts: [Int] = []
         for attempt in 0..<3 {
@@ -162,6 +166,9 @@ final class DocumentPrinter {
 
     private static let printPreparationScript = #"""
     (() => {
+      let viewport = document.querySelector('meta[name="viewport"]');
+      if (!viewport) { viewport = document.createElement('meta'); viewport.name = 'viewport'; document.head.appendChild(viewport); }
+      viewport.content = 'width=device-width, initial-scale=1';
       const style = document.createElement('style');
       style.textContent = '@page{margin:0!important}@media print{html,body{height:auto!important;min-height:0!important;overflow:visible!important}body{margin:0!important;width:auto!important}main,article,.document,.page,.sheet{max-width:100%!important;box-sizing:border-box}.page,.sheet{width:auto!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}h1,h2,h3,h4,h5,h6{break-after:avoid;page-break-after:avoid}p,li{orphans:3;widows:3}thead{display:table-header-group}tr,figure,img,.katex-display{break-inside:avoid;page-break-inside:avoid}table{break-inside:auto!important;page-break-inside:auto!important}pre{white-space:pre-wrap;overflow-wrap:anywhere}.katex,.katex-display{direction:ltr;unicode-bidi:isolate}.katex-mathml{display:none!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
       document.head.appendChild(style);

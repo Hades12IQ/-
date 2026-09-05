@@ -5,13 +5,15 @@ extension DocumentPrinter {
     /// while leaving ordinary data tables and every authored colour/font untouched.
     static let layoutValidationScript = #"""
     (() => {
-      const report = {reflowedMathTables:0,reflowedContainers:0,reflowedMathGrids:0,wrappedMath:0,mathOverflow:0,brokenImages:0,bodyOverflow:0};
+      const report = {reflowedMathTables:0,reflowedContainers:0,reflowedMathGrids:0,paginatedMathLayouts:0,wrappedMath:0,mathOverflow:0,brokenImages:0,bodyOverflow:0};
       const style = document.createElement('style');
       style.textContent = `html,body{width:auto!important;height:auto!important;min-height:0!important;overflow:visible!important}body{margin:0!important}
         main,article,.document,.page,.sheet{max-width:100%!important;box-sizing:border-box!important}
         .firas-print-math-table,.firas-print-math-table>thead,.firas-print-math-table>tbody,.firas-print-math-table>tfoot{display:block!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important}
         .firas-print-math-table tr{display:block!important;width:auto!important;height:auto!important;break-inside:auto!important;page-break-inside:auto!important}
         .firas-print-math-table th,.firas-print-math-table td{display:block!important;width:auto!important;max-width:100%!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;page-break-inside:avoid!important}
+        .firas-print-math-flow{display:block!important;columns:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;break-inside:auto!important;page-break-inside:auto!important}
+        .firas-print-math-flow>*{display:block!important;width:auto!important;max-width:100%!important;height:auto!important;min-height:0!important;box-sizing:border-box!important;break-inside:avoid!important;page-break-inside:avoid!important}
         .firas-wrap-math>.katex-html{display:block!important;white-space:normal!important;line-height:1.8}
         .firas-wrap-math>.katex-html>.base{margin-block:0.12em}
         img,figure>svg{max-width:100%;height:auto}figure{break-inside:avoid;page-break-inside:avoid}`;
@@ -52,6 +54,24 @@ extension DocumentPrinter {
           node.style.setProperty('box-sizing','border-box','important');
           report.reflowedContainers++;
         }
+      }
+      // WebKit's print formatter can slice CSS grid/flex items across page boundaries even
+      // with break-inside:avoid. A long equation collection needs ordinary block fragmentation.
+      // Short authored layouts keep their columns, colours and fonts.
+      const pageHeight = Number(document.documentElement.dataset.firasPrintableHeight) || 970;
+      for (const layout of document.querySelectorAll('main,article,section,div,ol,ul')) {
+        if (layout.closest('.katex,.katex-display,svg') || layout.children.length < 2) continue;
+        const css = getComputedStyle(layout);
+        const compound = ['grid','inline-grid','flex','inline-flex'].includes(css.display) || parseInt(css.columnCount,10) > 1;
+        if (!compound || !layout.querySelector('.katex') || layout.getBoundingClientRect().height <= pageHeight) continue;
+        layout.classList.add('firas-print-math-flow');
+        layout.style.setProperty('display','block','important');
+        layout.style.setProperty('columns','auto','important');
+        for (const child of layout.children) {
+          child.style.setProperty('break-inside','avoid','important');
+          child.style.setProperty('page-break-inside','avoid','important');
+        }
+        report.paginatedMathLayouts++;
       }
       for (const math of document.querySelectorAll('.katex')) {
         let parent = container(math);

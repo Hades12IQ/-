@@ -150,6 +150,8 @@ enum FileCardReliabilityChecks {
                 result.failures.append("Card exported a different answer version")
             }
             if document.pageCount < 2 { result.failures.append("Full document card export was not paginated") }
+            inspectFinalPDF(document, diagnostics: probe.diagnostics,
+                            checksIntegralRows: expectedMathCount == 200, result: &result)
         } else {
             result.failures.append("File-card Open did not deliver a readable PDF")
         }
@@ -162,6 +164,117 @@ enum FileCardReliabilityChecks {
             await JobClock.rest(0.03)
         }
         return result
+    }
+
+    /// Validate the PDF that QuickLook receives, independently of the DOM's layout report.
+    /// PDFSelection uses lower-left page coordinates; UIKit's printable rectangle uses top-left.
+    private static func inspectFinalPDF(_ document: PDFDocument, diagnostics: [String: Any],
+                                        checksIntegralRows: Bool, result: inout Result) {
+        guard let values = diagnostics["printableRect"] as? [NSNumber], values.count == 4,
+              values.allSatisfy({ $0.doubleValue.isFinite }),
+              values[2].doubleValue > 0, values[3].doubleValue > 0 else {
+            result.failures.append("Final PDF has no usable printable geometry for clipping checks")
+            return
+        }
+        let printable = CGRect(x: values[0].doubleValue, y: values[1].doubleValue,
+                               width: values[2].doubleValue, height: values[3].doubleValue)
+        var checked = 0, outside = 0, outsidePages = 0, missing = 0, separatedRows = 0
+        var maximumExcess: CGFloat = 0
+        var pageReports: [[String: Any]] = []
+        for index in 0..<document.pageCount {
+            guard let page = document.page(at: index) else {
+                result.failures.append("Final PDF is missing page \(index + 1)")
+                continue
+            }
+            let box = page.bounds(for: .mediaBox)
+            guard page.rotation == 0, box.width.isFinite, box.height.isFinite else {
+                result.failures.append("Final PDF page \(index + 1) has unexpected geometry")
+                continue
+            }
+            let allowed = CGRect(x: box.minX + printable.minX,
+                                 y: box.maxY - printable.maxY,
+                                 width: printable.width, height: printable.height)
+            let text = page.string ?? ""
+            let ns = text as NSString
+            // PDFKit raises an Objective-C exception for an out-of-range selection. Never pass
+            // an empty range, and use its own character count as the final upper bound.
+            let count = min(ns.length, page.numberOfCharacters)
+            var pageOutside = 0
+            for offset in 0..<count {
+                let range = NSRange(location: offset, length: 1)
+                if ns.substring(with: range).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { continue }
+                guard let selection = page.selection(for: range) else { missing += 1; continue }
+                let bounds = selection.bounds(for: page)
+                guard !bounds.isNull, !bounds.isEmpty,
+                      bounds.origin.x.isFinite, bounds.origin.y.isFinite,
+                      bounds.width.isFinite, bounds.height.isFinite else { missing += 1; continue }
+                checked += 1
+                let excess = max(0, max(max(allowed.minX - bounds.minX, bounds.maxX - allowed.maxX),
+                                        max(allowed.minY - bounds.minY, bounds.maxY - allowed.maxY)))
+                maximumExcess = max(maximumExcess, excess)
+                // Font-selection metrics can overhang visible ink by ~3pt. A 4pt allowance
+                // preserves those intact glyphs while rejecting the measured 10–11pt cuts.
+                if excess > 4 { outside += 1; pageOutside += 1 }
+            }
+            if pageOutside > 0 { outsidePages += 1 }
+            var report: [String: Any] = ["page": index + 1, "outsideCharacters": pageOutside]
+            if checksIntegralRows {
+                // This fixture has exactly one integral in every labelled problem/solution.
+                // A displaced label or formula must fail even when every glyph is still in view.
+                let labels = text.components(separatedBy: "PROBLEM-").count - 1
+                    + text.components(separatedBy: "SOLUTION-").count - 1
+                let integrals = text.filter { $0 == "∫" }.count
+                report["entryLabels"] = labels
+                report["integralSymbols"] = integrals
+                if labels != integrals {
+                    separatedRows += 1
+                    result.failures.append("PDF page \(index + 1) separates integral labels from formulas (\(labels)/\(integrals))")
+                }
+            }
+            pageReports.append(report)
+        }
+        result.metrics["pdfCheckedCharacters"] = Double(checked)
+        result.metrics["pdfOutsideCharacters"] = Double(outside)
+        result.metrics["pdfOutsidePages"] = Double(outsidePages)
+        result.metrics["pdfUnmeasurableCharacters"] = Double(missing)
+        result.metrics["pdfMaximumMarginExcess"] = Double(maximumExcess)
+        result.metrics["pdfSeparatedEntryPages"] = Double(separatedRows)
+        result.diagnostics["finalPDFPages"] = pageReports
+        if checked == 0 || missing > 0 { result.failures.append("Final PDF character geometry could not be fully inspected") }
+        if outside > 0 { result.failures.append("Final PDF clips \(outside) characters beyond its printable margins") }
+
+        if let last = document.page(at: document.pageCount - 1) {
+            let emptyText = (last.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            if let ink = rasterInkPixels(last) {
+                result.metrics["lastPageInkPixels"] = Double(ink)
+                result.metrics["lastPageHasText"] = emptyText ? 0 : 1
+                if emptyText && ink == 0 { result.failures.append("Final PDF has a completely blank trailing page") }
+            } else { result.failures.append("Final PDF trailing page could not be raster-inspected") }
+        }
+    }
+
+    /// White-background RGB rendering avoids calling a math/image-only page blank because it
+    /// has no extractable text. Count actual nonwhite pixels, including vector fraction rules.
+    private static func rasterInkPixels(_ page: PDFPage) -> Int? {
+        let box = page.bounds(for: .mediaBox)
+        guard box.width > 0, box.height > 0, box.width.isFinite, box.height.isFinite else { return nil }
+        let scale = min(1, 1200 / max(box.width, box.height))
+        let width = Int(ceil(box.width * scale)), height = Int(ceil(box.height * scale))
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
+            bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) else { return nil }
+        context.setFillColor(UIColor.white.cgColor)
+        context.fill(CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height)))
+        context.scaleBy(x: scale, y: scale)
+        context.translateBy(x: -box.minX, y: -box.minY)
+        page.draw(with: .mediaBox, to: context)
+        guard let data = context.data else { return nil }
+        let bytes = data.bindMemory(to: UInt8.self, capacity: width * height * 4)
+        var ink = 0
+        for index in stride(from: 0, to: width * height * 4, by: 4) {
+            if bytes[index] < 248 || bytes[index + 1] < 248 || bytes[index + 2] < 248 { ink += 1 }
+        }
+        return ink
     }
 
     private struct FixtureView: View {
