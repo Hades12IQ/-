@@ -70,6 +70,15 @@ struct ChatJobDriver: JobKindDriver {
     private static func terminal(for status: ChatJobStatus, pointer: JobPointer, kind: JobKind) -> JobTerminal {
         let raw = status.error.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // An automatic generation error may leave a real, separately identified partial PDF.
+        // Explicit Stop does not mint a partial deliverable or silently resume the work.
+        if kind == .counteddoc, status.status != 499,
+           !["cancelled", "canceled"].contains(raw.lowercased()),
+           let meta = FileMeta.document(inContent: status.text), meta.partial == true,
+           meta.hasVerifiedPDFReference {
+            return .failed(code: "partial_document", partial: snapshot(pointer, status, phase: .failed))
+        }
+
         // A refusal: quota, rate limit or auth captured inside the worker. `error` is the JSON body
         // the live route would have returned, and `status` is its HTTP status — so it takes the same
         // ErrorPresenter path as a live 429.

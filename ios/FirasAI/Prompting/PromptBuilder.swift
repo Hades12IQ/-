@@ -160,6 +160,9 @@ enum PromptBuilder {
                         + revision.source + "\n</original_document>"
                 }
             }
+            if let original = input.documentRevision?.originalRequest, !original.isEmpty {
+                documentMessage += "\n\nRetain the original deliverable requirements (including quantity, solutions, layout grouping and output format) unless the current request explicitly changes them:\n" + original
+            }
             if format == "pdf" {
                 documentMessage += "\n\n" + DocumentAssetInventory.instruction(for: assets)
                 if !positions.isEmpty {

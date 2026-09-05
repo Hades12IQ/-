@@ -8,7 +8,7 @@ extension DocumentHTML {
     /// The original authored source keeps those IDs, so a later revision can reuse the same asset.
     static func embeddingImages(in html: String, assets: [String: Data]) -> String {
         guard html.contains("firas-asset:"), !assets.isEmpty else { return html }
-        var out = html
+        var out = html.replacingOccurrences(of: "firas-asset://", with: "firas-asset:")
         var budget = 24 * 1_024 * 1_024
         for (id, bytes) in assets.sorted(by: { $0.key < $1.key }) {
             guard !id.isEmpty, id.count <= 180,

@@ -136,7 +136,7 @@ struct LongFileCard: View {
             }
         }
         .frame(height: 5)
-        .animation(motionOn ? FirasMotion.standard : FirasMotion.fade, value: fraction)
+        .animation(motionOn ? FirasMotion.standard : nil, value: fraction)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(counterText))
     }
@@ -161,7 +161,7 @@ struct LongFileCard: View {
 
     @ViewBuilder
     private var footer: some View {
-        if isComplete, let onOpen {
+        if isComplete, progress?.itemsTotal == nil, let onOpen {
             Button(action: onOpen) {
                 Text(LongFileCopy.open(lang))
                     .font(.system(size: 14, weight: .semibold))
@@ -233,6 +233,17 @@ struct LongFileCard: View {
     /// `app.js:41348` — planning / writing / final, verbatim. `queued` shows the planning line
     /// because that is the work the server is about to start.
     private var stageText: String {
+        if progress?.itemsTotal != nil {
+            switch stage {
+            case "writing", "generating":
+                return lang == .arabic ? "يكتب العناصر والحلول المطلوبة…" : "Writing the requested items and solutions…"
+            case "qa", "validating", "reviewing":
+                return lang == .arabic ? "يتحقق من اكتمال العناصر وصحة الحلول…" : "Checking every item and solution…"
+            case "rendering", "exporting", "assembling":
+                return lang == .arabic ? "يجهّز ملف PDF للمعاينة…" : "Preparing the PDF for preview…"
+            default: return FileCardCopy.longPlanning(lang)
+            }
+        }
         switch stage {
         case "writing": return FileCardCopy.longWriting(lang)
         case "qa": return FileCardCopy.longReviewing(lang)
@@ -244,9 +255,10 @@ struct LongFileCard: View {
         progress?.currentTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
-    private var pagesDone: Int { max(0, progress?.pagesDone ?? 0) }
+    private var pagesDone: Int { max(0, progress?.itemsDone ?? progress?.pagesDone ?? 0) }
 
     private var pagesTotal: Int {
+        if let total = progress?.itemsTotal { return max(0, total) }
         let total = progress?.pagesTotal ?? 0
         if total > 0 { return total }
         let target = progress?.targetPages ?? 0
@@ -265,7 +277,8 @@ struct LongFileCard: View {
     /// left-to-right row under the bar.
     private var counterText: String {
         guard pagesTotal > 0 else { return ArabicText.count(pagesDone, lang) }
-        return ArabicText.count(pagesDone, lang) + " / " + ArabicText.count(pagesTotal, lang)
+        let count = ArabicText.count(pagesDone, lang) + " / " + ArabicText.count(pagesTotal, lang)
+        return progress?.itemsTotal == nil ? count : count + (lang == .arabic ? " عنصر" : " items")
     }
 
     private var percentText: String {
@@ -281,7 +294,7 @@ struct LongFileCard: View {
     }
 
     private var completeSubtitle: String {
-        let pages: Int? = meta?.pages ?? (pagesTotal > 0 ? pagesTotal : nil)
+        let pages: Int? = meta?.pages ?? (progress?.itemsTotal == nil && pagesTotal > 0 ? pagesTotal : nil)
         guard let pages, pages > 0 else { return LongFileCopy.readySimple(lang) }
         return LongFileCopy.ready.fmt(lang, ArabicText.count(pages, lang))
     }

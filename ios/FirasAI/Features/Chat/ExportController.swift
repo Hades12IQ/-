@@ -285,6 +285,23 @@ final class ExportController {
     func document(for meta: FileMeta, markdown: String, title: String,
                   conversationID: String? = nil, messageID: String? = nil, request: String? = nil) async -> Export? {
         let owner = env.session.identityID
+        if meta.serverPdf == true {
+            do {
+                let downloaded = try await ServerDocumentService.download(meta: meta, api: env.api,
+                    owner: owner, currentOwner: { self.env.session.identityID })
+                guard env.session.identityID == owner, !Task.isCancelled else { return nil }
+                documentDiagnostics = ["stage": "completed", "serverPDF": true,
+                    "bytes": downloaded.bytes, "pageCount": downloaded.pages, "partial": meta.partial == true]
+                lastError = nil
+                return Export(url: downloaded.url, format: .pdf, byteCount: downloaded.bytes)
+            } catch {
+                guard env.session.identityID == owner, !Task.isCancelled else { return nil }
+                documentDiagnostics = ["stage": "server-pdf-download-failed"]
+                lastError = ServerDocumentService.unavailable
+                env.toasts.show(ServerDocumentService.unavailable(env.prefs.lang), isError: true)
+                return nil
+            }
+        }
         var originalRequest = request
         if originalRequest == nil, let conversationID, let messageID,
            let conversation = env.chat.conversation(conversationID),

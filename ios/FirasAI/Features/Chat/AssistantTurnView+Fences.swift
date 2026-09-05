@@ -92,7 +92,7 @@ extension AssistantTurnView {
             meta.format = requestedDocumentFormat() ?? "pdf"
         }
         let durableJob = meta.jobId.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
-        let isDurable = !durableJob.isEmpty
+        let isDurable = !durableJob.isEmpty && meta.serverPdf != true
         let readiness = documentReadiness(meta)
 
         // Written out rather than folded into the call: a `cond ? nil : { … }` expression is one of
@@ -103,7 +103,7 @@ extension AssistantTurnView {
         if !isDurable {
             share = { buildFile(meta, intent: .share) }
             saveToFiles = { buildFile(meta, intent: .save) }
-            size = preparedFile?.byteCount
+            size = preparedFile?.byteCount ?? meta.pdfBytes
         }
 
         return FileCard(

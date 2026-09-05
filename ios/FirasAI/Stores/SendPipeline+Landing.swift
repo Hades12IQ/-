@@ -23,7 +23,8 @@ extension SendPipeline {
 
         // §1.8: the engine's own "busy, try again" sentences arrive as a normal completed answer.
         // They are never stored, and they earn exactly one silent retry.
-        if trimmed.isEmpty || EngineFailureDetector.isFailure(trimmed) {
+        let hasServerDocument = FileMeta.document(inContent: trimmed)?.hasVerifiedPDFReference == true
+        if trimmed.isEmpty || (!hasServerDocument && EngineFailureDetector.isFailure(trimmed)) {
             if let context, state.autoRetryUsedForMessageID != context.userMessageID {
                 state.autoRetryUsedForMessageID = context.userMessageID
                 var retry = context
@@ -328,7 +329,8 @@ extension SendPipeline {
         chatID: String,
         title: String,
         task: String,
-        lang: AppLanguage
+        lang: AppLanguage, counted: CountedDocumentPlan? = nil,
+        pdfImages: [DocumentJobImage] = [], revisionImages: [DocumentJobImage] = [], attachedText: String? = nil
     ) -> ChatJobRequest {
         var sections: Int?
         var format: String?
@@ -341,6 +343,17 @@ extension SendPipeline {
             pages = min(10_000, max(1, count))
         default:
             break
+        }
+        if let counted {
+            let task = [counted.task, attachedText ?? ""].filter { !$0.isEmpty }.joined(separator: "\n\n")
+            return ChatJobRequest(messages: [OutgoingMessage(role: "user", content: task)],
+                tier: output.tier.rawValue, think: output.think, cid: context.turnCID, chatId: chatID,
+                product: context.product.wireValue, kind: JobKind.counteddoc.rawValue, lang: lang.rawValue,
+                title: String(title.prefix(160)), task: task, format: "pdf",
+                expectedItems: counted.items.count, requiresSolutions: counted.items.requiresSolutions,
+                solutionsAtEnd: counted.items.solutionsAtEnd, resumeFrom: counted.resumeFrom,
+                revisionOf: counted.revisionOf, pdfImages: pdfImages.isEmpty ? nil : pdfImages,
+                revisionImages: revisionImages.isEmpty ? nil : revisionImages)
         }
         return ChatJobRequest(
             messages: output.messages,
@@ -386,6 +399,20 @@ extension SendPipeline {
     /// actual encoded envelope, including escaped source and base64, before packing a handoff.
     static func fitsDurableQueue(_ request: ChatJobRequest, isTemporary: Bool, hasStorage: Bool) -> Bool {
         guard !isTemporary, hasStorage else { return false }
+        if request.kind == JobKind.counteddoc.rawValue {
+            guard (request.task ?? "").utf8.count <= 120_000,
+                  let count = request.expectedItems, (1...10_000).contains(count) else { return false }
+            let images = (request.pdfImages ?? []) + (request.revisionImages ?? [])
+            guard images.count <= 6 else { return false }
+            var total = 0
+            for image in images {
+                guard image.id.range(of: #"^[A-Za-z0-9_-]{1,64}$"#, options: .regularExpression) != nil,
+                      let bytes = Data(base64Encoded: image.base64), bytes.count <= 2 * 1_024 * 1_024 else { return false }
+                total += bytes.count
+            }
+            guard total <= 8 * 1_024 * 1_024, let body = try? JSONEncoder().encode(request) else { return false }
+            return body.count <= 25_000_000
+        }
         let images = request.messages.contains { !($0.images ?? []).isEmpty }
         guard request.kind == JobKind.chat.rawValue || !images else { return false }
         guard let encoded = try? JSONEncoder().encode(request) else { return false }

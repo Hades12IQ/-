@@ -216,6 +216,7 @@ final class AppEnvironment {
         jobs.register(chat, for: .chat)
         jobs.register(chat, for: .longdoc)
         jobs.register(chat, for: .longfile)
+        jobs.register(chat, for: .counteddoc)
         jobs.register(agent, for: .agentrun)
         jobs.register(code, for: .codebuild)
         jobs.register(brain, for: .brainask)

@@ -7,6 +7,7 @@ enum JobKind: String, Codable, Sendable, CaseIterable {
     case chat
     case longdoc
     case longfile
+    case counteddoc
     case agentrun
     case codebuild
     case brainask
@@ -17,7 +18,7 @@ enum JobKind: String, Codable, Sendable, CaseIterable {
     /// Which product's screen the result lands on.
     var product: ProductKind {
         switch self {
-        case .chat, .longdoc, .longfile: return .ai
+        case .chat, .longdoc, .longfile, .counteddoc: return .ai
         case .agentrun: return .agent
         case .codebuild: return .code
         case .brainask: return .brain
@@ -28,7 +29,7 @@ enum JobKind: String, Codable, Sendable, CaseIterable {
     /// True when the job is started and polled through `/api/chat/job`.
     var isChatQueue: Bool {
         switch self {
-        case .chat, .longdoc, .longfile, .agentrun, .codebuild, .brainask: return true
+        case .chat, .longdoc, .longfile, .counteddoc, .agentrun, .codebuild, .brainask: return true
         case .image, .video, .music: return false
         }
     }
@@ -38,7 +39,7 @@ enum JobKind: String, Codable, Sendable, CaseIterable {
         case .image: return .image
         case .video: return .video
         case .music: return .music
-        case .chat, .longdoc, .longfile, .agentrun, .codebuild, .brainask: return nil
+        case .chat, .longdoc, .longfile, .counteddoc, .agentrun, .codebuild, .brainask: return nil
         }
     }
 
@@ -211,7 +212,7 @@ struct JobPointer: Codable, Sendable, Equatable, Identifiable {
         return String(base.prefix(64))
     }
 
-    var isExpired: Bool { Date() >= deadline }
+    var isExpired: Bool { kind != .counteddoc && Date() >= deadline }
 }
 
 /// One read of a live job, normalised across the queues.

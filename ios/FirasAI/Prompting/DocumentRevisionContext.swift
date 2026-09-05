@@ -6,6 +6,7 @@ struct DocumentRevisionContext: Sendable {
     let messageID: String
     let source: String
     var isHTML: Bool = true
+    var originalRequest: String? = nil
 
     // Keep a full source within the inference and durable-job budgets. Refusing oversize input
     // is preferable to silently cutting the end of a document the user expects us to preserve.
@@ -19,20 +20,20 @@ struct DocumentRevisionContext: Sendable {
         for message in history {
             if message.role == .user {
                 let canRefer = document != nil && (nearestArtifactIsDocument
-                    || RequestClassifier.hasExplicitDocumentRevisionReference(message.content))
+                    || RequestClassifier.hasExplicitDocumentRevisionReference(message.visibleContent))
                 questionRequestsDocument = RequestClassifier.documentFormat(for: message) != nil
-                    || RequestClassifier.documentRevisionFormat(message.content, hasPreviousDocument: canRefer) != nil
+                    || RequestClassifier.documentRevisionFormat(message.visibleContent, hasPreviousDocument: canRefer) != nil
                 continue
             }
             guard message.role == .assistant else { continue }
-            let fence = FirasFence.firstFence(in: message.content)
+            let fence = FirasFence.firstFence(in: message.visibleContent)
             if fence?.name == "firas-file" {
                 document = message
                 nearestArtifactIsDocument = true
                 continue
             }
-            if DocumentHTML.authored(in: message.content) != nil
-                || DocumentHTML.hasIncompleteAuthoredDocument(in: message.content) {
+            if DocumentHTML.authored(in: message.visibleContent) != nil
+                || DocumentHTML.hasIncompleteAuthoredDocument(in: message.visibleContent) {
                 // Carry document provenance through consecutive terse revisions, even after
                 // client-only intent was removed during persistence. Website HTML stays code.
                 if questionRequestsDocument { document = message }
@@ -49,21 +50,21 @@ struct DocumentRevisionContext: Sendable {
 
     static func completeSource(from message: ChatMessage?) -> DocumentRevisionContext? {
         guard let message else { return nil }
-        if let source = DocumentHTML.authored(in: message.content) {
+        if let source = DocumentHTML.authored(in: message.visibleContent) {
             guard source.utf8.count <= maximumSourceBytes else { return nil }
             return DocumentRevisionContext(messageID: message.id, source: source)
         }
-        guard !DocumentHTML.hasIncompleteAuthoredDocument(in: message.content),
-              message.content.utf8.count <= maximumSourceBytes,
-              let fence = FirasFence.firstFence(in: message.content), fence.name == "firas-file",
+        guard !DocumentHTML.hasIncompleteAuthoredDocument(in: message.visibleContent),
+              message.visibleContent.utf8.count <= maximumSourceBytes,
+              let fence = FirasFence.firstFence(in: message.visibleContent), fence.name == "firas-file",
               case .file(let meta)? = FirasFence.parse(name: fence.name, body: fence.body),
               (meta.artifactId ?? "").isEmpty, (meta.artifactEndpoint ?? "").isEmpty, meta.artifactParts == nil else { return nil }
-        let body = (String(message.content[..<fence.range.lowerBound]) + String(message.content[fence.range.upperBound...]))
+        let body = (String(message.visibleContent[..<fence.range.lowerBound]) + String(message.visibleContent[fence.range.upperBound...]))
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !body.isEmpty else { return nil }
         // Ordinary Office/text files are authored as markdown after their metadata fence.
         // Keep both, including every table row, instead of reconstructing from a preview.
-        return DocumentRevisionContext(messageID: message.id, source: message.content, isHTML: false)
+        return DocumentRevisionContext(messageID: message.id, source: message.visibleContent, isHTML: false)
     }
 
     static func format(for request: String, candidate: ChatMessage?, history: [ChatMessage]) -> String? {
@@ -72,7 +73,7 @@ struct DocumentRevisionContext: Sendable {
         var current = candidate
         var visited: Set<String> = []
         while let candidate = current, visited.insert(candidate.id).inserted {
-            if let fence = FirasFence.firstFence(in: candidate.content),
+            if let fence = FirasFence.firstFence(in: candidate.visibleContent),
                case .file(let meta)? = FirasFence.parse(name: fence.name, body: fence.body) {
                 if !meta.format.isEmpty { return meta.format }
                 let extensionName = (meta.name ?? "").split(separator: ".").last.map(String.init)?.lowercased() ?? ""

@@ -239,7 +239,7 @@ enum ErrorPresenter {
             return brainFailure(code: code, isGuest: isGuest)
         case .image, .video, .music:
             return mediaFailure(code: code, kind: kind, feature: feature, lang: lang)
-        case .chat, .longdoc, .longfile:
+        case .chat, .longdoc, .longfile, .counteddoc:
             if code == "engine_failed" || code == "no_answer" { return .toast(Strings.Errors.serverBusy) }
             return genericAction(code: code, lang: lang)
         }
@@ -335,7 +335,7 @@ enum ErrorPresenter {
         case .music: return .music
         case .agentrun: return .agent
         case .brainask: return .brain
-        case .chat, .longdoc, .longfile, .codebuild: return .generic
+        case .chat, .longdoc, .longfile, .counteddoc, .codebuild: return .generic
         }
     }
 

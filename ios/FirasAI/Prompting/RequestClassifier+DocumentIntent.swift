@@ -53,6 +53,10 @@ extension RequestClassifier {
     private static func hasActionableDocumentFeedback(_ text: String, explicitDocument: Bool) -> Bool {
         guard !text.contains("؟"), !text.contains("?") else { return false }
         let screenshotReference = matches(#"(?:بالصورة|بالصوره|الصورة\s+المرفقة|المحدد\s+بالصورة)|\b(?:attached\s+)?screenshot\b"#, text)
+        // A concrete new specification after a real document is a revision even without “file”.
+        let dissatisfied = matches(#"\b(?:i\s+(?:do(?:n['’]t|\s+not)\s+like|dislike)|not\s+what\s+i\s+want)\b|(?:ما\s*عجبني|مو\s*عاجبني|ما\s*اريده\s*هيج)"#, text)
+        let replacement = matches(#"\b(?:i\s+want|make|very\s+hard|harder|new\s+ideas|pro(?:fessional)?\s+design|better\s+design)\b|(?:اريد|أريد|خليه|خليها|اصعب|أصعب|تصميم\s+احترافي)"#, text)
+        if dissatisfied && replacement { return true }
         guard explicitDocument || screenshotReference else { return false }
         let aspect = #"(?:الخط|حجم\s+الخط|الكتابة|النص|اللون|الألوان|الالوان|التنسيق|المسافات|الهوامش|\b(?:font|text|colou?r|spacing|margins?|layout)\b)"#
         let problem = #"(?:صغير|كبير|مقطوع|متداخل|ملتصق|مو\s*واضح|غير\s*واضح|ما\s*ينقري|ما\s*عجبني|مو\s*حلو|سي[ءئ]|\b(?:too\s+small|too\s+large|tiny|unreadable|clipped|overlapping|cramped)\b)"#

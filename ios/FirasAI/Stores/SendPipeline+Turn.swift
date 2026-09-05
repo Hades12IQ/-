@@ -62,6 +62,22 @@ extension SendPipeline {
         let lang = store.lang
         handoffs[key] = nil
 
+        if case .failed(_, let partial) = terminal, let partial,
+           let meta = FileMeta.document(inContent: partial.text), meta.partial == true, meta.hasVerifiedPDFReference {
+            // Keep both versions: a follow-up “continue” creates its own user/assistant CID.
+            // This artifact remains an honest, downloadable partial after the next one completes.
+            await complete(key: key, assistantID: assistantID, cid: pointer.cid,
+                text: partial.text, reasoning: partial.reasoning, context: context)
+            guard session.identityID == pointer.ownerID else { return false }
+            store.mutate(key) { conversation in
+                if let index = conversation.messages.firstIndex(where: { $0.id == assistantID && $0.role == .assistant }) {
+                    conversation.messages[index].status = .failed(meta.partialLabel(lang) ?? DocumentCardReadiness.failed(lang))
+                }
+            }
+            await store.persistLocalOnly(key)
+            return true
+        }
+
         switch terminal {
         case .completed(let snapshot):
             buffer.adopt(text: snapshot.text, reasoning: snapshot.reasoning)
@@ -188,23 +204,65 @@ extension SendPipeline {
         let hasImages = !ownImages.isEmpty || !reattach.isEmpty
         let previousDocument = DocumentRevisionContext.latestMessage(in: history, request: user.content)
         let revisionFormat = DocumentRevisionContext.format(for: user.content, candidate: previousDocument, history: history)
-        let revision = revisionFormat == nil ? nil : DocumentRevisionContext.completeSource(from: previousDocument)
-        if revisionFormat != nil, revision == nil {
+        let classified = revisionFormat.map { RequestKind.file(format: $0, explicitPages: nil) }
+            ?? RequestClassifier.classify(user.content, hasImages: hasImages, lang: lang)
+        let counted = CountedDocumentPlan.resolve(request: user.content, kind: classified,
+            history: history, previous: previousDocument, isRevision: revisionFormat != nil)
+        let owner = session.identityID
+        var revision = revisionFormat == nil || counted != nil ? nil : DocumentRevisionContext.completeSource(from: previousDocument)
+        var restoredAssets: [DocumentAssetInventory.Entry] = []
+        if revisionFormat != nil, counted == nil, revision == nil,
+           let previousDocument, let meta = FileMeta.document(in: previousDocument), meta.hasVerifiedPDFReference {
+            do {
+                let source = try await ServerDocumentService.source(meta: meta, api: api, owner: owner,
+                    currentOwner: { self.session.identityID })
+                guard !Task.isCancelled, session.identityID == owner else { return }
+                guard store.conversation(key)?.messages.first(where: { $0.id == previousDocument.id })?.visibleContent == previousDocument.visibleContent else {
+                    await failTurn(key: key, assistantID: assistantID, action: .toast(DocumentRevisionContext.unavailable), context: context)
+                    return
+                }
+                guard source.sourceHtml.utf8.count <= DocumentRevisionContext.maximumSourceBytes else {
+                    await failTurn(key: key, assistantID: assistantID, action: .toast(DocumentRevisionContext.tooLarge), context: context)
+                    return
+                }
+                revision = DocumentRevisionContext(messageID: previousDocument.id, source: source.sourceHtml)
+                let images = source.assets ?? []
+                var totalBytes = 0
+                guard images.count <= 6 else { throw APIError.decoding("document_assets") }
+                for asset in images {
+                    guard asset.id.range(of: #"^[A-Za-z0-9_-]{1,64}$"#, options: .regularExpression) != nil,
+                          let bytes = Data(base64Encoded: asset.base64), bytes.count <= 2 * 1_024 * 1_024 else { throw APIError.decoding("document_assets") }
+                    totalBytes += bytes.count
+                    guard totalBytes <= 8 * 1_024 * 1_024 else { throw APIError.decoding("document_assets") }
+                    restoredAssets.append(DocumentAssetInventory.Entry(id: asset.id, messageID: previousDocument.id,
+                        source: .attached(asset.base64), role: .content, isThumbnail: false))
+                }
+            } catch {
+                guard !Task.isCancelled, session.identityID == owner else { return }
+                await failTurn(key: key, assistantID: assistantID, action: .toast(DocumentRevisionContext.unavailable), context: context)
+                return
+            }
+        }
+        if revisionFormat != nil, counted == nil, revision == nil {
             let oversized = previousDocument.flatMap { DocumentHTML.authored(in: $0.content) }
                 .map { $0.utf8.count > DocumentRevisionContext.maximumSourceBytes } ?? false
             await failTurn(key: key, assistantID: assistantID,
                 action: .toast(oversized ? DocumentRevisionContext.tooLarge : DocumentRevisionContext.unavailable), context: context)
             return
         }
-        let kind = revisionFormat.map { RequestKind.file(format: $0, explicitPages: nil) }
-            ?? RequestClassifier.classify(user.content, hasImages: hasImages, lang: lang)
+        if revision != nil {
+            revision?.originalRequest = CountedDocumentPlan.originalRequirements(previous: previousDocument, history: history)
+        }
+        let kind = counted == nil ? classified : RequestKind.file(format: "pdf", explicitPages: nil)
         let createsDocument: Bool
         switch kind {
         case .file, .longfile: createsDocument = true
         default: createsDocument = false
         }
         var assets = createsDocument ? DocumentAssetInventory.entries(in: conversation, throughMessageID: user.id) : []
-        let owner = session.identityID
+        let restoredIDs = Set(restoredAssets.map(\.id))
+        assets.removeAll { restoredIDs.contains($0.id) }
+        assets = restoredAssets + assets
         if createsDocument, !conversation.ephemeral, let owner, !owner.isEmpty {
             let offered = Set(DocumentAssetInventory.promptEntries(assets, retaining: revision?.source).map(\.id))
             for index in assets.indices where offered.contains(assets[index].id) {
@@ -245,7 +303,7 @@ extension SendPipeline {
             lang: lang,
             thinkToggle: prefs.thinkingEnabled,
             kind: kind,
-            planTurn: context.planTurn,
+            planTurn: counted != nil || revision != nil ? .auto : context.planTurn,
             askRounds: state.plan.askRounds,
             searchContext: searchContext,
             searchWasEmpty: searchWasEmpty,
@@ -281,10 +339,23 @@ extension SendPipeline {
         }
         if Task.isCancelled || session.identityID != owner { return }
 
-        let jobKind = Self.jobKind(for: kind)
+        let jobKind: JobKind = counted == nil ? Self.jobKind(for: kind) : .counteddoc
         let title = store.conversation(key)?.title ?? ""
+        let countedImages = counted == nil ? [] : DocumentAssetInventory.promptEntries(assets, retaining: revision?.source).compactMap { entry -> DocumentJobImage? in
+            guard case .attached(let encoded) = entry.source else { return nil }
+            let raw = encoded.hasPrefix("data:") ? String(encoded.split(separator: ",", maxSplits: 1).last ?? "") : encoded
+            return DocumentJobImage(id: entry.id, base64: raw)
+        }
+        let revisionImages = counted?.revisionOf == nil ? [] : assets.filter {
+            $0.messageID == user.id && $0.role == .revisionReference
+        }.compactMap { entry -> DocumentJobImage? in
+            guard case .attached(let encoded) = entry.source else { return nil }
+            let raw = encoded.hasPrefix("data:") ? String(encoded.split(separator: ",", maxSplits: 1).last ?? "") : encoded
+            return DocumentJobImage(id: entry.id, base64: raw)
+        }
         let queueRequest = Self.jobRequest(output: output, context: context, kind: kind,
-            jobKind: jobKind, chatID: serverChatID ?? "", title: title, task: user.content, lang: lang)
+            jobKind: jobKind, chatID: serverChatID ?? "", title: title, task: user.content, lang: lang,
+            counted: counted, pdfImages: countedImages, revisionImages: revisionImages, attachedText: user.fileText)
         // The queue leaves the answer in server storage so it can be recovered later, and
         // recovering it later is exactly what must not be possible in a temporary conversation —
         // for a guest that is the ONLY thing standing between the two, since a guest never has a
@@ -293,6 +364,13 @@ extension SendPipeline {
         let isTemporary = store.conversation(key)?.ephemeral ?? false
         let canQueue = Self.fitsDurableQueue(queueRequest, isTemporary: isTemporary,
             hasStorage: session.isGuest || serverChatID != nil)
+        if let counted {
+            guard canQueue else {
+                await failTurn(key: key, assistantID: assistantID, action: .toast(CountedDocumentPlan.queueRequired), context: context)
+                return
+            }
+            state.longFileProgress = LongFileProgress(itemsDone: 0, itemsTotal: counted.items.count)
+        }
 
         // Packed now, whichever path runs. If the turn streams, this is the whole cost of leaving:
         // one POST of a body that is already in memory.
@@ -321,8 +399,8 @@ extension SendPipeline {
 
         // File generation must survive a lost socket even while the reader stays on this screen.
         // It uses the existing chat worker with the complete design prompt; no page count is guessed.
-        let streamFirst = Self.shouldStreamFirst(kind: kind, planTurn: context.planTurn,
-            readerIsPresent: readerIsPresent)
+        let streamFirst = counted == nil && Self.shouldStreamFirst(kind: kind,
+            planTurn: revision != nil ? .auto : context.planTurn, readerIsPresent: readerIsPresent)
         var useStream = !canQueue || streamFirst
 
         if let plan, !streamFirst {
@@ -338,7 +416,7 @@ extension SendPipeline {
                 // and the cancellation is not an error to show anyone.
                 if Task.isCancelled || state.isStopping { return }
                 let status = (error as? APIError)?.status
-                if status == 413 || status == 404 || status == 501 {
+                if counted == nil && (status == 413 || status == 404 || status == 501) {
                     // This backend has no queue, or the body is too big for it: the live stream
                     // still answers, it just cannot be resumed.
                     useStream = true

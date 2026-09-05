@@ -142,14 +142,18 @@ final class SendPipeline {
         let previousDocument = DocumentRevisionContext.latestMessage(in: store.conversation(key)?.messages ?? [], request: trimmed)
         let revisionFormat = DocumentRevisionContext.format(for: trimmed, candidate: previousDocument,
             history: store.conversation(key)?.messages ?? [])
-        if revisionFormat != nil, DocumentRevisionContext.completeSource(from: previousDocument) == nil {
+        if revisionFormat != nil, DocumentRevisionContext.completeSource(from: previousDocument) == nil,
+           FileMeta.document(in: previousDocument)?.hasVerifiedPDFReference != true {
             let oversized = previousDocument.flatMap { DocumentHTML.authored(in: $0.content) }
                 .map { $0.utf8.count > DocumentRevisionContext.maximumSourceBytes } ?? false
             toasts.show((oversized ? DocumentRevisionContext.tooLarge : DocumentRevisionContext.unavailable)(lang), isError: true)
             return
         }
-        let kind = revisionFormat.map { RequestKind.file(format: $0, explicitPages: nil) }
+        let classified = revisionFormat.map { RequestKind.file(format: $0, explicitPages: nil) }
             ?? RequestClassifier.classify(trimmed, hasImages: hasImages, lang: lang)
+        let counted = CountedDocumentPlan.resolve(request: trimmed, kind: classified,
+            history: store.conversation(key)?.messages ?? [], previous: previousDocument, isRevision: revisionFormat != nil)
+        let kind = counted == nil ? classified : RequestKind.file(format: "pdf", explicitPages: nil)
 
         // A render is refused for a guest before anything is written, because the server answers
         // 403 `signin_required` for every guest media request and the upsell is the same answer

@@ -108,7 +108,7 @@ actor JobPointerStore {
         var kept = pointers.filter { pointer in
             guard !pointer.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
             guard !pointer.ownerID.isEmpty else { return false }
-            return now.timeIntervalSince(pointer.deadline) < graceAfterDeadline
+            return pointer.kind == .counteddoc || now.timeIntervalSince(pointer.deadline) < graceAfterDeadline
         }
         // Duplicate ids can only come from a corrupted file; keep the newest of each.
         var seen: Set<String> = []

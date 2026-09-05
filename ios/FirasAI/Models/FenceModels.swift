@@ -73,6 +73,17 @@ struct FileMeta: Codable, Sendable, Equatable {
     var template: String?
     var artifactParts: Int?
     var artifactEndpoint: String?
+    var serverPdf: Bool?
+    var counteddoc: Bool?
+    var sha256: String?
+    var pdfBytes: Int?
+    var expectedItems: Int?
+    var requiresSolutions: Bool?
+    var solutionsAtEnd: Bool?
+    var partial: Bool?
+    var completedItems: Int?
+    var remainingItems: Int?
+    var resumeJobId: String?
 
     init(
         format: String,
@@ -85,7 +96,18 @@ struct FileMeta: Codable, Sendable, Equatable {
         theme: String? = nil,
         template: String? = nil,
         artifactParts: Int? = nil,
-        artifactEndpoint: String? = nil
+        artifactEndpoint: String? = nil,
+        serverPdf: Bool? = nil,
+        counteddoc: Bool? = nil,
+        sha256: String? = nil,
+        pdfBytes: Int? = nil,
+        expectedItems: Int? = nil,
+        requiresSolutions: Bool? = nil,
+        solutionsAtEnd: Bool? = nil,
+        partial: Bool? = nil,
+        completedItems: Int? = nil,
+        remainingItems: Int? = nil,
+        resumeJobId: String? = nil
     ) {
         self.format = format
         self.name = name
@@ -98,6 +120,17 @@ struct FileMeta: Codable, Sendable, Equatable {
         self.template = template
         self.artifactParts = artifactParts
         self.artifactEndpoint = artifactEndpoint
+        self.serverPdf = serverPdf
+        self.counteddoc = counteddoc
+        self.sha256 = sha256
+        self.pdfBytes = pdfBytes
+        self.expectedItems = expectedItems
+        self.requiresSolutions = requiresSolutions
+        self.solutionsAtEnd = solutionsAtEnd
+        self.partial = partial
+        self.completedItems = completedItems
+        self.remainingItems = remainingItems
+        self.resumeJobId = resumeJobId
     }
 
     init(from decoder: Decoder) throws {
@@ -113,6 +146,17 @@ struct FileMeta: Codable, Sendable, Equatable {
         template = LenientJSON.string(container, "template")
         artifactParts = LenientJSON.int(container, "artifactParts")
         artifactEndpoint = LenientJSON.string(container, "artifactEndpoint")
+        serverPdf = LenientJSON.bool(container, "serverPdf")
+        counteddoc = LenientJSON.bool(container, "counteddoc")
+        sha256 = LenientJSON.string(container, "sha256")
+        pdfBytes = LenientJSON.int(container, "pdfBytes")
+        expectedItems = LenientJSON.int(container, "expectedItems")
+        requiresSolutions = LenientJSON.bool(container, "requiresSolutions")
+        solutionsAtEnd = LenientJSON.bool(container, "solutionsAtEnd")
+        partial = LenientJSON.bool(container, "partial")
+        completedItems = LenientJSON.int(container, "completedItems")
+        remainingItems = LenientJSON.int(container, "remainingItems")
+        resumeJobId = LenientJSON.string(container, "resumeJobId")
     }
 
     func encode(to encoder: Encoder) throws {
@@ -127,11 +171,23 @@ struct FileMeta: Codable, Sendable, Equatable {
         try container.encodeIfPresent(artifactId, forKey: AnyCodingKey("artifactId"))
         try container.encodeIfPresent(artifactParts, forKey: AnyCodingKey("artifactParts"))
         try container.encodeIfPresent(artifactEndpoint, forKey: AnyCodingKey("artifactEndpoint"))
+        try container.encodeIfPresent(serverPdf, forKey: AnyCodingKey("serverPdf"))
+        try container.encodeIfPresent(counteddoc, forKey: AnyCodingKey("counteddoc"))
+        try container.encodeIfPresent(sha256, forKey: AnyCodingKey("sha256"))
+        try container.encodeIfPresent(pdfBytes, forKey: AnyCodingKey("pdfBytes"))
+        try container.encodeIfPresent(expectedItems, forKey: AnyCodingKey("expectedItems"))
+        try container.encodeIfPresent(requiresSolutions, forKey: AnyCodingKey("requiresSolutions"))
+        try container.encodeIfPresent(solutionsAtEnd, forKey: AnyCodingKey("solutionsAtEnd"))
+        try container.encodeIfPresent(partial, forKey: AnyCodingKey("partial"))
+        try container.encodeIfPresent(completedItems, forKey: AnyCodingKey("completedItems"))
+        try container.encodeIfPresent(remainingItems, forKey: AnyCodingKey("remainingItems"))
+        try container.encodeIfPresent(resumeJobId, forKey: AnyCodingKey("resumeJobId"))
     }
 
     /// A durable long file the client may preview and export: the fence names an artifact, the
     /// endpoint is the one route we accept, and the format is one the reader understands.
     var isDurableLongFile: Bool {
+        guard serverPdf != true else { return false }
         guard let artifactId, !artifactId.isEmpty else { return false }
         guard let endpoint = artifactEndpoint, endpoint.hasPrefix("/api/chat/job/file?id=") else { return false }
         guard let pages, pages > 0 else { return false }

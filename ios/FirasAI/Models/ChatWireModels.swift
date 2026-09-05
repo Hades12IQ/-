@@ -150,6 +150,13 @@ struct ChatJobRequest: Encodable, Sendable {
     var nomem: Bool?
     var nokb: Bool?
     var agent: Bool?
+    var expectedItems: Int?
+    var requiresSolutions: Bool?
+    var solutionsAtEnd: Bool?
+    var resumeFrom: String?
+    var revisionOf: String?
+    var pdfImages: [DocumentJobImage]?
+    var revisionImages: [DocumentJobImage]?
 
     init(
         messages: [OutgoingMessage],
@@ -169,7 +176,10 @@ struct ChatJobRequest: Encodable, Sendable {
         prompt: String? = nil,
         nomem: Bool? = nil,
         nokb: Bool? = nil,
-        agent: Bool? = nil
+        agent: Bool? = nil,
+        expectedItems: Int? = nil, requiresSolutions: Bool? = nil, solutionsAtEnd: Bool? = nil,
+        resumeFrom: String? = nil, revisionOf: String? = nil, pdfImages: [DocumentJobImage]? = nil,
+        revisionImages: [DocumentJobImage]? = nil
     ) {
         self.messages = messages
         self.tier = tier
@@ -186,6 +196,13 @@ struct ChatJobRequest: Encodable, Sendable {
         self.pages = pages
         self.targetPages = targetPages
         self.prompt = prompt
+        self.expectedItems = expectedItems
+        self.requiresSolutions = requiresSolutions
+        self.solutionsAtEnd = solutionsAtEnd
+        self.resumeFrom = resumeFrom
+        self.revisionOf = revisionOf
+        self.pdfImages = pdfImages
+        self.revisionImages = revisionImages
         self.nomem = nomem
         self.nokb = nokb
         self.agent = agent
@@ -283,6 +300,9 @@ struct LongFileProgress: Decodable, Sendable, Equatable {
     var complete: Bool
     var cancelled: Bool
     var resumeAvailable: Bool?
+    var itemsDone: Int?
+    var itemsTotal: Int?
+    var solutionsDone: Int?
 
     init(
         stage: String = "queued",
@@ -296,7 +316,8 @@ struct LongFileProgress: Decodable, Sendable, Equatable {
         percent: Int = 0,
         complete: Bool = false,
         cancelled: Bool = false,
-        resumeAvailable: Bool? = nil
+        resumeAvailable: Bool? = nil,
+        itemsDone: Int? = nil, itemsTotal: Int? = nil, solutionsDone: Int? = nil
     ) {
         self.stage = stage
         self.pagesDone = pagesDone
@@ -310,6 +331,9 @@ struct LongFileProgress: Decodable, Sendable, Equatable {
         self.complete = complete
         self.cancelled = cancelled
         self.resumeAvailable = resumeAvailable
+        self.itemsDone = itemsDone
+        self.itemsTotal = itemsTotal
+        self.solutionsDone = solutionsDone
     }
 
     init(from decoder: Decoder) throws {
@@ -326,6 +350,9 @@ struct LongFileProgress: Decodable, Sendable, Equatable {
         complete = LenientJSON.bool(container, "complete") ?? false
         cancelled = LenientJSON.bool(container, "cancelled") ?? false
         resumeAvailable = LenientJSON.bool(container, "resumeAvailable")
+        itemsDone = LenientJSON.int(container, "itemsDone")
+        itemsTotal = LenientJSON.int(container, "itemsTotal")
+        solutionsDone = LenientJSON.int(container, "solutionsDone")
     }
 }
 

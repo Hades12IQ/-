@@ -73,7 +73,7 @@ enum DocumentAssetInventory {
     }
 
     static func referencedIDs(in html: String) -> Set<String> {
-        guard let expression = try? NSRegularExpression(pattern: #"firas-asset:([A-Za-z0-9_-]{1,180})["']"#) else { return [] }
+        guard let expression = try? NSRegularExpression(pattern: #"firas-asset:(?://)?([A-Za-z0-9_-]{1,180})["']"#) else { return [] }
         let source = html as NSString
         return Set(expression.matches(in: html, range: NSRange(location: 0, length: source.length))
             .map { source.substring(with: $0.range(at: 1)) })

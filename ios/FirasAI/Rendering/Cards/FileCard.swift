@@ -212,6 +212,13 @@ struct FileCard: View {
     private var ready: some View {
         VStack(alignment: .leading, spacing: 12) {
             headline
+            if let partial = meta.partialLabel(lang) {
+                Text(partial)
+                    .font(FirasType.caption)
+                    .foregroundStyle(palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .bidiIsland(for: partial, fallback: lang)
+            }
             if hasActions {
                 actions
             }

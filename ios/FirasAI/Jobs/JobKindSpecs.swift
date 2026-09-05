@@ -71,6 +71,10 @@ enum JobKindSpecs {
                 unknownReadsBeforeTerminal: 3,
                 usesSSE: false
             )
+        case .counteddoc:
+            return JobKindSpec(kind: .counteddoc, cadence: [(after: 0, interval: 2)],
+                backgroundInterval: 10, deadline: 7 * 24 * 60 * 60,
+                cancelable: true, unknownReadsBeforeTerminal: 3, usesSSE: false)
         case .agentrun:
             // SSE first (`/api/agent/job-stream`); the poll below is only the fallback the web uses
             // at 700 ms while visible. `AG_JOB_MAX_MS` is 3 h. Two `{"job":null}` reads are terminal.

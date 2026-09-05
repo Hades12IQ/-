@@ -7,9 +7,19 @@ extension ExportController {
         guard markdown.contains("firas-asset:"), let conversationID,
               let conversation = env.chat.conversations[env.chat.resolve(conversationID)] else { return markdown }
         let owner = env.session.identityID
+        let referenced = DocumentAssetInventory.referencedIDs(in: markdown)
         let entries = DocumentAssetInventory.entries(in: conversation, throughMessageID: messageID)
-            .filter { markdown.contains("firas-asset:" + $0.id) }
+            .filter { referenced.contains($0.id) }
         var assets: [String: Data] = [:]
+        // A server-authored source can refer to image IDs restored from its owned source bundle.
+        // These original pixels have no duplicate attachment row in the local transcript.
+        if let owner {
+            for id in referenced.subtracting(Set(entries.map(\.id))) {
+                let cached = await DocumentAssetCache.shared.data(id: id, ownerID: owner)
+                guard env.session.identityID == owner else { return markdown }
+                if let cached { assets[id] = cached }
+            }
+        }
         for entry in entries {
             guard env.session.identityID == owner else { return markdown }
             if let owner {

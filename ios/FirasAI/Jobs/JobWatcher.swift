@@ -141,7 +141,7 @@ final class JobWatcher {
         // against that deadline again would expire it before it ever took the one authoritative
         // read that is its entire purpose (`ARCHITECTURE.md §2.4` rule 4).
         let giveUpAt = mode == .continuous
-            ? pointer.deadline
+            ? (pointer.kind == .counteddoc ? Date.distantFuture : pointer.deadline)
             : Date().addingTimeInterval(Self.singleReadGrace)
         while !isStopped, !isFinished, !Task.isCancelled {
             if Date() >= giveUpAt {

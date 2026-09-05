@@ -14,6 +14,12 @@ enum DocumentCardReadiness: Equatable {
 
     static func evaluate(message: ChatMessage, meta: FileMeta, request: String,
                          isStreaming: Bool, lang: AppLanguage) -> Self {
+        if meta.serverPdf == true {
+            guard !isStreaming, message.status.isTerminal else { return .preparing }
+            // An error can leave a real, labelled partial PDF. It is still verified on download.
+            if case .failed = message.status, meta.partial != true { return .blocked(failed(lang)) }
+            return meta.hasVerifiedPDFReference ? .ready : .blocked(incomplete(lang))
+        }
         if case .failed = message.status { return .blocked(failed(lang)) }
         let durable = !(meta.jobId?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         if durable { return .ready }
