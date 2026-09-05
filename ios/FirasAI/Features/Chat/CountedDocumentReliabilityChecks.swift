@@ -55,6 +55,16 @@ enum CountedDocumentReliabilityChecks {
             history: serverHistory, previous: server, isRevision: true)
         check(revision?.revisionOf == meta.artifactId && revision?.items.count == 10 && revision?.items.requiresSolutions == true,
             "large-server-revision-keeps-original-item-target")
+        for (change, count, solutions, atEnd) in [
+            ("Make it 20 integrals", 20, true, true),
+            ("Make it 20 integrals without solutions", 20, false, false),
+            ("Place the solutions after each integral", 10, true, false)
+        ] {
+            let changed = CountedDocumentPlan.resolve(request: change, kind: .file(format: "pdf", explicitPages: nil),
+                history: serverHistory, previous: server, isRevision: true)
+            check(changed?.items.count == count && changed?.items.requiresSolutions == solutions
+                && changed?.items.solutionsAtEnd == atEnd, "revision-flags-" + change)
+        }
         var partial = meta
         partial.partial = true; partial.completedItems = 4; partial.remainingItems = 6; partial.resumeJobId = "original-job"
         var partialRow = ChatMessage(role: .assistant, content: fence(partial), cid: "partial", status: .failed("generation error"))

@@ -29,8 +29,9 @@ struct CountedDocumentPlan: Sendable, Equatable {
                   meta.hasVerifiedPDFReference, let id = meta.artifactId,
                   let expected = meta.expectedItems, expected > 0 else { return nil }
             let changed = DocumentItemRequest.parse(request)
-            let items = changed ?? DocumentItemRequest(count: expected, requiresSolutions: meta.requiresSolutions == true,
-                solutionsAtEnd: meta.solutionsAtEnd == true)
+            let settings = solutionSettings(request, previous: meta)
+            let items = DocumentItemRequest(count: changed?.count ?? expected,
+                requiresSolutions: settings.required, solutionsAtEnd: settings.atEnd)
             return Self(items: items, task: request, revisionOf: id)
         }
         guard let items = DocumentItemRequest.parse(request) else { return nil }
@@ -41,6 +42,23 @@ struct CountedDocumentPlan: Sendable, Equatable {
         request.trimmingCharacters(in: .whitespacesAndNewlines).range(of:
             #"^(?:(?:yes|ok|okay|please)[,،! .]*)?(?:continue|complete(?:\s+it)?|finish(?:\s+it)?|resume)(?:\s+(?:please|the\s+(?:file|document)|it|remaining\s+items))?[.! ]*$|^(?:(?:اي|إي|نعم|تمام|اوكي|أوكي)[،,!.\s]*)?(?:كمل|كمّل|اكمل|أكمل|كمله|كمّله|واصل)(?:\s+(?:الملف|الباقي|الباقي\s+كله))?[.!\s]*$"#,
             options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
+    private static func solutionSettings(_ request: String, previous: FileMeta) -> (required: Bool, atEnd: Bool) {
+        func matches(_ pattern: String) -> Bool {
+            request.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
+        }
+        let excluded = matches(#"\b(?:without|no|omit|exclude|remove|delete)\s+(?:(?:the|any|all|worked|full)\s+)*(?:solutions?|answers?)\b|(?:بدون|دون|بلا|احذف|شيل)\s*(?:ال)?(?:حلول|حل|اجوب[ةه]|أجوب[ةه])"#)
+        if excluded { return (false, false) }
+        var required = previous.requiresSolutions == true
+        var atEnd = previous.solutionsAtEnd == true
+        let requested = matches(#"\b(?:with|and|add|include|provide|put|place|move|arrange)\s+(?:(?:the|all|worked|full|matching)\s+)*(?:solutions?|answers?)\b|(?:مع|ضيف|أضف|اضف|اريد|أريد|خلي|رتب)\s*(?:ال)?(?:حلول|حل|اجوب[ةه]|أجوب[ةه])"#)
+        if requested { required = true }
+        if required {
+            if matches(#"\bat\s+(?:the\s+)?(?:end|back)\b|بالنهاي[ةه]|في\s+النهاي[ةه]|بال[اأ]خير"#) { atEnd = true }
+            if matches(#"\b(?:after|below|beside)\s+(?:each|every)\s+(?:problem|item|integral|question)\b|بعد\s*كل\s*(?:تكامل|سؤال|مسأل[ةه])"#) { atEnd = false }
+        }
+        return (required, required && atEnd)
     }
 
     /// Walk the actual document lineage, retaining quantity/layout instructions through terse edits.
