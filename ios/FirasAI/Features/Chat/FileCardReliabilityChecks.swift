@@ -179,6 +179,7 @@ enum FileCardReliabilityChecks {
         let printable = CGRect(x: values[0].doubleValue, y: values[1].doubleValue,
                                width: values[2].doubleValue, height: values[3].doubleValue)
         var checked = 0, outside = 0, outsidePages = 0, missing = 0, separatedRows = 0
+        var invisible = 0, visibleLabels = 0, visibleIntegrals = 0
         var maximumExcess: CGFloat = 0
         var pageReports: [[String: Any]] = []
         for index in 0..<document.pageCount {
@@ -199,31 +200,45 @@ enum FileCardReliabilityChecks {
             // PDFKit raises an Objective-C exception for an out-of-range selection. Never pass
             // an empty range, and use its own character count as the final upper bound.
             let count = min(ns.length, page.numberOfCharacters)
-            var pageOutside = 0
+            var pageOutside = 0, pageInvisible = 0
+            var visibleText = ""
             for offset in 0..<count {
                 let range = NSRange(location: offset, length: 1)
-                if ns.substring(with: range).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { continue }
+                let character = ns.substring(with: range)
+                if character.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { continue }
                 guard let selection = page.selection(for: range) else { missing += 1; continue }
                 let bounds = selection.bounds(for: page)
                 guard !bounds.isNull, !bounds.isEmpty,
                       bounds.origin.x.isFinite, bounds.origin.y.isFinite,
                       bounds.width.isFinite, bounds.height.isFinite else { missing += 1; continue }
+                // WebKit may repeat the next page's text outside this page's clipping region.
+                // Fully clipped text is not visible content; retain every straddling glyph so
+                // genuinely cut formulas still fail the margin and entry-pairing checks.
+                if !bounds.intersects(allowed) {
+                    invisible += 1
+                    pageInvisible += 1
+                    continue
+                }
+                visibleText += character
                 checked += 1
                 let excess = max(0, max(max(allowed.minX - bounds.minX, bounds.maxX - allowed.maxX),
                                         max(allowed.minY - bounds.minY, bounds.maxY - allowed.maxY)))
                 maximumExcess = max(maximumExcess, excess)
-                // Font-selection metrics can overhang visible ink by ~3pt. A 4pt allowance
-                // preserves those intact glyphs while rejecting the measured 10–11pt cuts.
-                if excess > 4 { outside += 1; pageOutside += 1 }
+                // At the readable fixture font size, selection metrics overhang intact ink
+                // by 4.18pt. A measured 5pt allowance still rejects the actual 10–11pt cuts.
+                if excess > 5 { outside += 1; pageOutside += 1 }
             }
             if pageOutside > 0 { outsidePages += 1 }
-            var report: [String: Any] = ["page": index + 1, "outsideCharacters": pageOutside]
+            var report: [String: Any] = ["page": index + 1, "outsideCharacters": pageOutside,
+                                         "fullyClippedCharacters": pageInvisible]
             if checksIntegralRows {
                 // This fixture has exactly one integral in every labelled problem/solution.
                 // A displaced label or formula must fail even when every glyph is still in view.
-                let labels = text.components(separatedBy: "PROBLEM-").count - 1
-                    + text.components(separatedBy: "SOLUTION-").count - 1
-                let integrals = text.filter { $0 == "∫" }.count
+                let labels = visibleText.components(separatedBy: "PROBLEM-").count - 1
+                    + visibleText.components(separatedBy: "SOLUTION-").count - 1
+                let integrals = visibleText.filter { $0 == "∫" }.count
+                visibleLabels += labels
+                visibleIntegrals += integrals
                 report["entryLabels"] = labels
                 report["integralSymbols"] = integrals
                 if labels != integrals {
@@ -237,9 +252,17 @@ enum FileCardReliabilityChecks {
         result.metrics["pdfOutsideCharacters"] = Double(outside)
         result.metrics["pdfOutsidePages"] = Double(outsidePages)
         result.metrics["pdfUnmeasurableCharacters"] = Double(missing)
+        result.metrics["pdfFullyClippedCharacters"] = Double(invisible)
         result.metrics["pdfMaximumMarginExcess"] = Double(maximumExcess)
         result.metrics["pdfSeparatedEntryPages"] = Double(separatedRows)
         result.diagnostics["finalPDFPages"] = pageReports
+        if checksIntegralRows {
+            result.metrics["pdfVisibleEntryLabels"] = Double(visibleLabels)
+            result.metrics["pdfVisibleIntegralSymbols"] = Double(visibleIntegrals)
+            if visibleLabels != 200 || visibleIntegrals != 200 {
+                result.failures.append("Final PDF does not visibly contain all 200 labelled integrals")
+            }
+        }
         if checked == 0 || missing > 0 { result.failures.append("Final PDF character geometry could not be fully inspected") }
         if outside > 0 { result.failures.append("Final PDF clips \(outside) characters beyond its printable margins") }
 
