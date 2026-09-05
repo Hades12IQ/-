@@ -1,0 +1,524 @@
+{
+  "cachePerformance" : {
+    "clearWriteRacePassed" : 1,
+    "diskDecodesFor201Reads" : 1,
+    "diskReadAttemptsFor201Reads" : 1,
+    "diskRestoreMilliseconds" : 3.2477500001277804,
+    "memoryHitsFor201Reads" : 200,
+    "warm200ReadsMilliseconds" : 0.073833333317452343
+  },
+  "documentLayout" : {
+    "diagnostics" : {
+      "formatterFirstRect" : [
+        51.023622047244103,
+        56.692913385826778,
+        493.22834645669298,
+        728.50393700787424
+      ],
+      "formatterNextRect" : [
+        51.023622047244103,
+        56.692913385826778,
+        493.22834645669298,
+        728.50393700787424
+      ],
+      "hasWindow" : true,
+      "layout" : {
+        "bodyOverflow" : 0,
+        "brokenImages" : 0,
+        "mathOverflow" : 0,
+        "paginatedMathLayouts" : 0,
+        "reflowedContainers" : 0,
+        "reflowedMathGrids" : 0,
+        "reflowedMathTables" : 1,
+        "wrappedMath" : 0
+      },
+      "load" : {
+        "status" : "finished"
+      },
+      "mathAssetsReady" : true,
+      "mathReady" : true,
+      "page" : {
+        "bodyHeight" : 2876,
+        "bodyWidth" : 658,
+        "fontsStatus" : "loaded",
+        "katexLoaded" : true,
+        "mathCount" : 10,
+        "mathErrors" : 0,
+        "readyState" : "complete",
+        "stylesheetCount" : 5
+      },
+      "pageCounts" : [
+        4
+      ],
+      "paperRect" : [
+        0,
+        0,
+        595.27559055118115,
+        841.8897637795277
+      ],
+      "pdfBytes" : 52532,
+      "printableRect" : [
+        51.023622047244103,
+        56.692913385826778,
+        493.22834645669298,
+        728.50393700787424
+      ],
+      "stage" : "completed"
+    },
+    "missingImageDiagnostics" : {
+      "hasWindow" : true,
+      "layout" : {
+        "bodyOverflow" : 0,
+        "brokenImages" : 1,
+        "mathOverflow" : 0,
+        "paginatedMathLayouts" : 0,
+        "reflowedContainers" : 0,
+        "reflowedMathGrids" : 0,
+        "reflowedMathTables" : 1,
+        "wrappedMath" : 0
+      },
+      "load" : {
+        "status" : "finished"
+      },
+      "mathAssetsReady" : true,
+      "mathReady" : true,
+      "paperRect" : [
+        0,
+        0,
+        595.27559055118115,
+        841.8897637795277
+      ],
+      "printableRect" : [
+        51.023622047244103,
+        56.692913385826778,
+        493.22834645669298,
+        728.50393700787424
+      ],
+      "stage" : "missing-document-image"
+    },
+    "pageCount" : 4,
+    "pdfBytes" : 52532,
+    "pdfPath" : "\/Users\/runner\/Library\/Developer\/CoreSimulator\/Devices\/05F58117-2859-4943-B998-CBA7AAE9792F\/data\/Containers\/Data\/Application\/BE4A0D90-2C51-46D7-B055-B990507BC0B6\/Documents\/reliability-document-layout.pdf"
+  },
+  "errors" : [
+    "PDF page 1 separates integral labels from formulas (6\/5)",
+    "PDF page 16 separates integral labels from formulas (6\/5)",
+    "Final PDF does not visibly contain all 200 labelled integrals",
+    "Final PDF clips 23 characters beyond its printable margins"
+  ],
+  "fileCardExport" : {
+    "bodyOverflow" : 0,
+    "brokenImages" : 0,
+    "bytes" : 84928,
+    "failedCardActionsBlocked" : 1,
+    "fullSelectedSourcePassed" : 1,
+    "lastPageHasText" : 1,
+    "lastPageInkPixels" : 21206,
+    "matchedMarkers" : 201,
+    "mathCount" : 200,
+    "mathErrors" : 0,
+    "mathOverflow" : 0,
+    "modelAssertions" : 19,
+    "nativePreviewPresented" : 1,
+    "openHeight" : 44,
+    "openToExportMilliseconds" : 6115.8620119094849,
+    "openWidth" : 75.333333333333329,
+    "pageCount" : 32,
+    "pdfCheckedCharacters" : 10303,
+    "pdfFullyClippedCharacters" : 0,
+    "pdfMaximumMarginExcess" : 26.708401406409742,
+    "pdfOutsideCharacters" : 23,
+    "pdfOutsidePages" : 2,
+    "pdfSeparatedEntryPages" : 2,
+    "pdfUnmeasurableCharacters" : 0,
+    "pdfVisibleEntryLabels" : 202,
+    "pdfVisibleIntegralSymbols" : 200,
+    "unchangedUserRows" : 1
+  },
+  "fileCardExportDiagnostics" : {
+    "finalPDFPages" : [
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 5,
+        "outsideCharacters" : 11,
+        "page" : 1
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 2
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 3
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 4
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 5
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 6
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 7
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 8
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 9
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 10
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 11
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 12
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 13
+      },
+      {
+        "entryLabels" : 7,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 7,
+        "outsideCharacters" : 0,
+        "page" : 14
+      },
+      {
+        "entryLabels" : 4,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 4,
+        "outsideCharacters" : 0,
+        "page" : 15
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 5,
+        "outsideCharacters" : 12,
+        "page" : 16
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 17
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 18
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 19
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 20
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 21
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 22
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 23
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 24
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 25
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 26
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 27
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 28
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 29
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 30
+      },
+      {
+        "entryLabels" : 6,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 6,
+        "outsideCharacters" : 0,
+        "page" : 31
+      },
+      {
+        "entryLabels" : 5,
+        "fullyClippedCharacters" : 0,
+        "integralSymbols" : 5,
+        "outsideCharacters" : 0,
+        "page" : 32
+      }
+    ],
+    "formatterFirstRect" : [
+      51.023622047244103,
+      56.692913385826778,
+      493.22834645669298,
+      728.50393700787424
+    ],
+    "formatterNextRect" : [
+      51.023622047244103,
+      56.692913385826778,
+      493.22834645669298,
+      728.50393700787424
+    ],
+    "hasWindow" : true,
+    "layout" : {
+      "bodyOverflow" : 0,
+      "brokenImages" : 0,
+      "mathOverflow" : 0,
+      "paginatedMathLayouts" : 1,
+      "reflowedContainers" : 1,
+      "reflowedMathGrids" : 0,
+      "reflowedMathTables" : 0,
+      "wrappedMath" : 0
+    },
+    "load" : {
+      "status" : "finished"
+    },
+    "mathAssetsReady" : true,
+    "mathReady" : true,
+    "page" : {
+      "bodyHeight" : 31500,
+      "bodyWidth" : 658,
+      "fontsStatus" : "loaded",
+      "katexLoaded" : true,
+      "mathCount" : 200,
+      "mathErrors" : 0,
+      "readyState" : "complete",
+      "stylesheetCount" : 5
+    },
+    "pageCounts" : [
+      32
+    ],
+    "paperRect" : [
+      0,
+      0,
+      595.27559055118115,
+      841.8897637795277
+    ],
+    "pdfBytes" : 84928,
+    "printableRect" : [
+      51.023622047244103,
+      56.692913385826778,
+      493.22834645669298,
+      728.50393700787424
+    ],
+    "stage" : "completed"
+  },
+  "liveMath" : {
+    "completedFormulaStayedStable" : 1,
+    "initialMathMilliseconds" : 12538.120031356812,
+    "renderedBeforeDelimiter" : 1,
+    "updatedPreviewMilliseconds" : 284.43408012390137
+  },
+  "mathExpectedCount" : 8,
+  "mathGlyphCount" : 8,
+  "mediaViewer" : {
+    "attachedBindingCallback" : 1,
+    "attachedCloseHeight" : 44,
+    "attachedCloseWidth" : 44,
+    "attachedDismissMilliseconds" : 522.95506000518799,
+    "attachedMounted" : 1,
+    "attachedNativeDismissed" : 1,
+    "generatedCloseHeight" : 44,
+    "generatedCloseWidth" : 44,
+    "generatedDismissMilliseconds" : 523.11992645263672,
+    "generatedMounted" : 1,
+    "generatedNativeDismissed" : 1,
+    "generatedRouterCleared" : 1
+  },
+  "nativeAskMenu" : true,
+  "nativeWordSelection" : true,
+  "pdfBytes" : 69578,
+  "pdfDiagnostics" : {
+    "formatterFirstRect" : [
+      51.023622047244103,
+      56.692913385826778,
+      493.22834645669298,
+      728.50393700787424
+    ],
+    "formatterNextRect" : [
+      51.023622047244103,
+      56.692913385826778,
+      493.22834645669298,
+      728.50393700787424
+    ],
+    "hasWindow" : true,
+    "layout" : {
+      "bodyOverflow" : 0,
+      "brokenImages" : 0,
+      "mathOverflow" : 0,
+      "paginatedMathLayouts" : 0,
+      "reflowedContainers" : 0,
+      "reflowedMathGrids" : 0,
+      "reflowedMathTables" : 0,
+      "wrappedMath" : 0
+    },
+    "load" : {
+      "status" : "finished"
+    },
+    "mathAssetsReady" : true,
+    "mathReady" : true,
+    "page" : {
+      "bodyHeight" : 5607,
+      "bodyWidth" : 658,
+      "fontsStatus" : "loaded",
+      "katexLoaded" : true,
+      "mathCount" : 102,
+      "mathErrors" : 0,
+      "readyState" : "complete",
+      "stylesheetCount" : 5
+    },
+    "pageCounts" : [
+      6
+    ],
+    "paperRect" : [
+      0,
+      0,
+      595.27559055118115,
+      841.8897637795277
+    ],
+    "pdfBytes" : 69578,
+    "printableRect" : [
+      51.023622047244103,
+      56.692913385826778,
+      493.22834645669298,
+      728.50393700787424
+    ],
+    "stage" : "completed"
+  },
+  "pdfPageCount" : 6,
+  "pdfPath" : "\/Users\/runner\/Library\/Developer\/CoreSimulator\/Devices\/05F58117-2859-4943-B998-CBA7AAE9792F\/data\/Containers\/Data\/Application\/BE4A0D90-2C51-46D7-B055-B990507BC0B6\/Documents\/reliability-long-arabic.pdf",
+  "persistedMathGlyphCount" : 8,
+  "renderingPerformance" : {
+    "attachmentsAt280pt" : 8,
+    "attachmentsAt390pt" : 8,
+    "attachmentsAt600pt" : 8,
+    "cachedParse1000Milliseconds" : 1.631625000072745,
+    "glyphsWiderThanOldCutoff" : 3
+  },
+  "status" : "failed",
+  "streamPerformance" : {
+    "burstVisibleMilliseconds" : 216.66666666666856,
+    "fullSnapshotSplitChecksum" : 5438670,
+    "fullSnapshotSplitMilliseconds" : 172.1271250000882,
+    "idleControlWordVisibleMilliseconds" : 120.99999999999511,
+    "incrementalSnapshotMilliseconds" : 260.53625000008651,
+    "incrementalSnapshotScannedBytes" : 49285,
+    "snapshotBytesWithoutIncremental" : 5441970,
+    "snapshotCount" : 219
+  }
+}
