@@ -1,0 +1,84 @@
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/CodeEditorView.swift:331:17: warning: '@preconcurrency' on conformance to 'UITextViewDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:657:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:657:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:730:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Shell/CompactDrawer.swift:403:17: warning: '@preconcurrency' on conformance to 'UIGestureRecognizerDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:385:25: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:441:25: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1446:21: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1446:21: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:19:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:82:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:84:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:115:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:117:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:137:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:139:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:74:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:76:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:101:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:103:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:111:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:114:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:130:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:133:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:146:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:148:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1446:21: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1446:21: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:810:14: warning: consider using asynchronous alternative function
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:820:18: warning: consider using asynchronous alternative function
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:19:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:170:37: warning: main actor-isolated static property 'base' cannot be accessed from outside of the actor; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/CodeEditorView.swift:331:17: warning: '@preconcurrency' on conformance to 'UITextViewDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/CodeGitHubModel.swift:491:48: warning: main actor-isolated static property 'linksKey' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentHTML.swift:93:39: warning: main actor-isolated static property 'scheme' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentHTML.swift:119:33: warning: main actor-isolated static property 'typesettingScript' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentHTML+Authored.swift:129:39: warning: main actor-isolated static property 'scheme' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentHTML+Authored.swift:197:31: warning: main actor-isolated static property 'typesettingScript' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:657:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:657:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:730:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView+Assembler.swift:50:39: warning: main actor-isolated static property 'scheme' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Media/MediaCreateForm.swift:189:57: warning: main actor-isolated property 'lang' can not be referenced from a Sendable closure
+/Users/runner/work/-/-/ios/FirasAI/Features/Media/MediaCreateForm.swift:191:42: warning: main actor-isolated property 'photoData' can not be referenced from a Sendable closure
+/Users/runner/work/-/-/ios/FirasAI/Features/Media/MediaCreateForm.swift:191:61: warning: main actor-isolated property 'palette' can not be referenced from a Sendable closure
+/Users/runner/work/-/-/ios/FirasAI/Features/Media/MediaCreateForm.swift:191:85: warning: main actor-isolated property 'palette' can not be referenced from a Sendable closure
+/Users/runner/work/-/-/ios/FirasAI/Features/Media/MediaCreateForm.swift:194:72: warning: main actor-isolated property 'palette' can not be referenced from a nonisolated context
+/Users/runner/work/-/-/ios/FirasAI/Features/Media/MediaCreateForm.swift:244:55: warning: main actor-isolated property 'lang' can not be referenced from a Sendable closure
+/Users/runner/work/-/-/ios/FirasAI/Features/Media/MediaCreateForm.swift:246:42: warning: main actor-isolated property 'photoData' can not be referenced from a Sendable closure
+/Users/runner/work/-/-/ios/FirasAI/Features/Media/MediaCreateForm.swift:246:61: warning: main actor-isolated property 'palette' can not be referenced from a Sendable closure
+/Users/runner/work/-/-/ios/FirasAI/Features/Media/MediaCreateForm.swift:246:85: warning: main actor-isolated property 'palette' can not be referenced from a Sendable closure
+/Users/runner/work/-/-/ios/FirasAI/Features/Media/MediaCreateForm.swift:249:72: warning: main actor-isolated property 'palette' can not be referenced from a nonisolated context
+/Users/runner/work/-/-/ios/FirasAI/Features/Shell/CompactDrawer.swift:403:17: warning: '@preconcurrency' on conformance to 'UIGestureRecognizerDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/AudioSessionArbiter.swift:123:61: warning: 'allowBluetooth' was deprecated in iOS 8.0: renamed to 'AVAudioSession.CategoryOptions.allowBluetoothHFP'
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/AudioSessionArbiter.swift:132:28: warning: 'allowBluetooth' was deprecated in iOS 8.0: renamed to 'AVAudioSession.CategoryOptions.allowBluetoothHFP'
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/AudioSessionArbiter.swift:123:17: warning: variable 'options' was never mutated; consider changing to 'let' constant
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:124:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:126:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:137:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:181:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:183:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:640:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:643:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:720:20: warning: capture of 'input' with non-Sendable type 'AVAudioPCMBuffer' in a '@Sendable' closure
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:1:1: warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'AVFAudio'
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:385:25: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:441:25: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathBlockView.swift:104:55: warning: no 'async' operations occur within 'await' expression
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:392:47: warning: main actor-isolated static property 'taskCharacterCap' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:394:58: warning: main actor-isolated static property 'attachmentCharacterCap' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:532:85: warning: main actor-isolated static property 'taskCharacterCap' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:534:51: warning: main actor-isolated static property 'planAttachmentLimit' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:575:35: warning: main actor-isolated static property 'fileBriefLimit' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:577:51: warning: main actor-isolated static property 'fileAttachmentLimit' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+2026-09-05 13:30:44.761 appintentsmetadataprocessor[22950:64802] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+** BUILD SUCCEEDED **
