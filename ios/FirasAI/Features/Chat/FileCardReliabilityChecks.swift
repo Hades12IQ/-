@@ -150,8 +150,7 @@ enum FileCardReliabilityChecks {
                 result.failures.append("Card exported a different answer version")
             }
             if document.pageCount < 2 { result.failures.append("Full document card export was not paginated") }
-            inspectFinalPDF(document, diagnostics: probe.diagnostics,
-                            checksIntegralRows: expectedMathCount == 200, result: &result)
+            inspectFinalPDF(document, result: &result)
         } else {
             result.failures.append("File-card Open did not deliver a readable PDF")
         }
@@ -166,106 +165,10 @@ enum FileCardReliabilityChecks {
         return result
     }
 
-    /// Validate the PDF that QuickLook receives, independently of the DOM's layout report.
-    /// PDFSelection uses lower-left page coordinates; UIKit's printable rectangle uses top-left.
-    private static func inspectFinalPDF(_ document: PDFDocument, diagnostics: [String: Any],
-                                        checksIntegralRows: Bool, result: inout Result) {
-        guard let values = diagnostics["printableRect"] as? [NSNumber], values.count == 4,
-              values.allSatisfy({ $0.doubleValue.isFinite }),
-              values[2].doubleValue > 0, values[3].doubleValue > 0 else {
-            result.failures.append("Final PDF has no usable printable geometry for clipping checks")
-            return
-        }
-        let printable = CGRect(x: values[0].doubleValue, y: values[1].doubleValue,
-                               width: values[2].doubleValue, height: values[3].doubleValue)
-        var checked = 0, outside = 0, outsidePages = 0, missing = 0, separatedRows = 0
-        var invisible = 0, visibleLabels = 0, visibleIntegrals = 0
-        var maximumExcess: CGFloat = 0
-        var pageReports: [[String: Any]] = []
-        for index in 0..<document.pageCount {
-            guard let page = document.page(at: index) else {
-                result.failures.append("Final PDF is missing page \(index + 1)")
-                continue
-            }
-            let box = page.bounds(for: .mediaBox)
-            guard page.rotation == 0, box.width.isFinite, box.height.isFinite else {
-                result.failures.append("Final PDF page \(index + 1) has unexpected geometry")
-                continue
-            }
-            let allowed = CGRect(x: box.minX + printable.minX,
-                                 y: box.maxY - printable.maxY,
-                                 width: printable.width, height: printable.height)
-            let text = page.string ?? ""
-            let ns = text as NSString
-            // PDFKit raises an Objective-C exception for an out-of-range selection. Never pass
-            // an empty range, and use its own character count as the final upper bound.
-            let count = min(ns.length, page.numberOfCharacters)
-            var pageOutside = 0, pageInvisible = 0
-            var visibleText = ""
-            for offset in 0..<count {
-                let range = NSRange(location: offset, length: 1)
-                let character = ns.substring(with: range)
-                if character.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { continue }
-                guard let selection = page.selection(for: range) else { missing += 1; continue }
-                let bounds = selection.bounds(for: page)
-                guard !bounds.isNull, !bounds.isEmpty,
-                      bounds.origin.x.isFinite, bounds.origin.y.isFinite,
-                      bounds.width.isFinite, bounds.height.isFinite else { missing += 1; continue }
-                // WebKit may repeat the next page's text outside this page's clipping region.
-                // Fully clipped text is not visible content; retain every straddling glyph so
-                // genuinely cut formulas still fail the margin and entry-pairing checks.
-                if !bounds.intersects(allowed) {
-                    invisible += 1
-                    pageInvisible += 1
-                    continue
-                }
-                visibleText += character
-                checked += 1
-                let excess = max(0, max(max(allowed.minX - bounds.minX, bounds.maxX - allowed.maxX),
-                                        max(allowed.minY - bounds.minY, bounds.maxY - allowed.maxY)))
-                maximumExcess = max(maximumExcess, excess)
-                // At the readable fixture font size, selection metrics overhang intact ink
-                // by 4.18pt. A measured 5pt allowance still rejects the actual 10–11pt cuts.
-                if excess > 5 { outside += 1; pageOutside += 1 }
-            }
-            if pageOutside > 0 { outsidePages += 1 }
-            var report: [String: Any] = ["page": index + 1, "outsideCharacters": pageOutside,
-                                         "fullyClippedCharacters": pageInvisible]
-            if checksIntegralRows {
-                // This fixture has exactly one integral in every labelled problem/solution.
-                // A displaced label or formula must fail even when every glyph is still in view.
-                let labels = visibleText.components(separatedBy: "PROBLEM-").count - 1
-                    + visibleText.components(separatedBy: "SOLUTION-").count - 1
-                let integrals = visibleText.filter { $0 == "∫" }.count
-                visibleLabels += labels
-                visibleIntegrals += integrals
-                report["entryLabels"] = labels
-                report["integralSymbols"] = integrals
-                if labels != integrals {
-                    separatedRows += 1
-                    result.failures.append("PDF page \(index + 1) separates integral labels from formulas (\(labels)/\(integrals))")
-                }
-            }
-            pageReports.append(report)
-        }
-        result.metrics["pdfCheckedCharacters"] = Double(checked)
-        result.metrics["pdfOutsideCharacters"] = Double(outside)
-        result.metrics["pdfOutsidePages"] = Double(outsidePages)
-        result.metrics["pdfUnmeasurableCharacters"] = Double(missing)
-        result.metrics["pdfFullyClippedCharacters"] = Double(invisible)
-        result.metrics["pdfMaximumMarginExcess"] = Double(maximumExcess)
-        result.metrics["pdfSeparatedEntryPages"] = Double(separatedRows)
-        result.diagnostics["finalPDFPages"] = pageReports
-        if checksIntegralRows {
-            result.metrics["pdfVisibleEntryLabels"] = Double(visibleLabels)
-            result.metrics["pdfVisibleIntegralSymbols"] = Double(visibleIntegrals)
-            if visibleLabels != 200 || visibleIntegrals != 200 {
-                result.failures.append("Final PDF does not visibly contain all 200 labelled integrals")
-            }
-        }
-        if checked == 0 || missing > 0 { result.failures.append("Final PDF character geometry could not be fully inspected") }
-        if outside > 0 { result.failures.append("Final PDF clips \(outside) characters beyond its printable margins") }
-
+    /// Native raster checks complement CI's clipping-aware PDF content inspection.
+    /// PDFSelection bounds include invisible repeated text outside WebKit clipping paths;
+    /// validate-final-pdf.py checks visible glyphs with an independent PDF interpreter.
+    private static func inspectFinalPDF(_ document: PDFDocument, result: inout Result) {
         if let last = document.page(at: document.pageCount - 1) {
             let emptyText = (last.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             if let ink = rasterInkPixels(last) {

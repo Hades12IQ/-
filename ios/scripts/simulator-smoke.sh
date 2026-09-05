@@ -29,10 +29,16 @@ test -f "$REPORT"
 cp "$REPORT" "$ARTIFACT_ROOT/"
 find "$CONTAINER/Documents" -maxdepth 1 -name '*.pdf' -exec cp {} "$ARTIFACT_ROOT/" \;
 find "$CONTAINER/Documents" -maxdepth 1 -name '*.png' -exec cp {} "$ARTIFACT_ROOT/" \;
-cat "$REPORT"
 xcrun swift ios/scripts/render-smoke-pdf.swift "$ARTIFACT_ROOT"
-python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("status")=="passed", d' "$REPORT"
+# PDFKit selections include text that WebKit clipped outside a page. Independently interpret
+# the generated PDF's clipping paths; this catches sliced equations without counting ghosts.
+PDF_QA_ENV="$RUNNER_TEMP/FirasAI-PDF-QA"
+python3 -m venv "$PDF_QA_ENV"
+"$PDF_QA_ENV/bin/python" -m pip install --quiet --disable-pip-version-check 'PyMuPDF==1.27.2.3'
+"$PDF_QA_ENV/bin/python" ios/scripts/validate-final-pdf.py "$ARTIFACT_ROOT"
+cat "$ARTIFACT_ROOT/reliability-smoke.json"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("status")=="passed", d' "$ARTIFACT_ROOT/reliability-smoke.json"
 (
   cd "$ARTIFACT_ROOT"
-  zip -q FirasAI-smoke-evidence.zip reliability-smoke.json *.png *.pdf
+  zip -q FirasAI-smoke-evidence.zip reliability-smoke.json final-pdf-qa.json *.png *.pdf
 )
