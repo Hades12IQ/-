@@ -34,10 +34,14 @@ struct ReliabilitySmokeView: View {
         .background(env.prefs.palette.background)
         .foregroundStyle(env.prefs.palette.textPrimary)
         .environment(\.firasTextSelection, selection)
-        .task {
+        .onAppear {
             guard !ran else { return }
             ran = true
-            await run()
+            // The fixture intentionally presents full-screen viewers. SwiftUI may cancel a
+            // view-bound .task while that viewer covers this screen; cancellation would make
+            // JobClock.rest return immediately and starve the later mounted math checks.
+            // This DEBUG-only runner lives until its report completes across those presentations.
+            Task { @MainActor in await run() }
         }
     }
 
@@ -146,6 +150,8 @@ struct ReliabilitySmokeView: View {
         let viewerChecks = await MediaViewerReliabilityChecks.run(env: env)
         errors += viewerChecks.failures
         report["mediaViewer"] = viewerChecks.metrics
+        report["harnessTaskCancelledAfterViewer"] = Task.isCancelled
+        if Task.isCancelled { errors.append("Smoke runner was cancelled by its temporary viewer presentation") }
         showMath = true
         let liveChecks = await checkLiveMath(directory: directory)
         errors += liveChecks.failures

@@ -17,7 +17,10 @@ enum CountedDocumentReliabilityChecks {
         let prior = DocumentRevisionContext.latestMessage(in: history, request: edit)
         let format = DocumentRevisionContext.format(for: edit, candidate: prior, history: history)
         check(format == "pdf", "screenshot-feedback-retains-pdf")
-        check(DocumentRevisionContext.completeSource(from: prior)?.source == html, "revision-retains-entire-source")
+        // The closing fence has its own preceding newline, preserved by the authored parser.
+        // Compare the complete document excluding only that fence-boundary whitespace.
+        check(DocumentRevisionContext.completeSource(from: prior)?.source.trimmingCharacters(in: .whitespacesAndNewlines) == html,
+            "revision-retains-entire-source")
         let requirements = CountedDocumentPlan.originalRequirements(previous: prior, history: history)
         check(requirements == original && requirements.contains("10") && requirements.contains("three per row"), "revision-retains-count-and-layout")
         check(CountedDocumentPlan.resolve(request: edit, kind: .file(format: "pdf", explicitPages: nil),
