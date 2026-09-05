@@ -60,6 +60,8 @@ enum CountedDocumentReliabilityChecks {
             ("Make it 20 integrals without solutions", 20, false, false),
             ("Place the solutions after each integral", 10, true, false)
         ] {
+            check(DocumentRevisionContext.format(for: change, candidate: server, history: serverHistory) == "pdf",
+                "revision-flags-route-" + change)
             let changed = CountedDocumentPlan.resolve(request: change, kind: .file(format: "pdf", explicitPages: nil),
                 history: serverHistory, previous: server, isRevision: true)
             check(changed?.items.count == count && changed?.items.requiresSolutions == solutions

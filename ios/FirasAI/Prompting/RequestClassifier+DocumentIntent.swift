@@ -28,7 +28,9 @@ extension RequestClassifier {
         let revision = #"(?:^|\s)(?:عدّل|عدل|حدّث|حدث|حرّر|حرر|غيّر|غير|احذف|إحذف|شيل|امسح|استبدل|بدّل|بدل|ضيف|اضف|أضف|صحح|صحّح|رتب|رتّب|لون|لوّن|كبّر|كبر|صغر|صغّر|revise|edit|update|modify|remove|delete|replace|change|add|fix|recolou?r|reformat|resize)(?:\s|$)"#
         let explicitDocument = hasExplicitDocumentRevisionReference(text)
         let attachedPronounEdit = #"(?:^|\s)(?:عدله|عدّله|غيره|غيّره|رتبه|رتّبه|كبره|كبّره|صغره|صغّره)(?:\s|$|[،,؛;.!؟?])"#
+        let englishContextEdit = #"\bmake\s+(?:it|them)\b|\b(?:place|move|arrange)\s+(?:(?:the|all)\s+)?(?:solutions?|answers?|items?|integrals?|headings?|paragraphs?)\b"#
         guard matches(revision, text) || matches(attachedPronounEdit, text)
+            || matches(englishContextEdit, text)
             || hasActionableDocumentFeedback(text, explicitDocument: explicitDocument) else { return nil }
         // A separate creation remains media even when a document happens to precede it.
         if !explicitDocument, case .media(let kind) = MediaRequestIntent.resolve(text, hasImages: false),
