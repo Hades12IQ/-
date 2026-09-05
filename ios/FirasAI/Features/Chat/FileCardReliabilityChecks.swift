@@ -171,7 +171,7 @@ enum FileCardReliabilityChecks {
             ScrollView {
                 if let message = env.chat.conversation(conversationID)?.messages.last {
                     AssistantTurnView(env: env, message: message, conversationID: conversationID,
-                        product: .chat, palette: env.prefs.palette, lang: env.prefs.lang,
+                        product: .ai, palette: env.prefs.palette, lang: env.prefs.lang,
                         scale: env.prefs.fontScale, motionOn: false, isStreaming: false,
                         liveText: "", liveReasoning: "", phaseLabel: nil, isLatest: false,
                         showsPlanPill: false, expectsAsk: false)
