@@ -37,6 +37,13 @@ enum CountedDocumentReliabilityChecks {
             artifactEndpoint: "/api/chat/job/file?id=fixture-artifact", serverPdf: true, counteddoc: true,
             sha256: digest, pdfBytes: data.count, expectedItems: 10, requiresSolutions: true, solutionsAtEnd: true)
         check(meta.hasVerifiedPDFReference && !meta.isDurableLongFile, "complete-pdf-never-enters-parts-reader")
+        let legacyRemote = FileMeta(format: "pdf", name: "old-file.pdf", pages: 20,
+            jobId: "old-file", artifactId: "old-file", artifactParts: 5,
+            artifactEndpoint: "/api/chat/job/file?id=old-file", serverPdf: true)
+        check(legacyRemote.isDurableLongFile && !legacyRemote.usesServerPDFDownload,
+            "legacy-server-pdf-retains-physical-parts-reader")
+        check(DocumentCardReadiness.evaluate(message: legacy, meta: legacyRemote, request: "Create a 20-page PDF",
+            isStreaming: false, lang: .english).canOpen, "legacy-server-pdf-is-still-openable")
         func fence(_ value: FileMeta) -> String {
             "```firas-file\n" + String(data: (try? JSONEncoder().encode(value)) ?? Data(), encoding: .utf8)! + "\n```"
         }

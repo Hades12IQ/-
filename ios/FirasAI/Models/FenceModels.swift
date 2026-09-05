@@ -187,7 +187,7 @@ struct FileMeta: Codable, Sendable, Equatable {
     /// A durable long file the client may preview and export: the fence names an artifact, the
     /// endpoint is the one route we accept, and the format is one the reader understands.
     var isDurableLongFile: Bool {
-        guard serverPdf != true else { return false }
+        guard !usesServerPDFDownload else { return false }
         guard let artifactId, !artifactId.isEmpty else { return false }
         guard let endpoint = artifactEndpoint, endpoint.hasPrefix("/api/chat/job/file?id=") else { return false }
         guard let pages, pages > 0 else { return false }

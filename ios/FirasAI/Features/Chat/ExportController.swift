@@ -285,7 +285,7 @@ final class ExportController {
     func document(for meta: FileMeta, markdown: String, title: String,
                   conversationID: String? = nil, messageID: String? = nil, request: String? = nil) async -> Export? {
         let owner = env.session.identityID
-        if meta.serverPdf == true {
+        if meta.usesServerPDFDownload {
             do {
                 let downloaded = try await ServerDocumentService.download(meta: meta, api: env.api,
                     owner: owner, currentOwner: { self.env.session.identityID })

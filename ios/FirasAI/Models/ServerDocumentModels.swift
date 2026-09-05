@@ -6,6 +6,12 @@ struct DocumentJobImage: Encodable, Sendable, Equatable {
 }
 
 extension FileMeta {
+    /// Older longfile fences also said serverPdf but exposed only physical part metadata.
+    /// Keep those existing cards on their established reader; new binary references verify fully.
+    var usesServerPDFDownload: Bool {
+        serverPdf == true && (counteddoc == true || sha256 != nil || pdfBytes != nil || artifactParts == nil)
+    }
+
     /// References never control the URL: the downloader uses the fixed authenticated route.
     var hasVerifiedPDFReference: Bool {
         guard serverPdf == true, format == "pdf", let artifactId,

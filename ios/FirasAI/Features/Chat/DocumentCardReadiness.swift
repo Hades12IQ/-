@@ -14,7 +14,7 @@ enum DocumentCardReadiness: Equatable {
 
     static func evaluate(message: ChatMessage, meta: FileMeta, request: String,
                          isStreaming: Bool, lang: AppLanguage) -> Self {
-        if meta.serverPdf == true {
+        if meta.usesServerPDFDownload {
             guard !isStreaming, message.status.isTerminal else { return .preparing }
             // An error can leave a real, labelled partial PDF. It is still verified on download.
             if case .failed = message.status, meta.partial != true { return .blocked(failed(lang)) }

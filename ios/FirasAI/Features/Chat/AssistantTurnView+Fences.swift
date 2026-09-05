@@ -92,7 +92,7 @@ extension AssistantTurnView {
             meta.format = requestedDocumentFormat() ?? "pdf"
         }
         let durableJob = meta.jobId.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
-        let isDurable = !durableJob.isEmpty && meta.serverPdf != true
+        let isDurable = !durableJob.isEmpty && !meta.usesServerPDFDownload
         let readiness = documentReadiness(meta)
 
         // Written out rather than folded into the call: a `cond ? nil : { … }` expression is one of
