@@ -67,6 +67,8 @@ final class SendPipeline {
     var omnixAdmissions: [String: Task<Void, Never>] = [:]
     var omnixWrites: [String: Task<Void, Error>] = [:]
     var omnixCancelled: Set<String> = []
+    /// Only locally initiated or actually observed running requests may announce completion.
+    var omnixCompletionEligible: Set<String> = []
 
     /// Everything a streaming turn needs to become a durable job without asking anything again.
     /// Present only while a turn is on the socket **and** the queue would accept it; leaving the

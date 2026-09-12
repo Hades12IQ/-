@@ -1,5 +1,6 @@
 #if DEBUG
 import Foundation
+import UIKit
 
 @MainActor
 enum OmnixReliabilityChecks {
@@ -55,6 +56,36 @@ enum OmnixReliabilityChecks {
             let old = try OmnixService.inputs([extracted])
             if old.first?.name != "old.pdf.txt" { failures.append("Omnix misrepresented extracted text as a PDF original") }
         } catch { failures.append("Omnix rejected valid original input data") }
+        let pixel = UIGraphicsImageRenderer(size: CGSize(width: 2, height: 2)).image { context in
+            UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 2, height: 2))
+        }
+        if let png = pixel.pngData() {
+            do {
+                for sourceName in ["photo.png", "photo.heic"] {
+                    let prepared = try await ChatAttachmentProcessor.image(data: png, name: sourceName)
+                    let input = try OmnixService.inputs([prepared]).first
+                    if prepared.name != sourceName || input?.name != "photo.jpg" || input?.mime != "image/jpeg"
+                        || input?.bytes != prepared.originalData {
+                        failures.append("Omnix uploaded a re-encoded photo under its original incompatible extension")
+                    }
+                }
+                let prepared = PreparedAttachment(name: "original.jpeg", kind: "image", originalData: png, originalMime: "image/png")
+                let input = try OmnixService.inputs([prepared]).first
+                if input?.name != "original.png" || input?.mime != "image/png" || input?.bytes != png {
+                    failures.append("Omnix changed original PNG bytes or kept an incompatible upload extension")
+                }
+            } catch { failures.append("Omnix rejected a valid prepared photo") }
+            for attachment in [
+                PreparedAttachment(name: "wrong.png", kind: "image", originalData: png, originalMime: "image/jpeg"),
+                PreparedAttachment(name: "broken.png", kind: "image", imageBase64: Data("not an image".utf8).base64EncodedString()),
+                PreparedAttachment(name: "unsupported.heic", kind: "image", originalData: Data("not an image".utf8), originalMime: "image/heic")
+            ] {
+                do {
+                    _ = try OmnixService.inputs([attachment])
+                    failures.append("Omnix accepted unsupported or mismatched image bytes")
+                } catch { }
+            }
+        } else { failures.append("Omnix image fixture could not be created") }
         do {
             _ = try OmnixService.inputs([PreparedAttachment(name: "unsafe.pdf", kind: "pdf", text: "cut content", truncated: true)])
             failures.append("Omnix silently uploaded a truncated document")

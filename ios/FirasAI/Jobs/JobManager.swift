@@ -137,6 +137,39 @@ final class JobManager: JobWatcherDelegate {
         observers[kind] = list
     }
 
+    /// For a native request whose cloud service owns its own receipt and polling (Omnix).
+    /// Do not put that receipt in the chat-queue table merely to prepare its completion channels.
+    func prepareExternalCompletion(ownerID: String) {
+        guard !ownerID.isEmpty, session.identityID == ownerID else { return }
+        prepareCompletionChannels()
+    }
+
+    /// Called only after a locally initiated request's authoritative terminal is safely saved.
+    /// The service owns per-request dedupe and must not call this while importing old jobs.
+    func notifyExternalCompletion(_ pointer: JobPointer, terminal: JobTerminal) async {
+        guard Self.canNotifyExternalCompletion(pointer, terminal: terminal, ownerID: session.identityID) else { return }
+        if UIApplication.shared.applicationState == .active {
+            await CompletionCue.fire(key: pointer.id, success: terminal.isSuccess, prefs: prefs, callActive: callActive)
+        } else {
+            await notifications.postJobTerminal(pointer, terminal: terminal, lang: prefs.lang, shouldDeliver: { [weak self] in
+                self?.session.identityID == pointer.ownerID && UIApplication.shared.applicationState != .active
+            })
+        }
+    }
+
+    nonisolated static func canNotifyExternalCompletion(_ pointer: JobPointer, terminal: JobTerminal, ownerID: String?) -> Bool {
+        guard !pointer.id.isEmpty, !pointer.ownerID.isEmpty, ownerID == pointer.ownerID,
+              !pointer.cancelRequested, !pointer.notified else { return false }
+        switch terminal {
+        case .completed(let snapshot):
+            return snapshot.pointerID == pointer.id && snapshot.phase == .completed
+        case .failed(_, let partial):
+            return partial == nil || partial?.pointerID == pointer.id
+        default:
+            return false
+        }
+    }
+
     // MARK: - Starting
 
     /// Hands a turn to the durable chat queue. Throws `APIError` for every refusal the caller must

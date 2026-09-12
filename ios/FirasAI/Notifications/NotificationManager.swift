@@ -98,13 +98,14 @@ final class NotificationManager {
     /// finished, the **subtitle** is the conversation this belongs to, and the **body** says what
     /// to do next. Without the subtitle a person with four missions running learns only that
     /// *something* is done, which is the complaint this shape answers.
-    func postJobTerminal(_ pointer: JobPointer, terminal: JobTerminal, lang: AppLanguage) async {
-        guard let phase = Self.phaseWire(for: terminal) else { return }
+    func postJobTerminal(_ pointer: JobPointer, terminal: JobTerminal, lang: AppLanguage,
+                         shouldDeliver: () -> Bool = { true }) async {
+        guard shouldDeliver(), let phase = Self.phaseWire(for: terminal) else { return }
         // Read the live status rather than the cached one: a post happens while the app is in the
         // background, minutes or hours after the last `didBecomeActive` refresh, and the answer may
         // have changed in system settings in between. `notificationSettings()` is a cheap read.
         await refreshAuthorization()
-        guard isAuthorized else { return }
+        guard shouldDeliver(), isAuthorized else { return }
         registerCategoriesIfNeeded()
 
         let copy = Strings.Notify.job(
@@ -133,6 +134,7 @@ final class NotificationManager {
         // The request id is the job id: a replayed post replaces the old banner instead of
         // stacking a second one, and `clearDelivered(jobID:)` can take it away again.
         await deliver(identifier: pointer.id, content: content)
+        if !shouldDeliver() { clearDelivered(jobID: pointer.id) }
     }
 
     /// A live call that ended while the app was in the background (the call keeps running under

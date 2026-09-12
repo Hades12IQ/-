@@ -153,6 +153,8 @@ extension Strings {
             en: "Describe what to build or change…"
         )
         static let contextModel = LText(ar: "النموذج", en: "Model")
+        static let automaticModel = LText(ar: "تلقائي", en: "Auto")
+        static let automaticModelHint = LText(ar: "فراس كود يختار نموذج كل مرحلة تلقائيًا حسب المهمة.", en: "Firas Code selects each stage’s model automatically for the task.")
         static let attachLabel = LText(ar: "أرفق ملفًا", en: "Attach a file")
         static let attachReading = LText(ar: "يقرأ المرفقات…", en: "Reading the attachments…")
         static let attachUnsupported = LText(

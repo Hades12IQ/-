@@ -172,20 +172,20 @@ struct CodeSessionComposer: View {
         .frame(minHeight: 44)
     }
 
-    /// The model pill keeps its full label under pressure — it is two or three characters wide and
-    /// there is nothing to gain by shortening it.
+    /// Code chooses models per stage; the global Chat tier is not its execution model.
     private var tierPill: some View {
         FirasPill(
-            text: env.prefs.tier.short(lang),
+            text: Strings.CodeUI.automaticModel(lang),
             symbol: "sparkles",
             selected: false,
             palette: palette
         ) {
             Haptics.select()
-            env.router.sheet = .tierPicker
+            env.toasts.show(Strings.CodeUI.automaticModelHint(lang))
         }
         .layoutPriority(1)
         .accessibilityLabel(Text(verbatim: Strings.CodeUI.contextModel(lang)))
+        .accessibilityValue(Text(verbatim: Strings.CodeUI.automaticModel(lang)))
     }
 
     private var repositoryPill: some View {

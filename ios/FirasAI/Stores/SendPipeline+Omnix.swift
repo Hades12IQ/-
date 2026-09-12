@@ -6,6 +6,7 @@ extension SendPipeline {
         for task in omnixAdmissions.values { task.cancel() }
         for task in omnixWrites.values { task.cancel() }
         omnixWatchers = [:]; omnixAdmissions = [:]; omnixWrites = [:]; omnixCancelled = []
+        omnixCompletionEligible = []
         omnixState.reset(owner: owner)
     }
 
@@ -25,7 +26,7 @@ extension SendPipeline {
     func deliverOmnix(text: String, attachments: [PreparedAttachment], in key: String, product: ProductKind) {
         guard let store, let conversation = store.conversation(key), !store.state(for: key).isBusy else { return }
         guard session.isMember, let owner = session.identityID else {
-            router.showSignUp(feature: "omnix"); return
+            router.showSignUp(feature: .generic); return
         }
         guard !conversation.ephemeral else { toasts.show(OmnixCopy.temporary(store.lang), isError: true); return }
         guard product == .ai else {
@@ -54,6 +55,8 @@ extension SendPipeline {
             $0.isValid && $0.owner == owner && $0.conversationId == conversation.serverID && !$0.sessionId.isEmpty
         }
         let requestKey = UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        omnixCompletionEligible.insert(requestKey)
+        jobs.prepareExternalCompletion(ownerID: owner)
         let cid = IDs.cid()
         var user = ChatMessage.user(full.isEmpty ? inputs.map(\.name).joined(separator: ", ") : full, cid: cid, lang: store.lang)
         user.tier = ModelTier.omnix.rawValue; user.status = .delivered
@@ -151,7 +154,6 @@ extension SendPipeline {
         var iteration = 0
         while omnixCurrent(owner, generation) && !Task.isCancelled {
             guard let chat = store.conversation(key), let serverID = chat.serverID else { return }
-            if !readerIsPresent { await JobClock.rest(5); continue }
             let rows = chat.messages.filter { $0.role == .assistant && $0.omnix?.owner == owner && $0.omnix?.isValid == true }
             guard !rows.isEmpty else { return }
             do {
@@ -190,7 +192,7 @@ extension SendPipeline {
                 }
                 if !pending { return }
                 iteration += 1
-                await JobClock.rest(2)
+                await JobClock.rest(readerIsPresent ? 2 : 10)
             } catch {
                 guard omnixCurrent(owner, generation) else { return }
                 if let status = (error as? APIError)?.status, status == 401 || status == 403 {
@@ -219,14 +221,16 @@ extension SendPipeline {
         guard let store, session.identityID == receipt.owner, receipt.accepts(job),
               let row = store.conversation(key)?.messages.first(where: { $0.id == assistantID && $0.role == .assistant }),
               row.omnix?.requestKey == receipt.requestKey else { throw APIError.cancelled }
+        let generation = omnixState.generation
         var bound = receipt; bound.jobId = job.jobId; bound.sessionId = job.sessionId; bound.submission = nil
         let changed = row.omnix != bound
         if changed { setOmnixReceipt(bound, key: key, assistantID: assistantID) }
-        omnixState.jobs[bound.requestKey] = job; omnixState.notices[bound.requestKey] = nil
+        let priorJob = omnixState.jobs[bound.requestKey]
+        omnixState.notices[bound.requestKey] = nil
         if job.isTerminal {
             let content = job.visibleText.isEmpty && ["cancelled", "canceled"].contains(job.state) ? OmnixCopy.stopped(store.lang) : job.visibleText
             let terminalStatus: DeliveryStatus = job.state == "completed" ? .delivered : .stopped
-            let needsSave = changed || (!content.isEmpty && row.content != content) || row.status != terminalStatus
+            let needsSave = changed || priorJob?.isTerminal != true || (!content.isEmpty && row.content != content) || row.status != terminalStatus
             store.mutate(key) { chat in
                 guard let index = chat.messages.firstIndex(where: { $0.id == assistantID && $0.role == .assistant }) else { return }
                 if !content.isEmpty { chat.messages[index].content = content }
@@ -234,7 +238,27 @@ extension SendPipeline {
             }
             if store.state(for: key).streamingMessageID == assistantID { store.state(for: key).settle() }
             if needsSave { try await persistOmnix(key) }
+            guard omnixCurrent(receipt.owner, generation) else { throw APIError.cancelled }
+            // Publish terminal cache only after durable landing. A failed PUT remains retryable.
+            omnixState.jobs[bound.requestKey] = job
+            if omnixCompletionEligible.contains(bound.requestKey), !omnixCancelled.contains(bound.requestKey),
+               !omnixState.notified.contains(bound.requestKey), ["completed", "failed"].contains(job.state),
+               let chat = store.conversation(key), let cid = row.cid {
+                omnixState.notified.insert(bound.requestKey)
+                omnixCompletionEligible.remove(bound.requestKey)
+                let pointer = JobPointer(id: job.jobId, kind: .chat, ownerID: receipt.owner, cid: cid,
+                    conversationID: key, serverChatID: bound.conversationId, assistantMessageID: assistantID,
+                    title: chat.title, lang: store.lang.rawValue,
+                    startedAt: Date(timeIntervalSince1970: (job.createdAt ?? Date().timeIntervalSince1970 * 1000) / 1000),
+                    deadline: .distantFuture, lastPhase: job.state == "completed" ? .completed : .failed)
+                let terminal: JobTerminal = job.state == "completed"
+                    ? .completed(JobSnapshot(pointerID: job.jobId, phase: .completed, text: content))
+                    : .failed(code: "omnix_run_failed", partial: nil)
+                await jobs.notifyExternalCompletion(pointer, terminal: terminal)
+            }
         } else {
+            omnixState.jobs[bound.requestKey] = job
+            omnixCompletionEligible.insert(bound.requestKey)
             if store.state(for: key).activeCID == nil || store.state(for: key).streamingMessageID == assistantID { activateOmnix(row, key: key) }
             if changed { try await persistOmnix(key) }
         }

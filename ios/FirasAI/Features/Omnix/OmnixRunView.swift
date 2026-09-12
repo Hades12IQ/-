@@ -22,7 +22,7 @@ struct OmnixRunView: View {
             if env.session.identityID == receipt.owner {
                 if receipt.submission != "not_admitted" {
                     HStack(spacing: 8) {
-                        Image(systemName: job?.isTerminal == true ? "checkmark.circle" : "sparkle")
+                        Image(systemName: statusIcon)
                         Text(statusLabel).font(.subheadline.weight(.medium))
                         Spacer(minLength: 8)
                         if let job, !job.isTerminal, let start = job.progress?.startedAt ?? job.createdAt, start > 0 {
@@ -102,6 +102,15 @@ struct OmnixRunView: View {
         .sheet(item: $previewFile) { file in OmnixFileView(file: file, owner: receipt.owner, env: env) }
     }
 
+    private var statusIcon: String {
+        switch job?.state {
+        case "completed": "checkmark.circle"
+        case "failed", "interrupted": "exclamationmark.circle"
+        case "cancelled", "canceled": "stop.circle"
+        case "waiting_for_approval": "hand.raised"
+        default: "sparkle"
+        }
+    }
     private var statusLabel: String {
         switch job?.state {
         case "completed": return ar ? "اكتملت المهمة" : "Task completed"

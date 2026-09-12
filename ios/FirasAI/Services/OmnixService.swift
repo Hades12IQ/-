@@ -71,12 +71,18 @@ enum OmnixService {
             let name: String
             let mime: String
             if let original = item.originalData {
-                bytes = original; name = item.name; mime = item.originalMime ?? "application/octet-stream"
+                bytes = original
+                let declaredMime = item.originalMime?.lowercased()
+                if item.kind == "image" || declaredMime == "image/jpeg" || declaredMime == "image/png" {
+                    let image = try imageIdentity(bytes: original, name: item.name, declaredMime: declaredMime)
+                    name = image.name; mime = image.mime
+                } else {
+                    name = item.name; mime = item.originalMime ?? "application/octet-stream"
+                }
             } else if let base64 = item.imageBase64, let image = Data(base64Encoded: base64) {
                 bytes = image
-                let png = Array(image.prefix(4)) == [137, 80, 78, 71]
-                name = URL(fileURLWithPath: item.name).deletingPathExtension().lastPathComponent + (png ? ".png" : ".jpg")
-                mime = png ? "image/png" : "image/jpeg"
+                let identity = try imageIdentity(bytes: image, name: item.name, declaredMime: nil)
+                name = identity.name; mime = identity.mime
             } else if let text = item.text, !text.isEmpty, !item.truncated {
                 bytes = Data(text.utf8); name = item.name + ".txt"; mime = "text/plain"
             } else { throw APIError.decoding("omnix_original_attachment_unavailable") }
@@ -89,6 +95,19 @@ enum OmnixService {
             }
             return Input(clientID: UUID().uuidString.replacingOccurrences(of: "-", with: ""), name: name, mime: mime, bytes: bytes)
         }
+    }
+    /// The picker re-encodes images to JPEG while retaining the source chip's filename.
+    /// Upload names must describe those bytes because the server validates extension and signature.
+    private static func imageIdentity(bytes: Data, name: String, declaredMime: String?) throws -> (name: String, mime: String) {
+        let png = Array(bytes.prefix(8)) == [137, 80, 78, 71, 13, 10, 26, 10]
+        let jpeg = Array(bytes.prefix(3)) == [255, 216, 255]
+        guard png || jpeg else { throw APIError.decoding("omnix_image_bytes_unsupported") }
+        let mime = png ? "image/png" : "image/jpeg"
+        guard declaredMime == nil || declaredMime == "application/octet-stream" || declaredMime == mime else {
+            throw APIError.decoding("omnix_image_type_mismatch")
+        }
+        let stem = URL(fileURLWithPath: name).deletingPathExtension().lastPathComponent
+        return (stem + (png ? ".png" : ".jpg"), mime)
     }
     static func upload(_ input: Input, receipt: OmnixReceipt, api: APIClient) async throws -> OmnixInputReceipt {
         guard receipt.isValid, receipt.jobId.isEmpty else { throw APIError.invalidURL }

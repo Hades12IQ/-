@@ -6,6 +6,28 @@ import Foundation
 enum NetworkReliabilityChecks {
     static func run() async -> [String] {
         var failures: [String] = []
+        var external = JobPointer(id: "omxj-notification-fixture", kind: .chat, ownerID: "fixture-owner",
+            cid: "fixture-request", conversationID: "fixture-chat", deadline: Date())
+        let completed = JobTerminal.completed(JobSnapshot(pointerID: external.id, phase: .completed, text: "Ready"))
+        if !JobManager.canNotifyExternalCompletion(external, terminal: completed, ownerID: external.ownerID)
+            || !JobManager.canNotifyExternalCompletion(external, terminal: .failed(code: "failed", partial: nil), ownerID: external.ownerID)
+            || JobManager.canNotifyExternalCompletion(external, terminal: completed, ownerID: "other-owner") {
+            failures.append("Externally routed completion lost its terminal or owner gate")
+        }
+        let silent: [JobTerminal] = [.cancelled, .expired, .unauthorized, .forbidden,
+            .completed(JobSnapshot(pointerID: "other-job", phase: .completed)),
+            .completed(JobSnapshot(pointerID: external.id, phase: .processing))]
+        if silent.contains(where: { JobManager.canNotifyExternalCompletion(external, terminal: $0, ownerID: external.ownerID) }) {
+            failures.append("A cancelled, foreign, or unfinished external job could announce completion")
+        }
+        external.cancelRequested = true
+        if JobManager.canNotifyExternalCompletion(external, terminal: completed, ownerID: external.ownerID) {
+            failures.append("An external job announced completion after cancellation")
+        }
+        external.cancelRequested = false; external.notified = true
+        if JobManager.canNotifyExternalCompletion(external, terminal: completed, ownerID: external.ownerID) {
+            failures.append("An already announced external job passed the notification gate")
+        }
         let prompt = "Create a professional PDF with 100 difficult integrals and all 100 solutions in English."
         let kind = RequestClassifier.classify(prompt, hasImages: false, lang: .arabic)
         if kind != .file(format: "pdf", explicitPages: nil) {
