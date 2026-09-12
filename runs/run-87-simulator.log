@@ -1,0 +1,111 @@
+/Users/runner/work/-/-/ios/FirasAI/Features/Shell/CompactDrawer.swift:407:17: warning: '@preconcurrency' on conformance to 'UIGestureRecognizerDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/AudioSessionArbiter.swift:123:61: warning: 'allowBluetooth' was deprecated in iOS 8.0: renamed to 'AVAudioSession.CategoryOptions.allowBluetoothHFP'
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/AudioSessionArbiter.swift:132:28: warning: 'allowBluetooth' was deprecated in iOS 8.0: renamed to 'AVAudioSession.CategoryOptions.allowBluetoothHFP'
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/AudioSessionArbiter.swift:123:17: warning: variable 'options' was never mutated; consider changing to 'let' constant
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:124:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:126:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:137:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:181:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:183:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:640:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:643:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:720:20: warning: capture of 'input' with non-Sendable type 'AVAudioPCMBuffer' in a '@Sendable' closure
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:1:1: warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'AVFAudio'
+/Users/runner/work/-/-/ios/FirasAI/DesignSystem/FirasShapeCompatibility.swift:5:17: warning: stored property 'draw' of 'Sendable'-conforming struct 'FirasAnyShape' has non-Sendable type '(CGRect) -> Path'; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/CodeEditorView.swift:385:17: warning: '@preconcurrency' on conformance to 'UITextViewDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:676:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:676:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:749:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Shell/CompactDrawer.swift:407:17: warning: '@preconcurrency' on conformance to 'UIGestureRecognizerDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:385:25: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:441:25: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:19:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainThreadView.swift:90:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainThreadView.swift:124:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Features/Brain/BrainDocumentExtractor.swift:594:56: warning: 'supportedRecognitionLanguages(for:revision:)' was deprecated in iOS 15.0
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentHTML.swift:93:39: warning: main actor-isolated static property 'scheme' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentHTML.swift:119:33: warning: main actor-isolated static property 'typesettingScript' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentHTML+Authored.swift:129:39: warning: main actor-isolated static property 'scheme' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentHTML+Authored.swift:197:31: warning: main actor-isolated static property 'typesettingScript' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:385:25: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:441:25: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/CodeGitHubModel.swift:491:48: warning: main actor-isolated static property 'linksKey' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/CodeOmnixRunView.swift:157:40: warning: value 'url' was defined but never used; consider replacing with boolean test
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:676:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:676:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:749:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView+Assembler.swift:50:39: warning: main actor-isolated static property 'scheme' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+Internal Error: DecodingError.dataCorrupted: Data was corrupted. Debug description: Corrupted JSON. Underlying error: unexpected end of file
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:82:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:84:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:115:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:117:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:137:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/GeminiLiveTransport.swift:139:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:74:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:76:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:101:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:103:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:111:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:114:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:130:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:133:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:146:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/OpenAIRealtimeTransport.swift:148:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Chat/TranscriptView.swift:108:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Features/Chat/TranscriptView.swift:176:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/CodeEditorView.swift:385:17: warning: '@preconcurrency' on conformance to 'UITextViewDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/DesignSystem/FirasShapeCompatibility.swift:5:17: warning: stored property 'draw' of 'Sendable'-conforming struct 'FirasAnyShape' has non-Sendable type '(CGRect) -> Path'; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Agent/AgentScreen.swift:74:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Features/Agent/AgentScreen.swift:85:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Features/Agent/AgentScreen.swift:118:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Features/Agent/AgentScreen.swift:200:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathBlockView.swift:108:55: warning: no 'async' operations occur within 'await' expression
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:857:14: warning: consider using asynchronous alternative function
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:871:18: warning: consider using asynchronous alternative function
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:19:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:170:37: warning: main actor-isolated static property 'base' cannot be accessed from outside of the actor; this is an error in the Swift 6 language mode
+Internal Error: DecodingError.dataCorrupted: Data was corrupted. Debug description: Corrupted JSON. Underlying error: unexpected end of file
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:392:47: warning: main actor-isolated static property 'taskCharacterCap' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:394:58: warning: main actor-isolated static property 'attachmentCharacterCap' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:532:85: warning: main actor-isolated static property 'taskCharacterCap' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:534:51: warning: main actor-isolated static property 'planAttachmentLimit' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:575:35: warning: main actor-isolated static property 'fileBriefLimit' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:577:51: warning: main actor-isolated static property 'fileAttachmentLimit' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+2026-09-12 20:20:39.387 appintentsmetadataprocessor[41179:108268] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+** BUILD SUCCEEDED **
