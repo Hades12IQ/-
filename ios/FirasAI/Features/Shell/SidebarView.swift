@@ -149,12 +149,13 @@ struct SidebarView: View {
     private var wordmark: some View {
         HStack(spacing: 6) {
             Text(verbatim: "Firas")
+                .tracking(-0.4)
                 .foregroundStyle(palette.textPrimary)
             Text(verbatim: "AI")
+                .tracking(-0.4)
                 .foregroundStyle(palette.accent)
         }
         .font(.system(size: 25, weight: .semibold, design: .rounded))
-        .tracking(-0.4)
         .lineLimit(1)
         .minimumScaleFactor(0.8)
         .forceLTR()

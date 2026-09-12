@@ -64,7 +64,7 @@ struct ModePill: View {
             } label: {
                 trigger(mode: mode, palette: palette, lang: lang)
             }
-            .menuOrder(.fixed)
+            .firasMenuOrder(.fixed)
             .accessibilityLabel(Text(Strings.Chat.modeLabel(lang)))
             .accessibilityValue(Text(title(for: mode)(lang)))
         }())

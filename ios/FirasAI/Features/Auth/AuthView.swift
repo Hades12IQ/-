@@ -1,5 +1,6 @@
 import SwiftUI
 import Perception
+import UIKit
 
 /// Which field the keyboard is on. Declared next to the screen that owns the focus order; the name
 /// is feature-prefixed so it cannot collide with another feature's focus enum.
@@ -106,7 +107,11 @@ struct AuthView: View {
             .firasOnChange(of: env.router.pendingRoute) { _, _ in consumePendingRoute() }
             .firasOnChange(of: bannerText) { _, newValue in
                 guard let newValue, !newValue.isEmpty else { return }
-                AccessibilityNotification.Announcement(newValue).post()
+                if #available(iOS 17, *) {
+                    AccessibilityNotification.Announcement(newValue).post()
+                } else {
+                    UIAccessibility.post(notification: .announcement, argument: newValue)
+                }
             }
             .firasOnChange(of: env.session.isMember) { _, isMember in
                 if isMember { close() }

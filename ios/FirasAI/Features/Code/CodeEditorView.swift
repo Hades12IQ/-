@@ -34,6 +34,10 @@ struct CodeEditorView: View {
     @State private var saveState: SaveState = .saved
     @State private var caretLine = 1
     @State private var caretColumn = 1
+    @State private var showsLegacyFind = false
+    @State private var findQuery = ""
+    @State private var foundMatch = true
+    @FocusState private var findFocused: Bool
 
     /// `path` defaults to the store's selection so the workspace can write `CodeEditorView(env:)`.
     init(env: AppEnvironment, path: String? = nil, onSaveState: ((SaveState) -> Void)? = nil) {
@@ -46,6 +50,10 @@ struct CodeEditorView: View {
     private var lang: AppLanguage { env.prefs.lang }
     private var skin: CodeEditorTheme { CodeEditorTheme.skin(for: env.prefs.theme) }
     private var resolvedPath: String? { explicitPath ?? env.code.selectedPath }
+    private var usesLegacyFind: Bool {
+        if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI { return false }
+        return true
+    }
 
     private var file: CodeFile? {
         guard let path = resolvedPath, let project = env.code.project else { return nil }
@@ -118,12 +126,14 @@ struct CodeEditorView: View {
 
     private func editor(for file: CodeFile) -> some View {
         VStack(spacing: 0) {
+            if usesLegacyFind && showsLegacyFind { legacyFindBar }
             CodeTextViewRepresentable(
                 text: file.content,
                 path: file.path,
                 skin: skin,
                 fontSize: 13 * env.prefs.fontScale.factor,
                 commentCommandTitle: Strings.CodeUI.commentToggle(lang),
+                onFind: { showsLegacyFind = true; findFocused = true },
                 link: link,
                 onEdit: { markEditing() },
                 onCommit: { text in commit(path: file.path, text: text) },
@@ -146,6 +156,13 @@ struct CodeEditorView: View {
             Text(verbatim: Self.sizeText(file.content))
                 .forceLTR()
             Spacer(minLength: 0)
+            if usesLegacyFind {
+                Button {
+                    showsLegacyFind.toggle(); findFocused = showsLegacyFind
+                } label: { Image(systemName: "magnifyingglass").frame(minWidth: 44, minHeight: 44) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(lang == .arabic ? "البحث في الملف" : "Find in file")
+            }
             savePill
         }
         .font(.system(size: 11, design: .monospaced))
@@ -157,6 +174,32 @@ struct CodeEditorView: View {
         .overlay(alignment: .top) {
             Rectangle().fill(palette.border).frame(height: 0.5)
         }
+    }
+
+    private var legacyFindBar: some View {
+        HStack(spacing: 6) {
+            TextField(lang == .arabic ? "البحث في الملف" : "Find in file", text: $findQuery)
+                .textFieldStyle(.plain).font(.system(size: 14)).disableAutocorrection(true)
+                .textInputAutocapitalization(.never).focused($findFocused)
+                .submitLabel(.search).onSubmit { findInFile(forward: true) }
+                .firasOnChange(of: findQuery) { _, _ in findInFile(forward: true, restart: true) }
+            if !foundMatch && !findQuery.isEmpty {
+                Text(lang == .arabic ? "لا نتائج" : "No matches").font(.caption).foregroundStyle(palette.textMuted)
+            }
+            findButton("chevron.up", label: lang == .arabic ? "النتيجة السابقة" : "Previous match") { findInFile(forward: false) }
+            findButton("chevron.down", label: lang == .arabic ? "النتيجة التالية" : "Next match") { findInFile(forward: true) }
+            findButton("xmark", label: Strings.Common.close(lang)) { showsLegacyFind = false; findFocused = false }
+        }
+        .foregroundStyle(palette.textPrimary).padding(.horizontal, 12).background(palette.surface)
+    }
+
+    private func findButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) { Image(systemName: symbol).frame(width: 44, height: 44) }
+            .buttonStyle(.plain).accessibilityLabel(label)
+    }
+
+    private func findInFile(forward: Bool, restart: Bool = false) {
+        foundMatch = findQuery.isEmpty || link.coordinator?.textView?.find(query: findQuery, forward: forward, restart: restart) == true
     }
 
     private var savePill: some View {
@@ -224,6 +267,7 @@ struct CodeTextViewRepresentable: UIViewRepresentable {
     let skin: CodeEditorTheme
     let fontSize: CGFloat
     let commentCommandTitle: String
+    var onFind: () -> Void = {}
     let link: CodeEditorLink
     let onEdit: () -> Void
     let onCommit: (String) -> Void
@@ -236,7 +280,13 @@ struct CodeTextViewRepresentable: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> CodeUITextView {
-        let view = CodeUITextView(usingTextLayoutManager: false)
+        let view: CodeUITextView
+        if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
+            view = CodeUITextView(usingTextLayoutManager: false)
+            view.isFindInteractionEnabled = true
+        } else {
+            view = CodeUITextView(frame: .zero, textContainer: nil)
+        }
         view.delegate = context.coordinator
         view.autocorrectionType = .no
         view.autocapitalizationType = .none
@@ -249,7 +299,6 @@ struct CodeTextViewRepresentable: UIViewRepresentable {
         view.alwaysBounceVertical = true
         view.textAlignment = .left
         view.semanticContentAttribute = .forceLeftToRight
-        view.isFindInteractionEnabled = true
         view.textContainer.lineFragmentPadding = 0
         context.coordinator.textView = view
         return view
@@ -267,6 +316,7 @@ struct CodeTextViewRepresentable: UIViewRepresentable {
         coordinator.fileExtension = ext
         view.commentPrefix = Self.commentPrefix(for: ext)
         view.commentCommandTitle = commentCommandTitle
+        view.onFind = onFind
         let styleChanged = view.apply(skin: skin, fontSize: fontSize)
 
         if coordinator.path != path {
@@ -427,6 +477,25 @@ final class CodeUITextView: UITextView {
     private(set) var codeFont: UIFont = .monospacedSystemFont(ofSize: 13, weight: .regular)
     var commentPrefix: String = "// "
     var commentCommandTitle: String = "Toggle comment"
+    var onFind: () -> Void = {}
+
+    @discardableResult
+    func find(query: String, forward: Bool, restart: Bool = false) -> Bool {
+        let source = (text ?? "") as NSString
+        guard source.length > 0, !query.isEmpty else { return false }
+        let location = min(source.length, max(0, selectedRange.location))
+        let selectionEnd = location + min(max(0, selectedRange.length), source.length - location)
+        let start = restart ? (forward ? 0 : source.length) : (forward ? selectionEnd : location)
+        let range = forward ? NSRange(location: start, length: source.length - start) : NSRange(location: 0, length: start)
+        let options: NSString.CompareOptions = forward ? [.caseInsensitive] : [.caseInsensitive, .backwards]
+        var match = source.range(of: query, options: options, range: range)
+        if match.location == NSNotFound { match = source.range(of: query, options: options) }
+        guard match.location != NSNotFound else { return false }
+        selectedRange = match
+        scrollRangeToVisible(match)
+        delegate?.textViewDidChangeSelection?(self)
+        return true
+    }
 
     private var gutterWidth: CGFloat = 40
     private var lineStarts: [Int] = [0]
@@ -563,15 +632,22 @@ final class CodeUITextView: UITextView {
     // MARK: Hardware keyboard
 
     override var keyCommands: [UIKeyCommand]? {
-        guard !commentPrefix.isEmpty else { return nil }
+        var commands = super.keyCommands ?? []
+        if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {} else {
+            commands.append(UIKeyCommand(input: "f", modifierFlags: .command, action: #selector(findCommand)))
+        }
+        guard !commentPrefix.isEmpty else { return commands }
         let command = UIKeyCommand(
             input: "/",
             modifierFlags: .command,
             action: #selector(toggleCommentCommand)
         )
         command.title = commentCommandTitle
-        return [command]
+        commands.append(command)
+        return commands
     }
+
+    @objc private func findCommand() { onFind() }
 
     @objc private func toggleCommentCommand() {
         let prefix = commentPrefix

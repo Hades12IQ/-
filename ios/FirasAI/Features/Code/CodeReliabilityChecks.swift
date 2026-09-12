@@ -10,6 +10,9 @@ enum CodeReliabilityChecks {
         failures += await CodeOmnixImportChecks.run()
         failures += await CodeEditServiceChecks.run()
         failures += CodeModelSelectionChecks.run()
+        failures += CodeEditorCompatibilityChecks.run()
+        failures += CodeSelectedChangesChecks.run()
+        failures += await CodeDeletionSafetyChecks.run()
         func check(_ condition: Bool, _ label: String) {
             if !condition { failures.append("Code: " + label) }
         }

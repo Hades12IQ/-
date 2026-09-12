@@ -35,7 +35,7 @@ struct FirasHorizontalFit<Primary: View, Fallback: View>: View {
                         .background(GeometryReader { proxy in
                             Color.clear.preference(key: FitIdealWidth.self, value: proxy.size.width)
                         })
-                        .hidden().accessibilityHidden(true).allowsHitTesting(false)
+                        .hidden().accessibilityHidden(true).allowsHitTesting(false).disabled(true)
                         .frame(width: 0, height: 0).clipped()
                 }
                 .onPreferenceChange(FitAvailableWidth.self) { if abs(available - $0) > 0.5 { available = $0 } }

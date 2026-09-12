@@ -395,7 +395,7 @@ struct VideoCard: View {
                 action: onShare
             )
         } else if let shareURL {
-            ShareLink(item: shareURL) {
+            FirasShareLink(item: shareURL) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(palette.textPrimary)
@@ -478,6 +478,7 @@ struct VideoCard: View {
             shareURL = url
         }
         let frame = await VideoCard.firstFrame(of: url)
+        guard !Task.isCancelled else { return }
         poster = frame?.image
         posterRatio = frame?.ratio
     }
@@ -485,13 +486,22 @@ struct VideoCard: View {
     /// The first usable frame, decoded off the main actor. A clip whose poster cannot be read still
     /// plays — the frame is a nicety, the file is the thing.
     private nonisolated static func firstFrame(of url: URL) async -> (image: UIImage, ratio: CGFloat)? {
-        let asset = AVURLAsset(url: url)
-        let generator = AVAssetImageGenerator(asset: asset)
-        generator.appliesPreferredTrackTransform = true
-        generator.maximumSize = CGSize(width: 1024, height: 1024)
         let time = CMTime(seconds: 0.3, preferredTimescale: 600)
-        guard let result = try? await generator.image(at: time) else { return nil }
-        let cgImage = result.image
+        let image: CGImage?
+        if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
+            let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+            generator.appliesPreferredTrackTransform = true
+            generator.maximumSize = CGSize(width: 1024, height: 1024)
+            image = try? await generator.image(at: time).image
+        } else {
+            let request = LegacyVideoFrameRequest(url: url, time: time)
+            image = await withTaskCancellationHandler {
+                await request.image()
+            } onCancel: {
+                Task { await request.cancel() }
+            }
+        }
+        guard !Task.isCancelled, let cgImage = image else { return nil }
         let width = CGFloat(cgImage.width)
         let height = CGFloat(cgImage.height)
         guard width > 0, height > 0 else { return nil }

@@ -229,7 +229,7 @@ struct MissionCardFooter: View {
                         .buttonStyle(.plain)
                     }
                     if !exportText.isEmpty {
-                        ShareLink(item: exportText) {
+                        FirasShareLink(item: exportText) {
                             footerLabel(Strings.Agent.exportMarkdown(lang), filled: false)
                         }
                         .accessibilityHint(Text(Strings.Agent.exportMarkdownHint(lang)))

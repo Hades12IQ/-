@@ -180,7 +180,7 @@ struct MessageActionsRow: View {
         } label: {
             ghostLabel(symbol: "arrow.clockwise", tint: palette.textMuted)
         }
-        .menuOrder(.fixed)
+        .firasMenuOrder(.fixed)
         .accessibilityLabel(Text(Strings.Chat.regenerate(lang)))
     }
 
@@ -304,7 +304,7 @@ struct MessageActionsRow: View {
         } label: {
             ghostLabel(symbol: "ellipsis", tint: palette.textMuted)
         }
-        .menuOrder(.fixed)
+        .firasMenuOrder(.fixed)
         .accessibilityLabel(Text(Strings.Chat.more(lang)))
     }
 

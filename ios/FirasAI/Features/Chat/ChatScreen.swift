@@ -163,14 +163,16 @@ struct ChatScreen: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        if horizontalSizeClass == .compact {
-            ToolbarItem(placement: .navigationBarLeading) {
+        ToolbarItem(placement: .navigationBarLeading) {
+            WithPerceptionTracking {
+                if horizontalSizeClass == .compact {
                 Button {
                     openDrawer()
                 } label: {
                     Image(systemName: "sidebar.leading")
                 }
                 .accessibilityLabel(Text(Strings.Chat.openDrawer(env.prefs.lang)))
+                }
             }
         }
 

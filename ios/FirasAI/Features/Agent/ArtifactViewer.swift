@@ -52,26 +52,31 @@ struct ArtifactViewer: View {
                         .navigationTitle(name.isEmpty ? Strings.Agent.openFile(lang) : name)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
-                            WithPerceptionTracking {
-                                ToolbarItem(placement: .cancellationAction) {
+                            ToolbarItem(placement: .cancellationAction) {
+                                WithPerceptionTracking {
                                     Button { dismiss() } label: {
                                         Text(Strings.Common.close(lang))
                                     }
                                 }
-                                ToolbarItem(placement: .primaryAction) {
-                                    if let url = fileURL {
-                                        ShareLink(item: url) {
-                                            Image(systemName: "square.and.arrow.up")
-                                                .accessibilityLabel(Text(Strings.Common.share(lang)))
-                                        }
-                                    }
-                                }
+                            }
+                            ToolbarItem(placement: .primaryAction) {
+                                WithPerceptionTracking { shareButton }
                             }
                         }
                 }
             }
             .firasSheetBackground(palette)
             .task(id: taskKey) { await load() }
+        }
+    }
+
+    @ViewBuilder
+    private var shareButton: some View {
+        if let url = fileURL {
+            FirasShareLink(item: url) {
+                Image(systemName: "square.and.arrow.up")
+                    .accessibilityLabel(Text(Strings.Common.share(lang)))
+            }
         }
     }
 

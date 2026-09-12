@@ -59,7 +59,17 @@ struct FirasActivitySheet: UIViewControllerRepresentable {
         self.items = [text]
     }
 
+    init(image: UIImage, title: String) {
+        self.items = [FirasImageShareItem(image: image, title: title)]
+    }
+
     func makeUIViewController(context: Context) -> UIActivityViewController {
+        makeActivityController()
+    }
+
+    /// Also serves native iOS 15 buttons inside context menus, whose SwiftUI presentation host
+    /// disappears as soon as the action is selected.
+    func makeActivityController() -> UIActivityViewController {
         // `UIActivityViewController` raises on an empty item list, and nothing here is worth a
         // crash: an export always has at least one page, so this is the shape of a caller bug.
         let controller = UIActivityViewController(
@@ -83,6 +93,32 @@ struct FirasActivitySheet: UIViewControllerRepresentable {
         .postToWeibo,
         .postToTencentWeibo
     ]
+}
+
+private final class FirasImageShareItem: NSObject, UIActivityItemSource {
+    private let image: UIImage
+    private let title: String
+
+    init(image: UIImage, title: String) {
+        self.image = image
+        self.title = title
+        super.init()
+    }
+
+    func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any { image }
+
+    func activityViewController(_ activityViewController: UIActivityViewController,
+                                itemForActivityType activityType: UIActivity.ActivityType?) -> Any? { image }
+
+    func activityViewController(_ activityViewController: UIActivityViewController,
+                                subjectForActivityType activityType: UIActivity.ActivityType?) -> String { title }
+
+    func activityViewControllerLinkMetadata(_ activityViewController: UIActivityViewController) -> LPLinkMetadata? {
+        let metadata = LPLinkMetadata()
+        metadata.title = title
+        metadata.imageProvider = NSItemProvider(object: image)
+        return metadata
+    }
 }
 
 /// The share sheet's own questions, answered.

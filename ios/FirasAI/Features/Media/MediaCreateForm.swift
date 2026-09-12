@@ -461,9 +461,12 @@ struct MediaCreateForm: View {
 
     private func loadPickedPhoto(_ item: FirasPhotoSelection?) async {
         guard let item else { return }
+        let requestedKind = kind
         // HEIC from the camera roll is re-encoded to JPEG by the pipeline before it is sent; the
         // server accepts only png/jpeg/webp/bmp data URIs.
-        photoData = try? await item.loadData()
+        let data = try? await item.loadData()
+        guard !Task.isCancelled, photoItem?.id == item.id, kind == requestedKind else { return }
+        photoData = data
         if photoData != nil { sourceCreationID = nil }
     }
 

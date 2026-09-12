@@ -442,7 +442,7 @@ struct ImageCard: View {
                 action: onShare
             )
         } else if let shareURL {
-            ShareLink(item: shareURL) {
+            FirasShareLink(item: shareURL) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(palette.textPrimary)

@@ -99,7 +99,7 @@ struct AttachedImageViewer: View {
             /* `ShareLink` over a `UIImage` gives the reader the system sheet: save to Photos, send
                it on, copy it. Nothing here writes to the library itself — that is the sheet's job
                and it is the only path that asks permission properly. */
-            ShareLink(item: Image(uiImage: image), preview: SharePreview(Strings.Chat.attachedImage(lang), image: Image(uiImage: image))) {
+            FirasShareLink(image: image, title: Strings.Chat.attachedImage(lang)) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)

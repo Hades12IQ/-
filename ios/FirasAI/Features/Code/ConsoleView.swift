@@ -35,6 +35,7 @@ struct ConsoleView: View {
     @State private var level: Level = .all
     @State private var filter: String = ""
     @State private var showsClock = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(env: AppEnvironment, onFix: ((String) -> Void)? = nil, onRun: (() -> Void)? = nil) {
         self.env = env
@@ -195,20 +196,29 @@ struct ConsoleView: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(rows) { line in
-                        WithPerceptionTracking {
-                            row(line)
-
-                            }
-                    }
+            if #available(iOS 17, *), !FirasCompatibility.forceLegacyUI {
+                ScrollView { consoleRows(rows) }
+                    .defaultScrollAnchor(.bottom)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                LegacyTranscriptScroll(identity: "code-console-" + (env.code.openProjectID ?? "") + level.rawValue + filter,
+                    latestUserID: nil, motionOn: FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion)) { jump in
+                    CodeTranscriptJumpButton(palette: palette, lang: lang, action: jump)
+                } content: {
+                    consoleRows(rows)
                 }
-                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .defaultScrollAnchor(.bottom)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private func consoleRows(_ rows: [ConsoleLine]) -> some View {
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(rows) { line in
+                WithPerceptionTracking { row(line) }
+            }
+        }
+        .padding(.vertical, 6)
     }
 
     private func row(_ line: ConsoleLine) -> some View {

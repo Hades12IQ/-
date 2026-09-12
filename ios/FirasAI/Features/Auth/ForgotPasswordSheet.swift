@@ -1,5 +1,6 @@
 import SwiftUI
 import Perception
+import UIKit
 
 /// Password recovery, both halves (`server-auth-session-account.md §4.13–4.14`,
 /// `web-auth-account-settings.md §3.6–3.7`).
@@ -102,7 +103,11 @@ struct ForgotPasswordSheet: View {
             .bidiIsland(for: title, fallback: lang)
             .firasOnChange(of: bannerText) { _, newValue in
                 guard let newValue, !newValue.isEmpty else { return }
-                AccessibilityNotification.Announcement(newValue).post()
+                if #available(iOS 17, *) {
+                    AccessibilityNotification.Announcement(newValue).post()
+                } else {
+                    UIAccessibility.post(notification: .announcement, argument: newValue)
+                }
             }
         }
     }
@@ -158,7 +163,7 @@ struct ForgotPasswordSheet: View {
             .textContentType(.emailAddress)
             .keyboardType(.emailAddress)
             .textInputAutocapitalization(.never)
-            .disableAutocorrection()
+            .disableAutocorrection(true)
             .submitLabel(.go)
             .onSubmit { perform() }
             .forceLTR()

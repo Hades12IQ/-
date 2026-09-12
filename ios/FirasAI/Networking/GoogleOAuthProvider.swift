@@ -147,10 +147,7 @@ final class GoogleOAuthProvider: NSObject {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 let scheme = configuration.callbackScheme
-                let session = ASWebAuthenticationSession(
-                    url: url,
-                    callback: .customScheme(scheme)
-                ) { callbackURL, error in
+                let completion: (URL?, Error?) -> Void = { callbackURL, error in
                     Task { @MainActor [weak self] in
                         self?.activeSession = nil
                         self?.requestedAnchor = nil
@@ -167,6 +164,15 @@ final class GoogleOAuthProvider: NSObject {
                             continuation.resume(throwing: GoogleOAuthError.invalidCallback)
                         }
                     }
+                }
+
+                let session: ASWebAuthenticationSession
+                if #available(iOS 17.4, *) {
+                    session = ASWebAuthenticationSession(url: url,
+                        callback: .customScheme(scheme), completionHandler: completion)
+                } else {
+                    session = ASWebAuthenticationSession(url: url,
+                        callbackURLScheme: scheme, completionHandler: completion)
                 }
 
                 session.presentationContextProvider = self

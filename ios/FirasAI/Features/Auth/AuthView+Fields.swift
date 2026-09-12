@@ -87,7 +87,7 @@ extension AuthView {
                     }
                     .textContentType(.name)
                     .textInputAutocapitalization(.words)
-                    .disableAutocorrection()
+                    .disableAutocorrection(true)
                     .submitLabel(.next)
                     .focused($focus, equals: .name)
                     .onSubmit { focus = .email }
@@ -101,7 +101,7 @@ extension AuthView {
                 .textContentType(.emailAddress)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
-                .disableAutocorrection()
+                .disableAutocorrection(true)
                 .submitLabel(.next)
                 .focused($focus, equals: .email)
                 .onSubmit { focus = .password }

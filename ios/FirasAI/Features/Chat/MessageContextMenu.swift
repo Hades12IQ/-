@@ -97,7 +97,7 @@ struct MessageContextMenu: View {
         }
 
         if !isCard {
-            ShareLink(item: ChatTurnActions.plainText(message)) {
+            FirasShareLink(item: ChatTurnActions.plainText(message)) {
                 Text(Strings.Common.share(lang))
                 Image(systemName: "square.and.arrow.up")
             }

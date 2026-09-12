@@ -1,5 +1,6 @@
 import SwiftUI
 import Perception
+import UIKit
 
 /// The logged-out hero (`design-brief.md §7.17 (3)`, copy verbatim in
 /// `web-auth-account-settings.md §2`).
@@ -58,7 +59,11 @@ struct LandingView: View {
             .tint(palette.accent)
             .firasOnChange(of: env.session.errorText) { _, newValue in
                 guard let newValue, !newValue.isEmpty else { return }
-                AccessibilityNotification.Announcement(newValue).post()
+                if #available(iOS 17, *) {
+                    AccessibilityNotification.Announcement(newValue).post()
+                } else {
+                    UIAccessibility.post(notification: .announcement, argument: newValue)
+                }
             }
         }
     }

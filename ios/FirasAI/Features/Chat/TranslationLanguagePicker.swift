@@ -11,7 +11,12 @@ struct TranslationLanguage: Identifiable, Equatable, Sendable {
         let display = Locale(identifier: lang.rawValue)
         let english = Locale(identifier: "en")
         let excluded: Set<String> = ["und", "mul", "zxx", "mis"]
-        var codes = Set(Locale.LanguageCode.isoLanguageCodes.map(\.identifier))
+        var codes: Set<String>
+        if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
+            codes = Set(Locale.LanguageCode.isoLanguageCodes.map(\.identifier))
+        } else {
+            codes = Set(Locale.isoLanguageCodes)
+        }
         codes.formUnion(["ckb", "ku", "zh-Hans", "zh-Hant", "pt-BR", "pt-PT"])
         return codes.filter { !excluded.contains($0) }.map { code in
             let native = Locale(identifier: code)

@@ -107,13 +107,13 @@ struct OmnixTelegramView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text(ar ? "رمز البوت من BotFather" : "Bot token from BotFather").font(.subheadline.weight(.medium))
                 SecureField(ar ? "الصق رمز البوت" : "Paste bot token", text: $botToken)
-                    .textInputAutocapitalization(.never).disableAutocorrection().textContentType(nil)
+                    .textInputAutocapitalization(.never).disableAutocorrection(true).textContentType(nil)
                     .font(.system(.body, design: .monospaced)).environment(\.layoutDirection, .leftToRight)
                     .padding(12).background(palette.background, in: RoundedRectangle(cornerRadius: 12)).privacySensitive()
                     .firasOnChange(of: botToken) { _, value in if value.count > 225 { botToken = String(value.prefix(225)) } }
                 Text(ar ? "معرّف حسابك الشخصي في تيليغرام" : "Your personal Telegram user ID").font(.subheadline.weight(.medium))
                 TextField(ar ? "المعرّف الرقمي" : "Numeric user ID", text: $telegramID)
-                    .keyboardType(.numberPad).textInputAutocapitalization(.never).disableAutocorrection()
+                    .keyboardType(.numberPad).textInputAutocapitalization(.never).disableAutocorrection(true)
                     .environment(\.layoutDirection, .leftToRight).padding(12)
                     .background(palette.background, in: RoundedRectangle(cornerRadius: 12)).privacySensitive()
                     .firasOnChange(of: telegramID) { _, value in if value.count > 16 { telegramID = String(value.prefix(16)) } }

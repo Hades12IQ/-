@@ -104,7 +104,7 @@ struct DeckViewer: View {
             if exporting {
                 ProgressView().tint(palette.accent).frame(width: 38, height: 38)
             } else if let exported {
-                ShareLink(item: exported) {
+                FirasShareLink(item: exported) {
                     chip("square.and.arrow.up")
                 }
                 .accessibilityLabel(Text(Strings.Common.share(lang)))

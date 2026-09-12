@@ -109,6 +109,7 @@ final class CodeStore: JobObserver {
     @PerceptionIgnored private var elapsedTask: Task<Void, Never>?
     @PerceptionIgnored private var landedFences: [String: String] = [:]
     @PerceptionIgnored private var pendingDeletes: Set<String> = []
+    @PerceptionIgnored private var deletedProjects: Set<String> = []
     @PerceptionIgnored private var undoFiles: [CodeFile]?
     @PerceptionIgnored private var activeOwnerID: String?
     @PerceptionIgnored private var handoffTasks: [String: Task<Void, Never>] = [:]
@@ -234,7 +235,7 @@ final class CodeStore: JobObserver {
     /// True while this project is being built anywhere: in front of the reader, on its way to the
     /// queue, or on the queue.
     func isBuilding(projectID: String) -> Bool {
-        pendingBuilds.contains(projectID) || jobs.pointer(forConversation: projectID) != nil
+        pendingBuilds.contains(projectID) || codeOmnix.active.contains(projectID) || jobs.pointer(forConversation: projectID) != nil
     }
 
     /// True only while this project is being written **here**, on this screen, by this app.
@@ -287,6 +288,7 @@ final class CodeStore: JobObserver {
         selectedPath = nil
         consoleLines = []
         pendingDeletes = []
+        deletedProjects = []
         pendingBuilds = []
         tickets = [:]
         undoFiles = nil
@@ -483,7 +485,7 @@ final class CodeStore: JobObserver {
     }
 
     func delete(_ id: String) async {
-        guard let ownerID = session.identityID else { return }
+        guard let ownerID = session.identityID, acceptsProjectWrites(id) else { return }
         let index = projects.firstIndex { $0.id == id }
         let removed = index.map { projects[$0] }
         if let index { projects.remove(at: index) }
@@ -500,7 +502,7 @@ final class CodeStore: JobObserver {
             Strings.Code.projectDeleted(lang),
             actionTitle: Strings.Common.undo(lang)
         ) { [weak self] in
-            guard let self else { return }
+            guard let self, self.session.identityID == ownerID, self.pendingDeletes.contains(id) else { return }
             self.pendingDeletes.remove(id)
             self.deletedLastProject = false
             guard let removed, !self.projects.contains(where: { $0.id == id }) else { return }
@@ -510,7 +512,7 @@ final class CodeStore: JobObserver {
 
         Task { [weak self] in
             await JobClock.rest(7)
-            await self?.commitDelete(id, ownerID: ownerID)
+            await self?.commitDelete(id, ownerID: ownerID, removed: removed, index: index)
         }
     }
 
@@ -661,25 +663,15 @@ final class CodeStore: JobObserver {
             toasts.show(lang == .arabic ? "تغيّر المشروع منذ تجهيز التعديلات. افتح مراجعة جديدة." : "The project changed after preparing these edits. Open a fresh review.", isError: true)
             return
         }
-        var files = current.files
-        undoFiles = files
-
-        for rename in plan.renames where selected.contains(rename.to) || selected.contains(rename.from) {
-            guard let index = files.firstIndex(where: { $0.path == rename.from }) else { continue }
-            files[index] = CodeFile(path: rename.to, content: files[index].content)
+        let candidate: CodeProject
+        do { candidate = try CodeSelectedChanges.project(source: current, plan: plan, selected: selected) }
+        catch {
+            toasts.show(lang == .arabic ? "التغييرات المحددة تتجاوز حدود المشروع أو تحتوي مسارًا غير صالح. راجع التحديد قبل تطبيقه." : "The selected changes exceed project limits or include an invalid path. Review the selection before applying.", isError: true)
+            return
         }
-        for block in plan.writes where selected.contains(block.path) {
-            if let index = files.firstIndex(where: { $0.path == block.path }) {
-                files[index] = CodeFile(path: block.path, content: block.content)
-            } else if files.count < CodeProject.maximumFiles {
-                files.append(CodeFile(path: block.path, content: block.content))
-            }
-        }
-        for path in plan.deletes where selected.contains(path) {
-            files.removeAll { $0.path == path }
-        }
-
-        project = CodeProject(name: current.name, files: files)
+        let files = candidate.files
+        undoFiles = current.files
+        project = candidate
         if selectedPath == nil || !files.contains(where: { $0.path == selectedPath }) {
             selectedPath = files.first?.path
         }
@@ -1444,6 +1436,7 @@ final class CodeStore: JobObserver {
     func job(_ pointer: JobPointer, didProgress snapshot: JobSnapshot) {
         guard pointer.kind == .codebuild, session.identityID == pointer.ownerID,
               let projectID = pointer.projectID else { return }
+        guard !pendingDeletes.contains(projectID), !deletedProjects.contains(projectID) else { return }
         // A build still running in front of the reader owns this project's files. (Only reachable
         // if a pointer and a live build coexist, which the start guard prevents — but a checkpoint
         // landing over a file being typed is bad enough to be worth the one line.)
@@ -1463,6 +1456,8 @@ final class CodeStore: JobObserver {
         guard pointer.kind == .codebuild else { return false }
         guard session.identityID == pointer.ownerID else { return false }
         guard let projectID = pointer.projectID else { return true }
+        if deletedProjects.contains(projectID) { return true }
+        guard !pendingDeletes.contains(projectID) else { return false }
         // The server's answer is the authority for this project from here on.
         liveBuilds[projectID]?.cancel()
         liveBuilds[projectID] = nil
@@ -1474,12 +1469,12 @@ final class CodeStore: JobObserver {
         if terminal.isSuccess, let snapshot = terminal.snapshot,
            let decoded = try? CodeProject.decode(fromJobText: snapshot.text) {
             let cached = await cache.load(id: projectID, ownerID: pointer.ownerID)
-            guard session.identityID == pointer.ownerID else { return false }
+            guard session.identityID == pointer.ownerID, acceptsProjectWrites(projectID) else { return false }
             let finished = CodeBuildHandoff.mergingCompletedFiles(decoded, checkpoint: cached, ticket: ticket)
             if CodeBuildHandoff.isComplete(finished, ticket: ticket) {
                 // Land before forget: a false answer buys persistence retries.
                 guard await land(finished, into: projectID, pointer: pointer) else { return false }
-                guard session.identityID == pointer.ownerID else { return false }
+                guard session.identityID == pointer.ownerID, acceptsProjectWrites(projectID) else { return false }
                 landedAnything = true
                 landedCount = finished.files.count
             }
@@ -1491,6 +1486,7 @@ final class CodeStore: JobObserver {
         // The pointer and the ticket are forgotten in the same breath, and only now: the ticket is
         // what would otherwise re-hand this turn to the queue on the next foreground.
         await cache.deleteTicket(projectID: projectID)
+        guard session.identityID == pointer.ownerID, acceptsProjectWrites(projectID) else { return false }
         tickets[projectID] = nil
         pendingBuilds.remove(projectID)
 
@@ -1511,6 +1507,7 @@ final class CodeStore: JobObserver {
             lastWord = Strings.CodeBuild.failedTurn(lang)
         }
         _ = await appendBuildTurn(lastWord, n: landedCount, projectID: projectID, ownerID: pointer.ownerID)
+        guard session.identityID == pointer.ownerID, acceptsProjectWrites(projectID) else { return false }
         announce(projectID: projectID, name: name, landed: landedAnything, terminal: terminal)
         return true
     }
@@ -1519,6 +1516,7 @@ final class CodeStore: JobObserver {
 
     private func land(_ built: CodeProject, into projectID: String, pointer: JobPointer) async -> Bool {
         guard session.identityID == pointer.ownerID else { return false }
+        guard !pendingDeletes.contains(projectID), !deletedProjects.contains(projectID) else { return false }
         let named = CodeProject(
             name: built.name.isEmpty ? pointer.title : built.name,
             files: built.files
@@ -1528,7 +1526,7 @@ final class CodeStore: JobObserver {
         if case .failure(let error) = fitted.validatedForSave() { cloudLimit = error }
 
         guard await cache.save(fitted, id: projectID, ownerID: pointer.ownerID) else { return false }
-        guard session.identityID == pointer.ownerID else { return false }
+        guard session.identityID == pointer.ownerID, acceptsProjectWrites(projectID) else { return false }
         records[projectID] = CodeProjectRecord(
             id: projectID,
             name: fitted.name,
@@ -1543,7 +1541,7 @@ final class CodeStore: JobObserver {
             } else {
                 existing = await cache.loadThread(id: projectID, ownerID: pointer.ownerID) ?? CodeChatThread()
             }
-            guard session.identityID == pointer.ownerID else { return false }
+            guard session.identityID == pointer.ownerID, acceptsProjectWrites(projectID) else { return false }
             do {
                 try await push(project: fitted, thread: existing, to: projectID)
             } catch {
@@ -1551,7 +1549,7 @@ final class CodeStore: JobObserver {
             }
         }
 
-        guard session.identityID == pointer.ownerID else { return false }
+        guard session.identityID == pointer.ownerID, acceptsProjectWrites(projectID) else { return false }
         if openProjectID == projectID {
             project = fitted
             if selectedPath == nil || !fitted.files.contains(where: { $0.path == selectedPath }) {
@@ -1640,16 +1638,22 @@ final class CodeStore: JobObserver {
 
     // MARK: - Persistence
 
+    private func acceptsProjectWrites(_ id: String) -> Bool {
+        !pendingDeletes.contains(id) && !deletedProjects.contains(id)
+    }
+
     func push(project: CodeProject, thread: CodeChatThread, to id: String) async throws {
-        guard let owner = session.identityID else { throw APIError.cancelled }
+        guard let owner = session.identityID, acceptsProjectWrites(id) else { throw APIError.cancelled }
         let generation = codeOmnix.generation
         let previous = codeWrites[id]
         let write = Task { @MainActor [weak self] in
             _ = try? await previous?.value
-            guard let self, !Task.isCancelled, self.session.identityID == owner, self.codeOmnix.generation == generation else { throw APIError.cancelled }
+            guard let self, !Task.isCancelled, self.session.identityID == owner, self.codeOmnix.generation == generation,
+                  self.acceptsProjectWrites(id) else { throw APIError.cancelled }
             let latestProject = self.openProjectID == id ? self.project ?? project : await self.cache.load(id: id, ownerID: owner) ?? project
             let latestThread = self.openProjectID == id ? self.thread : await self.cache.loadThread(id: id, ownerID: owner) ?? thread
-            guard !Task.isCancelled, self.session.identityID == owner, self.codeOmnix.generation == generation else { throw APIError.cancelled }
+            guard !Task.isCancelled, self.session.identityID == owner, self.codeOmnix.generation == generation,
+                  self.acceptsProjectWrites(id) else { throw APIError.cancelled }
             try await self.pushSnapshot(project: latestProject, thread: latestThread, to: id)
         }
         codeWrites[id] = write
@@ -1659,7 +1663,7 @@ final class CodeStore: JobObserver {
     private func pushSnapshot(project: CodeProject, thread: CodeChatThread, to id: String) async throws {
         let owner = session.identityID
         let saved = try await api.getChat(id: id)
-        guard session.identityID == owner, saved.id == id else { throw APIError.cancelled }
+        guard session.identityID == owner, saved.id == id, acceptsProjectWrites(id), !Task.isCancelled else { throw APIError.cancelled }
         var messages: [PersistedMessage] = [
             PersistedMessage(
                 role: ChatRole.assistant.rawValue,
@@ -1717,21 +1721,46 @@ final class CodeStore: JobObserver {
         }
     }
 
-    private func commitDelete(_ id: String, ownerID: String) async {
+    private func commitDelete(_ id: String, ownerID: String, removed: ChatSummary?, index: Int?) async {
         guard pendingDeletes.contains(id), session.identityID == ownerID else { return }
+        func preserveProject() {
+            guard session.identityID == ownerID else { return }
+            pendingDeletes.remove(id)
+            if let removed, !projects.contains(where: { $0.id == id }) { projects.insert(removed, at: min(index ?? 0, projects.count)) }
+            deletedLastProject = false
+            toasts.show(lang == .arabic ? "تعذّر تأكيد توقف المهمة أو حذف المشروع. أبقيت المشروع وملفاته؛ حاول مرة أخرى بعد تحديث المهمة." : "The task stop or project deletion could not be confirmed. Your project and files were kept; refresh the task and try again.", isError: true)
+        }
+        if session.isMember, !id.hasPrefix("ios_") {
+            if pendingBuilds.contains(id), jobs.pointer(forConversation: id) == nil { preserveProject(); return }
+            guard await confirmCodeReceiptDeletion(id: id, owner: ownerID), session.identityID == ownerID, pendingDeletes.contains(id) else {
+                preserveProject(); return
+            }
+            if let pointer = jobs.pointer(forConversation: id) {
+                guard pointer.ownerID == ownerID, await confirmCodeBuildDeletion(pointer), session.identityID == ownerID else { preserveProject(); return }
+                jobs.forget(jobID: pointer.id)
+            }
+            codeOmnix.watchers[id]?.cancel(); codeOmnix.watchers[id] = nil; codeOmnix.active.remove(id)
+            let writing = codeWrites[id]
+            writing?.cancel()
+            _ = try? await writing?.value
+            codeWrites[id] = nil
+            guard session.identityID == ownerID, pendingDeletes.contains(id) else { return }
+            do { try await api.deleteChat(id: id) }
+            catch {
+                if (error as? APIError)?.status != 404 { preserveProject(); return }
+            }
+            guard session.identityID == ownerID, pendingDeletes.contains(id) else { return }
+        }
         pendingDeletes.remove(id)
+        deletedProjects.insert(id)
         // `cache.delete` drops the build ticket with the project; the in-memory mirror goes here.
         await cache.delete(id: id, ownerID: ownerID)
+        guard session.identityID == ownerID else { return }
         records[id] = nil
         tickets[id] = nil
         pendingBuilds.remove(id)
         guard session.isMember, !id.hasPrefix("ios_") else { return }
-        do {
-            try await api.deleteChat(id: id)
-            await chat.loadConversations()
-        } catch {
-            Log.ui.error("code project delete failed")
-        }
+        await chat.loadConversations()
     }
 
     /// One Code unit per AI edit, exactly where the web charges it. A transport failure fails
@@ -1787,7 +1816,7 @@ final class CodeStore: JobObserver {
     /// other two are served through the cached copy — otherwise the record of a build that finished
     /// while the reader was away simply would not exist when they came back to read it.
     private func appendBuildTurn(_ text: String, n: Int?, projectID: String, ownerID: String) async -> CodeChatThread {
-        guard !projectID.isEmpty else { return thread }
+        guard !projectID.isEmpty, session.identityID == ownerID, acceptsProjectWrites(projectID) else { return CodeChatThread() }
         if openProjectID == projectID, session.identityID == ownerID {
             appendThreadTurn(role: "ai", text: text, n: n)
             await cache.saveThread(thread, id: projectID, ownerID: ownerID)
@@ -1795,6 +1824,7 @@ final class CodeStore: JobObserver {
         }
 
         var stored = await cache.loadThread(id: projectID, ownerID: ownerID) ?? CodeChatThread()
+        guard session.identityID == ownerID, acceptsProjectWrites(projectID) else { return CodeChatThread() }
         stored.messages.append(
             CodeChatMessage(
                 role: "ai",

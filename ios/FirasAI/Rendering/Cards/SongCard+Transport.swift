@@ -126,7 +126,7 @@ extension SongCard {
                 action: onDownload
             )
         } else if let shareURL {
-            ShareLink(item: shareURL) {
+            FirasShareLink(item: shareURL) {
                 capsuleLabel(
                     title: Strings.Media.saveSong(lang),
                     symbol: "square.and.arrow.down",

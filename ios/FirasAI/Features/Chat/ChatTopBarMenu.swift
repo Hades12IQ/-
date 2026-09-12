@@ -56,7 +56,7 @@ struct ChatTopBarMenu: View {
             } label: {
                 Image(systemName: "ellipsis")
             }
-            .menuOrder(.fixed)
+            .firasMenuOrder(.fixed)
             .accessibilityLabel(Text(Strings.Chat.conversationActions(lang)))
             .alert(Strings.Common.rename(lang), isPresented: $isRenaming) {
                 TextField(Strings.Shell.renamePrompt(lang), text: $renameDraft)

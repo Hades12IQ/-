@@ -76,12 +76,13 @@ struct FirasBrandMark: View {
     private func wordmark(palette: FirasPalette) -> some View {
         HStack(spacing: 4) {
             Text(verbatim: "Firas")
+                .tracking(-0.5)
                 .foregroundStyle(palette.textPrimary)
             Text(verbatim: "AI")
+                .tracking(-0.5)
                 .foregroundStyle(palette.accent)
         }
         .font(.system(size: size * 0.60, weight: .semibold, design: .rounded))
-        .tracking(-0.5)
     }
 
     private var resolvedPalette: FirasPalette {

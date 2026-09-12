@@ -212,9 +212,9 @@ struct AppShell: View {
 
     @ToolbarContentBuilder
     private var drawerToolbarItem: some ToolbarContent {
-        if isCompact {
-            ToolbarItem(placement: .navigationBarLeading) {
-                WithPerceptionTracking {
+        ToolbarItem(placement: .navigationBarLeading) {
+            WithPerceptionTracking {
+                if isCompact {
                 Button {
                     openDrawer()
                 } label: {
@@ -224,7 +224,8 @@ struct AppShell: View {
                     }}
                 .accessibilityLabel(Text(Strings.Shell.openSidebar(lang)))
 
-                }}
+                }
+            }
         }
     }
 

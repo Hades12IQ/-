@@ -570,7 +570,7 @@ final class DictationController {
 
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.shouldReportPartialResults = false
-        request.addsPunctuation = true
+        if #available(iOS 16, *) { request.addsPunctuation = true }
         if recognizer.supportsOnDeviceRecognition {
             request.requiresOnDeviceRecognition = true
         }
@@ -810,7 +810,7 @@ private final class LiveSpeechRun: @unchecked Sendable {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.taskHint = .dictation
-        request.addsPunctuation = true
+        if #available(iOS 16, *) { request.addsPunctuation = true }
         if recognizer.supportsOnDeviceRecognition {
             // No network, no one-minute ceiling, and nothing leaves the phone before the upload.
             request.requiresOnDeviceRecognition = true

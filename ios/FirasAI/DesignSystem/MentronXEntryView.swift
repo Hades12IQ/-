@@ -25,6 +25,9 @@ struct MentronXEntryView: View {
     @State private var contentOpacity: Double = 0
     @State private var finished = false
     @State private var started = false
+    @State private var playbackID = UUID()
+    @State private var completionTask: Task<Void, Never>?
+    @State private var safetyTask: Task<Void, Never>?
 
     init(palette: FirasPalette? = nil, onFinished: @escaping () -> Void) {
         self.overridePalette = palette
@@ -62,6 +65,7 @@ struct MentronXEntryView: View {
             .contentShape(Rectangle())
             .onTapGesture { finish() }
             .onAppear { start() }
+            .onDisappear { cancelPlayback() }
         }())
     }
 
@@ -102,8 +106,17 @@ struct MentronXEntryView: View {
     // MARK: - Playback
 
     private func start() {
-        guard !started else { return }
+        guard !started, !finished else { return }
         started = true
+        playbackID = UUID()
+        var reset = Transaction()
+        reset.disablesAnimations = true
+        withTransaction(reset) {
+            primaryProgress = 0
+            crossProgress = 0
+            lockupVisible = false
+            contentOpacity = 0
+        }
 
         if motionOn {
             scheduleSafety(after: 1.45)
@@ -119,15 +132,15 @@ struct MentronXEntryView: View {
         reset.disablesAnimations = true
         withTransaction(reset) { contentOpacity = 1 }
 
-        withAnimation(.timingCurve(0.50, 0.05, 0.30, 1, duration: 0.50)) {
+        animate(.timingCurve(0.50, 0.05, 0.30, 1, duration: 0.50), duration: 0.50) {
             primaryProgress = 1
         } completion: {
             guard !finished else { return }
-            withAnimation(.timingCurve(0.40, 0, 0.30, 1, duration: 0.22)) {
+            animate(.timingCurve(0.40, 0, 0.30, 1, duration: 0.22), duration: 0.22) {
                 crossProgress = 1
             } completion: {
                 guard !finished else { return }
-                withAnimation(.timingCurve(0.22, 0.80, 0.28, 1, duration: 0.32)) {
+                animate(.timingCurve(0.22, 0.80, 0.28, 1, duration: 0.32), duration: 0.32) {
                     lockupVisible = true
                 } completion: {
                     fadeOut(duration: 0.16)
@@ -146,7 +159,7 @@ struct MentronXEntryView: View {
             contentOpacity = 0
         }
 
-        withAnimation(.easeOut(duration: 0.70)) {
+        animate(.easeOut(duration: 0.70), duration: 0.70) {
             contentOpacity = 1
         } completion: {
             fadeOut(duration: 0.20)
@@ -155,22 +168,61 @@ struct MentronXEntryView: View {
 
     private func fadeOut(duration: Double) {
         guard !finished else { return }
-        withAnimation(.easeOut(duration: duration)) {
+        animate(.easeOut(duration: duration), duration: duration) {
             contentOpacity = 0
         } completion: {
             finish()
         }
     }
 
-    private func scheduleSafety(after seconds: Double) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
-            MainActor.assumeIsolated { self.finish() }
+    /// These curves all have a fixed duration. Before iOS 17, advance at that exact duration;
+    /// the run ID and cancellation prevent a skipped or removed intro from advancing later.
+    private func animate(_ animation: Animation, duration: Double,
+                         changes: () -> Void, completion: @escaping () -> Void) {
+        guard started, !finished else { return }
+        let generation = playbackID
+        if #available(iOS 17, *), !FirasCompatibility.forceLegacyUI {
+            withAnimation(animation, changes) {
+                guard started, !finished, playbackID == generation else { return }
+                completion()
+            }
+        } else {
+            withAnimation(animation, changes)
+            completionTask?.cancel()
+            completionTask = Task { @MainActor in
+                do { try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000)) }
+                catch { return }
+                guard !Task.isCancelled, started, !finished, playbackID == generation else { return }
+                completionTask = nil
+                completion()
+            }
         }
+    }
+
+    private func scheduleSafety(after seconds: Double) {
+        let generation = playbackID
+        safetyTask?.cancel()
+        safetyTask = Task { @MainActor in
+            do { try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }
+            catch { return }
+            guard !Task.isCancelled, started, !finished, playbackID == generation else { return }
+            finish()
+        }
+    }
+
+    private func cancelPlayback() {
+        completionTask?.cancel()
+        completionTask = nil
+        safetyTask?.cancel()
+        safetyTask = nil
+        playbackID = UUID()
+        started = false
     }
 
     private func finish() {
         guard !finished else { return }
         finished = true
+        cancelPlayback()
         onFinished()
     }
 }

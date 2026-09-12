@@ -188,7 +188,7 @@ struct LongFileViewer: View {
             Image(systemName: "square.and.arrow.up")
                 .font(.system(size: 15, weight: .semibold))
         }
-        .menuOrder(.fixed)
+        .firasMenuOrder(.fixed)
         .disabled(isBusy)
         .foregroundStyle(palette.accent)
         .accessibilityLabel(Text(LongFileViewerCopy.export(lang)))

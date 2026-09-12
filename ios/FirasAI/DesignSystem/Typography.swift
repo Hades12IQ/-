@@ -53,7 +53,7 @@ enum FirasType {
     static let caption: Font = .system(.caption)
 
     /// UI labels on glass: `.medium`, never grey, never light (the vibrancy rule in §4.1).
-    static let label: Font = .system(.subheadline, weight: .medium)
+    static let label: Font = .system(.subheadline).weight(.medium)
 
     /// A point size that still follows Dynamic Type, multiplied by the Settings scale.
     static func scaled(_ size: CGFloat, scale: FontScale, weight: Font.Weight = .regular) -> Font {

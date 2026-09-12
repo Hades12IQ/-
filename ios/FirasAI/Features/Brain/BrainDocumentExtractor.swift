@@ -585,8 +585,27 @@ enum BrainDocumentExtractor {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
-        request.automaticallyDetectsLanguage = automatic
-        if !automatic { request.recognitionLanguages = languages }
+        if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
+            request.automaticallyDetectsLanguage = automatic
+            if !automatic { request.recognitionLanguages = languages }
+        } else {
+            // Older Vision revisions do not detect languages automatically and may not include
+            // Arabic. Supply only languages supported by this device's actual OCR revision.
+            let supported = try VNRecognizeTextRequest.supportedRecognitionLanguages(
+                for: request.recognitionLevel, revision: request.revision)
+            let preferred = automatic ? Locale.preferredLanguages + ["ar", "en-US"] : languages
+            var selected: [String] = []
+            for language in preferred {
+                let base = language.split(separator: "-").first.map(String.init) ?? language
+                if let match = supported.first(where: { $0 == language })
+                    ?? supported.first(where: { $0 == base || $0.hasPrefix(base + "-") }),
+                   !selected.contains(match) {
+                    selected.append(match)
+                }
+            }
+            if selected.isEmpty, let fallback = supported.first { selected = [fallback] }
+            if !selected.isEmpty { request.recognitionLanguages = selected }
+        }
         let handler = VNImageRequestHandler(cgImage: image, options: [:])
         try handler.perform([request])
         let lines = (request.results ?? []).compactMap { observation -> String? in

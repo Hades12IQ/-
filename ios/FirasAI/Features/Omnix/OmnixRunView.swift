@@ -172,26 +172,17 @@ private struct OmnixFileView: View {
         WithPerceptionTracking {
             FirasNavigationStack {
                 WithPerceptionTracking {
-                    Group {
-                        if let url { OmnixQuickLook(url: url) }
-                        else if failed { Text(env.prefs.lang == .arabic ? "تعذّر فتح الملف. حاول مجددًا." : "The file could not open. Try again.") }
-                        else { ProgressView() }
-                    }
+                    previewContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(env.prefs.palette.background)
                     .navigationTitle(URL(fileURLWithPath: file.name).lastPathComponent)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
-                        WithPerceptionTracking {
-                            ToolbarItem(placement: .cancellationAction) { Button(Strings.Common.close(env.prefs.lang)) { dismiss() } }
-                            ToolbarItem(placement: .primaryAction) {
-                                if let url {
-                                    HStack {
-                                        ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }
-                                        Button { save = true } label: { Image(systemName: "folder.badge.plus") }
-                                    }
-                                }
-                            }
+                        ToolbarItem(placement: .cancellationAction) {
+                            WithPerceptionTracking { Button(Strings.Common.close(env.prefs.lang)) { dismiss() } }
+                        }
+                        ToolbarItem(placement: .primaryAction) {
+                            WithPerceptionTracking { fileActions }
                         }
                     }
                 }
@@ -210,6 +201,23 @@ private struct OmnixFileView: View {
             .sheet(isPresented: $save) { WithPerceptionTracking {
                 if let url { FirasFileSaver(url: url) { _ in save = false } }
             } }
+        }
+    }
+
+    @ViewBuilder
+    private var previewContent: some View {
+        if let url { OmnixQuickLook(url: url) }
+        else if failed { Text(env.prefs.lang == .arabic ? "تعذّر فتح الملف. حاول مجددًا." : "The file could not open. Try again.") }
+        else { ProgressView() }
+    }
+
+    @ViewBuilder
+    private var fileActions: some View {
+        if let url {
+            HStack {
+                FirasShareLink(item: url) { Image(systemName: "square.and.arrow.up") }
+                Button { save = true } label: { Image(systemName: "folder.badge.plus") }
+            }
         }
     }
 }
