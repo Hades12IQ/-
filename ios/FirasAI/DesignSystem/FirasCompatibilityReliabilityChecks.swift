@@ -39,7 +39,7 @@ enum FirasCompatibilityReliabilityChecks {
     }
 
     @Perceptible
-    private final class ProbeState {
+    fileprivate final class ProbeState {
         var message = ""
         var unrelated = 0
     }
