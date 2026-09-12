@@ -1,0 +1,4 @@
+expected   CRC32 $01539D5A
+/dev/disk33         	Apple_partition_scheme         	
+/dev/disk33s1       	Apple_partition_map            	
+/dev/disk33s2       	Apple_HFS                      	/Users/runner/work/_temp/iOS15-Probe/runtime-installer
