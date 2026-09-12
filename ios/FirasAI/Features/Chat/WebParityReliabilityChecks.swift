@@ -19,6 +19,11 @@ enum WebParityReliabilityChecks {
             }
         }
         require(!ModelTier.omnix.showThinking, "Cloud worker exposed an unsupported think toggle")
+        for tier in ModelTier.allCases {
+            let expectedVoiceTier: ModelTier = tier == .mini ? .mini : .pro
+            require(ThreeHopCall.responseTier(for: tier) == expectedVoiceTier,
+                    "Voice fallback leaked an unsupported model tier: " + tier.rawValue)
+        }
         require(PromptCatalog.langRule.contains("IRAQI & REGIONAL ARABIC"), "Updated dialect guidance missing")
         require(PromptCatalog.mathRule.contains("complete factors and operators inside one math span"),
                 "Website synchronization removed the native math fix")
@@ -30,6 +35,24 @@ enum WebParityReliabilityChecks {
         accepted.sessionId = "omxs_" + String(repeating: "c", count: 32)
         let local = ChatMessage(role: .assistant, content: "", tier: "omnix", cid: request, omnix: pending)
         let server = ChatMessage(role: .assistant, content: "", tier: "omnix", cid: request, omnix: accepted)
+        for selected in ModelTier.allCases where selected != .omnix {
+            require(SendPipeline.legacyRetryReference(for: server, requestedTier: selected, fallbackTier: .pro) == nil,
+                    "An Omnix request entered the legacy retry ledger")
+            var tierOnly = server
+            tierOnly.omnix = nil
+            require(SendPipeline.legacyRetryReference(for: tierOnly, requestedTier: selected, fallbackTier: .pro) == nil,
+                    "An Omnix model tag entered the legacy retry ledger without a receipt")
+            var receiptOnly = server
+            receiptOnly.tier = nil
+            require(SendPipeline.legacyRetryReference(for: receiptOnly, requestedTier: selected, fallbackTier: .pro) == nil,
+                    "A cloud receipt without a tier entered the legacy retry ledger")
+            for previous in ModelTier.allCases where previous != .omnix {
+                let old = ChatMessage(role: .assistant, content: "Answer", tier: previous.rawValue, cid: "legacy-cid")
+                let reference = SendPipeline.legacyRetryReference(for: old, requestedTier: selected, fallbackTier: .omnix)
+                let expected = selected == previous ? nil : RetryReference(cid: "legacy-cid", tier: previous.rawValue)
+                require(reference == expected, "A legacy-to-legacy model retry lost its original ledger reference")
+            }
+        }
         require(MessageSerializer.merge(local: [], server: [server]).count == 1,
                 "Receipt-only cloud turn disappeared on reload")
         require(MessageSerializer.merge(local: [local], server: [server]).first?.omnix == accepted,

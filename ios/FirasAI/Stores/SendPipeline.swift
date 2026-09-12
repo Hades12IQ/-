@@ -281,10 +281,7 @@ final class SendPipeline {
             deliverOmnix(text: user.content, attachments: [], in: key, product: conversation.product)
             return
         }
-        var retryOf: RetryReference?
-        if let requested = tier, let previousCID = target.cid, requested.rawValue != (target.tier ?? "") {
-            retryOf = RetryReference(cid: previousCID, tier: target.tier ?? prefs.tier.rawValue)
-        }
+        let retryOf = Self.legacyRetryReference(for: target, requestedTier: tier, fallbackTier: prefs.tier)
 
         let context = ChatTurnContext(
             conversationID: key,
@@ -299,6 +296,17 @@ final class SendPipeline {
             isAutoRetry: false
         )
         beginTurn(context)
+    }
+
+    /// Retry references belong to one backend's ledger. Switching from an Omnix run keeps the
+    /// question and chosen model but must not claim that worker request is a legacy chat retry.
+    nonisolated static func legacyRetryReference(for target: ChatMessage, requestedTier: ModelTier?,
+                                                fallbackTier: ModelTier) -> RetryReference? {
+        guard let requestedTier, requestedTier != .omnix, let previousCID = target.cid,
+              target.omnix == nil,
+              ModelTier.lenient(target.tier ?? fallbackTier.rawValue) != .omnix,
+              requestedTier.rawValue != (target.tier ?? "") else { return nil }
+        return RetryReference(cid: previousCID, tier: target.tier ?? fallbackTier.rawValue)
     }
 
     /// "Continue" is a new turn that says so, seamed to the answer it follows. The seam is recorded

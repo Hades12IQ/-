@@ -106,17 +106,13 @@ extension CallEngine {
         // The server refuses anything under 4 000 base64 characters.
         guard encoded.count >= 4_000 else { return }
 
-        // The call never runs the slow tiers: the web caps a call at `pro` and restores the user's
-        // pick on hang-up. Nothing is written back to preferences, so there is nothing to restore.
-        let tier: ModelTier = (prefs.tier == .ultra || prefs.tier == .max) ? .pro : prefs.tier
-
         do {
             let result = try await hop.answer(
                 wavBase64: encoded,
                 dialect: prefs.dictationDialect,
                 history: threeHopHistory,
                 lang: prefs.language,
-                tier: tier
+                tier: prefs.tier
             )
             guard !isEnding else { return }
 

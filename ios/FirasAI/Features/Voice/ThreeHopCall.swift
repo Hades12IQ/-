@@ -23,6 +23,15 @@ final class ThreeHopCall: Sendable {
         self.api = api
     }
 
+    /// Calls use the legacy low-latency chat endpoint. Omnix runs through its own worker service
+    /// and is never a valid tier on this route; the reader's saved chat choice stays untouched.
+    static func responseTier(for selected: ModelTier) -> ModelTier {
+        switch selected {
+        case .mini: return .mini
+        case .pro, .ultra, .max, .omnix: return .pro
+        }
+    }
+
     func answer(
         wavBase64: String,
         dialect: DictationDialect,
@@ -49,7 +58,7 @@ final class ThreeHopCall: Sendable {
 
         let request = ChatStreamRequest(
             messages: messages,
-            tier: tier.rawValue,
+            tier: Self.responseTier(for: tier).rawValue,
             think: false,
             cid: IDs.cid(),
             chatId: nil,
