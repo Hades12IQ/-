@@ -1673,7 +1673,7 @@ final class CodeStore: JobObserver {
         let write = Task { @MainActor [weak self] in
             _ = try? await previous?.value
             guard let self else { throw APIError.cancelled }
-            func current() -> Bool {
+            @MainActor func current() -> Bool {
                 !Task.isCancelled && self.session.identityID == owner && self.codeOmnix.generation == generation
                     && self.acceptsProjectWrites(id) && self.selectionPreferences.pending(owner: owner, projectID: id) == pending
             }

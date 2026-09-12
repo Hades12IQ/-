@@ -46,8 +46,8 @@ final class CodeSelectionPreferences {
 enum CodeSelectionPersistence {
     /// Read the current cloud conversation, changing only its selection, never a captured old project.
     static func save(selection: CodeModelSelection, projectID: String, lang: AppLanguage,
-                     isCurrent: () -> Bool, fetch: () async throws -> ChatConversation,
-                     commit: (UpdateChatRequest) async throws -> Void) async throws {
+                     isCurrent: @MainActor () -> Bool, fetch: @MainActor () async throws -> ChatConversation,
+                     commit: @MainActor (UpdateChatRequest) async throws -> Void) async throws {
         guard isCurrent() else { throw APIError.cancelled }
         let saved = try await fetch()
         guard isCurrent(), saved.id == projectID, let parsed = CodeStore.parse(saved) else { throw APIError.cancelled }
