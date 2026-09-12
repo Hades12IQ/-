@@ -34,7 +34,9 @@ struct NativeCompatibilityGalleryView: View {
             }
             .environment(gallery.env.prefs)
             .environment(\.locale, Locale(identifier: "ar"))
-            .environment(\.layoutDirection, .rightToLeft)
+            // Match RootView/AppShell: controls keep their fixed positions; message bodies
+            // choose their own text direction. Arabic must not mirror the app's chrome.
+            .environment(\.layoutDirection, .leftToRight)
             .preferredColorScheme(.dark)
             .tint(gallery.env.prefs.palette.accent)
             .background(gallery.env.prefs.palette.background)
@@ -193,6 +195,7 @@ final class NativeCompatibilityGalleryModel: ObservableObject {
             "deterministicLocalFixture": true,
             "networkBase": "https://native-gallery.invalid",
             "authenticatedSessionRestored": false,
+            "chromeLayoutDirection": "leftToRight",
             "chatReadiness": chatReadiness,
             "evidence": "Actual native app screens. Forced compatibility branches do not emulate an older OS runtime.",
             "screens": rows,
