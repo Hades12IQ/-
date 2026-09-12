@@ -1,0 +1,112 @@
+{
+  "requestedRuntime": "15.5",
+  "hostArchitecture": "arm64",
+  "steps": [
+    {
+      "name": "host",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.01,
+      "log": "host.log"
+    },
+    {
+      "name": "xcode",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.07,
+      "log": "xcode.log"
+    },
+    {
+      "name": "disk-space",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.02,
+      "log": "disk-space.log"
+    },
+    {
+      "name": "runtimes-before",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 18.55,
+      "log": "runtimes-before.log"
+    },
+    {
+      "name": "apple-download-platform",
+      "exitCode": 70,
+      "timedOut": false,
+      "seconds": 3.52,
+      "log": "apple-download-platform.log"
+    },
+    {
+      "name": "runtimes-after-cli",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.75,
+      "log": "runtimes-after-cli.log"
+    },
+    {
+      "name": "apple-download-package",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 64.11,
+      "log": "apple-download-package.log"
+    },
+    {
+      "name": "image-integrity",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 6.51,
+      "log": "image-integrity.log"
+    },
+    {
+      "name": "mount-installer",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.47,
+      "log": "mount-installer.log"
+    },
+    {
+      "name": "apple-package-signature",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 8.93,
+      "log": "apple-package-signature.log"
+    }
+  ],
+  "booted": false,
+  "appTested": false,
+  "sourceIndex": "https://devimages-cdn.apple.com/downloads/xcode/simulators/index2.dvtdownloadableindex",
+  "sourceCommit": "2d10cc4778e961e8af1a780ca72a09501b4d65d6",
+  "runID": "34719006721",
+  "elapsedSeconds": 111.7,
+  "hostVersion": "26.6.2",
+  "xcodeVersion": "26.6",
+  "catalogueEntry": {
+    "category": "simulator",
+    "contentType": "package",
+    "dictionaryVersion": 2,
+    "fileSize": 5430783739,
+    "hostRequirements": {
+      "maxHostVersion": "26.99.0",
+      "maxXcodeVersion": "26.99.0"
+    },
+    "identifier": "com.apple.pkg.iPhoneSimulatorSDK15_5",
+    "name": "iOS 15.5 Simulator",
+    "platform": "com.apple.platform.iphoneos",
+    "simulatorVersion": {
+      "buildUpdate": "19F70",
+      "version": "15.5"
+    },
+    "source": "https://devimages-cdn.apple.com/downloads/xcode/simulators/com.apple.pkg.iPhoneSimulatorSDK15_5-15.5.1.1653527639.dmg",
+    "version": "15.5.1.1653527639"
+  },
+  "catalogueSHA256": "fb14042940b3a1f2475da3200350126612cc831e2e0caf9346029c6bba67bee4",
+  "publicDownload": {
+    "status": 200,
+    "url": "https://devimages-cdn.apple.com/downloads/xcode/simulators/com.apple.pkg.iPhoneSimulatorSDK15_5-15.5.1.1653527639.dmg",
+    "contentLength": "5415504705",
+    "contentType": "application/x-apple-diskimage"
+  },
+  "downloadedBytes": 5415504705,
+  "downloadSHA256": "71fd7d0159a4439ebef1abb2b1e0b26204b74af903dcc579a7b6e131065a1150"
+}
