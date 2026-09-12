@@ -6,8 +6,10 @@ mkdir -p "$ARTIFACT_ROOT"
 DEVICE_ID="$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); phones=[x for a in d["devices"].values() for x in a if "iPhone" in x["name"]]; assert phones,"No iPhone simulator"; print(phones[0]["udid"])')"
 xcrun simctl boot "$DEVICE_ID" || true
 xcrun simctl bootstatus "$DEVICE_ID" -b
+# Destination selects the app SDK. A global -sdk override also targets SwiftPM compiler
+# plugins at iOS Simulator, which the macOS compiler cannot execute (DYLD_ROOT_PATH).
 xcodebuild -project ios/FirasAI.xcodeproj -scheme FirasAI -configuration Debug \
-  -sdk iphonesimulator -destination "id=$DEVICE_ID" \
+  -destination "platform=iOS Simulator,id=$DEVICE_ID" \
   -clonedSourcePackagesDirPath "$RUNNER_TEMP/FirasAI-Packages" \
   -skipPackagePluginValidation -skipMacroValidation \
   -derivedDataPath "$RUNNER_TEMP/FirasAI-Smoke" \

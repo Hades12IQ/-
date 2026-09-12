@@ -67,6 +67,17 @@ jobs:
             -clonedSourcePackagesDirPath "$PACKAGES_ROOT" \
             -resolvePackageDependencies 2>&1 | tail -40
 
+      - name: Verify native rendering and PDF on iPhone Simulator
+        shell: bash
+        run: bash ios/scripts/simulator-smoke.sh
+
+      - name: Upload verified native screen evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: FirasAI-native-screen-evidence
+          path: ${{ runner.temp }}/FirasAI-Artifacts/FirasAI-smoke-evidence.zip
+          if-no-files-found: error
+
       - name: Build unsigned device app
         id: build
         shell: bash
@@ -125,10 +136,6 @@ jobs:
           echo "===== ERROR DIGEST ====="
           cat "$ARTIFACT_ROOT/errors.md"
           exit "$STATUS"
-
-      - name: Verify native rendering and PDF on iPhone Simulator
-        shell: bash
-        run: bash ios/scripts/simulator-smoke.sh
 
       - name: Package Payload as unsigned IPA
         shell: bash

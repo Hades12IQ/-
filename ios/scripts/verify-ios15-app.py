@@ -108,7 +108,7 @@ def main():
         derived = temporary / "FirasAI-iOS15-App"
         packages = temporary / "FirasAI-iOS15-Packages"
         run("ios15-app-build", ["xcodebuild", "-project", "ios/FirasAI.xcodeproj", "-scheme", "FirasAI",
-            "-configuration", "Debug", "-sdk", "iphonesimulator", "-destination", "id=" + device,
+            "-configuration", "Debug", "-destination", "platform=iOS Simulator,id=" + device,
             "-clonedSourcePackagesDirPath", str(packages), "-skipPackagePluginValidation", "-skipMacroValidation",
             "-derivedDataPath", str(derived), "CODE_SIGNING_ALLOWED=NO", "ENABLE_PREVIEWS=NO", "build"], timeout=1500)
         app = derived / "Build/Products/Debug-iphonesimulator/FirasAI.app"

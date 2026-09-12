@@ -13,7 +13,7 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import platform
 import plistlib
 import re
@@ -26,6 +26,7 @@ import time
 import urllib.parse
 import urllib.request
 import uuid
+import xml.etree.ElementTree as ET
 
 INDEX = "https://devimages-cdn.apple.com/downloads/xcode/simulators/index2.dvtdownloadableindex"
 VERSION = "15.5"
@@ -65,9 +66,10 @@ def bundle_manifest(root, deadline):
     return dict(counts, sha256=checksum.hexdigest())
 
 
-def runtime_bundle_metadata(bundle, version, build):
+def runtime_bundle_metadata(bundle, version, build, *, payload_root=False):
     """A package payload must identify the exact Apple OS requested by the live catalogue."""
-    if bundle.is_symlink() or not bundle.is_dir() or bundle.suffix != ".simruntime":
+    is_runtime = bundle.suffix == ".simruntime" or (payload_root and bundle.name == "Payload")
+    if bundle.is_symlink() or not bundle.is_dir() or not is_runtime:
         raise RuntimeError("invalid-runtime-bundle-root")
     info_path = bundle / "Contents/Info.plist"
     if info_path.is_symlink() or not info_path.resolve().is_relative_to(bundle.resolve()):
@@ -89,6 +91,75 @@ def runtime_bundle_metadata(bundle, version, build):
     return {"bundleIdentifier": expected_id, "systemVersion": system,
             "infoPlistSHA256": hashlib.sha256(info_path.read_bytes()).hexdigest(),
             "systemVersionSHA256": hashlib.sha256(systems[0].read_bytes()).hexdigest()}
+
+
+def discover_runtime_payloads(expanded, version, build):
+    """Read the signed package's declared destination when its Payload is the bundle root."""
+    candidates = []
+    diagnostics = {"directories": [], "packageInfos": [], "candidates": []}
+    seen = set()
+
+    def add(source, name, payload_root=False, package=None):
+        key = str(source.resolve())
+        if key in seen:
+            return
+        seen.add(key)
+        detail = {"path": source.relative_to(expanded).as_posix(), "destinationName": name,
+                  "kind": "signed-package-payload" if payload_root else "runtime-bundle"}
+        if package is not None:
+            detail["packageInfo"] = package
+        try:
+            if not source.resolve().is_relative_to(expanded.resolve()):
+                raise RuntimeError("runtime-source-escapes-expanded-package")
+            metadata = runtime_bundle_metadata(source, version, build, payload_root=payload_root)
+            detail["metadata"] = metadata
+            candidates.append({"source": source, "name": name, "metadata": metadata,
+                               "packageInfo": package, "payloadRoot": payload_root})
+        except Exception as error:
+            detail["rejected"] = str(error)
+        diagnostics["candidates"].append(detail)
+
+    for directory, children, files in os.walk(expanded, followlinks=False):
+        directory = Path(directory)
+        relative = directory.relative_to(expanded)
+        if len(diagnostics["directories"]) < 100:
+            diagnostics["directories"].append({"path": relative.as_posix(),
+                "children": sorted(children)[:16], "files": sorted(files)[:12]})
+        if len(relative.parts) >= 12:
+            children[:] = []
+            continue
+        if "PackageInfo" in files:
+            info = directory / "PackageInfo"
+            try:
+                raw = info.read_bytes()
+                if len(raw) > 1_000_000 or info.is_symlink():
+                    raise RuntimeError("unexpected-PackageInfo-size-or-link")
+                element = ET.fromstring(raw)
+                declared = element.attrib.get("install-location", "")
+                package = {"path": info.relative_to(expanded).as_posix(), "sha256": hashlib.sha256(raw).hexdigest(),
+                           "identifier": element.attrib.get("identifier"), "installLocation": declared}
+                diagnostics["packageInfos"].append(package)
+                install = PurePosixPath(declared)
+                payload = directory / "Payload"
+                if (payload / "Contents/Info.plist").is_file():
+                    # Derive, never guess, the .simruntime name from Apple's signed destination.
+                    if (not install.is_absolute() or ".." in install.parts or install.suffix != ".simruntime"
+                            or install.parent.parts[-3:] != ("CoreSimulator", "Profiles", "Runtimes")):
+                        diagnostics["candidates"].append({"path": payload.relative_to(expanded).as_posix(),
+                            "rejected": "unexpected-signed-runtime-install-location", "packageInfo": package})
+                    else:
+                        add(payload, install.name, payload_root=True, package=package)
+            except Exception as error:
+                diagnostics["packageInfos"].append({"path": info.relative_to(expanded).as_posix(), "error": str(error)})
+        for name in list(children):
+            path = directory / name
+            if name.endswith(".simruntime"):
+                add(path, name)
+                children.remove(name)
+            elif name == "Contents" and directory.name == "Payload":
+                # The bundle was checked directly above; do not enumerate an entire OS payload.
+                children.remove(name)
+    return candidates, diagnostics
 
 
 def main():
@@ -231,18 +302,21 @@ def main():
                 report["legacyInstallerFallback"] = "verified-Apple-runtime-bundle-registration"
                 expanded = output / ("expanded-apple-package-" + uuid.uuid4().hex)
                 run("expand-verified-apple-package", ["pkgutil", "--expand-full", str(packages[0]), str(expanded)], timeout=240)
-                bundles = []
-                for directory, children, _ in os.walk(expanded, followlinks=False):
-                    for name in list(children):
-                        if name.endswith(".simruntime"):
-                            bundles.append(Path(directory) / name)
-                            children.remove(name)
-                if len(bundles) != 1 or not bundles[0].resolve().is_relative_to(expanded.resolve()):
-                    raise RuntimeError("unexpected-expanded-runtime-bundle-layout")
-                bundle = bundles[0]
+                candidates, layout = discover_runtime_payloads(expanded, VERSION,
+                    entry["simulatorVersion"]["buildUpdate"])
+                (output / "expanded-runtime-layout.json").write_text(json.dumps(layout, indent=2), encoding="utf-8")
+                report["expandedRuntimeLayout"] = "expanded-runtime-layout.json"
+                report["matchingRuntimePayloads"] = len(candidates)
+                save()
+                if len(candidates) != 1:
+                    raise RuntimeError("unexpected-expanded-runtime-bundle-layout; see expanded-runtime-layout.json")
+                candidate = candidates[0]
+                bundle = candidate["source"]
                 run("extracted-runtime-info", ["plutil", "-p", str(bundle / "Contents/Info.plist")])
-                metadata = runtime_bundle_metadata(bundle, VERSION, entry["simulatorVersion"]["buildUpdate"])
+                metadata = candidate["metadata"]
                 metadata["packageRelativePath"] = bundle.relative_to(expanded).as_posix()
+                metadata["signedPackageInfo"] = candidate["packageInfo"]
+                metadata["destinationName"] = candidate["name"]
                 print("verify-original-runtime-bundle", flush=True)
                 before = bundle_manifest(bundle, deadline)
                 metadata["originalManifest"] = before
@@ -251,7 +325,7 @@ def main():
                 base = Path("/Library/Developer/CoreSimulator/Profiles/Runtimes")
                 if base.resolve() != base or any(path.is_symlink() for path in (base, *base.parents)):
                     raise RuntimeError("unexpected-CoreSimulator-registration-directory")
-                destination = base / bundle.name
+                destination = base / candidate["name"]
                 if destination.exists() or destination.is_symlink():
                     raise RuntimeError("runtime-destination-already-exists; no overwrite allowed")
                 run("create-runtime-registration-directory", ["sudo", "-n", "mkdir", "-p", str(base)])
