@@ -180,6 +180,16 @@ enum JobKindSpecs {
     static func backgroundInterval(_ spec: JobKindSpec, elapsed: TimeInterval) -> TimeInterval {
         Swift.max(spec.backgroundInterval, foregroundInterval(spec, elapsed: elapsed) * 2)
     }
+
+    /// The web starts its chat polling ladder when the reader attaches, rather than at the
+    /// server job's creation time. Reopening a long-running answer therefore gets the same fast
+    /// initial reads as a new turn. Retention and slower background/media polling still use age.
+    static func watcherInterval(_ spec: JobKindSpec, jobElapsed: TimeInterval,
+                                foregroundElapsed: TimeInterval, isBackground: Bool) -> TimeInterval {
+        if isBackground { return backgroundInterval(spec, elapsed: jobElapsed) }
+        let readerCadence = spec.kind == .chat || spec.kind == .longdoc
+        return foregroundInterval(spec, elapsed: readerCadence ? foregroundElapsed : jobElapsed)
+    }
 }
 
 /// A cancellation-aware delay that never blocks a thread and never spins.

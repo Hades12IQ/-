@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The Brain ask thread (`web-brain-ux.md §5.2a`): the question bubbles, the answers, the pending
@@ -13,11 +14,6 @@ struct BrainThreadView: View {
     private let onCitation: (BrainSource) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var followsTail = true
-    @State private var atBottom = true
-    @State private var scrollPosition = ScrollPosition(edge: .bottom)
-    @State private var scrollPhase: ScrollPhase = .idle
-
     private static let tailAnchor = "brain-thread-tail"
 
     init(env: AppEnvironment, conversationID: String?, onCitation: @escaping (BrainSource) -> Void) {
@@ -27,74 +23,45 @@ struct BrainThreadView: View {
     }
 
     var body: some View {
+        return WithPerceptionTracking {
         Group {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 22) {
-                    if messages.isEmpty && !isAsking {
-                        hero
-                    }
-                    ForEach(messages) { message in
-                        row(for: message)
-                            .id(message.id)
-                    }
-                    if isAsking {
-                        liveTurn
-                    }
-                    Color.clear
-                        .frame(height: 1)
-                        .id(Self.tailAnchor)
-                }
-                .padding(.horizontal, 18)
-                .padding(.top, 18)
-                .padding(.bottom, 12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .readingColumn(prefs.contentWidth)
-                .scrollTargetLayout()
-            }
-            .contentShape(Rectangle())
-            .dismissesKeyboardOnTap()
-            .scrollDismissesKeyboard(.interactively)
-            .scrollPosition($scrollPosition)
-            .defaultScrollAnchor(.bottom, for: .initialOffset)
-            .onScrollPhaseChange { _, phase in
-                scrollPhase = phase
-                if phase == .tracking || phase == .interacting { followsTail = false }
-                if phase == .idle { followsTail = atBottom }
-            }
-            .onScrollGeometryChange(for: TranscriptScrollMetrics.self) { TranscriptScrollMetrics($0) } action: { old, new in
-                atBottom = new.distance < 72
-                if followsTail, scrollPhase == .idle,
-                   old.height != new.height || old.viewport != new.viewport {
-                    scrollToTail(animated: false)
-                }
-            }
-            .onChange(of: liveLength) { _, _ in
-                scrollToTail(animated: false)
-            }
-            .onChange(of: conversationID) { _, _ in
-                followsTail = true
-                scrollToTail(animated: false)
-            }
-            .onChange(of: messages.count) { _, _ in
-                scrollToTail(animated: false)
-            }
-            .onChange(of: isAsking) { _, running in
-                if running {
-                    followsTail = true
-                    Keyboard.dismiss()
-                    scrollToTail(animated: true)
-                }
-            }
-            .overlay(alignment: .bottom) {
-                if !atBottom {
-                    TranscriptBottomButton(palette: palette, lang: prefs.lang) {
-                        Keyboard.dismiss()
-                        followsTail = true
-                        scrollToTail(animated: true)
-                    }
-                }
+            if #available(iOS 18.0, *), !TranscriptScrollCompatibility.forceLegacy {
+                ModernBrainTranscriptScroll(conversationID: conversationID, messageCount: messages.count,
+                    isAsking: isAsking, liveLength: liveLength, palette: palette, lang: prefs.lang,
+                    motionOn: motionOn, content: transcriptContent)
+            } else {
+                LegacyTranscriptScroll(identity: conversationID ?? "brain-empty",
+                    latestUserID: messages.last(where: { $0.role == .user })?.id,
+                    sending: isAsking, motionOn: motionOn) { jump in
+                    TranscriptBottomButton(palette: palette, lang: prefs.lang, action: jump)
+                } content: { transcriptContent }
+                .contentShape(Rectangle())
+                .dismissesKeyboardOnTap()
             }
         }
+            }
+    }
+
+    private var transcriptContent: some View {
+        return WithPerceptionTracking {
+        LazyVStack(alignment: .leading, spacing: 22) {
+            if messages.isEmpty && !isAsking { hero }
+            ForEach(messages) { message in
+                WithPerceptionTracking {
+row(for: message)
+                    .id(message.id)
+                    .legacyTranscriptRowAnchor(message.id)
+
+                }}
+            if isAsking { liveTurn.legacyTranscriptRowAnchor("brain-live-turn") }
+            Color.clear.frame(height: 1).id(Self.tailAnchor)
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .readingColumn(prefs.contentWidth)
+            }
     }
 
     // MARK: - Data
@@ -116,21 +83,11 @@ struct BrainThreadView: View {
 
     private var motionOn: Bool { FirasMotion.isOn(prefs: prefs, reduceMotion: reduceMotion) }
 
-    private func scrollToTail(animated: Bool) {
-        guard followsTail else { return }
-        if animated && motionOn {
-            withAnimation(.easeOut(duration: 0.3)) {
-                scrollPosition.scrollTo(edge: .bottom)
-            }
-        } else {
-            scrollPosition.scrollTo(edge: .bottom)
-        }
-    }
-
     // MARK: - Rows
 
     @ViewBuilder
     private func row(for message: ChatMessage) -> some View {
+        return WithPerceptionTracking {
         switch message.role {
         case .user:
             BrainQuestionBubble(
@@ -152,6 +109,7 @@ struct BrainThreadView: View {
         case .system, .unknown:
             EmptyView()
         }
+            }
     }
 
     private func language(of message: ChatMessage) -> AppLanguage {
@@ -163,6 +121,7 @@ struct BrainThreadView: View {
 
     @ViewBuilder
     private var liveTurn: some View {
+        return WithPerceptionTracking {
         VStack(alignment: .leading, spacing: 12) {
             if let notice = store.pendingNotice, !notice.isEmpty {
                 FirasActivityLabel(text: notice, palette: palette, motionOn: motionOn)
@@ -187,11 +146,13 @@ struct BrainThreadView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+            }
     }
 
     // MARK: - Hero
 
     private var hero: some View {
+        return WithPerceptionTracking {
         VStack(spacing: 14) {
             Image(systemName: "brain")
                 .font(.system(size: 34, weight: .light))
@@ -206,6 +167,7 @@ struct BrainThreadView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 48)
+            }
     }
 }
 
@@ -222,6 +184,7 @@ private struct BrainQuestionBubble: View {
     @State private var expanded = false
 
     var body: some View {
+        return WithPerceptionTracking {
         VStack(alignment: .trailing, spacing: 6) {
             Text(text)
                 .font(.system(size: 16))
@@ -257,12 +220,13 @@ private struct BrainQuestionBubble: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
+            }
     }
 
     /// 20 pt corners with the bottom-trailing one at 7 (`design-brief.md §2.5`); the leading and
     /// trailing sides follow the layout direction, so the bubble flips with the language.
-    private static var bubbleShape: UnevenRoundedRectangle {
-        UnevenRoundedRectangle(
+    private static var bubbleShape: FirasUnevenRoundedRectangle {
+        FirasUnevenRoundedRectangle(
             topLeadingRadius: 20,
             bottomLeadingRadius: 20,
             bottomTrailingRadius: 7,

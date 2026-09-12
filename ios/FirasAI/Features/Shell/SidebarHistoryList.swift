@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The conversation history, filtered to the product on screen (`web-chat-ux.md §11`,
 /// `design-brief.md §7.2`).
@@ -31,8 +32,10 @@ struct SidebarHistoryList: View {
     private var lang: AppLanguage { env.prefs.lang }
 
     var body: some View {
-        content
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        WithPerceptionTracking {
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
     }
 
     @ViewBuilder
@@ -44,7 +47,7 @@ struct SidebarHistoryList: View {
                 Placeholder(env: env, query: query, pinnedOnly: false)
                     .padding(.top, 24)
             }
-            .scrollBounceBehavior(.basedOnSize)
+            .firasScrollBounceBehavior(.basedOnSize)
         } else {
             list(SidebarHistoryList.buckets(of: visible), trimmed: visible.count < all.count)
         }
@@ -68,40 +71,46 @@ struct SidebarHistoryList: View {
 
     private func list(_ sections: [Bucket], trimmed: Bool) -> some View {
         List {
-            ForEach(sections) { bucket in
-                Section {
-                    ForEach(bucket.rows) { row in
-                        Row(env: env, summary: row, style: .compact)
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 1, leading: 8, bottom: 1, trailing: 8))
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                SidebarHistoryList.pinButton(env: env, summary: row)
+            WithPerceptionTracking {
+                ForEach(sections) { bucket in
+                    WithPerceptionTracking {
+                        Section {
+                            ForEach(bucket.rows) { row in
+                                WithPerceptionTracking {
+                                    Row(env: env, summary: row, style: .compact)
+                                        .listRowBackground(Color.clear)
+                                        .listRowSeparator(.hidden)
+                                        .listRowInsets(EdgeInsets(top: 1, leading: 8, bottom: 1, trailing: 8))
+                                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                            SidebarHistoryList.pinButton(env: env, summary: row)
+                                        }
+                                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                            SidebarHistoryList.deleteButton(env: env, summary: row)
+                                        }
+                                }
                             }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                SidebarHistoryList.deleteButton(env: env, summary: row)
-                            }
+                        } header: {
+                            Text(bucket.title.text(lang))
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(palette.textMuted)
+                                .textCase(nil)
+                        }
                     }
-                } header: {
-                    Text(bucket.title.text(lang))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(palette.textMuted)
-                        .textCase(nil)
                 }
-            }
 
-            /* The way out of the ten. Only when there is genuinely more to see — a row that opens a
-               page listing the same ten would be a lie. */
-            if trimmed {
-                allChatsRow
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 10, trailing: 8))
+                /* The way out of the ten. Only when there is genuinely more to see — a row that opens a
+                   page listing the same ten would be a lie. */
+                if trimmed {
+                    allChatsRow
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 10, trailing: 8))
+                }
             }
         }
         .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .scrollIndicators(.hidden)
+        .firasScrollContentBackground(.hidden)
+        .firasScrollIndicators(.hidden)
         .environment(\.defaultMinListRowHeight, 40)
     }
 

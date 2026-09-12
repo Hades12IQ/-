@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000041 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000040 /* ZIPFoundation */; };
+		A10000000000000000000044 /* Perception in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000043 /* Perception */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +47,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000041 /* ZIPFoundation in Frameworks */,
+				A10000000000000000000044 /* Perception in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -89,6 +91,7 @@
 			name = FirasAI;
 			packageProductDependencies = (
 				A10000000000000000000040 /* ZIPFoundation */,
+				A10000000000000000000043 /* Perception */,
 			);
 			productName = FirasAI;
 			productReference = A10000000000000000000001 /* FirasAI.app */;
@@ -123,6 +126,7 @@
 			productRefGroup = A10000000000000000000006 /* Products */;
 			packageReferences = (
 				A10000000000000000000042 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+				A10000000000000000000045 /* XCRemoteSwiftPackageReference "swift-perception" */,
 			);
 			projectDirPath = "";
 			projectRoot = "";
@@ -277,7 +281,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FirasAI/Resources/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -307,7 +311,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FirasAI/Resources/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -349,6 +353,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		A10000000000000000000045 /* XCRemoteSwiftPackageReference "swift-perception" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-perception.git";
+			requirement = {
+				kind = exactVersion;
+				version = 2.0.10;
+			};
+		};
 		A10000000000000000000042 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
@@ -360,6 +372,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		A10000000000000000000043 /* Perception */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000000000000000000045 /* XCRemoteSwiftPackageReference "swift-perception" */;
+			productName = Perception;
+		};
 		A10000000000000000000040 /* ZIPFoundation */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A10000000000000000000042 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 
 /// The call orb: one `Canvas` pass driven by the audio level, no glass, no halo outside the
 /// circle (`design-brief.md §3.1, §7.13`).
@@ -35,17 +36,21 @@ struct OrbView: View {
     }
 
     var body: some View {
-        Group {
-            if motionOn {
-                TimelineView(.animation) { timeline in
-                    canvas(now: timeline.date.timeIntervalSinceReferenceDate)
+        WithPerceptionTracking {
+            Group {
+                if motionOn {
+                    TimelineView(.animation) { timeline in
+                        WithPerceptionTracking {
+                            canvas(now: timeline.date.timeIntervalSinceReferenceDate)
+                        }
+                    }
+                } else {
+                    canvas(now: 0)
                 }
-            } else {
-                canvas(now: 0)
             }
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
         }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
     }
 
     // MARK: - Canvas

@@ -2,6 +2,7 @@
 import Foundation
 import PDFKit
 import SwiftUI
+import Perception
 import UIKit
 
 /// Local, unauthenticated simulator evidence. Only reachable with --reliability-smoke in DEBUG.
@@ -13,23 +14,18 @@ struct ReliabilitySmokeView: View {
     @State private var showMath = false
     @State private var liveSource = ""
     @State private var liveFinished = false
+    @State private var showLegacyScroll = false
+    @State private var legacyScrollFailures: [String]?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("Firas AI · Reliability").font(.headline)
-                Text(status).font(.caption).foregroundStyle(env.prefs.palette.textMuted)
-                if showMath {
-                    StreamingText(text: liveSource, isStreaming: !liveFinished, motionOn: true,
-                        identity: "live-math-smoke") { shown in
-                        MarkdownView(markdown: shown, messageID: "live-math-smoke", streaming: !liveFinished,
-                            lang: .arabic, palette: env.prefs.palette, prefs: env.prefs, onFence: { _ in nil })
-                    }
-                    MarkdownView(markdown: Self.sample, messageID: "reliability-smoke", streaming: false,
-                        lang: .arabic, palette: env.prefs.palette, prefs: env.prefs, onFence: { _ in nil })
+        return WithPerceptionTracking {
+        Group {
+            if showLegacyScroll {
+                VStack(spacing: 12) {
+                    Text("Native legacy transcript scrolling").font(.headline)
+                    LegacyTranscriptScrollSmokeView { failures in legacyScrollFailures = failures }
                 }
-            }
-            .padding(20)
+            } else { mathSurface }
         }
         .background(env.prefs.palette.background)
         .foregroundStyle(env.prefs.palette.textPrimary)
@@ -37,12 +33,34 @@ struct ReliabilitySmokeView: View {
         .onAppear {
             guard !ran else { return }
             ran = true
-            // The fixture intentionally presents full-screen viewers. SwiftUI may cancel a
-            // view-bound .task while that viewer covers this screen; cancellation would make
-            // JobClock.rest return immediately and starve the later mounted math checks.
-            // This DEBUG-only runner lives until its report completes across those presentations.
+            // Full-screen viewers can cancel a view-bound task. This runner remains alive until
+            // the report finishes, including the mounted math and legacy scroll checks.
             Task { @MainActor in await run() }
         }
+            }
+    }
+
+    private var mathSurface: some View {
+        return WithPerceptionTracking {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Firas AI · Reliability").font(.headline)
+                Text(status).font(.caption).foregroundStyle(env.prefs.palette.textMuted)
+                if showMath {
+                    StreamingText(text: liveSource, isStreaming: !liveFinished, motionOn: true,
+                        identity: "live-math-smoke") { shown in
+                        WithPerceptionTracking {
+MarkdownView(markdown: shown, messageID: "live-math-smoke", streaming: !liveFinished,
+                            lang: .arabic, palette: env.prefs.palette, prefs: env.prefs, onFence: { _ in nil })
+
+                }}
+                    MarkdownView(markdown: Self.sample, messageID: "reliability-smoke", streaming: false,
+                        lang: .arabic, palette: env.prefs.palette, prefs: env.prefs, onFence: { _ in nil })
+                }
+            }
+            .padding(20)
+        }
+            }
     }
 
     private static let sample = #"""
@@ -133,6 +151,8 @@ struct ReliabilitySmokeView: View {
         var errors = ChatReliabilityChecks.failures()
         errors += await NetworkReliabilityChecks.run()
         errors += await CodeReliabilityChecks.failures()
+        errors += FirasGrowingInputReliabilityChecks.failures()
+        errors += FirasCompatibilityReliabilityChecks.failures()
         var report: [String: Any] = [:]
         errors += MathScannerReliabilityChecks.failures()
         errors += DocumentRevisionChecks.failures()
@@ -151,6 +171,7 @@ struct ReliabilitySmokeView: View {
         let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         do { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
         catch { errors.append("Could not create smoke output directory") }
+        errors += FirasViewRendererChecks.run(directory: directory)
         let viewerChecks = await MediaViewerReliabilityChecks.run(env: env)
         errors += viewerChecks.failures
         report["mediaViewer"] = viewerChecks.metrics
@@ -177,8 +198,16 @@ struct ReliabilitySmokeView: View {
         let coordinator = FirasSelectableText.Coordinator()
         coordinator.selection = selection
         coordinator.lang = .arabic
-        let menu = coordinator.textView(selectable, editMenuForTextIn: wordRange, suggestedActions: [])
-        let hasAskAction = menu?.children.contains { ($0 as? UIAction)?.title == "اسأل فِراس" } == true
+        let hasAskAction: Bool
+        if #available(iOS 16.0, *), !FirasCompatibility.forceLegacyUI {
+            let menu = coordinator.textView(selectable, editMenuForTextIn: wordRange, suggestedActions: [])
+            hasAskAction = menu?.children.contains { ($0 as? UIAction)?.title == "اسأل فِراس" } == true
+        } else {
+            selectable.configureLegacyAskFiras(title: "اسأل فِراس", action: { selection.ask($0) })
+            hasAskAction = selectable.canAskSelectedText
+            selectable.askFirasSelection(nil)
+            if selection.request?.text != selectedWord { errors.append("Legacy Ask Firas lost its selected-word action") }
+        }
         if !hasAskAction { errors.append("Native selection menu is missing Ask Firas") }
         selection.ask(selectedWord)
         if selection.request?.text != selectedWord { errors.append("Ask Firas lost the selected quotation") }
@@ -189,6 +218,14 @@ struct ReliabilitySmokeView: View {
         if selectable.selectedPlainText(NSRange(location: 0, length: attachmentText.length)) != "القيمة x²" {
             errors.append("Copy lost the mathematical attachment's text")
         }
+        var legacyMathQuote: String?
+        selectable.selectedRange = NSRange(location: 0, length: attachmentText.length)
+        selectable.configureLegacyAskFiras(title: "اسأل فِراس", action: { legacyMathQuote = $0 })
+        selectable.askFirasSelection(nil)
+        if legacyMathQuote != "القيمة x²" { errors.append("Legacy Ask Firas lost its mathematical attachment") }
+        selectable.selectedRange = NSRange(location: 0, length: 0)
+        if selectable.canAskSelectedText { errors.append("Legacy Ask Firas accepted an empty selection") }
+        selectable.configureLegacyAskFiras(title: nil, action: nil)
         report["nativeWordSelection"] = selectedWord == "مختارة"
         report["nativeAskMenu"] = hasAskAction
 
@@ -291,6 +328,17 @@ struct ReliabilitySmokeView: View {
         errors += cardChecks.failures
         report["fileCardExport"] = cardChecks.metrics
         report["fileCardExportDiagnostics"] = cardChecks.diagnostics
+        showLegacyScroll = true
+        let scrollDeadline = ProcessInfo.processInfo.systemUptime + 60
+        while legacyScrollFailures == nil, ProcessInfo.processInfo.systemUptime < scrollDeadline {
+            await JobClock.rest(0.1)
+        }
+        let scrollFailures = legacyScrollFailures ?? ["Mounted legacy scroll fixture did not finish"]
+        errors += scrollFailures
+        report["legacyTranscriptScroll"] = ["mounted": legacyScrollFailures != nil, "errors": scrollFailures]
+        report["forcedLegacyUI"] = FirasCompatibility.forceLegacyUI
+        saveScreen(directory.appendingPathComponent("legacy-transcript-scroll.png"))
+        showLegacyScroll = false
         report["mathIslandFinal"] = MathIsland.shared.reliabilityDiagnostics()
         report["status"] = errors.isEmpty ? "passed" : "failed"
         report["errors"] = errors

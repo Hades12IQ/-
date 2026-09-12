@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// `[MDBlock]` → SwiftUI. The document view of an answer: no bubble, no glass, one bidi island per
 /// block so an English heading inside an Arabic reply does not drag the paragraph around with it.
@@ -58,7 +59,9 @@ struct MarkdownView: View {
     }
 
     var body: some View {
-        content
+        WithPerceptionTracking {
+            content
+        }
     }
 
     private var content: some View {
@@ -100,13 +103,15 @@ struct MarkdownView: View {
 
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(rows) { row in
-                MarkdownBlockRow(
-                    block: row.block,
-                    style: style,
-                    isFirst: row.id == rows.first?.id,
-                    showsCaret: streaming && row.id == rows.last?.id,
-                    onFence: onFence
-                )
+                WithPerceptionTracking {
+                    MarkdownBlockRow(
+                        block: row.block,
+                        style: style,
+                        isFirst: row.id == rows.first?.id,
+                        showsCaret: streaming && row.id == rows.last?.id,
+                        onFence: onFence
+                    )
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -163,9 +168,11 @@ private struct MarkdownBlockRow: View {
     let onFence: (FirasFence) -> AnyView?
 
     var body: some View {
-        blockBody
-            .padding(.top, isFirst ? 0 : topSpacing)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        WithPerceptionTracking {
+            blockBody
+                .padding(.top, isFirst ? 0 : topSpacing)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private var topSpacing: CGFloat {
@@ -327,23 +334,27 @@ private struct MarkdownBlockRow: View {
     private func listBlock(ordered: Bool, start: Int, items: [[MDBlock]]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(items.indices), id: \.self) { index in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(marker(ordered: ordered, start: start, index: index))
-                        .font(style.font)
-                        .monospacedDigit()
-                        .foregroundStyle(style.palette.textMuted)
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(Array(items[index].indices), id: \.self) { inner in
-                            MarkdownBlockRow(
-                                block: items[index][inner],
-                                style: style,
-                                isFirst: true,
-                                showsCaret: false,
-                                onFence: onFence
-                            )
+                WithPerceptionTracking {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(marker(ordered: ordered, start: start, index: index))
+                            .font(style.font)
+                            .monospacedDigit()
+                            .foregroundStyle(style.palette.textMuted)
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(Array(items[index].indices), id: \.self) { inner in
+                                WithPerceptionTracking {
+                                    MarkdownBlockRow(
+                                        block: items[index][inner],
+                                        style: style,
+                                        isFirst: true,
+                                        showsCaret: false,
+                                        onFence: onFence
+                                    )
+                                }
+                            }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
@@ -362,13 +373,15 @@ private struct MarkdownBlockRow: View {
                 .frame(width: 2)
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(Array(blocks.indices), id: \.self) { index in
-                    MarkdownBlockRow(
-                        block: blocks[index],
-                        style: style,
-                        isFirst: true,
-                        showsCaret: false,
-                        onFence: onFence
-                    )
+                    WithPerceptionTracking {
+                        MarkdownBlockRow(
+                            block: blocks[index],
+                            style: style,
+                            isFirst: true,
+                            showsCaret: false,
+                            onFence: onFence
+                        )
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -486,16 +499,18 @@ private struct StreamCaret: View {
     @State private var dim = false
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 1, style: .continuous)
-            .fill(palette.accent)
-            .frame(width: 2, height: 16)
-            .opacity(dim ? 0.2 : 1)
-            .onAppear {
-                guard motionOn else { return }
-                withAnimation(.easeInOut(duration: 0.65).repeatForever(autoreverses: true)) {
-                    dim = true
+        WithPerceptionTracking {
+            RoundedRectangle(cornerRadius: 1, style: .continuous)
+                .fill(palette.accent)
+                .frame(width: 2, height: 16)
+                .opacity(dim ? 0.2 : 1)
+                .onAppear {
+                    guard motionOn else { return }
+                    withAnimation(.easeInOut(duration: 0.65).repeatForever(autoreverses: true)) {
+                        dim = true
+                    }
                 }
-            }
-            .accessibilityHidden(true)
+                .accessibilityHidden(true)
+        }
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The composer's character / token read-out (`web-chat-ux.md §7.1`, `design-brief.md §7.3`).
 ///
@@ -35,28 +36,30 @@ struct LengthMeter: View {
     }
 
     var body: some View {
-        if text.count >= Self.showAt {
-            Button(action: onExplain) {
-                HStack(spacing: 6) {
-                    Text(charactersLabel)
-                    Text(verbatim: "·")
-                        .foregroundStyle(palette.textMuted)
-                    Text(tokensLabel)
-                    if let warning {
+        WithPerceptionTracking {
+            if text.count >= Self.showAt {
+                Button(action: onExplain) {
+                    HStack(spacing: 6) {
+                        Text(charactersLabel)
                         Text(verbatim: "·")
                             .foregroundStyle(palette.textMuted)
-                        Text(warning)
-                            .fontWeight(.medium)
+                        Text(tokensLabel)
+                        if let warning {
+                            Text(verbatim: "·")
+                                .foregroundStyle(palette.textMuted)
+                            Text(warning)
+                                .fontWeight(.medium)
+                        }
                     }
+                    .font(.system(size: 11))
+                    .foregroundStyle(tint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .contentShape(Rectangle())
                 }
-                .font(.system(size: 11))
-                .foregroundStyle(tint)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(accessibilityLabel))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(accessibilityLabel))
         }
     }
 

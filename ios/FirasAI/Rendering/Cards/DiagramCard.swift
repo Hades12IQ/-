@@ -1,5 +1,6 @@
 import Photos
 import SwiftUI
+import Perception
 import UIKit
 
 /// The card a drawing lives in: a titled surface, the figure, and the four things a reader wants to
@@ -46,23 +47,29 @@ struct DiagramCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            head
-            divider
-            stage
-            divider
-            actions
-        }
-        .surfaceCard(palette)
-        .frame(maxWidth: DiagramCard.maximumWidth, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .onAppear { isOnScreen = true }
-        .onDisappear { isOnScreen = false }
-        .fullScreenCover(isPresented: $isFullScreen) {
-            DiagramFullScreenView(spec: spec, palette: palette, lang: lang, motionOn: motionOn)
-        }
-        .sheet(isPresented: $isSharing) {
-            DiagramShareSheet(items: shareImage.map { [$0] } ?? [])
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 0) {
+                head
+                divider
+                stage
+                divider
+                actions
+            }
+            .surfaceCard(palette)
+            .frame(maxWidth: DiagramCard.maximumWidth, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onAppear { isOnScreen = true }
+            .onDisappear { isOnScreen = false }
+            .fullScreenCover(isPresented: $isFullScreen) {
+                WithPerceptionTracking {
+                    DiagramFullScreenView(spec: spec, palette: palette, lang: lang, motionOn: motionOn)
+                }
+            }
+            .sheet(isPresented: $isSharing) {
+                WithPerceptionTracking {
+                    DiagramShareSheet(items: shareImage.map { [$0] } ?? [])
+                }
+            }
         }
     }
 

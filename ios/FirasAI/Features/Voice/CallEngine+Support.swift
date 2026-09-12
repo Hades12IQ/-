@@ -12,11 +12,21 @@ extension CallEngine {
     /// Asked in its own step, before the session is configured and before anything is minted — a
     /// refused call must not have cut the caller's music first.
     nonisolated static func requestMicrophonePermission() async -> Bool {
-        if AVAudioApplication.shared.recordPermission == .granted { return true }
-        return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            AVAudioApplication.requestRecordPermission(completionHandler: { granted in
-                continuation.resume(returning: granted)
-            })
+        if #available(iOS 17, *) {
+            if AVAudioApplication.shared.recordPermission == .granted { return true }
+            return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                AVAudioApplication.requestRecordPermission(completionHandler: { granted in
+                    continuation.resume(returning: granted)
+                })
+            }
+        } else {
+            let session = AVAudioSession.sharedInstance()
+            if session.recordPermission == .granted { return true }
+            return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                session.requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
+            }
         }
     }
 

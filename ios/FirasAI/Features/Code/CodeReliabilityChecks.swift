@@ -7,6 +7,9 @@ import Foundation
 enum CodeReliabilityChecks {
     static func failures() async -> [String] {
         var failures: [String] = []
+        failures += await CodeOmnixImportChecks.run()
+        failures += await CodeEditServiceChecks.run()
+        failures += CodeModelSelectionChecks.run()
         func check(_ condition: Bool, _ label: String) {
             if !condition { failures.append("Code: " + label) }
         }

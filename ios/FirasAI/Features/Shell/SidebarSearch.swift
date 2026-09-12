@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The drawer's search field (`web-chat-ux.md §11`).
 ///
@@ -24,49 +25,51 @@ struct SidebarSearch: View {
     private var signals: ShellSignals { ShellSignals.shared }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(palette.textMuted)
-                .accessibilityHidden(true)
-
-            TextField(text: $query) {
-                Text(Strings.Shell.searchPlaceholder(lang))
+        WithPerceptionTracking {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(palette.textMuted)
-            }
-            .textFieldStyle(.plain)
-            .font(.system(size: 15))
-            .foregroundStyle(palette.textPrimary)
-            .submitLabel(.search)
-            .autocorrectionDisabled(true)
-            .textInputAutocapitalization(.never)
-            .focused($focused)
-            .accessibilityLabel(Text(Strings.Shell.searchPlaceholder(lang)))
+                    .accessibilityHidden(true)
 
-            if !query.isEmpty {
-                Button {
-                    query = ""
-                    focused = false
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
+                TextField(text: $query) {
+                    Text(Strings.Shell.searchPlaceholder(lang))
                         .foregroundStyle(palette.textMuted)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text(Strings.Shell.searchClear(lang)))
+                .textFieldStyle(.plain)
+                .font(.system(size: 15))
+                .foregroundStyle(palette.textPrimary)
+                .submitLabel(.search)
+                .disableAutocorrection(true)
+                .textInputAutocapitalization(.never)
+                .focused($focused)
+                .accessibilityLabel(Text(Strings.Shell.searchPlaceholder(lang)))
+
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                        focused = false
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(palette.textMuted)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(Strings.Shell.searchClear(lang)))
+                }
             }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 38)
+            .background {
+                Capsule(style: .continuous).fill(palette.surfaceSunken)
+            }
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(focused ? palette.accentRing : palette.border, lineWidth: 1)
+            }
+            .onAppear { consumeFocusRequest() }
+            .firasOnChange(of: signals.wantsSearchFocus) { _, _ in consumeFocusRequest() }
         }
-        .padding(.horizontal, 12)
-        .frame(minHeight: 38)
-        .background {
-            Capsule(style: .continuous).fill(palette.surfaceSunken)
-        }
-        .overlay {
-            Capsule(style: .continuous)
-                .strokeBorder(focused ? palette.accentRing : palette.border, lineWidth: 1)
-        }
-        .onAppear { consumeFocusRequest() }
-        .onChange(of: signals.wantsSearchFocus) { _, _ in consumeFocusRequest() }
     }
 
     private func consumeFocusRequest() {

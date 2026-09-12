@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The five products, as five rows (`web-chat-ux.md §2`, `design-brief.md §7.2`).
 ///
@@ -21,18 +22,22 @@ struct SidebarProductSwitcher: View {
     private var motionOn: Bool { FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion) }
 
     var body: some View {
-        VStack(spacing: 2) {
-            /* NO STUDIO ROW. The owner asked twice: "الستوديو شنو هذا ما اريده، اني اريد
-               الصنع بس يكون داخل فراس جات". A picture, a video and a song are things you ask for in the
-               conversation, and they come back in it; a separate destination for them was a second
-               place to look for one feature. The product itself still exists so a deep link and the
-               media viewer keep working — it just is not a place you navigate to on purpose. */
-            ForEach(ProductKind.allCases.filter { $0 != .studio }) { product in
-                row(for: product)
+        WithPerceptionTracking {
+            VStack(spacing: 2) {
+                /* NO STUDIO ROW. The owner asked twice: "الستوديو شنو هذا ما اريده، اني اريد
+                   الصنع بس يكون داخل فراس جات". A picture, a video and a song are things you ask for in the
+                   conversation, and they come back in it; a separate destination for them was a second
+                   place to look for one feature. The product itself still exists so a deep link and the
+                   media viewer keep working — it just is not a place you navigate to on purpose. */
+                ForEach(ProductKind.allCases.filter { $0 != .studio }) { product in
+                    WithPerceptionTracking {
+                        row(for: product)
+                    }
+                }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(Strings.Shell.productsHeader(lang)))
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text(Strings.Shell.productsHeader(lang)))
     }
 
     // MARK: - Row

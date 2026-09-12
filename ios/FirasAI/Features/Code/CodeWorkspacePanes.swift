@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 
 // The panes `CodeWorkspaceView` asks for by name. They are thin: every behaviour lives in
 // `PreviewWebView`, `ConsoleView`, `CodeAIBar` and `DiffReviewSheet`; these types only fix the
@@ -22,7 +23,10 @@ struct CodeWorkspacePreview: View {
     }
 
     var body: some View {
-        PreviewWebView(env: env, reloadToken: reloadToken)
+        WithPerceptionTracking {
+            PreviewWebView(env: env, reloadToken: reloadToken)
+
+            }
     }
 }
 
@@ -38,7 +42,10 @@ struct CodeWorkspaceConsole: View {
     }
 
     var body: some View {
-        ConsoleView(env: env, onFix: onFix)
+        WithPerceptionTracking {
+            ConsoleView(env: env, onFix: onFix)
+
+            }
     }
 }
 
@@ -56,7 +63,10 @@ struct CodeWorkspaceAssistant: View {
     }
 
     var body: some View {
-        CodeAIBar(env: env, prefill: $prefill, onPlan: onPlan)
+        WithPerceptionTracking {
+            CodeAIBar(env: env, prefill: $prefill, onPlan: onPlan)
+
+            }
     }
 }
 
@@ -73,7 +83,10 @@ struct CodeWorkspaceDiffReview: View {
     }
 
     var body: some View {
-        DiffReviewSheet(env: env, plan: plan, onClose: onClose)
+        WithPerceptionTracking {
+            DiffReviewSheet(env: env, plan: plan, onClose: onClose)
+
+            }
     }
 }
 
@@ -88,10 +101,6 @@ struct CodeSessionThread: View {
     private let env: AppEnvironment
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var position = ScrollPosition(edge: .bottom)
-    @State private var nearBottom = true
-    @State private var followsLatest = true
-
     init(env: AppEnvironment) {
         self.env = env
     }
@@ -103,64 +112,46 @@ struct CodeSessionThread: View {
     private var motionOn: Bool { FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion) }
 
     var body: some View {
-        if turns.isEmpty && !env.code.isAsking {
-            emptyState
-        } else {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(turns) { turn in
-                        turnRow(turn).id(turn.id)
+        WithPerceptionTracking {
+            if turns.isEmpty && !env.code.isAsking {
+                emptyState
+            } else {
+                Group {
+                    if #available(iOS 18.0, *), !TranscriptScrollCompatibility.forceLegacy {
+                        ModernCodeTranscriptScroll(latestUserID: turns.last(where: { $0.role == "user" })?.id,
+                            latestTurnID: turns.last?.id, palette: palette, lang: lang, motionOn: motionOn,
+                            content: transcriptContent)
+                    } else {
+                        LegacyTranscriptScroll(identity: env.code.openProjectID ?? "code-empty",
+                            latestUserID: turns.last(where: { $0.role == "user" })?.id, motionOn: motionOn,
+                            pinnedThreshold: 90, chipThreshold: 90) { jump in
+                            CodeTranscriptJumpButton(palette: palette, lang: lang, action: jump)
+                        } content: { transcriptContent }
+                        .dismissesKeyboardOnTap()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    if env.code.isAsking { pendingRow }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .padding(.bottom, 16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .dismissesKeyboardOnTap()
-            .scrollPosition($position)
-            .defaultScrollAnchor(.bottom, for: .initialOffset)
-            .defaultScrollAnchor(.top, for: .alignment)
-            .scrollDismissesKeyboard(.interactively)
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentSize.height - geometry.visibleRect.maxY < 90
-            } action: { _, isNear in
-                nearBottom = isNear
-            }
-            .onScrollPhaseChange { _, phase in
-                if phase == .interacting { followsLatest = false }
-                if phase == .idle { followsLatest = nearBottom }
-            }
-            .onScrollGeometryChange(for: CGSize.self) { geometry in
-                // Track layout changes as well as turns: dismissing a keyboard
-                // and typesetting a formula both change the reachable bottom.
-                CGSize(width: geometry.containerSize.height, height: geometry.contentSize.height)
-            } action: { _, _ in
-                if followsLatest { position.scrollTo(edge: .bottom) }
-            }
-            .onChange(of: turns.last(where: { $0.role == "user" })?.id) { _, _ in
-                scrollToLatest()
-            }
-            .onChange(of: turns.last?.id) { _, _ in
-                if followsLatest { position.scrollTo(edge: .bottom) }
-            }
-            .overlay(alignment: .bottom) {
-                if !nearBottom {
-                    Button(action: scrollToLatest) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(palette.textSecondary)
-                            .frame(width: 44, height: 44)
-                            .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.bottom, 10)
-                    .accessibilityLabel(Text(Strings.Chat.scrollToBottom(lang)))
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+
+            }
+    }
+
+    private var transcriptContent: some View {
+        WithPerceptionTracking {
+            LazyVStack(alignment: .leading, spacing: 12) {
+                ForEach(turns) { turn in
+                    WithPerceptionTracking {
+                        turnRow(turn).id(turn.id).legacyTranscriptRowAnchor(turn.id)
+
+                        }
+                }
+                if env.code.isAsking { pendingRow.legacyTranscriptRowAnchor("code-pending-row") }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            }
     }
 
     // MARK: Empty
@@ -187,14 +178,6 @@ struct CodeSessionThread: View {
         .dismissesKeyboardOnTap()
     }
 
-    private func scrollToLatest() {
-        Keyboard.dismiss()
-        followsLatest = true
-        withAnimation(motionOn ? .smooth(duration: 0.32) : nil) {
-            position.scrollTo(edge: .bottom)
-        }
-    }
-
     // MARK: Turns
 
     @ViewBuilder
@@ -215,6 +198,10 @@ struct CodeSessionThread: View {
                     .frame(maxWidth: 544, alignment: .trailing)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
+        } else if let receipt = turn.omnix {
+            CodeOmnixRunView(turn: turn, receipt: receipt, env: env)
+        } else if let receipt = turn.edit {
+            CodeEditRunView(turn: turn, receipt: receipt, env: env)
         } else {
             assistantRow(turn)
         }
@@ -275,11 +262,14 @@ struct CodeSessionThread: View {
             )
             if let started = env.code.askStartedAt {
                 TimelineView(.periodic(from: started, by: 1)) { context in
+                    WithPerceptionTracking {
                     let seconds = max(0, Int(context.date.timeIntervalSince(started)))
                     Text(verbatim: Strings.CodeUI.aiWorkingFor.fmt(lang, ArabicText.count(seconds, lang)))
                         .font(FirasType.scaled(12, scale: scale))
                         .foregroundStyle(palette.textMuted)
                         .lineLimit(1)
+
+                    }
                 }
             }
         }

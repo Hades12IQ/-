@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Perception
 import OSLog
 
 /// Firas Agent missions.
@@ -12,7 +12,7 @@ import OSLog
 ///
 /// Contract: `server-agent.md §3–§5, §10, §12`, `web-agent-ux.md §2, §3, §5, §6, §9, §14, §15`.
 @MainActor
-@Observable
+@Perceptible
 final class AgentStore: JobObserver {
 
     // MARK: - Published state
@@ -52,14 +52,14 @@ final class AgentStore: JobObserver {
 
     // MARK: - Dependencies
 
-    @ObservationIgnored let api: APIClient
-    @ObservationIgnored let session: SessionStore
-    @ObservationIgnored let jobs: JobManager
-    @ObservationIgnored let chat: ChatStore
-    @ObservationIgnored let prefs: PreferencesStore
-    @ObservationIgnored let toasts: ToastCenter
-    @ObservationIgnored let router: Router
-    @ObservationIgnored private var artifactCache: [String: URL] = [:]
+    @PerceptionIgnored let api: APIClient
+    @PerceptionIgnored let session: SessionStore
+    @PerceptionIgnored let jobs: JobManager
+    @PerceptionIgnored let chat: ChatStore
+    @PerceptionIgnored let prefs: PreferencesStore
+    @PerceptionIgnored let toasts: ToastCenter
+    @PerceptionIgnored let router: Router
+    @PerceptionIgnored private var artifactCache: [String: URL] = [:]
 
     init(
         api: APIClient,

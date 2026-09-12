@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The recording row that replaces the composer's control row while dictation runs
 /// (`design-brief.md §7.14`, `web-voice-call-mic.md §7.1`).
@@ -47,30 +48,32 @@ struct DictationBar: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if showsLiveText {
-                liveText
-            }
-            HStack(spacing: 10) {
-                cancelButton
-                if isTranscribing {
-                    transcribingBody
-                } else {
-                    recordingBody
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 6) {
+                if showsLiveText {
+                    liveText
                 }
-                doneButton
+                HStack(spacing: 10) {
+                    cancelButton
+                    if isTranscribing {
+                        transcribingBody
+                    } else {
+                        recordingBody
+                    }
+                    doneButton
+                }
+                .frame(minHeight: 44)
             }
-            .frame(minHeight: 44)
+            .padding(.horizontal, 4)
+            .firasOnChange(of: dictation.level) { _, newValue in
+                push(level: newValue)
+            }
+            .animation(
+                FirasMotion.gated(FirasMotion.standard, motionOn: motionOn),
+                value: showsLiveText
+            )
+            .accessibilityElement(children: .contain)
         }
-        .padding(.horizontal, 4)
-        .onChange(of: dictation.level) { _, newValue in
-            push(level: newValue)
-        }
-        .animation(
-            FirasMotion.gated(FirasMotion.standard, motionOn: motionOn),
-            value: showsLiveText
-        )
-        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Pieces
@@ -144,9 +147,11 @@ struct DictationBar: View {
     private var waveform: some View {
         HStack(alignment: .center, spacing: 2) {
             ForEach(bars.indices, id: \.self) { index in
-                Capsule(style: .continuous)
-                    .fill(palette.accent.opacity(0.85))
-                    .frame(width: 2, height: max(3, bars[index] * 22))
+                WithPerceptionTracking {
+                    Capsule(style: .continuous)
+                        .fill(palette.accent.opacity(0.85))
+                        .frame(width: 2, height: max(3, bars[index] * 22))
+                }
             }
         }
         .frame(height: 22)

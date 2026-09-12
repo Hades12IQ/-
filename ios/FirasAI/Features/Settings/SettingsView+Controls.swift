@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 // Buttons, fields, notices and the page shell every Settings page ends up using. Split from
 // `SettingsView+Components.swift` only to keep both files readable.
@@ -39,31 +40,33 @@ struct SettingsSubmitButton: View {
     }
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                if isWorking {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(foreground)
-                } else if let symbol {
-                    Image(systemName: symbol)
-                        .font(.system(size: 14, weight: .semibold))
+        WithPerceptionTracking {
+            Button(action: action) {
+                HStack(spacing: 8) {
+                    if isWorking {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(foreground)
+                    } else if let symbol {
+                        Image(systemName: symbol)
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                .foregroundStyle(foreground)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 44)
+                .background { background }
+                .overlay { border }
+                .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .foregroundStyle(foreground)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 44)
-            .background { background }
-            .overlay { border }
-            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .buttonStyle(.plain)
+            .disabled(isDisabled || isWorking)
+            .opacity(isDisabled ? 0.5 : 1)
         }
-        .buttonStyle(.plain)
-        .disabled(isDisabled || isWorking)
-        .opacity(isDisabled ? 0.5 : 1)
     }
 
     private var accentColor: Color { destructive ? palette.error : palette.accent }
@@ -114,27 +117,29 @@ struct SettingsField: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(palette.textSecondary)
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(palette.textSecondary)
 
-            field
-                .font(.system(size: 16))
-                .foregroundStyle(palette.textPrimary)
-                .padding(.horizontal, 12)
-                .frame(minHeight: 44)
-                .background {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(palette.surfaceSunken)
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(palette.border, lineWidth: 1)
-                }
+                field
+                    .font(.system(size: 16))
+                    .foregroundStyle(palette.textPrimary)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 44)
+                    .background {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(palette.surfaceSunken)
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(palette.border, lineWidth: 1)
+                    }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
     }
 
     @ViewBuilder
@@ -148,13 +153,13 @@ struct SettingsField: View {
                 .keyboardType(.emailAddress)
                 .textContentType(.emailAddress)
                 .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
+                .disableAutocorrection(true)
                 .forceLTR()
         case .password:
             SecureField(placeholder, text: $text)
                 .textContentType(.password)
                 .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
+                .disableAutocorrection(true)
                 .forceLTR()
         }
     }
@@ -173,28 +178,30 @@ struct SettingsNoticeBanner: View {
     let palette: FirasPalette
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: symbol)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(tint)
-                .accessibilityHidden(true)
-            Text(text)
-                .font(.system(size: 13))
-                .foregroundStyle(palette.textPrimary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
+        WithPerceptionTracking {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: symbol)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .accessibilityHidden(true)
+                Text(text)
+                    .font(.system(size: 13))
+                    .foregroundStyle(palette.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(tint.opacity(0.12))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(tint.opacity(0.35), lineWidth: 1)
+            }
+            .accessibilityElement(children: .combine)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(tint.opacity(0.12))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(tint.opacity(0.35), lineWidth: 1)
-        }
-        .accessibilityElement(children: .combine)
     }
 
     private var tint: Color {
@@ -229,18 +236,20 @@ struct SettingsPageBody<Content: View>: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                content
+        WithPerceptionTracking {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    content
+                }
+                .frame(maxWidth: 620, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 32)
             }
-            .frame(maxWidth: 620, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 32)
+            .firasScrollContentBackground(.hidden)
+            .background(Color.clear)
         }
-        .scrollContentBackground(.hidden)
-        .background(Color.clear)
     }
 }
 
@@ -261,54 +270,56 @@ struct SettingsChoiceRow: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: symbol)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(selected ? palette.accent : palette.textMuted)
-                    .frame(width: 22)
-                    .padding(.top, 2)
-                    .accessibilityHidden(true)
+        WithPerceptionTracking {
+            Button(action: action) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: symbol)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(selected ? palette.accent : palette.textMuted)
+                        .frame(width: 22)
+                        .padding(.top, 2)
+                        .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(title)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(palette.textPrimary)
-                        if let badge, !badge.isEmpty {
-                            Text(badge)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(palette.accent)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 2)
-                                .background {
-                                    Capsule(style: .continuous).fill(palette.accentSoft)
-                                }
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text(title)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(palette.textPrimary)
+                            if let badge, !badge.isEmpty {
+                                Text(badge)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(palette.accent)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 2)
+                                    .background {
+                                        Capsule(style: .continuous).fill(palette.accentSoft)
+                                    }
+                            }
+                        }
+                        if let hint, !hint.isEmpty {
+                            Text(hint)
+                                .font(.system(size: 12))
+                                .foregroundStyle(palette.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    if let hint, !hint.isEmpty {
-                        Text(hint)
-                            .font(.system(size: 12))
-                            .foregroundStyle(palette.textMuted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 17))
-                    .foregroundStyle(selected ? palette.accent : palette.border)
-                    .padding(.top, 1)
-                    .accessibilityHidden(true)
+                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 17))
+                        .foregroundStyle(selected ? palette.accent : palette.border)
+                        .padding(.top, 1)
+                        .accessibilityHidden(true)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .bidiIsland(for: title, fallback: lang)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(selected ? .isSelected : [])
         }
-        .buttonStyle(.plain)
-        .bidiIsland(for: title, fallback: lang)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

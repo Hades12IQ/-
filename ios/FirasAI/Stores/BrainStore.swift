@@ -1,6 +1,5 @@
 import Foundation
-import Observation
-
+import Perception
 /// One file on its way into the library (`web-brain-ux.md §6.4`).
 struct BrainImportProgress: Identifiable, Sendable, Equatable {
 
@@ -24,7 +23,7 @@ struct BrainImportProgress: Identifiable, Sendable, Equatable {
 /// (`web-brain-ux.md §7.2, §14`). The answer itself is `BrainAsker`; long member asks are handed to
 /// the durable `brainask` job so they survive leaving the app (`ARCHITECTURE.md §2.4`).
 @MainActor
-@Observable
+@Perceptible
 final class BrainStore: JobObserver {
 
     // MARK: - Library
@@ -67,28 +66,28 @@ final class BrainStore: JobObserver {
     // Not `private`: the ask and selection halves of this type live in
     // `BrainStore+Job.swift` and `BrainStore+Selection.swift`.
 
-    @ObservationIgnored let api: APIClient
-    @ObservationIgnored let session: SessionStore
-    @ObservationIgnored let jobs: JobManager
-    @ObservationIgnored private let chat: ChatStore
-    @ObservationIgnored let prefs: PreferencesStore
-    @ObservationIgnored let toasts: ToastCenter
-    @ObservationIgnored let router: Router
-    @ObservationIgnored private let asker: BrainAsker
-    @ObservationIgnored let defaults: UserDefaults
+    @PerceptionIgnored let api: APIClient
+    @PerceptionIgnored let session: SessionStore
+    @PerceptionIgnored let jobs: JobManager
+    @PerceptionIgnored private let chat: ChatStore
+    @PerceptionIgnored let prefs: PreferencesStore
+    @PerceptionIgnored let toasts: ToastCenter
+    @PerceptionIgnored let router: Router
+    @PerceptionIgnored private let asker: BrainAsker
+    @PerceptionIgnored let defaults: UserDefaults
 
-    @ObservationIgnored private var askTask: Task<Void, Never>?
-    @ObservationIgnored private var importPipelines: [String: BrainImportPipeline] = [:]
-    @ObservationIgnored private var stopRequested = false
-    @ObservationIgnored var pinSeen: Set<String> = []
-    @ObservationIgnored var pinSeenSeeded = false
-    @ObservationIgnored var rangeKey: String = ""
-    @ObservationIgnored private var pendingDelta = ""
-    @ObservationIgnored private var lastFlush = Date.distantPast
-    @ObservationIgnored var selectionLoadedFor: String?
-    @ObservationIgnored private var askLanguage: AppLanguage = .arabic
-    @ObservationIgnored private var askFinalText: String?
-    @ObservationIgnored private var askFailure: Error?
+    @PerceptionIgnored private var askTask: Task<Void, Never>?
+    @PerceptionIgnored private var importPipelines: [String: BrainImportPipeline] = [:]
+    @PerceptionIgnored private var stopRequested = false
+    @PerceptionIgnored var pinSeen: Set<String> = []
+    @PerceptionIgnored var pinSeenSeeded = false
+    @PerceptionIgnored var rangeKey: String = ""
+    @PerceptionIgnored private var pendingDelta = ""
+    @PerceptionIgnored private var lastFlush = Date.distantPast
+    @PerceptionIgnored var selectionLoadedFor: String?
+    @PerceptionIgnored private var askLanguage: AppLanguage = .arabic
+    @PerceptionIgnored private var askFinalText: String?
+    @PerceptionIgnored private var askFailure: Error?
 
     init(
         api: APIClient,

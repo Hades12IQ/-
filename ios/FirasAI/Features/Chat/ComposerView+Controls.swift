@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The composer's round action button: send, stop, mic, call.
 ///
@@ -30,22 +31,24 @@ struct ComposerActionButton: View {
     }
 
     var body: some View {
-        Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(prominent ? palette.accent : Color.clear)
-                    .frame(width: 36, height: 36)
-                Image(systemName: symbol)
-                    .font(.system(size: prominent ? 16 : 17, weight: .semibold))
-                    .foregroundStyle(foreground)
+        WithPerceptionTracking {
+            Button(action: action) {
+                ZStack {
+                    Circle()
+                        .fill(prominent ? palette.accent : Color.clear)
+                        .frame(width: 36, height: 36)
+                    Image(systemName: symbol)
+                        .font(.system(size: prominent ? 16 : 17, weight: .semibold))
+                        .foregroundStyle(foreground)
+                }
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
             }
-            .frame(width: 44, height: 44)
-            .contentShape(Circle())
+            .buttonStyle(.plain)
+            .opacity(enabled ? 1 : 0.45)
+            .accessibilityLabel(Text(label))
+            .hoverEffect(.lift)
         }
-        .buttonStyle(.plain)
-        .opacity(enabled ? 1 : 0.45)
-        .accessibilityLabel(Text(label))
-        .hoverEffect(.lift)
     }
 
     private var foreground: Color {
@@ -78,22 +81,24 @@ struct ComposerPlusButton: View {
     }
 
     var body: some View {
-        Button(action: action) {
-            ZStack {
-                Circle()
-                    .strokeBorder(toolsActive ? palette.accentRing : Color.clear, lineWidth: 1.5)
-                    .frame(width: 34, height: 34)
-                Image(systemName: "plus")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(toolsActive ? palette.accent : palette.textSecondary)
+        WithPerceptionTracking {
+            Button(action: action) {
+                ZStack {
+                    Circle()
+                        .strokeBorder(toolsActive ? palette.accentRing : Color.clear, lineWidth: 1.5)
+                        .frame(width: 34, height: 34)
+                    Image(systemName: "plus")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(toolsActive ? palette.accent : palette.textSecondary)
+                }
+                .frame(width: 44, height: 44)
+                .overlay(alignment: .topTrailing) { badge }
+                .contentShape(Circle())
             }
-            .frame(width: 44, height: 44)
-            .overlay(alignment: .topTrailing) { badge }
-            .contentShape(Circle())
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(label))
+            .hoverEffect(.lift)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(label))
-        .hoverEffect(.lift)
     }
 
     @ViewBuilder
@@ -138,22 +143,24 @@ struct ComposerToolToggle: View {
     }
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(isOn ? palette.accent : palette.textMuted)
-                .frame(width: 32, height: 32)
-                .background {
-                    Circle().fill(isOn ? palette.accentSoft : Color.clear)
-                }
-                .frame(width: 40, height: 44)
-                .contentShape(Rectangle())
+        WithPerceptionTracking {
+            Button(action: action) {
+                Image(systemName: symbol)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(isOn ? palette.accent : palette.textMuted)
+                    .frame(width: 32, height: 32)
+                    .background {
+                        Circle().fill(isOn ? palette.accentSoft : Color.clear)
+                    }
+                    .frame(width: 40, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(label))
+            .accessibilityValue(Text(hint))
+            .accessibilityAddTraits(isOn ? .isSelected : [])
+            .hoverEffect(.lift)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(label))
-        .accessibilityValue(Text(hint))
-        .accessibilityAddTraits(isOn ? .isSelected : [])
-        .hoverEffect(.lift)
     }
 }
 
@@ -173,40 +180,42 @@ struct ComposerQuotePill: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "quote.opening")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(palette.accent)
-                .accessibilityHidden(true)
+        WithPerceptionTracking {
+            HStack(spacing: 8) {
+                Image(systemName: "quote.opening")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(palette.accent)
+                    .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(quote)
-                    .font(.system(size: 12))
-                    .foregroundStyle(palette.textSecondary)
-                    .lineLimit(2)
-                Text(Strings.Composer.quoteHint(lang))
-                    .font(.system(size: 10))
-                    .foregroundStyle(palette.textMuted)
-                    .lineLimit(1)
-            }
-            .bidiIsland(for: quote, fallback: lang)
-            .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(quote)
+                        .font(.system(size: 12))
+                        .foregroundStyle(palette.textSecondary)
+                        .lineLimit(2)
+                    Text(Strings.Composer.quoteHint(lang))
+                        .font(.system(size: 10))
+                        .foregroundStyle(palette.textMuted)
+                        .lineLimit(1)
+                }
+                .bidiIsland(for: quote, fallback: lang)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button(action: onRemove) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(palette.textMuted)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Circle())
+                Button(action: onRemove) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(palette.textMuted)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(Strings.Composer.quoteDrop(lang)))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(Strings.Composer.quoteDrop(lang)))
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(palette.accentSoft)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(palette.accentSoft)
+            }
         }
     }
 }

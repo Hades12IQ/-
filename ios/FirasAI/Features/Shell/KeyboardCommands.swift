@@ -1,4 +1,4 @@
-import Observation
+import Perception
 import SwiftUI
 
 /// The cross-screen signals the shell cannot pass down as arguments.
@@ -7,7 +7,7 @@ import SwiftUI
 /// binding. One main-actor observable, one flag: the keyboard layer raises it, the search field
 /// lowers it the moment it takes focus.
 @MainActor
-@Observable
+@Perceptible
 final class ShellSignals {
 
     static let shared = ShellSignals()
@@ -43,19 +43,21 @@ struct KeyboardCommands: View {
     private var lang: AppLanguage { env.prefs.lang }
 
     var body: some View {
-        ZStack {
-            newChatButton
-            searchButton
-            settingsButton
-            sidebarButton
-            callButton
-            copyAnswerButton
-            stopButton
-            productButtons
+        WithPerceptionTracking {
+            ZStack {
+                newChatButton
+                searchButton
+                settingsButton
+                sidebarButton
+                callButton
+                copyAnswerButton
+                stopButton
+                productButtons
+            }
+            .frame(width: 0, height: 0)
+            .clipped()
+            .accessibilityHidden(true)
         }
-        .frame(width: 0, height: 0)
-        .clipped()
-        .accessibilityHidden(true)
     }
 
     // MARK: - Commands
@@ -122,7 +124,9 @@ struct KeyboardCommands: View {
 
     private var productButtons: some View {
         ForEach(ProductKind.allCases) { product in
-            productButton(product)
+            WithPerceptionTracking {
+                productButton(product)
+            }
         }
     }
 

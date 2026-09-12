@@ -1,6 +1,6 @@
 import AVFoundation
 import Foundation
-import Observation
+import Perception
 import Speech
 import SwiftUI
 
@@ -27,7 +27,7 @@ import SwiftUI
 /// lives in `DictationController+Polish.swift`, it cannot fail (every failure keeps the raw
 /// transcript), and while it runs the words are already on screen.
 @MainActor
-@Observable
+@Perceptible
 final class DictationController {
 
     enum State: Equatable, Sendable {
@@ -71,26 +71,26 @@ final class DictationController {
 
     // MARK: - Dependencies
 
-    @ObservationIgnored private let api: APIClient
-    @ObservationIgnored private let prefs: PreferencesStore
-    @ObservationIgnored private let toasts: ToastCenter
-    @ObservationIgnored private let network: NetworkMonitor
+    @PerceptionIgnored private let api: APIClient
+    @PerceptionIgnored private let prefs: PreferencesStore
+    @PerceptionIgnored private let toasts: ToastCenter
+    @PerceptionIgnored private let network: NetworkMonitor
 
-    @ObservationIgnored private let recorder = DictationRecorder()
-    @ObservationIgnored private var levelTask: Task<Void, Never>?
-    @ObservationIgnored private var partialTask: Task<Void, Never>?
-    @ObservationIgnored private var live: LiveSpeechRun?
-    @ObservationIgnored private var field: Binding<String>?
-    @ObservationIgnored private var insertion: DictationInsertion?
-    @ObservationIgnored private var tickGeneration = 0
-    @ObservationIgnored private var failureGeneration = 0
+    @PerceptionIgnored private let recorder = DictationRecorder()
+    @PerceptionIgnored private var levelTask: Task<Void, Never>?
+    @PerceptionIgnored private var partialTask: Task<Void, Never>?
+    @PerceptionIgnored private var live: LiveSpeechRun?
+    @PerceptionIgnored private var field: Binding<String>?
+    @PerceptionIgnored private var insertion: DictationInsertion?
+    @PerceptionIgnored private var tickGeneration = 0
+    @PerceptionIgnored private var failureGeneration = 0
     /// Set when the app leaves the foreground mid-take. The repair turn is skipped for that one
     /// take: a backgrounded app can be suspended mid-request, and four seconds of nothing is a
     /// worse trade than an unrepaired sentence the user can still read and edit.
-    @ObservationIgnored private var skipPolishOnce = false
+    @PerceptionIgnored private var skipPolishOnce = false
     /// Bumped by every `start` and every `cancel`, so a transcription still in flight when the
     /// user hits Cancel cannot land its text in a composer that has already been put back.
-    @ObservationIgnored private var takeGeneration = 0
+    @PerceptionIgnored private var takeGeneration = 0
 
     init(api: APIClient, prefs: PreferencesStore, toasts: ToastCenter, network: NetworkMonitor) {
         self.api = api
@@ -599,11 +599,21 @@ final class DictationController {
 
     /// The same shape `CallEngine+Support` uses, so both microphone owners ask identically.
     nonisolated private static func requestMicrophonePermission() async -> Bool {
-        if AVAudioApplication.shared.recordPermission == .granted { return true }
-        return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            AVAudioApplication.requestRecordPermission(completionHandler: { granted in
-                continuation.resume(returning: granted)
-            })
+        if #available(iOS 17, *) {
+            if AVAudioApplication.shared.recordPermission == .granted { return true }
+            return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                AVAudioApplication.requestRecordPermission(completionHandler: { granted in
+                    continuation.resume(returning: granted)
+                })
+            }
+        } else {
+            let session = AVAudioSession.sharedInstance()
+            if session.recordPermission == .granted { return true }
+            return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                session.requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
+            }
         }
     }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The reasoning disclosure: one muted line with a chevron, closed by default.
 ///
@@ -39,13 +40,15 @@ struct ThinkingDisclosure: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            head
-            if open {
-                panel(of: reasoning)
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 10) {
+                head
+                if open {
+                    panel(of: reasoning)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Head

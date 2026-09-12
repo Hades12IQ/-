@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// Identity → plan → change email → change password → redeem (admin) → danger zone
 /// (`web-auth-account-settings.md §6.1`, `§3.9`, `§10`).
@@ -26,15 +27,17 @@ struct AccountSettingsView: View {
     }
 
     var body: some View {
-        SettingsPageBody(palette: palette) {
-            hero
+        WithPerceptionTracking {
+            SettingsPageBody(palette: palette) {
+                hero
 
-            if env.session.isMember {
-                memberSections
-            } else if env.session.isGuest {
-                guestPanel
-            } else {
-                signedOutPanel
+                if env.session.isMember {
+                    memberSections
+                } else if env.session.isGuest {
+                    guestPanel
+                } else {
+                    signedOutPanel
+                }
             }
         }
     }
@@ -137,20 +140,22 @@ struct AccountSettingsView: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(palette.textMuted)
             ForEach(usageItems) { item in
-                HStack(spacing: 8) {
-                    Text(item.name(lang))
-                        .font(.system(size: 13))
-                        .foregroundStyle(palette.textSecondary)
-                    Spacer(minLength: 8)
-                    Text(
-                        Strings.Settings.Account.usageLine.fmt(
-                            lang,
-                            ArabicText.count(item.used, lang),
-                            ArabicText.count(item.limit, lang)
+                WithPerceptionTracking {
+                    HStack(spacing: 8) {
+                        Text(item.name(lang))
+                            .font(.system(size: 13))
+                            .foregroundStyle(palette.textSecondary)
+                        Spacer(minLength: 8)
+                        Text(
+                            Strings.Settings.Account.usageLine.fmt(
+                                lang,
+                                ArabicText.count(item.used, lang),
+                                ArabicText.count(item.limit, lang)
+                            )
                         )
-                    )
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(palette.textPrimary)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(palette.textPrimary)
+                    }
                 }
             }
         }

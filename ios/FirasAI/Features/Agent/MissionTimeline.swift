@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The mission's activity feed: the structured `surface.events`, the unique source URLs they
 /// visited, and the raw `surface.live` narration behind a disclosure.
@@ -47,10 +48,12 @@ struct MissionTimeline: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            eventsGroup
-            sourcesGroup
-            logGroup
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 10) {
+                eventsGroup
+                sourcesGroup
+                logGroup
+            }
         }
     }
 
@@ -69,14 +72,16 @@ struct MissionTimeline: View {
             DisclosureGroup(isExpanded: $eventsExpanded) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(events) { event in
-                        MissionEventRow(
-                            event: event,
-                            isLatest: event.id == events.last?.id,
-                            missionIsLive: job.phase == .run || job.phase == .queued,
-                            palette: palette,
-                            lang: lang
-                        )
-                        .transition(FirasMotion.revealTransition)
+                        WithPerceptionTracking {
+                            MissionEventRow(
+                                event: event,
+                                isLatest: event.id == events.last?.id,
+                                missionIsLive: job.phase == .run || job.phase == .queued,
+                                palette: palette,
+                                lang: lang
+                            )
+                            .transition(FirasMotion.revealTransition)
+                        }
                     }
                 }
                 .padding(.top, 8)
@@ -96,21 +101,23 @@ struct MissionTimeline: View {
             DisclosureGroup(isExpanded: $sourcesExpanded) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(sources) { source in
-                        if let url = URL(string: source.url) {
-                            Link(destination: url) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(MissionTimeline.host(of: source.url))
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundStyle(palette.accent)
-                                        .forceLTR()
-                                    if !source.label.isEmpty {
-                                        Text(String(source.label.prefix(180)))
-                                            .font(FirasType.caption)
-                                            .foregroundStyle(palette.textMuted)
-                                            .lineLimit(2)
+                        WithPerceptionTracking {
+                            if let url = URL(string: source.url) {
+                                Link(destination: url) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(MissionTimeline.host(of: source.url))
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundStyle(palette.accent)
+                                            .forceLTR()
+                                        if !source.label.isEmpty {
+                                            Text(String(source.label.prefix(180)))
+                                                .font(FirasType.caption)
+                                                .foregroundStyle(palette.textMuted)
+                                                .lineLimit(2)
+                                        }
                                     }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
                     }
@@ -131,11 +138,13 @@ struct MissionTimeline: View {
             DisclosureGroup(isExpanded: $logExpanded) {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(liveLines.indices, id: \.self) { index in
-                        Text(liveLines[index])
-                            .font(.system(size: 12))
-                            .foregroundStyle(palette.textMuted)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        WithPerceptionTracking {
+                            Text(liveLines[index])
+                                .font(.system(size: 12))
+                                .foregroundStyle(palette.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
                 .padding(.top, 8)
@@ -193,48 +202,50 @@ private struct MissionEventRow: View {
     private var kind: MissionEventKind { MissionEventKind.of(event) }
 
     var body: some View {
-        DisclosureGroup(isExpanded: $expanded) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(detail)
-                    .font(.system(size: 13))
-                    .foregroundStyle(palette.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .bidiIsland(for: detail, fallback: lang)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let url = sourceURL {
-                    Link(destination: url) {
-                        Text(Strings.Agent.openSource(lang) + " ↗")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(palette.accent)
-                    }
-                }
-            }
-            .padding(.top, 6)
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Image(systemName: kind.symbol)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(statusColor)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 14))
-                        .foregroundStyle(palette.textPrimary)
+        WithPerceptionTracking {
+            DisclosureGroup(isExpanded: $expanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(detail)
+                        .font(.system(size: 13))
+                        .foregroundStyle(palette.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    if !hint.isEmpty {
-                        Text(hint)
-                            .font(FirasType.caption)
-                            .foregroundStyle(palette.textMuted)
-                            .lineLimit(2)
+                        .bidiIsland(for: detail, fallback: lang)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if let url = sourceURL {
+                        Link(destination: url) {
+                            Text(Strings.Agent.openSource(lang) + " ↗")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(palette.accent)
+                        }
                     }
                 }
-                Spacer(minLength: 6)
-                Text(statusWord)
-                    .font(FirasType.caption)
-                    .foregroundStyle(palette.textMuted)
+                .padding(.top, 6)
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: kind.symbol)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(statusColor)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.system(size: 14))
+                            .foregroundStyle(palette.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if !hint.isEmpty {
+                            Text(hint)
+                                .font(FirasType.caption)
+                                .foregroundStyle(palette.textMuted)
+                                .lineLimit(2)
+                        }
+                    }
+                    Spacer(minLength: 6)
+                    Text(statusWord)
+                        .font(FirasType.caption)
+                        .foregroundStyle(palette.textMuted)
+                }
             }
+            .tint(palette.accent)
         }
-        .tint(palette.accent)
     }
 
     private var title: String {

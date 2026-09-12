@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The first view in the window, and the only place that reads `SessionStore.phase`.
 ///
@@ -25,33 +26,35 @@ struct RootView: View {
     private var lang: AppLanguage { env.prefs.lang }
 
     var body: some View {
-        ZStack {
-            FirasBackground(palette: palette, showHalo: true)
-                .ignoresSafeArea()
+        WithPerceptionTracking {
+            ZStack {
+                FirasBackground(palette: palette, showHalo: true)
+                    .ignoresSafeArea()
 
-            phaseContent
+                phaseContent
 
-            // `ToastHostView` lives inside `AppShell`, so the doors that come before the shell —
-            // the verification card's «أعدنا الإرسال», the consent and landing pages — would
-            // otherwise toast into a screen with nothing drawing it. Exactly one host is mounted
-            // at a time; `showsShell` is the same partition as `phaseContent`.
-            if !showsShell {
-                ToastHostView(env: env)
-            }
-
-            if !introFinished {
-                MentronXEntryView(palette: palette) {
-                    introFinished = true
+                // `ToastHostView` lives inside `AppShell`, so the doors that come before the shell —
+                // the verification card's «أعدنا الإرسال», the consent and landing pages — would
+                // otherwise toast into a screen with nothing drawing it. Exactly one host is mounted
+                // at a time; `showsShell` is the same partition as `phaseContent`.
+                if !showsShell {
+                    ToastHostView(env: env)
                 }
-                .transition(.opacity)
-                .zIndex(2)
+
+                if !introFinished {
+                    MentronXEntryView(palette: palette) {
+                        introFinished = true
+                    }
+                    .transition(.opacity)
+                    .zIndex(2)
+                }
             }
+            .environment(\.layoutDirection, .leftToRight)
+            .preferredColorScheme(env.prefs.theme.isLight ? .light : .dark)
+            .tint(palette.accent)
+            .animation(.easeOut(duration: 0.18), value: introFinished)
+            .task { await boot() }
         }
-        .environment(\.layoutDirection, .leftToRight)
-        .preferredColorScheme(env.prefs.theme.isLight ? .light : .dark)
-        .tint(palette.accent)
-        .animation(.easeOut(duration: 0.18), value: introFinished)
-        .task { await boot() }
     }
 
     // MARK: - Phases
@@ -112,7 +115,9 @@ struct RootView: View {
         if env.prefs.consentAccepted {
             LandingView(env: env)
                 .fullScreenCover(item: coverBinding) { cover in
-                    preAuthCover(cover)
+                    WithPerceptionTracking {
+                        preAuthCover(cover)
+                    }
                 }
         } else {
             ConsentView(prefs: env.prefs) {
@@ -180,7 +185,7 @@ struct RootView: View {
         .firasGlass(
             .floating,
             palette: palette,
-            in: AnyShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            in: FirasAnyShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         )
         .frame(maxWidth: 520)
         .accessibilityElement(children: .contain)

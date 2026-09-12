@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// Putting the keyboard away.
@@ -9,7 +10,7 @@ import UIKit
 /// is what "tap outside the keyboard" means on every other iOS app.
 ///
 /// Two ways in, because one is never enough:
-///   * dragging the transcript down (`.scrollDismissesKeyboard(.interactively)`, already on the
+///   * dragging the transcript down (`.firasScrollDismissesKeyboard(.interactively)`, already on the
 ///     transcript) — the gesture people expect, but it needs something scrollable, so it does
 ///     nothing on an empty conversation;
 ///   * tapping anywhere that is not a control — this file.
@@ -30,17 +31,19 @@ enum Keyboard {
 private struct DismissKeyboardOnTap: ViewModifier {
 
     func body(content: Content) -> some View {
-        content
-            /* `simultaneousGesture`, not `onTapGesture`: a plain tap gesture on a container competes
-               with the buttons inside it and wins often enough to make a message's copy button feel
-               dead. A simultaneous tap runs alongside them, so a tap on a button both presses the
-               button and puts the keyboard away — which is what should happen anyway.
+        WithPerceptionTracking {
+            content
+                /* `simultaneousGesture`, not `onTapGesture`: a plain tap gesture on a container competes
+                   with the buttons inside it and wins often enough to make a message's copy button feel
+                   dead. A simultaneous tap runs alongside them, so a tap on a button both presses the
+                   button and puts the keyboard away — which is what should happen anyway.
 
-               `count: 1` with no `contentShape` on purpose: this must not make empty space
-               hit-testable, only listen where the content already is. */
-            .simultaneousGesture(
-                TapGesture(count: 1).onEnded { Keyboard.dismiss() }
-            )
+                   `count: 1` with no `contentShape` on purpose: this must not make empty space
+                   hit-testable, only listen where the content already is. */
+                .simultaneousGesture(
+                    TapGesture(count: 1).onEnded { Keyboard.dismiss() }
+                )
+        }
     }
 }
 

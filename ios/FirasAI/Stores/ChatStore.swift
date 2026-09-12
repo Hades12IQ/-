@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Perception
 import OSLog
 
 /// Conversations: the list, the transcripts, and the one send path.
@@ -15,7 +15,7 @@ import OSLog
 /// on the first send (`audit-ios-chat.md §Major M13`): re-keying the table at that moment would
 /// break every id already captured by a live job, a router selection and a draft.
 @MainActor
-@Observable
+@Perceptible
 final class ChatStore: JobObserver {
 
     // MARK: - Published state
@@ -41,15 +41,15 @@ final class ChatStore: JobObserver {
     let router: Router
     let network: NetworkMonitor
 
-    @ObservationIgnored let pipeline: SendPipeline
-    @ObservationIgnored var buffers: [String: StreamBuffer] = [:]
-    @ObservationIgnored var serverRows: [ChatSummary] = []
-    @ObservationIgnored var renamed: Set<String> = []
-    @ObservationIgnored var titled: Set<String> = []
-    @ObservationIgnored var pendingDeletes: [String: ChatConversation] = [:]
-    @ObservationIgnored var deleteTasks: [String: Task<Void, Never>] = [:]
-    @ObservationIgnored var loadedOwner: String?
-    @ObservationIgnored private var identityGeneration = 0
+    @PerceptionIgnored let pipeline: SendPipeline
+    @PerceptionIgnored var buffers: [String: StreamBuffer] = [:]
+    @PerceptionIgnored var serverRows: [ChatSummary] = []
+    @PerceptionIgnored var renamed: Set<String> = []
+    @PerceptionIgnored var titled: Set<String> = []
+    @PerceptionIgnored var pendingDeletes: [String: ChatConversation] = [:]
+    @PerceptionIgnored var deleteTasks: [String: Task<Void, Never>] = [:]
+    @PerceptionIgnored var loadedOwner: String?
+    @PerceptionIgnored private var identityGeneration = 0
 
     init(
         api: APIClient,

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The reader for a durable long file (`kind:"longfile"`): the manifest, then every finished part,
 /// each one checksum-verified before a single page of it is shown
@@ -69,19 +70,27 @@ struct LongFileViewer: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .navigationTitle(Text(navigationTitleText))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { toolbarContent }
-        }
-        .firasSheetBackground(palette)
-        .task(id: jobID) {
-            await run()
-        }
-        .sheet(item: $route) { destination in
-            sheetBody(destination)
+        WithPerceptionTracking {
+            FirasNavigationStack {
+                WithPerceptionTracking {
+                    content
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .navigationTitle(Text(navigationTitleText))
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar { WithPerceptionTracking {
+                            toolbarContent
+                        } }
+                }
+            }
+            .firasSheetBackground(palette)
+            .task(id: jobID) {
+                await run()
+            }
+            .sheet(item: $route) { destination in
+                WithPerceptionTracking {
+                    sheetBody(destination)
+                }
+            }
         }
     }
 
@@ -121,7 +130,7 @@ struct LongFileViewer: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
+        ToolbarItem(placement: .navigationBarLeading) {
             Button {
                 dismiss()
             } label: {
@@ -129,7 +138,7 @@ struct LongFileViewer: View {
             }
             .foregroundStyle(palette.accent)
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .navigationBarTrailing) {
             if !pages.isEmpty {
                 Button {
                     open()
@@ -146,7 +155,7 @@ struct LongFileViewer: View {
                 .accessibilityLabel(Text(LongFileViewerCopy.preview(lang)))
             }
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .navigationBarTrailing) {
             if !pages.isEmpty {
                 exportMenu
             }
@@ -157,11 +166,13 @@ struct LongFileViewer: View {
         Menu {
             Section {
                 ForEach(ExportController.Format.allCases) { format in
-                    Button {
-                        export(format, then: .share)
-                    } label: {
-                        Text(format.label(lang))
-                        Image(systemName: format.symbol)
+                    WithPerceptionTracking {
+                        Button {
+                            export(format, then: .share)
+                        } label: {
+                            Text(format.label(lang))
+                            Image(systemName: format.symbol)
+                        }
                     }
                 }
             } header: {
@@ -243,11 +254,13 @@ struct LongFileViewer: View {
 
                 if let fraction = fraction(progress) {
                     GeometryReader { proxy in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(palette.surfaceSunken)
-                            Capsule()
-                                .fill(palette.accent)
-                                .frame(width: max(4, proxy.size.width * fraction))
+                        WithPerceptionTracking {
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(palette.surfaceSunken)
+                                Capsule()
+                                    .fill(palette.accent)
+                                    .frame(width: max(4, proxy.size.width * fraction))
+                            }
                         }
                     }
                     .frame(height: 5)
@@ -305,7 +318,7 @@ struct LongFileViewer: View {
             .padding(.top, 16)
             .padding(.bottom, 28)
         }
-        .scrollDismissesKeyboard(.immediately)
+        .firasScrollDismissesKeyboard(.immediately)
     }
 
     private var pager: some View {
@@ -330,7 +343,7 @@ struct LongFileViewer: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 10)
-        .firasGlass(.floating, palette: palette, in: AnyShape(Capsule(style: .continuous)))
+        .firasGlass(.floating, palette: palette, in: FirasAnyShape(Capsule(style: .continuous)))
         .padding(.bottom, 14)
         .forceLTR()
     }

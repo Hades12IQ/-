@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The Agent product's composer.
 ///
@@ -45,79 +46,83 @@ struct AgentComposer: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if let quotedText {
-                QuotedTextContext(text: quotedText, palette: palette, lang: lang) { self.quotedText = nil }
-            }
-            if !attachments.isEmpty {
-                AttachmentTray(
-                    items: attachments,
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 10) {
+                if let quotedText {
+                    QuotedTextContext(text: quotedText, palette: palette, lang: lang) { self.quotedText = nil }
+                }
+                if !attachments.isEmpty {
+                    AttachmentTray(
+                        items: attachments,
+                        palette: palette,
+                        lang: lang,
+                        motionOn: motionOn,
+                        onRemove: remove(_:),
+                        onTruncatedTap: { _ in toast(Strings.Agent.stillReading) }
+                    )
+                }
+                ComposerField(
+                    text: $text,
+                    placeholder: Strings.Agent.composerPlaceholder(lang),
                     palette: palette,
                     lang: lang,
-                    motionOn: motionOn,
-                    onRemove: remove(_:),
-                    onTruncatedTap: { _ in toast(Strings.Agent.stillReading) }
+                    fontScale: env.prefs.fontScale,
+                    sendOnReturn: env.prefs.sendOnReturn,
+                    isFocused: $fieldFocused,
+                    onSubmit: send,
+                    onKey: { _ in false }
                 )
+                if dictating {
+                    DictationBar(
+                        dictation: env.dictation,
+                        dialect: env.prefs.dictationDialect,
+                        palette: palette,
+                        lang: lang,
+                        motionOn: motionOn,
+                        onCancel: cancelDictation,
+                        onFinish: finishDictation,
+                        onPickDialect: { env.router.sheet = .dialectPicker }
+                    )
+                } else {
+                    controls
+                }
             }
-            ComposerField(
-                text: $text,
-                placeholder: Strings.Agent.composerPlaceholder(lang),
-                palette: palette,
-                lang: lang,
-                fontScale: env.prefs.fontScale,
-                sendOnReturn: env.prefs.sendOnReturn,
-                isFocused: $fieldFocused,
-                onSubmit: send,
-                onKey: { _ in false }
-            )
-            if dictating {
-                DictationBar(
-                    dictation: env.dictation,
-                    dialect: env.prefs.dictationDialect,
-                    palette: palette,
-                    lang: lang,
-                    motionOn: motionOn,
-                    onCancel: cancelDictation,
-                    onFinish: finishDictation,
-                    onPickDialect: { env.router.sheet = .dialectPicker }
-                )
-            } else {
-                controls
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .firasGlass(.floating, palette: palette, in: FirasAnyShape(RoundedRectangle(cornerRadius: 24, style: .continuous)))
+            .overlay {
+                if dictating {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(palette.accent, lineWidth: 1)
+                        .allowsHitTesting(false)
+                }
             }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .firasGlass(.floating, palette: palette, in: AnyShape(RoundedRectangle(cornerRadius: 24, style: .continuous)))
-        .overlay {
-            if dictating {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(palette.accent, lineWidth: 1)
-                    .allowsHitTesting(false)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 8)
+            .animation(FirasMotion.gated(FirasMotion.composer, motionOn: motionOn), value: attachments)
+            .animation(FirasMotion.gated(FirasMotion.composer, motionOn: motionOn), value: dictating)
+            .task(id: conversationID) { text = env.drafts.draft(for: draftKey) }
+            .firasOnChange(of: quotedText) { _, value in
+                if value != nil { fieldFocused = true }
             }
-        }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 8)
-        .animation(FirasMotion.gated(FirasMotion.composer, motionOn: motionOn), value: attachments)
-        .animation(FirasMotion.gated(FirasMotion.composer, motionOn: motionOn), value: dictating)
-        .task(id: conversationID) { text = env.drafts.draft(for: draftKey) }
-        .onChange(of: quotedText) { _, value in
-            if value != nil { fieldFocused = true }
-        }
-        .onChange(of: text) { _, newValue in
-            env.drafts.set(newValue, for: draftKey)
-        }
-        .onChange(of: env.dictation.state) { _, newValue in
-            if case .failed = newValue { dictating = false }
-        }
-        .onChange(of: env.dictation.isActive) { wasActive, isActive in
-            if wasActive && !isActive { dictating = false }
-        }
-        .sheet(isPresented: $showsAddContext) {
-            AddContextSheet(env: env, product: .agent) { picked in
-                ingest(picked)
+            .firasOnChange(of: text) { _, newValue in
+                env.drafts.set(newValue, for: draftKey)
             }
+            .firasOnChange(of: env.dictation.state) { _, newValue in
+                if case .failed = newValue { dictating = false }
+            }
+            .firasOnChange(of: env.dictation.isActive) { wasActive, isActive in
+                if wasActive && !isActive { dictating = false }
+            }
+            .sheet(isPresented: $showsAddContext) {
+                WithPerceptionTracking {
+                    AddContextSheet(env: env, product: .agent) { picked in
+                        ingest(picked)
+                    }
+                }
+            }
+            .accessibilityLabel(Text(Strings.Agent.composerLabel(lang)))
         }
-        .accessibilityLabel(Text(Strings.Agent.composerLabel(lang)))
     }
 
     private var controls: some View {

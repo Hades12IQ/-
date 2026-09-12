@@ -79,6 +79,7 @@ struct CodeBuildTicket: Codable, Sendable, Equatable, Identifiable {
     var plannedPaths: [String]
     /// Only these checkpoint files reached the end of a foreground file request.
     var completedPaths: [String]
+    var selection: CodeModelSelection?
 
     var id: String { projectID }
 
@@ -94,7 +95,8 @@ struct CodeBuildTicket: Codable, Sendable, Equatable, Identifiable {
         handedOff: Bool = false,
         jobID: String? = nil,
         plannedPaths: [String] = [],
-        completedPaths: [String] = []
+        completedPaths: [String] = [],
+        selection: CodeModelSelection? = nil
     ) {
         self.projectID = projectID
         self.cid = cid
@@ -108,6 +110,7 @@ struct CodeBuildTicket: Codable, Sendable, Equatable, Identifiable {
         self.jobID = jobID
         self.plannedPaths = plannedPaths
         self.completedPaths = completedPaths
+        self.selection = selection
     }
 
     init(from decoder: Decoder) throws {
@@ -124,6 +127,7 @@ struct CodeBuildTicket: Codable, Sendable, Equatable, Identifiable {
         jobID = LenientJSON.string(container, "jobID")
         plannedPaths = LenientJSON.array(container, "plannedPaths", of: String.self) ?? []
         completedPaths = LenientJSON.array(container, "completedPaths", of: String.self) ?? []
+        selection = try? container.decodeIfPresent(CodeModelSelection.self, forKey: AnyCodingKey("selection"))
     }
 
     func encode(to encoder: Encoder) throws {
@@ -140,6 +144,7 @@ struct CodeBuildTicket: Codable, Sendable, Equatable, Identifiable {
         try container.encodeIfPresent(jobID, forKey: AnyCodingKey("jobID"))
         try container.encode(plannedPaths, forKey: AnyCodingKey("plannedPaths"))
         try container.encode(completedPaths, forKey: AnyCodingKey("completedPaths"))
+        try container.encodeIfPresent(selection, forKey: AnyCodingKey("selection"))
     }
 }
 

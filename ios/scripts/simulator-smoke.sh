@@ -9,6 +9,7 @@ xcrun simctl bootstatus "$DEVICE_ID" -b
 xcodebuild -project ios/FirasAI.xcodeproj -scheme FirasAI -configuration Debug \
   -sdk iphonesimulator -destination "id=$DEVICE_ID" \
   -clonedSourcePackagesDirPath "$RUNNER_TEMP/FirasAI-Packages" \
+  -skipPackagePluginValidation -skipMacroValidation \
   -derivedDataPath "$RUNNER_TEMP/FirasAI-Smoke" \
   CODE_SIGNING_ALLOWED=NO ENABLE_PREVIEWS=NO build \
   > "$ARTIFACT_ROOT/simulator-build.log" 2>&1 || {
@@ -38,7 +39,24 @@ python3 -m venv "$PDF_QA_ENV"
 "$PDF_QA_ENV/bin/python" ios/scripts/validate-final-pdf.py "$ARTIFACT_ROOT"
 cat "$ARTIFACT_ROOT/reliability-smoke.json"
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("status")=="passed", d' "$ARTIFACT_ROOT/reliability-smoke.json"
+# Exercise all gated legacy UI paths on the installed simulator as a second launch. This proves
+# those paths render here; it deliberately does not claim the simulator is an iOS 15 runtime.
+xcrun simctl terminate "$DEVICE_ID" org.firasai.FirasAI || true
+rm -f "$REPORT"
+xcrun simctl launch "$DEVICE_ID" org.firasai.FirasAI --reliability-smoke --reliability-legacy-ui
+for attempt in $(seq 1 120); do
+  [ -f "$REPORT" ] && break
+  sleep 2
+done
+test -f "$REPORT"
+cp "$REPORT" "$ARTIFACT_ROOT/legacy-reliability-smoke.json"
+for name in streaming-math.png legacy-transcript-scroll.png legacy-native-export.png; do
+  [ ! -f "$CONTAINER/Documents/$name" ] || cp "$CONTAINER/Documents/$name" "$ARTIFACT_ROOT/forced-legacy-$name"
+done
+xcrun simctl io "$DEVICE_ID" screenshot "$ARTIFACT_ROOT/forced-legacy-simulator.png"
+cat "$ARTIFACT_ROOT/legacy-reliability-smoke.json"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("status")=="passed", d' "$ARTIFACT_ROOT/legacy-reliability-smoke.json"
 (
   cd "$ARTIFACT_ROOT"
-  zip -q FirasAI-smoke-evidence.zip reliability-smoke.json final-pdf-qa.json *.png *.pdf
+  zip -q FirasAI-smoke-evidence.zip reliability-smoke.json legacy-reliability-smoke.json final-pdf-qa.json *.png *.pdf
 )

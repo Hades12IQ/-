@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Perception
 import UIKit
 
 /// The single toast queue for the whole app.
@@ -12,7 +12,7 @@ import UIKit
 /// Text arrives already localised — `ErrorPresenter` resolves `LText` before it
 /// reaches here, which is why the API takes `String`.
 @MainActor
-@Observable
+@Perceptible
 final class ToastCenter {
 
     struct Toast: Identifiable, Equatable, Sendable {
@@ -24,8 +24,8 @@ final class ToastCenter {
 
     private(set) var current: Toast?
 
-    @ObservationIgnored private var pending: [Entry] = []
-    @ObservationIgnored private var currentAction: (@MainActor () -> Void)?
+    @PerceptionIgnored private var pending: [Entry] = []
+    @PerceptionIgnored private var currentAction: (@MainActor () -> Void)?
 
     init() {}
 

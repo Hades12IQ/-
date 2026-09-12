@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// Password recovery, both halves (`server-auth-session-account.md §4.13–4.14`,
 /// `web-auth-account-settings.md §3.6–3.7`).
@@ -76,31 +77,33 @@ struct ForgotPasswordSheet: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                header
-                if isReset { resetForm } else { forgotForm }
-                if let bannerText { errorBanner(bannerText) }
-                actionButton
-                closeButton
+        WithPerceptionTracking {
+            ScrollView {
+                VStack(spacing: 18) {
+                    header
+                    if isReset { resetForm } else { forgotForm }
+                    if let bannerText { errorBanner(bannerText) }
+                    actionButton
+                    closeButton
+                }
+                .frame(maxWidth: 440)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 22)
+                .padding(.top, 28)
+                .padding(.bottom, 30)
             }
-            .frame(maxWidth: 440)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 22)
-            .padding(.top, 28)
-            .padding(.bottom, 30)
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .firasSheetBackground(palette)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .presentationSizing(.form)
-        .preferredColorScheme(prefs.theme.isLight ? .light : .dark)
-        .tint(palette.accent)
-        .bidiIsland(for: title, fallback: lang)
-        .onChange(of: bannerText) { _, newValue in
-            guard let newValue, !newValue.isEmpty else { return }
-            AccessibilityNotification.Announcement(newValue).post()
+            .firasScrollDismissesKeyboard(.interactively)
+            .firasSheetBackground(palette)
+            .firasPresentationDetents([.medium, .large])
+            .firasPresentationDragIndicator(.visible)
+            .firasPresentationSizing(.form)
+            .preferredColorScheme(prefs.theme.isLight ? .light : .dark)
+            .tint(palette.accent)
+            .bidiIsland(for: title, fallback: lang)
+            .firasOnChange(of: bannerText) { _, newValue in
+                guard let newValue, !newValue.isEmpty else { return }
+                AccessibilityNotification.Announcement(newValue).post()
+            }
         }
     }
 
@@ -155,7 +158,7 @@ struct ForgotPasswordSheet: View {
             .textContentType(.emailAddress)
             .keyboardType(.emailAddress)
             .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
+            .disableAutocorrection()
             .submitLabel(.go)
             .onSubmit { perform() }
             .forceLTR()
@@ -163,7 +166,7 @@ struct ForgotPasswordSheet: View {
             .foregroundStyle(palette.textPrimary)
             .padding(.horizontal, 15)
             .frame(height: 50)
-            .firasGlass(.sheet, palette: palette, in: AnyShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
+            .firasGlass(.sheet, palette: palette, in: FirasAnyShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
             .disabled(isBusy)
             .accessibilityLabel(Text(verbatim: Strings.Auth.email(lang)))
         }
@@ -183,7 +186,7 @@ struct ForgotPasswordSheet: View {
             .foregroundStyle(palette.textPrimary)
             .padding(.horizontal, 15)
             .frame(height: 50)
-            .firasGlass(.sheet, palette: palette, in: AnyShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
+            .firasGlass(.sheet, palette: palette, in: FirasAnyShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
             .disabled(isBusy)
             .accessibilityLabel(Text(verbatim: Strings.Auth.newPassword(lang)))
 

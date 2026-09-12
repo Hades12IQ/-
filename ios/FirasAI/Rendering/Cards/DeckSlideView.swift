@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// One slide, drawn natively.
 ///
@@ -25,15 +26,19 @@ struct DeckSlideView: View {
     var showsFooter: Bool = true
 
     var body: some View {
-        GeometryReader { geo in
-            let scale = min(geo.size.width / Self.canvas.width, geo.size.height / Self.canvas.height)
-            page
-                .frame(width: Self.canvas.width, height: Self.canvas.height)
-                .scaleEffect(scale, anchor: .topLeading)
-                .frame(width: Self.canvas.width * scale, height: Self.canvas.height * scale)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        WithPerceptionTracking {
+            GeometryReader { geo in
+                WithPerceptionTracking {
+                    let scale = min(geo.size.width / Self.canvas.width, geo.size.height / Self.canvas.height)
+                    page
+                        .frame(width: Self.canvas.width, height: Self.canvas.height)
+                        .scaleEffect(scale, anchor: .topLeading)
+                        .frame(width: Self.canvas.width * scale, height: Self.canvas.height * scale)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                }
+            }
+            .aspectRatio(Self.canvas.width / Self.canvas.height, contentMode: .fit)
         }
-        .aspectRatio(Self.canvas.width / Self.canvas.height, contentMode: .fit)
     }
 
     // MARK: - The page
@@ -90,17 +95,19 @@ struct DeckSlideView: View {
 
     @ViewBuilder
     private func body(for layout: DeckLayout) -> some View {
-        switch layout {
-        case .section: sectionBody
-        case .hero: heroBody
-        case .quote: quoteBody
-        case .stats: statsBody
-        case .comparison, .twocol: columnsBody
-        case .timeline: timelineBody
-        case .process: processBody
-        case .cards: cardsBody
-        case .imagefull: imageFullBody
-        case .content: contentBody
+        WithPerceptionTracking {
+            switch layout {
+            case .section: sectionBody
+            case .hero: heroBody
+            case .quote: quoteBody
+            case .stats: statsBody
+            case .comparison, .twocol: columnsBody
+            case .timeline: timelineBody
+            case .process: processBody
+            case .cards: cardsBody
+            case .imagefull: imageFullBody
+            case .content: contentBody
+            }
         }
     }
 
@@ -182,21 +189,23 @@ struct DeckSlideView: View {
             heading
             HStack(alignment: .top, spacing: 34) {
                 ForEach(Array(slide.stats.enumerated()), id: \.offset) { pair in
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(pair.element.value)
-                            .font(.system(size: 76, weight: .heavy))
-                            .foregroundStyle(palette.accent)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                        Text(pair.element.label)
-                            .font(.system(size: 26))
-                            .foregroundStyle(palette.inkMuted)
-                            .fixedSize(horizontal: false, vertical: true)
+                    WithPerceptionTracking {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(pair.element.value)
+                                .font(.system(size: 76, weight: .heavy))
+                                .foregroundStyle(palette.accent)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                            Text(pair.element.label)
+                                .font(.system(size: 26))
+                                .foregroundStyle(palette.inkMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(28)
+                        .background(plate)
+                        .entering(reveal, motionOn, order: pair.offset + 1)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(28)
-                    .background(plate)
-                    .entering(reveal, motionOn, order: pair.offset + 1)
                 }
             }
             bulletsList(from: 1 + slide.stats.count, limit: 3)
@@ -210,22 +219,26 @@ struct DeckSlideView: View {
             heading
             HStack(alignment: .top, spacing: 30) {
                 ForEach(Array(effectiveColumns.enumerated()), id: \.offset) { pair in
-                    VStack(alignment: .leading, spacing: 16) {
-                        if !pair.element.heading.isEmpty {
-                            Text(pair.element.heading)
-                                .font(.system(size: 34, weight: .bold))
-                                .foregroundStyle(palette.accent)
-                                .fixedSize(horizontal: false, vertical: true)
+                    WithPerceptionTracking {
+                        VStack(alignment: .leading, spacing: 16) {
+                            if !pair.element.heading.isEmpty {
+                                Text(pair.element.heading)
+                                    .font(.system(size: 34, weight: .bold))
+                                    .foregroundStyle(palette.accent)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            ForEach(Array(pair.element.points.enumerated()), id: \.offset) { point in
+                                WithPerceptionTracking {
+                                    bulletRow(point.element, size: 27)
+                                }
+                            }
+                            Spacer(minLength: 0)
                         }
-                        ForEach(Array(pair.element.points.enumerated()), id: \.offset) { point in
-                            bulletRow(point.element, size: 27)
-                        }
-                        Spacer(minLength: 0)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(30)
+                        .background(plate)
+                        .entering(reveal, motionOn, order: pair.offset + 1)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(30)
-                    .background(plate)
-                    .entering(reveal, motionOn, order: pair.offset + 1)
                 }
             }
             Spacer(minLength: 0)
@@ -238,28 +251,30 @@ struct DeckSlideView: View {
             heading
             VStack(alignment: .leading, spacing: 22) {
                 ForEach(Array(effectiveSteps.enumerated()), id: \.offset) { pair in
-                    HStack(alignment: .top, spacing: 22) {
-                        ZStack {
-                            Circle().fill(palette.accent).frame(width: 48, height: 48)
-                            Text("\(pair.offset + 1)")
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundStyle(palette.isLight ? Color.white : palette.deep)
-                        }
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(pair.element.title)
-                                .font(.system(size: 32, weight: .semibold))
-                                .foregroundStyle(palette.ink)
-                                .fixedSize(horizontal: false, vertical: true)
-                            if !pair.element.desc.isEmpty {
-                                Text(pair.element.desc)
-                                    .font(.system(size: 25))
-                                    .foregroundStyle(palette.inkMuted)
-                                    .fixedSize(horizontal: false, vertical: true)
+                    WithPerceptionTracking {
+                        HStack(alignment: .top, spacing: 22) {
+                            ZStack {
+                                Circle().fill(palette.accent).frame(width: 48, height: 48)
+                                Text("\(pair.offset + 1)")
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundStyle(palette.isLight ? Color.white : palette.deep)
                             }
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(pair.element.title)
+                                    .font(.system(size: 32, weight: .semibold))
+                                    .foregroundStyle(palette.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if !pair.element.desc.isEmpty {
+                                    Text(pair.element.desc)
+                                        .font(.system(size: 25))
+                                        .foregroundStyle(palette.inkMuted)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            Spacer(minLength: 0)
                         }
-                        Spacer(minLength: 0)
+                        .entering(reveal, motionOn, order: pair.offset + 1)
                     }
-                    .entering(reveal, motionOn, order: pair.offset + 1)
                 }
             }
             Spacer(minLength: 0)
@@ -272,26 +287,28 @@ struct DeckSlideView: View {
             heading
             HStack(alignment: .top, spacing: 18) {
                 ForEach(Array(effectiveSteps.prefix(5).enumerated()), id: \.offset) { pair in
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("\(pair.offset + 1)")
-                            .font(.system(size: 30, weight: .heavy))
-                            .foregroundStyle(palette.accent)
-                        Text(pair.element.title)
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(palette.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if !pair.element.desc.isEmpty {
-                            Text(pair.element.desc)
-                                .font(.system(size: 22))
-                                .foregroundStyle(palette.inkMuted)
+                    WithPerceptionTracking {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("\(pair.offset + 1)")
+                                .font(.system(size: 30, weight: .heavy))
+                                .foregroundStyle(palette.accent)
+                            Text(pair.element.title)
+                                .font(.system(size: 28, weight: .semibold))
+                                .foregroundStyle(palette.ink)
                                 .fixedSize(horizontal: false, vertical: true)
+                            if !pair.element.desc.isEmpty {
+                                Text(pair.element.desc)
+                                    .font(.system(size: 22))
+                                    .foregroundStyle(palette.inkMuted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
                         }
-                        Spacer(minLength: 0)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(24)
+                        .background(plate)
+                        .entering(reveal, motionOn, order: pair.offset + 1)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(24)
-                    .background(plate)
-                    .entering(reveal, motionOn, order: pair.offset + 1)
                 }
             }
             Spacer(minLength: 0)
@@ -303,26 +320,30 @@ struct DeckSlideView: View {
         VStack(alignment: .leading, spacing: 38) {
             heading
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 22), count: 3), spacing: 22) {
-                ForEach(Array(slide.cards.enumerated()), id: \.offset) { pair in
-                    VStack(alignment: .leading, spacing: 10) {
-                        if !pair.element.icon.isEmpty {
-                            Text(pair.element.icon).font(.system(size: 40))
-                        }
-                        Text(pair.element.title)
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(palette.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if !pair.element.desc.isEmpty {
-                            Text(pair.element.desc)
-                                .font(.system(size: 22))
-                                .foregroundStyle(palette.inkMuted)
-                                .fixedSize(horizontal: false, vertical: true)
+                WithPerceptionTracking {
+                    ForEach(Array(slide.cards.enumerated()), id: \.offset) { pair in
+                        WithPerceptionTracking {
+                            VStack(alignment: .leading, spacing: 10) {
+                                if !pair.element.icon.isEmpty {
+                                    Text(pair.element.icon).font(.system(size: 40))
+                                }
+                                Text(pair.element.title)
+                                    .font(.system(size: 28, weight: .semibold))
+                                    .foregroundStyle(palette.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if !pair.element.desc.isEmpty {
+                                    Text(pair.element.desc)
+                                        .font(.system(size: 22))
+                                        .foregroundStyle(palette.inkMuted)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(26)
+                            .background(plate)
+                            .entering(reveal, motionOn, order: pair.offset + 1)
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(26)
-                    .background(plate)
-                    .entering(reveal, motionOn, order: pair.offset + 1)
                 }
             }
             Spacer(minLength: 0)
@@ -401,8 +422,10 @@ struct DeckSlideView: View {
     private func bulletsList(from order: Int, limit: Int) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             ForEach(Array(slide.bullets.prefix(limit).enumerated()), id: \.offset) { pair in
-                bulletRow(pair.element, size: 30)
-                    .entering(reveal, motionOn, order: order + pair.offset)
+                WithPerceptionTracking {
+                    bulletRow(pair.element, size: 30)
+                        .entering(reveal, motionOn, order: order + pair.offset)
+                }
             }
         }
     }

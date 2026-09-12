@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 import WebKit
 
@@ -109,17 +110,20 @@ struct PreviewWebView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            chrome
-            stage
-            runStrip
-        }
-        .background(palette.background)
-        .onAppear { rebuild() }
-        .onChange(of: signature) { _, _ in scheduleRebuild() }
-        .onChange(of: externalReload) { _, _ in rebuild() }
-        .onChange(of: device) { _, _ in reloadToken += 1 }
-        .onChange(of: landscape) { _, _ in reloadToken += 1 }
+        WithPerceptionTracking {
+            VStack(spacing: 0) {
+                chrome
+                stage
+                runStrip
+            }
+            .background(palette.background)
+            .onAppear { rebuild() }
+            .firasOnChange(of: signature) { _, _ in scheduleRebuild() }
+            .firasOnChange(of: externalReload) { _, _ in rebuild() }
+            .firasOnChange(of: device) { _, _ in reloadToken += 1 }
+            .firasOnChange(of: landscape) { _, _ in reloadToken += 1 }
+
+            }
     }
 
     // MARK: - Chrome
@@ -128,10 +132,13 @@ struct PreviewWebView: View {
         HStack(spacing: 10) {
             HStack(spacing: 5) {
                 ForEach(0..<3, id: \.self) { index in
-                    Circle()
-                        .fill(palette.borderStrong)
-                        .frame(width: 8, height: 8)
-                        .opacity(1 - Double(index) * 0.15)
+                    WithPerceptionTracking {
+                        Circle()
+                            .fill(palette.borderStrong)
+                            .frame(width: 8, height: 8)
+                            .opacity(1 - Double(index) * 0.15)
+
+                        }
                 }
             }
             .accessibilityHidden(true)
@@ -200,20 +207,29 @@ struct PreviewWebView: View {
 
     private var devicePicker: some View {
         Menu {
-            ForEach(DevicePreset.allCases) { preset in
-                Button {
-                    device = preset
-                } label: {
-                    Text(verbatim: preset.title(lang))
+            WithPerceptionTracking {
+                ForEach(DevicePreset.allCases) { preset in
+                    WithPerceptionTracking {
+                        Button {
+                            device = preset
+                        } label: {
+                            Text(verbatim: preset.title(lang))
+                        }
+
+                        }
                 }
-            }
+
+                }
         } label: {
-            Text(verbatim: device.title(lang))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(palette.textSecondary)
-                .padding(.horizontal, 10)
-                .frame(minHeight: 30)
-                .background { Capsule(style: .continuous).fill(palette.surfaceSunken) }
+            WithPerceptionTracking {
+                Text(verbatim: device.title(lang))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(palette.textSecondary)
+                    .padding(.horizontal, 10)
+                    .frame(minHeight: 30)
+                    .background { Capsule(style: .continuous).fill(palette.surfaceSunken) }
+
+                }
         }
         .accessibilityLabel(Text(verbatim: device.title(lang)))
     }
@@ -289,6 +305,7 @@ struct PreviewWebView: View {
 
     private func canvas(_ document: PreviewDocument) -> some View {
         GeometryReader { proxy in
+            WithPerceptionTracking {
             let frameSize = device.size(landscape: landscape)
             if let frameSize, proxy.size.width > 1, proxy.size.height > 1 {
                 let scale = min(
@@ -307,6 +324,8 @@ struct PreviewWebView: View {
             } else {
                 web(document)
                     .frame(width: proxy.size.width, height: proxy.size.height)
+            }
+
             }
         }
     }

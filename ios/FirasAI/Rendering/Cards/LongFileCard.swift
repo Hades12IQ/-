@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The durable long-file card (`server-chat-jobs-chats.md §4.2, §4.4`).
 ///
@@ -43,23 +44,25 @@ struct LongFileCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            headline
-            if isRunning {
-                if let fraction {
-                    bar(fraction)
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 12) {
+                headline
+                if isRunning {
+                    if let fraction {
+                        bar(fraction)
+                    }
+                    counterRow
                 }
-                counterRow
+                if let errorText, !errorText.isEmpty {
+                    failureLine(errorText)
+                }
+                footer
             }
-            if let errorText, !errorText.isEmpty {
-                failureLine(errorText)
-            }
-            footer
+            .padding(14)
+            .frame(maxWidth: 520, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .surfaceCard(palette)
         }
-        .padding(14)
-        .frame(maxWidth: 520, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .surfaceCard(palette)
     }
 
     // MARK: - Headline
@@ -128,11 +131,13 @@ struct LongFileCard: View {
 
     private func bar(_ fraction: Double) -> some View {
         GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Capsule().fill(palette.surfaceSunken)
-                Capsule()
-                    .fill(palette.accent)
-                    .frame(width: max(4, proxy.size.width * fraction))
+            WithPerceptionTracking {
+                ZStack(alignment: .leading) {
+                    Capsule().fill(palette.surfaceSunken)
+                    Capsule()
+                        .fill(palette.accent)
+                        .frame(width: max(4, proxy.size.width * fraction))
+                }
             }
         }
         .frame(height: 5)

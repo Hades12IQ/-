@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 import UniformTypeIdentifiers
 import UserNotifications
 
@@ -29,6 +30,7 @@ struct DataSettingsView: View {
     }
 
     var body: some View {
+        WithPerceptionTracking {
         SettingsPageBody(palette: palette) {
             conversationsPanel
             storagePanel
@@ -89,6 +91,8 @@ struct DataSettingsView: View {
             }
         }
     }
+
+        }
 
     // MARK: - Conversations
 
@@ -170,7 +174,7 @@ struct DataSettingsView: View {
             lang: lang
         ) {
             NavigationLink {
-                NotificationSettingsView(env: env)
+                WithPerceptionTracking { NotificationSettingsView(env: env) }
             } label: {
                 linkRow(
                     title: Strings.Settings.Notifications.header(lang),
@@ -183,7 +187,7 @@ struct DataSettingsView: View {
             SettingsDivider(palette: palette)
 
             NavigationLink {
-                MemorySettingsView(env: env)
+                WithPerceptionTracking { MemorySettingsView(env: env) }
             } label: {
                 linkRow(
                     title: Strings.Settings.Memory.open(lang),

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The reader's own turn: one compact bubble on the trailing edge.
@@ -81,14 +82,18 @@ struct UserTurnView: View, Equatable {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            Spacer(minLength: UserTurnView.gutter)
-            bubble
-        }
-        .frame(maxWidth: .infinity, alignment: .trailing)
-        .task(id: message.imageThumbs?.count ?? 0) { await loadThumbnails() }
-        .fullScreenCover(item: $opened) { preview in
-            AttachedImageViewer(image: preview.image, palette: palette, lang: lang) { opened = nil }
+        WithPerceptionTracking {
+            HStack(spacing: 0) {
+                Spacer(minLength: UserTurnView.gutter)
+                bubble
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .task(id: message.imageThumbs?.count ?? 0) { await loadThumbnails() }
+            .fullScreenCover(item: $opened) { preview in
+                WithPerceptionTracking {
+                    AttachedImageViewer(image: preview.image, palette: palette, lang: lang) { opened = nil }
+                }
+            }
         }
     }
 
@@ -123,12 +128,14 @@ struct UserTurnView: View, Equatable {
         .background { shape.fill(palette.userFill) }
         .clipShape(shape)
         .contextMenu {
-            MessageContextMenu(
-                env: env,
-                message: message,
-                conversationID: conversationID,
-                product: product
-            )
+            WithPerceptionTracking {
+                MessageContextMenu(
+                    env: env,
+                    message: message,
+                    conversationID: conversationID,
+                    product: product
+                )
+            }
         }
         .frame(maxWidth: UserTurnView.maxWidth, alignment: .trailing)
         .accessibilityElement(children: .contain)
@@ -212,20 +219,24 @@ struct UserTurnView: View, Equatable {
                 columns: [GridItem(.adaptive(minimum: 66, maximum: 96), spacing: 6)],
                 spacing: 6
             ) {
-                ForEach(Array(thumbnails.indices), id: \.self) { index in
-                    Button {
-                        Haptics.select()
-                        opened = ThumbnailPreview(index: index, image: thumbnails[index])
-                    } label: {
-                        Image(uiImage: thumbnails[index])
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 66, height: 66)
-                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                            .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                WithPerceptionTracking {
+                    ForEach(Array(thumbnails.indices), id: \.self) { index in
+                        WithPerceptionTracking {
+                            Button {
+                                Haptics.select()
+                                opened = ThumbnailPreview(index: index, image: thumbnails[index])
+                            } label: {
+                                Image(uiImage: thumbnails[index])
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 66, height: 66)
+                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                                    .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(Text(Strings.Chat.attachedImage(lang)))
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text(Strings.Chat.attachedImage(lang)))
                 }
             }
             .frame(maxWidth: 300, alignment: .leading)
@@ -247,7 +258,9 @@ struct UserTurnView: View, Equatable {
         if !files.isEmpty {
             VStack(alignment: .leading, spacing: 5) {
                 ForEach(Array(files.indices), id: \.self) { index in
-                    chip(files[index])
+                    WithPerceptionTracking {
+                        chip(files[index])
+                    }
                 }
             }
         }

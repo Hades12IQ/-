@@ -1,4 +1,6 @@
 import SwiftUI
+import Perception
+import Perception
 
 /// A hardware key the composer may want before the text field sees it.
 enum ComposerKey: Sendable, Equatable {
@@ -51,28 +53,17 @@ struct ComposerField: View {
     }
 
     var body: some View {
-        TextField(placeholder, text: $text, axis: .vertical)
-            .textFieldStyle(.plain)
-            .font(FirasType.scaled(17, scale: fontScale))
-            .foregroundStyle(palette.textPrimary)
-            .tint(palette.accent)
-            .lineLimit(1...6)
-            .textInputAutocapitalization(.sentences)
-            .autocorrectionDisabled(false)
-            .submitLabel(sendOnReturn ? .send : .return)
-            .focused(isFocused)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .frame(minHeight: 44)
-            .bidiIsland(for: text, fallback: lang)
-            .onSubmit {
-                guard sendOnReturn else { return }
-                onSubmit()
-            }
-            .onKeyPress(.upArrow) { onKey(.up) ? .handled : .ignored }
-            .onKeyPress(.downArrow) { onKey(.down) ? .handled : .ignored }
-            .onKeyPress(.escape) { onKey(.escape) ? .handled : .ignored }
-            .onKeyPress(.tab) { onKey(.accept) ? .handled : .ignored }
+        WithPerceptionTracking {
+        WithPerceptionTracking {
+            FirasGrowingTextField(text: $text, placeholder: placeholder, pointSize: 17 * fontScale.factor,
+                palette: palette, isFocused: isFocused, sendOnReturn: sendOnReturn,
+                onSubmit: onSubmit, onKey: onKey)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .frame(minHeight: 44)
+                .bidiIsland(for: text, fallback: lang)
             .accessibilityLabel(Text(placeholder))
+        }
+        }
     }
 }

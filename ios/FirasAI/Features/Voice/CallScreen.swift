@@ -1,5 +1,6 @@
 import AVFoundation
 import SwiftUI
+import Perception
 import UIKit
 
 /// The full-screen call surface (`design-brief.md §7.13`).
@@ -28,15 +29,19 @@ struct CallScreen: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                callBackground(side: min(proxy.size.width, proxy.size.height))
-                content(in: proxy.size)
+        WithPerceptionTracking {
+            GeometryReader { proxy in
+                WithPerceptionTracking {
+                    ZStack {
+                        callBackground(side: min(proxy.size.width, proxy.size.height))
+                        content(in: proxy.size)
+                    }
+                }
             }
+            .task { await begin() }
+            .firasOnChange(of: call.phase) { _, phase in reactTo(phase) }
+            .onDisappear { closeGeneration &+= 1 }
         }
-        .task { await begin() }
-        .onChange(of: call.phase) { _, phase in reactTo(phase) }
-        .onDisappear { closeGeneration &+= 1 }
     }
 
     // MARK: - Layout
@@ -362,7 +367,10 @@ struct CallScreen: View {
     /// `true` only before the user has ever answered the system prompt, which is the one moment
     /// the consent card exists for.
     private static var microphoneUndecided: Bool {
-        AVAudioApplication.shared.recordPermission == .undetermined
+        if #available(iOS 17, *) {
+            return AVAudioApplication.shared.recordPermission == .undetermined
+        }
+        return AVAudioSession.sharedInstance().recordPermission == .undetermined
     }
 
     // MARK: - Derived
@@ -441,12 +449,14 @@ private struct CallControlButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            icon
+        WithPerceptionTracking {
+            Button(action: action) {
+                icon
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(label))
+            .accessibilityValue(Text(value ?? ""))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(label))
-        .accessibilityValue(Text(value ?? ""))
     }
 
     @ViewBuilder
@@ -463,7 +473,7 @@ private struct CallControlButton: View {
                 .shadow(color: Color.black.opacity(0.18), radius: 10, y: 4)
         } else {
             glyph
-                .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
+                .firasGlass(.floating, palette: palette, in: FirasAnyShape(Circle()))
                 .contentShape(Circle())
         }
     }

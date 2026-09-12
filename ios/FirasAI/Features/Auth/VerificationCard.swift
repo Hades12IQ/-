@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import Perception
 
 /// The "check your email" card (`server-auth-session-account.md §4.2–4.4`,
 /// `web-auth-account-settings.md §3.5`).
@@ -51,24 +52,26 @@ struct VerificationCard: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            waiting
-            status
-            if let note, !note.isEmpty { noteLine(note) }
-            if let message = env.session.errorText, !message.isEmpty { errorLine(message) }
-            resendButton
-            backButton
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity)
-        .firasGlass(
-            .sheet,
-            palette: palette,
-            in: AnyShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        )
-        .bidiIsland(for: Strings.Auth.verifyWaiting(lang), fallback: lang)
-        .task(id: pollKey) {
-            await watch()
+        WithPerceptionTracking {
+            VStack(spacing: 16) {
+                waiting
+                status
+                if let note, !note.isEmpty { noteLine(note) }
+                if let message = env.session.errorText, !message.isEmpty { errorLine(message) }
+                resendButton
+                backButton
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity)
+            .firasGlass(
+                .sheet,
+                palette: palette,
+                in: FirasAnyShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            )
+            .bidiIsland(for: Strings.Auth.verifyWaiting(lang), fallback: lang)
+            .task(id: pollKey) {
+                await watch()
+            }
         }
     }
 

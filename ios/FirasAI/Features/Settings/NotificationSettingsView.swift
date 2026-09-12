@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 import UserNotifications
 
@@ -30,18 +31,20 @@ struct NotificationSettingsView: View {
     }
 
     var body: some View {
-        SettingsPageBody(palette: palette) {
-            explainerPanel
-            statusPanel
-        }
-        .navigationTitle(Strings.Settings.Notifications.header(lang))
-        .navigationBarTitleDisplayMode(.inline)
-        .task { await env.notifications.refreshAuthorization() }
-        .onChange(of: scenePhase) { _, phase in
-            // Coming back from the system settings app is the only way `denied` ever becomes
-            // `authorized`, so the status has to be re-read rather than remembered.
-            guard phase == .active else { return }
-            Task { await env.notifications.refreshAuthorization() }
+        WithPerceptionTracking {
+            SettingsPageBody(palette: palette) {
+                explainerPanel
+                statusPanel
+            }
+            .navigationTitle(Strings.Settings.Notifications.header(lang))
+            .navigationBarTitleDisplayMode(.inline)
+            .task { await env.notifications.refreshAuthorization() }
+            .firasOnChange(of: scenePhase) { _, phase in
+                // Coming back from the system settings app is the only way `denied` ever becomes
+                // `authorized`, so the status has to be re-read rather than remembered.
+                guard phase == .active else { return }
+                Task { await env.notifications.refreshAuthorization() }
+            }
         }
     }
 

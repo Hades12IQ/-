@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// One answer, rendered as a document rather than a bubble (`design-brief.md §7.6`).
 ///
@@ -121,55 +122,59 @@ struct AssistantTurnView: View, Equatable {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            versionPager
-            retryNote
-            thinking
-            longFile
-            if let receipt = message.omnix {
-                OmnixRunView(receipt: receipt, conversationID: conversationID, env: env)
-            } else {
-                content
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 14) {
+                versionPager
+                retryNote
+                thinking
+                longFile
+                if let receipt = message.omnix {
+                    OmnixRunView(receipt: receipt, conversationID: conversationID, env: env)
+                } else {
+                    content
+                }
+                planPill
+                quickReplies
+                actions
             }
-            planPill
-            quickReplies
-            actions
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .onChange(of: isStreaming) { _, streaming in
-            if !streaming {
-                MathBlockView.invalidate(messageID: message.id)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .firasOnChange(of: isStreaming) { _, streaming in
+                if !streaming {
+                    MathBlockView.invalidate(messageID: message.id)
+                }
+                reveal()
             }
-            reveal()
-        }
-        .onAppear { if !isStreaming { revealed = true } }
-        .onChange(of: message.visibleContent) { _, _ in resetFilePresentation() }
-        .onChange(of: message.altAt) { _, _ in resetFilePresentation() }
-        .onChange(of: message.status) { _, _ in resetFilePresentation() }
-        .onChange(of: env.session.identityID) { _, _ in resetFilePresentation() }
-        .onDisappear {
-            fileBuildID = nil
-            isPreparingFile = false
-        }
-        .sheet(item: $fileSheet) { route in
-            switch route.intent {
-            // `export:` and not `url:` on all three. A picture export comes out as one PNG per
-            // page, and `url` is page one alone — the rest were written and then never left the
-            // app, which is the silent half of a crop.
-            case .preview:
-                FirasDocumentPreview(export: route.export)
-                    .onAppear {
-                        #if DEBUG
-                        fileCardProbe?.previewAppeared = true
-                        #endif
+            .onAppear { if !isStreaming { revealed = true } }
+            .firasOnChange(of: message.visibleContent) { _, _ in resetFilePresentation() }
+            .firasOnChange(of: message.altAt) { _, _ in resetFilePresentation() }
+            .firasOnChange(of: message.status) { _, _ in resetFilePresentation() }
+            .firasOnChange(of: env.session.identityID) { _, _ in resetFilePresentation() }
+            .onDisappear {
+                fileBuildID = nil
+                isPreparingFile = false
+            }
+            .sheet(item: $fileSheet) { route in
+                WithPerceptionTracking {
+                    switch route.intent {
+                    // `export:` and not `url:` on all three. A picture export comes out as one PNG per
+                    // page, and `url` is page one alone — the rest were written and then never left the
+                    // app, which is the silent half of a crop.
+                    case .preview:
+                        FirasDocumentPreview(export: route.export)
+                            .onAppear {
+                                #if DEBUG
+                                fileCardProbe?.previewAppeared = true
+                                #endif
+                            }
+                    case .share:
+                        FirasActivitySheet(export: route.export)
+                    case .save:
+                        FirasFileSaver(export: route.export) { _ in fileSheet = nil }
                     }
-            case .share:
-                FirasActivitySheet(export: route.export)
-            case .save:
-                FirasFileSaver(export: route.export) { _ in fileSheet = nil }
+                }
             }
+            .accessibilityElement(children: .contain)
         }
-        .accessibilityElement(children: .contain)
     }
 
     private func resetFilePresentation() {

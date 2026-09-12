@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// A fenced block that the app can actually run, shown as the web shows it: a `معاينة / الكود`
@@ -69,29 +70,31 @@ struct HTMLPreviewCard: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            divider
-            pane
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .strokeBorder(palette.border, lineWidth: 1)
-                .allowsHitTesting(false)
-        )
-        .forceLTR()
-        .onAppear {
-            if side == .preview { start() }
-        }
-        .onChange(of: side) { _, newValue in
-            if newValue == .preview { start() }
-        }
-        .onChange(of: palette.isLightFamily) { _, _ in
-            guard running else { return }
-            rebuild()
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                divider
+                pane
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(palette.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .strokeBorder(palette.border, lineWidth: 1)
+                    .allowsHitTesting(false)
+            )
+            .forceLTR()
+            .onAppear {
+                if side == .preview { start() }
+            }
+            .firasOnChange(of: side) { _, newValue in
+                if newValue == .preview { start() }
+            }
+            .firasOnChange(of: palette.isLightFamily) { _, _ in
+                guard running else { return }
+                rebuild()
+            }
         }
     }
 

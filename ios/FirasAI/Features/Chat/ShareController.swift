@@ -1,7 +1,6 @@
 import SwiftUI
 import UIKit
-import Observation
-
+import Perception
 /// Creating a public link to a conversation, or to one answer inside it
 /// (`POST /api/share`, `server-chat-jobs-chats.md §6`, `web-auth-account-settings.md §9`).
 ///
@@ -11,7 +10,7 @@ import Observation
 /// The link is copied to the pasteboard the moment it arrives, exactly as the web does, so the sheet
 /// that follows is a confirmation and an apps hand-off, not a second step the user must complete.
 @MainActor
-@Observable
+@Perceptible
 final class ShareController {
 
     enum Phase: Equatable {
@@ -162,10 +161,12 @@ struct ShareSheetView: View {
     }
 
     var body: some View {
-        if isPublicShareLink {
-            SharedChatView(env: env, shareID: conversationID)
-        } else {
-            linkSheet
+        WithPerceptionTracking {
+            if isPublicShareLink {
+                SharedChatView(env: env, shareID: conversationID)
+            } else {
+                linkSheet
+            }
         }
     }
 
@@ -188,33 +189,39 @@ struct ShareSheetView: View {
     // MARK: - Link sheet
 
     private var linkSheet: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                sheetContent
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 18)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .navigationTitle(Text(ShareCopy.sheetTitle(lang)))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text(Strings.Common.close(lang))
+        FirasNavigationStack {
+            WithPerceptionTracking {
+                VStack(alignment: .leading, spacing: 18) {
+                    sheetContent
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .navigationTitle(Text(ShareCopy.sheetTitle(lang)))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    WithPerceptionTracking {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button {
+                                dismiss()
+                            } label: {
+                                Text(Strings.Common.close(lang))
+                            }
+                            .foregroundStyle(palette.accent)
+                        }
                     }
-                    .foregroundStyle(palette.accent)
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .firasPresentationDetents([.medium, .large])
         .firasSheetBackground(palette)
         .task { await start() }
         .sheet(isPresented: $showActivity) {
-            if let url = controller?.link {
-                FirasActivitySheet(url: url)
+            WithPerceptionTracking {
+                if let url = controller?.link {
+                    FirasActivitySheet(url: url)
+                }
             }
         }
     }

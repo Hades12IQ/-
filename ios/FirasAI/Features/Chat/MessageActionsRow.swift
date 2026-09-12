@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The quiet row under an answer: copy, regenerate, listen, export, more.
@@ -52,29 +53,35 @@ struct MessageActionsRow: View {
     }
 
     var body: some View {
-        let palette = env.prefs.palette
-        let lang = env.prefs.lang
+        WithPerceptionTracking(content: {
+            let palette = env.prefs.palette
+            let lang = env.prefs.lang
 
-        return VStack(alignment: .leading, spacing: 10) {
-            row(palette: palette, lang: lang)
-            translationBlock(palette: palette, lang: lang)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .onChange(of: env.session.identityID) { _, _ in
-            translationRequestID = nil
-            isTranslating = false
-            translation = nil
-            translationLanguage = nil
-            showsLanguagePicker = false
-        }
-        .sheet(item: $exportSheet) { route in
-            exportSheetBody(route)
-        }
-        .sheet(isPresented: $showsLanguagePicker) {
-            TranslationLanguagePicker(lang: lang, palette: palette) { target in
-                translate(to: target, lang: lang)
+            return VStack(alignment: .leading, spacing: 10) {
+                row(palette: palette, lang: lang)
+                translationBlock(palette: palette, lang: lang)
             }
-        }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .firasOnChange(of: env.session.identityID) { _, _ in
+                translationRequestID = nil
+                isTranslating = false
+                translation = nil
+                translationLanguage = nil
+                showsLanguagePicker = false
+            }
+            .sheet(item: $exportSheet) { route in
+                WithPerceptionTracking {
+                    exportSheetBody(route)
+                }
+            }
+            .sheet(isPresented: $showsLanguagePicker) {
+                WithPerceptionTracking {
+                    TranslationLanguagePicker(lang: lang, palette: palette) { target in
+                        translate(to: target, lang: lang)
+                    }
+                }
+            }
+        }())
     }
 
     /// One sheet, two stops: choose the format, then hand over the file. `ExportFormatPicker`

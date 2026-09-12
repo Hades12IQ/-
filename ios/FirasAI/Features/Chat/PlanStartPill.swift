@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// `▶ ابدأ التنفيذ` under a finished plan.
 ///
@@ -33,34 +34,36 @@ struct PlanStartPill: View {
     }
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 7) {
-                Image(systemName: "play.fill")
-                    .font(.system(size: 12, weight: .bold))
-                Text(Strings.Chat.planStart(lang))
-                    .font(.system(size: 15, weight: .semibold))
+        WithPerceptionTracking {
+            Button(action: action) {
+                HStack(spacing: 7) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 12, weight: .bold))
+                    Text(Strings.Chat.planStart(lang))
+                        .font(.system(size: 15, weight: .semibold))
+                }
+                .foregroundStyle(palette.onAccent)
+                .padding(.horizontal, 18)
+                // 44, not 40: the capsule IS the hit area, and a plan is approved with a thumb.
+                .frame(minHeight: 44)
+                .background {
+                    Capsule(style: .continuous).fill(palette.accent)
+                }
+                .overlay {
+                    Capsule(style: .continuous)
+                        .strokeBorder(palette.accentRing, lineWidth: 1)
+                        .allowsHitTesting(false)
+                }
+                .shadow(color: palette.glassShadow, radius: 10, y: 4)
+                .contentShape(Capsule(style: .continuous))
             }
-            .foregroundStyle(palette.onAccent)
-            .padding(.horizontal, 18)
-            // 44, not 40: the capsule IS the hit area, and a plan is approved with a thumb.
-            .frame(minHeight: 44)
-            .background {
-                Capsule(style: .continuous).fill(palette.accent)
-            }
-            .overlay {
-                Capsule(style: .continuous)
-                    .strokeBorder(palette.accentRing, lineWidth: 1)
-                    .allowsHitTesting(false)
-            }
-            .shadow(color: palette.glassShadow, radius: 10, y: 4)
-            .contentShape(Capsule(style: .continuous))
+            .buttonStyle(.plain)
+            .opacity(isEnabled ? 1 : 0.55)
+            .disabled(!isEnabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .transition(motionOn ? FirasMotion.revealTransition : .opacity)
+            .accessibilityLabel(Text(Strings.Chat.planStart(lang)))
+            .accessibilityHint(Text(Strings.Chat.planStartHint(lang)))
         }
-        .buttonStyle(.plain)
-        .opacity(isEnabled ? 1 : 0.55)
-        .disabled(!isEnabled)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .transition(motionOn ? FirasMotion.revealTransition : .opacity)
-        .accessibilityLabel(Text(Strings.Chat.planStart(lang)))
-        .accessibilityHint(Text(Strings.Chat.planStartHint(lang)))
     }
 }

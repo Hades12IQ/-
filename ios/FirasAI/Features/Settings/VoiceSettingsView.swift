@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// Call voice → interruption → dictation dialect → interface sounds
 /// (`web-auth-account-settings.md §6.4`, `web-voice-call-mic.md §9`, `design-brief.md §5.2`).
@@ -16,11 +17,13 @@ struct VoiceSettingsView: View {
     }
 
     var body: some View {
-        SettingsPageBody(palette: palette) {
-            callVoicePanel
-            bargeInPanel
-            dialectPanel
-            soundsPanel
+        WithPerceptionTracking {
+            SettingsPageBody(palette: palette) {
+                callVoicePanel
+                bargeInPanel
+                dialectPanel
+                soundsPanel
+            }
         }
     }
 
@@ -34,19 +37,21 @@ struct VoiceSettingsView: View {
             lang: lang
         ) {
             ForEach(CallVoice.allCases) { voice in
-                if voice != .cedar {
-                    SettingsDivider(palette: palette)
-                }
-                SettingsChoiceRow(
-                    title: voice.label(lang),
-                    hint: voice.rawValue,
-                    badge: nil,
-                    symbol: "waveform",
-                    selected: voice == env.prefs.callVoice,
-                    palette: palette,
-                    lang: lang
-                ) {
-                    select(voice: voice)
+                WithPerceptionTracking {
+                    if voice != .cedar {
+                        SettingsDivider(palette: palette)
+                    }
+                    SettingsChoiceRow(
+                        title: voice.label(lang),
+                        hint: voice.rawValue,
+                        badge: nil,
+                        symbol: "waveform",
+                        selected: voice == env.prefs.callVoice,
+                        palette: palette,
+                        lang: lang
+                    ) {
+                        select(voice: voice)
+                    }
                 }
             }
 
@@ -89,15 +94,17 @@ struct VoiceSettingsView: View {
     private var dialectMenu: some View {
         Menu {
             ForEach(DictationDialect.allCases) { dialect in
-                Button {
-                    guard dialect != env.prefs.dictationDialect else { return }
-                    Haptics.select()
-                    env.prefs.dictationDialect = dialect
-                } label: {
-                    if dialect == env.prefs.dictationDialect {
-                        Label(menuTitle(dialect), systemImage: "checkmark")
-                    } else {
-                        Text(menuTitle(dialect))
+                WithPerceptionTracking {
+                    Button {
+                        guard dialect != env.prefs.dictationDialect else { return }
+                        Haptics.select()
+                        env.prefs.dictationDialect = dialect
+                    } label: {
+                        if dialect == env.prefs.dictationDialect {
+                            Label(menuTitle(dialect), systemImage: "checkmark")
+                        } else {
+                            Text(menuTitle(dialect))
+                        }
                     }
                 }
             }

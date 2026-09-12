@@ -1,6 +1,7 @@
 import AVFoundation
 import AVKit
 import SwiftUI
+import Perception
 import UIKit
 
 /// The ```` ```firas-video ```` card (`web-media-ux.md §5.2`, `design-brief.md §7.12`).
@@ -94,17 +95,19 @@ struct VideoCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            mediaFrame
-            captionRow
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 8) {
+                mediaFrame
+                captionRow
+            }
+            .frame(maxWidth: VideoCard.maximumWidth, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .task(id: reloadKey) { await load() }
+            .firasOnChange(of: startedAt) { _, updated in
+                if let updated { since = updated }
+            }
+            .onDisappear { player?.pause() }
         }
-        .frame(maxWidth: VideoCard.maximumWidth, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .task(id: reloadKey) { await load() }
-        .onChange(of: startedAt) { _, updated in
-            if let updated { since = updated }
-        }
-        .onDisappear { player?.pause() }
     }
 
     // MARK: - Frame
@@ -194,11 +197,13 @@ struct VideoCard: View {
     /// (`web-media-ux.md §5.2` marks it so), so the verb is kept and the wait is told truthfully.
     private var renderingPlate: some View {
         TimelineView(.periodic(from: since, by: 1)) { context in
-            let elapsed = VideoCard.seconds(from: since, to: context.date)
-            if elapsed > renderCeiling {
-                stalledPlate
-            } else {
-                cover.overlay(alignment: .bottomLeading) { waitLine(elapsed: elapsed) }
+            WithPerceptionTracking {
+                let elapsed = VideoCard.seconds(from: since, to: context.date)
+                if elapsed > renderCeiling {
+                    stalledPlate
+                } else {
+                    cover.overlay(alignment: .bottomLeading) { waitLine(elapsed: elapsed) }
+                }
             }
         }
     }

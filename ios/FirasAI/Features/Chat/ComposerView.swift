@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The composer (`design-brief.md §7.3`, `web-chat-ux.md §7`).
 ///
@@ -60,6 +61,7 @@ struct ComposerView: View {
     // MARK: - Body
 
     var body: some View {
+        WithPerceptionTracking {
         VStack(spacing: 6) {
             if slashOpen {
                 SlashMenu(selection: slashSelection, palette: palette, lang: lang, onPick: pick(_:))
@@ -76,23 +78,26 @@ struct ComposerView: View {
         .animation(FirasMotion.gated(FirasMotion.composer, motionOn: motionOn), value: dictating)
         .animation(FirasMotion.gated(FirasMotion.standard, motionOn: motionOn), value: attachments)
         .task(id: conversationID) { restoreDraft() }
-        .onChange(of: text) { _, newValue in draftChanged(newValue) }
-        .onChange(of: state?.pendingQuote) { _, quote in
+        .firasOnChange(of: text) { _, newValue in draftChanged(newValue) }
+        .firasOnChange(of: state?.pendingQuote) { _, quote in
             if let quote, !quote.isEmpty { fieldFocused = true }
         }
-        .onChange(of: env.drafts.draft(for: conversationID)) { _, stored in
+        .firasOnChange(of: env.drafts.draft(for: conversationID)) { _, stored in
             adoptExternalDraft(stored)
         }
-        .onChange(of: env.dictation.state) { _, newValue in dictationStateChanged(newValue) }
-        .onChange(of: env.dictation.isActive) { wasActive, isActive in
+        .firasOnChange(of: env.dictation.state) { _, newValue in dictationStateChanged(newValue) }
+        .firasOnChange(of: env.dictation.isActive) { wasActive, isActive in
             if wasActive && !isActive { dictating = false }
         }
         .sheet(isPresented: $showAddContext) {
+            WithPerceptionTracking {
             AddContextSheet(env: env, product: product) { picked in
                 ingest(picked)
             }
-        }
-    }
+
+            }}
+
+        }}
 
     @ViewBuilder
     private var card: some View {
@@ -140,7 +145,7 @@ struct ComposerView: View {
         .firasGlass(
             .floating,
             palette: palette,
-            in: AnyShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            in: FirasAnyShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         )
         .overlay {
             if isTemporary {
@@ -203,10 +208,15 @@ struct ComposerView: View {
     // MARK: - Controls
 
     private var controls: some View {
-        ViewThatFits(in: .horizontal) {
+        FirasHorizontalFit {
+            WithPerceptionTracking {
             controlRow(showingTools: true)
+
+            }} fallback: {
+            WithPerceptionTracking {
             controlRow(showingTools: false)
-        }
+
+            }}
     }
 
     private func controlRow(showingTools: Bool) -> some View {

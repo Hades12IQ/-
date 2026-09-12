@@ -1,5 +1,6 @@
 import Photos
 import SwiftUI
+import Perception
 import UIKit
 
 /// The figure on its own, big, and finally touchable.
@@ -38,18 +39,22 @@ struct DiagramFullScreenView: View {
     }
 
     var body: some View {
-        ZStack {
-            palette.background.ignoresSafeArea()
-            VStack(spacing: 0) {
-                bar
-                Spacer(minLength: 0)
-                content
-                Spacer(minLength: 0)
-                footer
+        WithPerceptionTracking {
+            ZStack {
+                palette.background.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    bar
+                    Spacer(minLength: 0)
+                    content
+                    Spacer(minLength: 0)
+                    footer
+                }
             }
-        }
-        .sheet(isPresented: $isSharing) {
-            DiagramShareSheet(items: shareImage.map { [$0] } ?? [])
+            .sheet(isPresented: $isSharing) {
+                WithPerceptionTracking {
+                    DiagramShareSheet(items: shareImage.map { [$0] } ?? [])
+                }
+            }
         }
     }
 

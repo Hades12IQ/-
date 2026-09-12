@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 
 /// **The cover** — the plate a generated picture or clip sits on before its bytes exist.
 ///
@@ -70,18 +71,20 @@ struct MediaCoverPlate: View {
     }
 
     var body: some View {
-        ground
-            .aspectRatio(safeRatio, contentMode: .fit)
-            .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(palette.border, lineWidth: 1)
-                    .allowsHitTesting(false)
-            }
-            .onChange(of: startedAt) { _, updated in
-                if let updated { base = updated }
-            }
+        WithPerceptionTracking {
+            ground
+                .aspectRatio(safeRatio, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(palette.border, lineWidth: 1)
+                        .allowsHitTesting(false)
+                }
+                .firasOnChange(of: startedAt) { _, updated in
+                    if let updated { base = updated }
+                }
+        }
     }
 
     /* NO CLOCK FOR A PLATE THAT DOES NOT MOVE. The cards now use this with no field, no headline
@@ -94,13 +97,15 @@ struct MediaCoverPlate: View {
             palette.surfaceSunken
         } else {
             TimelineView(.animation(minimumInterval: MediaCoverPlate.frameInterval, paused: !motionOn)) { context in
-                let elapsed = MediaCoverPlate.elapsed(from: base, to: context.date)
-                ZStack(alignment: .topLeading) {
-                    palette.surfaceSunken
-                    if drawsField {
-                        dotField(time: elapsed * MediaCoverPlate.waveSpeed)
+                WithPerceptionTracking {
+                    let elapsed = MediaCoverPlate.elapsed(from: base, to: context.date)
+                    ZStack(alignment: .topLeading) {
+                        palette.surfaceSunken
+                        if drawsField {
+                            dotField(time: elapsed * MediaCoverPlate.waveSpeed)
+                        }
+                        head(elapsed: elapsed)
                     }
-                    head(elapsed: elapsed)
                 }
             }
         }
@@ -174,7 +179,7 @@ struct MediaCoverPlate: View {
                     .foregroundStyle(isError ? palette.error : palette.textPrimary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                    .contentTransition(.opacity)
+                    .firasContentTransition(.opacity)
                     .animation(
                         FirasMotion.gated(.easeOut(duration: 0.22), motionOn: motionOn),
                         value: wordIndex(at: elapsed)

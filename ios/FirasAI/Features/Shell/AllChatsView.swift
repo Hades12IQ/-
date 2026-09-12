@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The whole conversation list, as its own page.
 ///
@@ -44,30 +45,36 @@ struct AllChatsView: View {
     private var lang: AppLanguage { env.prefs.lang }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                SidebarSearch(env: env, query: $query)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
-                    .padding(.bottom, 12)
+        WithPerceptionTracking {
+            FirasNavigationStack {
+                WithPerceptionTracking {
+                    VStack(spacing: 0) {
+                        SidebarSearch(env: env, query: $query)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 4)
+                            .padding(.bottom, 12)
 
-                content
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background { palette.background.ignoresSafeArea() }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) { filterMenu }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text(Strings.Common.done(lang))
+                        content
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .background { palette.background.ignoresSafeArea() }
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        WithPerceptionTracking {
+                            ToolbarItem(placement: .principal) { filterMenu }
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button {
+                                    dismiss()
+                                } label: {
+                                    Text(Strings.Common.done(lang))
+                                }
+                            }
+                        }
                     }
                 }
             }
+            .tint(palette.accent)
         }
-        .tint(palette.accent)
     }
 
     // MARK: - The filter menu
@@ -75,19 +82,21 @@ struct AllChatsView: View {
     private var filterMenu: some View {
         Menu {
             ForEach(Filter.allCases) { option in
-                Button {
-                    guard option != filter else { return }
-                    Haptics.select()
-                    filter = option
-                } label: {
-                    if option == filter {
-                        Label {
+                WithPerceptionTracking {
+                    Button {
+                        guard option != filter else { return }
+                        Haptics.select()
+                        filter = option
+                    } label: {
+                        if option == filter {
+                            Label {
+                                Text(option.title.text(lang))
+                            } icon: {
+                                Image(systemName: "checkmark")
+                            }
+                        } else {
                             Text(option.title.text(lang))
-                        } icon: {
-                            Image(systemName: "checkmark")
                         }
-                    } else {
-                        Text(option.title.text(lang))
                     }
                 }
             }
@@ -121,7 +130,7 @@ struct AllChatsView: View {
                 )
                 .padding(.top, 28)
             }
-            .scrollBounceBehavior(.basedOnSize)
+            .firasScrollBounceBehavior(.basedOnSize)
         } else {
             cardList(rows)
         }
@@ -129,40 +138,46 @@ struct AllChatsView: View {
 
     private func cardList(_ rows: [ChatSummary]) -> some View {
         List {
-            if filter == .pinned {
-                Section {
-                    cards(rows)
-                } header: {
-                    header(Strings.Shell.groupPinned)
-                }
-            } else {
-                ForEach(SidebarHistoryList.buckets(of: rows)) { bucket in
+            WithPerceptionTracking {
+                if filter == .pinned {
                     Section {
-                        cards(bucket.rows)
+                        cards(rows)
                     } header: {
-                        header(bucket.title)
+                        header(Strings.Shell.groupPinned)
+                    }
+                } else {
+                    ForEach(SidebarHistoryList.buckets(of: rows)) { bucket in
+                        WithPerceptionTracking {
+                            Section {
+                                cards(bucket.rows)
+                            } header: {
+                                header(bucket.title)
+                            }
+                        }
                     }
                 }
             }
         }
         .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .scrollIndicators(.hidden)
+        .firasScrollContentBackground(.hidden)
+        .firasScrollIndicators(.hidden)
         .environment(\.defaultMinListRowHeight, 56)
     }
 
     private func cards(_ rows: [ChatSummary]) -> some View {
         ForEach(rows) { row in
-            SidebarHistoryList.Row(env: env, summary: row, style: .card)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
-                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    SidebarHistoryList.pinButton(env: env, summary: row)
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    SidebarHistoryList.deleteButton(env: env, summary: row)
-                }
+            WithPerceptionTracking {
+                SidebarHistoryList.Row(env: env, summary: row, style: .card)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                        SidebarHistoryList.pinButton(env: env, summary: row)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        SidebarHistoryList.deleteButton(env: env, summary: row)
+                    }
+            }
         }
     }
 

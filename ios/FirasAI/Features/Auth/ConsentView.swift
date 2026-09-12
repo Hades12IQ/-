@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The first-run door (`design-brief.md §7.17 (1)`, copy verbatim in `web-chat-ux.md §1.1`).
 ///
@@ -38,31 +39,33 @@ struct ConsentView: View {
     private var canContinue: Bool { agreed && training != nil }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            FirasBackground(palette: palette, showHalo: true)
+        WithPerceptionTracking {
+            ZStack(alignment: .bottom) {
+                FirasBackground(palette: palette, showHalo: true)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
-                    header
-                    section(title: Strings.Auth.consentProductsTitle(lang), lines: Strings.Auth.consentProducts)
-                    section(title: Strings.Auth.consentWhyTitle(lang), lines: Strings.Auth.consentWhy)
-                    section(title: Strings.Auth.consentFaqTitle(lang), lines: Strings.Auth.consentFaq)
-                    trainingSection
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 26) {
+                        header
+                        section(title: Strings.Auth.consentProductsTitle(lang), lines: Strings.Auth.consentProducts)
+                        section(title: Strings.Auth.consentWhyTitle(lang), lines: Strings.Auth.consentWhy)
+                        section(title: Strings.Auth.consentFaqTitle(lang), lines: Strings.Auth.consentFaq)
+                        trainingSection
+                    }
+                    .frame(maxWidth: columnWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 46)
+                    .padding(.bottom, 280)
                 }
-                .frame(maxWidth: columnWidth, alignment: .leading)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 24)
-                .padding(.top, 46)
-                .padding(.bottom, 280)
-            }
-            .scrollDismissesKeyboard(.immediately)
+                .firasScrollDismissesKeyboard(.immediately)
 
-            gate
+                gate
+            }
+            .bidiIsland(for: Strings.Auth.consentTitle(lang), fallback: lang)
+            .background(palette.background)
+            .preferredColorScheme(prefs.theme.isLight ? .light : .dark)
+            .tint(palette.accent)
         }
-        .bidiIsland(for: Strings.Auth.consentTitle(lang), fallback: lang)
-        .background(palette.background)
-        .preferredColorScheme(prefs.theme.isLight ? .light : .dark)
-        .tint(palette.accent)
     }
 
     // MARK: - Header
@@ -96,7 +99,9 @@ struct ConsentView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(lines) { line in
-                    bullet(line.text(lang))
+                    WithPerceptionTracking {
+                        bullet(line.text(lang))
+                    }
                 }
             }
         }

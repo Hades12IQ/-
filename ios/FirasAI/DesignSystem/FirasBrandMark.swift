@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The Firas mark (an "F" cut from a stem and two beams) and, optionally, the
 /// `Firas AI` wordmark beside it.
@@ -21,53 +22,55 @@ struct FirasBrandMark: View {
     }
 
     var body: some View {
-        let palette = resolvedPalette
-        let accent = palette.accent
-        let deep = palette.accentDeep
+        WithPerceptionTracking(content: {
+            let palette = resolvedPalette
+            let accent = palette.accent
+            let deep = palette.accentDeep
 
-        return HStack(spacing: max(8, size * 0.22)) {
-            Canvas { context, canvasSize in
-                let scaleX = canvasSize.width / 32
-                let scaleY = canvasSize.height / 44
+            return HStack(spacing: max(8, size * 0.22)) {
+                Canvas { context, canvasSize in
+                    let scaleX = canvasSize.width / 32
+                    let scaleY = canvasSize.height / 44
 
-                var stem = Path()
-                stem.addRect(CGRect(x: 0, y: 0, width: 6.5 * scaleX, height: 44 * scaleY))
+                    var stem = Path()
+                    stem.addRect(CGRect(x: 0, y: 0, width: 6.5 * scaleX, height: 44 * scaleY))
 
-                var upperBeam = Path()
-                upperBeam.move(to: CGPoint(x: 6.5 * scaleX, y: 0))
-                upperBeam.addLine(to: CGPoint(x: 32 * scaleX, y: 0))
-                upperBeam.addLine(to: CGPoint(x: 27 * scaleX, y: 8.5 * scaleY))
-                upperBeam.addLine(to: CGPoint(x: 6.5 * scaleX, y: 8.5 * scaleY))
-                upperBeam.closeSubpath()
+                    var upperBeam = Path()
+                    upperBeam.move(to: CGPoint(x: 6.5 * scaleX, y: 0))
+                    upperBeam.addLine(to: CGPoint(x: 32 * scaleX, y: 0))
+                    upperBeam.addLine(to: CGPoint(x: 27 * scaleX, y: 8.5 * scaleY))
+                    upperBeam.addLine(to: CGPoint(x: 6.5 * scaleX, y: 8.5 * scaleY))
+                    upperBeam.closeSubpath()
 
-                var lowerBeam = Path()
-                lowerBeam.move(to: CGPoint(x: 6.5 * scaleX, y: 17 * scaleY))
-                lowerBeam.addLine(to: CGPoint(x: 24 * scaleX, y: 17 * scaleY))
-                lowerBeam.addLine(to: CGPoint(x: 19.5 * scaleX, y: 25.5 * scaleY))
-                lowerBeam.addLine(to: CGPoint(x: 6.5 * scaleX, y: 25.5 * scaleY))
-                lowerBeam.closeSubpath()
+                    var lowerBeam = Path()
+                    lowerBeam.move(to: CGPoint(x: 6.5 * scaleX, y: 17 * scaleY))
+                    lowerBeam.addLine(to: CGPoint(x: 24 * scaleX, y: 17 * scaleY))
+                    lowerBeam.addLine(to: CGPoint(x: 19.5 * scaleX, y: 25.5 * scaleY))
+                    lowerBeam.addLine(to: CGPoint(x: 6.5 * scaleX, y: 25.5 * scaleY))
+                    lowerBeam.closeSubpath()
 
-                context.fill(stem, with: .color(accent))
-                context.fill(upperBeam, with: .color(accent))
-                context.fill(lowerBeam, with: .color(deep))
+                    context.fill(stem, with: .color(accent))
+                    context.fill(upperBeam, with: .color(accent))
+                    context.fill(lowerBeam, with: .color(deep))
+                }
+                .frame(width: size * 32 / 44, height: size)
+                .accessibilityHidden(true)
+
+                if showsWordmark {
+                    wordmark(palette: palette)
+                }
             }
-            .frame(width: size * 32 / 44, height: size)
-            .accessibilityHidden(true)
-
-            if showsWordmark {
-                wordmark(palette: palette)
-            }
-        }
-        /* A LOGOTYPE NEVER MIRRORS. Both stacks here - the mark beside the words, and the two
-           words beside each other - inherit the reader's direction, so in Arabic the whole thing
-           laid itself out right to left and the brand read «AI Firas» with the mark on the wrong
-           side. That is not a bidi subtlety: a name is a name in every language, and Apple's own
-           wordmark does not flip in an Arabic system either. The sidebar's copy of these words
-           already forced the direction; the mark itself never did, which is why the door was the
-           one place it showed. */
-        .forceLTR()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(verbatim: "Firas AI"))
+            /* A LOGOTYPE NEVER MIRRORS. Both stacks here - the mark beside the words, and the two
+               words beside each other - inherit the reader's direction, so in Arabic the whole thing
+               laid itself out right to left and the brand read «AI Firas» with the mark on the wrong
+               side. That is not a bidi subtlety: a name is a name in every language, and Apple's own
+               wordmark does not flip in an Arabic system either. The sidebar's copy of these words
+               already forced the direction; the mark itself never did, which is why the door was the
+               one place it showed. */
+            .forceLTR()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(verbatim: "Firas AI"))
+        }())
     }
 
     private func wordmark(palette: FirasPalette) -> some View {

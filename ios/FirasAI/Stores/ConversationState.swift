@@ -1,6 +1,5 @@
 import Foundation
-import Observation
-
+import Perception
 /// Everything about ONE conversation that is true only right now.
 ///
 /// The transcript itself lives in `ChatStore.conversations`; this object holds the volatile half —
@@ -12,7 +11,7 @@ import Observation
 /// One instance per conversation id, created lazily by `ChatStore.state(for:)` and never thrown
 /// away while the app is running: leaving a screen must not lose the fact that a job is live.
 @MainActor
-@Observable
+@Perceptible
 final class ConversationState {
 
     /// Where the current turn is. `failed` carries an already-localized sentence — the store never
@@ -65,20 +64,20 @@ final class ConversationState {
     // MARK: - Turn bookkeeping (additive; never read by views)
 
     /// The turn id currently in flight, so a late delivery for an older turn is ignored.
-    @ObservationIgnored var activeCID: String?
+    @PerceptionIgnored var activeCID: String?
 
     /// Set between the user tapping Stop and the turn settling, so a terminal that arrives in
     /// between is landed as "stopped" rather than as an answer.
-    @ObservationIgnored var isStopping: Bool = false
+    @PerceptionIgnored var isStopping: Bool = false
 
     /// The user message the in-flight turn answers. A single automatic retry (engine-failure
     /// sentence or empty stream, `server-chat-jobs-chats.md §1.8`) re-runs from here.
-    @ObservationIgnored var autoRetryUsedForMessageID: String?
+    @PerceptionIgnored var autoRetryUsedForMessageID: String?
 
     /// The full-resolution images of the most recent user turn, kept in memory only so a follow-up
     /// that refers to the picture can be re-attached. They are never persisted and never written
     /// into a stored message.
-    @ObservationIgnored var lastTurnImages: [String] = []
+    @PerceptionIgnored var lastTurnImages: [String] = []
 
     init(conversationID: String) {
         self.conversationID = conversationID

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 struct TranslationLanguage: Identifiable, Equatable, Sendable {
     let id: String
@@ -53,50 +54,70 @@ struct TranslationLanguagePicker: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List(filtered) { language in
-                Button {
-                    dismiss()
-                    onSelect(language)
-                } label: {
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(language.name)
-                                .foregroundStyle(palette.textPrimary)
-                            Text(language.nativeName)
-                                .font(.subheadline)
-                                .foregroundStyle(palette.textSecondary)
+        WithPerceptionTracking {
+            FirasNavigationStack {
+                WithPerceptionTracking {
+                    List(filtered) { language in
+                        WithPerceptionTracking {
+                            Button {
+                                dismiss()
+                                onSelect(language)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(language.name)
+                                            .foregroundStyle(palette.textPrimary)
+                                        Text(language.nativeName)
+                                            .font(.subheadline)
+                                            .foregroundStyle(palette.textSecondary)
+                                    }
+                                    Spacer(minLength: 12)
+                                    Text(language.id.uppercased())
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundStyle(palette.textMuted)
+                                        .forceLTR()
+                                }
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .listRowBackground(palette.surfaceSunken)
                         }
-                        Spacer(minLength: 12)
-                        Text(language.id.uppercased())
-                            .font(.caption.monospaced())
-                            .foregroundStyle(palette.textMuted)
-                            .forceLTR()
                     }
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
+                    .firasScrollContentBackground(.hidden)
+                    .background(palette.surface)
+                    .navigationTitle(lang == .arabic ? "الترجمة إلى" : "Translate to")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .searchable(text: $query, prompt: lang == .arabic ? "ابحث عن لغة" : "Search languages")
+                    .toolbar {
+                        WithPerceptionTracking {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button(Strings.Common.cancel(lang)) { dismiss() }
+                            }
+                        }
+                    }
+                    .overlay {
+                        if filtered.isEmpty {
+                            if #available(iOS 17, *), !FirasCompatibility.forceLegacyUI {
+                                ContentUnavailableView.search(text: query)
+                            } else {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "magnifyingglass").font(.largeTitle)
+                                    Text(lang == .arabic ? "ماكو لغة تطابق البحث" : "No matching languages")
+                                        .font(.headline)
+                                    Text(query).font(.subheadline)
+                                }
+                                .foregroundStyle(palette.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(24)
+                            }
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
-                .listRowBackground(palette.surfaceSunken)
             }
-            .scrollContentBackground(.hidden)
-            .background(palette.surface)
-            .navigationTitle(lang == .arabic ? "الترجمة إلى" : "Translate to")
-            .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query, prompt: lang == .arabic ? "ابحث عن لغة" : "Search languages")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(Strings.Common.cancel(lang)) { dismiss() }
-                }
-            }
-            .overlay {
-                if filtered.isEmpty {
-                    ContentUnavailableView.search(text: query)
-                }
-            }
+            .tint(palette.accent)
+            .firasPresentationDetents([.large])
+            .firasPresentationDragIndicator(.visible)
         }
-        .tint(palette.accent)
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
     }
 }

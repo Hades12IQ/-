@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The `[Sn]` marker as a tappable capsule (`web-brain-ux.md §11.1`).
 ///
@@ -26,28 +27,30 @@ struct CitationChip: View {
     }
 
     var body: some View {
-        Button(action: action) {
-            Text(verbatim: String(number))
-                .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                .foregroundStyle(palette.accent)
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, 7)
-                .frame(minWidth: 24, minHeight: 22)
-                .background {
-                    Capsule(style: .continuous).fill(palette.accentSoft)
-                }
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(palette.accentRing, lineWidth: 0.5)
-                        .allowsHitTesting(false)
-                }
-                .forceLTR()
+        WithPerceptionTracking {
+            Button(action: action) {
+                Text(verbatim: String(number))
+                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(palette.accent)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 7)
+                    .frame(minWidth: 24, minHeight: 22)
+                    .background {
+                        Capsule(style: .continuous).fill(palette.accentSoft)
+                    }
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(palette.accentRing, lineWidth: 0.5)
+                            .allowsHitTesting(false)
+                    }
+                    .forceLTR()
+            }
+            .buttonStyle(.plain)
+            .fixedSize()
+            .contentShape(Capsule(style: .continuous))
+            .accessibilityLabel(Text(verbatim: accessibilityLabel))
         }
-        .buttonStyle(.plain)
-        .fixedSize()
-        .contentShape(Capsule(style: .continuous))
-        .accessibilityLabel(Text(verbatim: accessibilityLabel))
     }
 
     private var accessibilityLabel: String {

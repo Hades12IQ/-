@@ -1,6 +1,7 @@
 import Photos
 import PhotosUI
 import SwiftUI
+import Perception
 import UIKit
 
 /// What the `+` sheet hands back to the composer. The sheet never processes anything itself: it is
@@ -25,7 +26,7 @@ struct AddContextSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var photoItems: [FirasPhotoSelection] = []
     @State private var showCamera = false
     @State private var showFiles = false
     @State private var isLoadingPhotos = false
@@ -44,31 +45,40 @@ struct AddContextSheet: View {
     private var lang: AppLanguage { env.prefs.lang }
 
     var body: some View {
-        NavigationStack {
+        WithPerceptionTracking {
+        FirasNavigationStack {
+            WithPerceptionTracking {
             List {
+                WithPerceptionTracking {
                 attachSection
                 toolsSection
-            }
+
+                }}
             .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
+            .firasScrollContentBackground(.hidden)
             .navigationTitle(Text(Strings.Composer.addTitle(lang)))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
+                    WithPerceptionTracking {
                     Button(Strings.Common.close(lang)) { dismiss() }
                         .tint(palette.accent)
-                }
+
+                    }}
             }
-        }
+
+            }}
         .firasSheetBackground(palette)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
+        .firasPresentationDetents([.medium, .large])
+        .firasPresentationDragIndicator(.visible)
         .fullScreenCover(isPresented: $showCamera) {
+            WithPerceptionTracking {
             ComposerCameraPicker { image in
                 deliverCamera(image)
             }
             .ignoresSafeArea()
-        }
+
+            }}
         .fileImporter(
             isPresented: $showFiles,
             allowedContentTypes: ChatAttachmentProcessor.acceptedFileTypes,
@@ -76,10 +86,11 @@ struct AddContextSheet: View {
         ) { result in
             handleFiles(result)
         }
-        .onChange(of: photoItems) { _, items in
+        .firasOnChange(of: photoItems) { _, items in
             loadPhotos(items)
         }
-    }
+
+        }}
 
     // MARK: - Attach
 
@@ -89,40 +100,44 @@ struct AddContextSheet: View {
                 Button {
                     showCamera = true
                 } label: {
+                    WithPerceptionTracking {
                     ContextRow(
                         symbol: "camera",
                         title: Strings.Composer.camera(lang),
                         subtitle: nil,
                         palette: palette
                     )
-                }
+
+                    }}
                 .buttonStyle(.plain)
             }
 
-            PhotosPicker(
+            FirasPhotosPicker(
                 selection: $photoItems,
-                maxSelectionCount: ChatAttachmentProcessor.maxImages,
-                matching: .images,
-                photoLibrary: .shared()
+                maxSelectionCount: ChatAttachmentProcessor.maxImages
             ) {
+                WithPerceptionTracking {
                 ContextRow(
                     symbol: "photo.on.rectangle",
                     title: Strings.Composer.photos(lang),
                     subtitle: isLoadingPhotos ? Strings.Composer.chipReading(lang) : nil,
                     palette: palette
                 )
-            }
+
+                }}
 
             Button {
                 showFiles = true
             } label: {
+                WithPerceptionTracking {
                 ContextRow(
                     symbol: "folder",
                     title: Strings.Composer.files(lang),
                     subtitle: nil,
                     palette: palette
                 )
-            }
+
+                }}
             .buttonStyle(.plain)
         } header: {
             sectionHeader(
@@ -180,6 +195,7 @@ struct AddContextSheet: View {
                 dismiss()
                 env.router.sheet = .dialectPicker
             } label: {
+                WithPerceptionTracking {
                 HStack {
                     ContextRow(
                         symbol: "waveform",
@@ -191,7 +207,8 @@ struct AddContextSheet: View {
                     Text(verbatim: env.prefs.dictationDialect.flag)
                         .font(.system(size: 15))
                 }
-            }
+
+                }}
             .buttonStyle(.plain)
         } header: {
             sectionHeader(Strings.Composer.toolsSection(lang))
@@ -261,13 +278,13 @@ struct AddContextSheet: View {
         }
     }
 
-    private func loadPhotos(_ items: [PhotosPickerItem]) {
+    private func loadPhotos(_ items: [FirasPhotoSelection]) {
         guard !items.isEmpty else { return }
         isLoadingPhotos = true
         Task {
             var payloads: [Data] = []
             for item in items {
-                if let data = try? await item.loadTransferable(type: Data.self), !data.isEmpty {
+                if let data = try? await item.loadData(), !data.isEmpty {
                     payloads.append(data)
                 }
             }
@@ -293,6 +310,7 @@ private struct ContextRow: View {
     let palette: FirasPalette
 
     var body: some View {
+        WithPerceptionTracking {
         HStack(spacing: 12) {
             Image(systemName: symbol)
                 .font(.system(size: 16, weight: .medium))
@@ -318,7 +336,8 @@ private struct ContextRow: View {
         }
         .padding(.vertical, 2)
         .contentShape(Rectangle())
-    }
+
+        }}
 }
 
 // MARK: - Camera

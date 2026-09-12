@@ -30,7 +30,7 @@ extension View {
     func firasGlass(
         _ level: FirasGlass.Level,
         palette: FirasPalette,
-        in shape: AnyShape = AnyShape(Capsule())
+        in shape: FirasAnyShape = FirasAnyShape(Capsule())
     ) -> some View {
         modifier(FirasGlassModifier(level: level, shape: shape, palette: palette))
     }
@@ -65,7 +65,7 @@ extension View {
 
 private struct FirasGlassModifier: ViewModifier {
     let level: FirasGlass.Level
-    let shape: AnyShape
+    let shape: FirasAnyShape
     let palette: FirasPalette
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -88,8 +88,10 @@ private struct FirasGlassModifier: ViewModifier {
     private func chrome(_ content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
-        } else {
+        } else if #available(iOS 16, *) {
             content.toolbarBackground(Material.ultraThin, for: .navigationBar)
+        } else {
+            content
         }
     }
 
@@ -181,7 +183,11 @@ private struct FirasSheetBackgroundModifier: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if reduceTransparency {
-            content.presentationBackground(palette.background)
+            if #available(iOS 16.4, *) {
+                content.presentationBackground(palette.background)
+            } else {
+                content.background(palette.background.ignoresSafeArea())
+            }
         } else {
             translucent(content)
         }
@@ -191,13 +197,20 @@ private struct FirasSheetBackgroundModifier: ViewModifier {
     private func translucent(_ content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
-        } else {
+        } else if #available(iOS 16.4, *) {
             content.presentationBackground {
                 ZStack {
                     Rectangle().fill(Material.ultraThin)
                     Rectangle().fill(palette.surface.opacity(0.55))
                 }
                 .ignoresSafeArea()
+            }
+        } else {
+            content.background {
+                ZStack {
+                    Rectangle().fill(Material.ultraThin)
+                    Rectangle().fill(palette.surface.opacity(0.55))
+                }.ignoresSafeArea()
             }
         }
     }

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import QuickLook
 import UIKit
 import WebKit
@@ -42,30 +43,36 @@ struct ArtifactViewer: View {
     private var lang: AppLanguage { env.prefs.lang }
 
     var body: some View {
-        NavigationStack {
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(palette.background)
-                .navigationTitle(name.isEmpty ? Strings.Agent.openFile(lang) : name)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button { dismiss() } label: {
-                            Text(Strings.Common.close(lang))
-                        }
-                    }
-                    ToolbarItem(placement: .primaryAction) {
-                        if let url = fileURL {
-                            ShareLink(item: url) {
-                                Image(systemName: "square.and.arrow.up")
-                                    .accessibilityLabel(Text(Strings.Common.share(lang)))
+        WithPerceptionTracking {
+            FirasNavigationStack {
+                WithPerceptionTracking {
+                    content
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(palette.background)
+                        .navigationTitle(name.isEmpty ? Strings.Agent.openFile(lang) : name)
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            WithPerceptionTracking {
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button { dismiss() } label: {
+                                        Text(Strings.Common.close(lang))
+                                    }
+                                }
+                                ToolbarItem(placement: .primaryAction) {
+                                    if let url = fileURL {
+                                        ShareLink(item: url) {
+                                            Image(systemName: "square.and.arrow.up")
+                                                .accessibilityLabel(Text(Strings.Common.share(lang)))
+                                        }
+                                    }
+                                }
                             }
                         }
-                    }
                 }
+            }
+            .firasSheetBackground(palette)
+            .task(id: taskKey) { await load() }
         }
-        .firasSheetBackground(palette)
-        .task(id: taskKey) { await load() }
     }
 
     private var taskKey: String { jobID + "#" + String(index) }

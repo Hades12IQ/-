@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The scrolling conversation.
 ///
@@ -20,18 +21,7 @@ struct TranscriptView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    @State private var position = ScrollPosition(edge: .top)
-    @State private var showsChip = false
-    @State private var followsTail = true
-    @State private var isUserScrolling = false
-    @State private var isJumping = false
-    @State private var lastUserID: String?
-    @State private var seededConversationID: String?
-    @State private var metrics = ChatScrollMeasurement()
     @State private var textSelection = FirasTextSelection()
-
-    private static let pinnedThreshold: CGFloat = 48
-    private static let chipThreshold: CGFloat = 220
 
     init(env: AppEnvironment, conversationID: String, product: ProductKind) {
         self.env = env
@@ -40,85 +30,57 @@ struct TranscriptView: View {
     }
 
     var body: some View {
+        return WithPerceptionTracking {
         let palette = env.prefs.palette
         let lang = env.prefs.lang
         let motionOn = FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion)
-        let conversation = record
-        let state = liveState
-
-        return ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                if let conversation {
-                    rows(conversation.messages, state: state, motionOn: motionOn)
-                    if let preparation = state?.mediaPreparation,
-                       !preparation.hasCard(in: conversation.messages) {
-                        FirasActivityLabel(text: preparation.label(lang), palette: palette, motionOn: motionOn)
-                            .padding(.top, rhythm.pair)
-                    }
-                } else {
-                    SkeletonView(kind: .transcript, palette: palette, motionOn: motionOn)
-                        .padding(.top, 12)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 20)
-            .readingColumn(env.prefs.contentWidth)
-        }
-        .scrollPosition($position)
-        .scrollDismissesKeyboard(.interactively)
-        .onScrollGeometryChange(for: ChatScrollMeasurement.self) { geometry in
-            let distance = max(0, geometry.contentSize.height + geometry.contentInsets.bottom
-                - geometry.contentOffset.y - geometry.containerSize.height)
-            return ChatScrollMeasurement(
-                contentHeight: geometry.contentSize.height.rounded(),
-                viewportHeight: geometry.containerSize.height.rounded(),
-                pinned: distance <= Self.pinnedThreshold,
-                away: distance > Self.chipThreshold
-            )
-        } action: { old, new in
-            metrics = new
-            if liveState?.isAtBottom != new.pinned { liveState?.isAtBottom = new.pinned }
-            if isUserScrolling { followsTail = new.pinned }
-            let chip = new.away && !isJumping
-            if showsChip != chip { showsChip = chip }
-            // Follow layout changes as well as incoming tokens: media covers, math and keyboard
-            // dismissal all change the real content extent after a message has arrived.
-            if !isUserScrolling, followsTail,
-               old.contentHeight != new.contentHeight || old.viewportHeight != new.viewportHeight {
-                scrollToEnd(animated: false)
-            }
-        }
-        .onScrollPhaseChange { _, phase in
-            if phase == .tracking || phase == .interacting {
-                isUserScrolling = true
-                followsTail = false
-                isJumping = false
-            } else if phase == .idle {
-                if isUserScrolling { followsTail = metrics.pinned }
-                isUserScrolling = false
-                if isJumping {
-                    isJumping = false
-                    // Clamp to the final measured edge after lazy rows finish materializing.
-                    if followsTail { scrollToEnd(animated: false) }
+        let latestUserID = Self.latestUserID(record?.messages ?? [])
+        return Group {
+            if #available(iOS 18.0, *), !TranscriptScrollCompatibility.forceLegacy {
+                ModernChatTranscriptScroll(conversationID: conversationID, latestUserID: latestUserID,
+                    palette: palette, lang: lang, motionOn: motionOn, onPinned: updatePinned,
+                    content: transcriptContent(motionOn: motionOn))
+            } else {
+                LegacyTranscriptScroll(identity: conversationID, latestUserID: latestUserID,
+                    motionOn: motionOn, pinnedThreshold: 48, chipThreshold: 220, onPinned: updatePinned) { jump in
+                    ChatTranscriptJumpButton(palette: palette, lang: lang, action: jump)
+                } content: {
+                    transcriptContent(motionOn: motionOn)
                 }
             }
         }
-        .onChange(of: Self.latestUserID(conversation?.messages ?? [])) { _, newest in
-            guard newest != lastUserID else { return }
-            lastUserID = newest
-            jump(motionOn: motionOn)
-        }
-        .onAppear { seed(messages: conversation?.messages ?? []) }
-        .onChange(of: conversationID) { _, _ in seed(messages: record?.messages ?? []) }
         .environment(\.firasTextSelection, textSelection)
-        .onChange(of: textSelection.request) { _, request in
+        .firasOnChange(of: textSelection.request) { _, request in
             guard let request else { return }
             env.chat.state(for: conversationID).pendingQuote = String(request.text.prefix(8_000))
         }
-        .overlay(alignment: .bottom) {
-            jumpChip(palette: palette, lang: lang, motionOn: motionOn)
+            }
+    }
+
+    private func updatePinned(_ pinned: Bool) {
+        if liveState?.isAtBottom != pinned { liveState?.isAtBottom = pinned }
+    }
+
+    private func transcriptContent(motionOn: Bool) -> some View {
+        return WithPerceptionTracking {
+        LazyVStack(alignment: .leading, spacing: 0) {
+            if let conversation = record {
+                rows(conversation.messages, state: liveState, motionOn: motionOn)
+                if let preparation = liveState?.mediaPreparation,
+                   !preparation.hasCard(in: conversation.messages) {
+                    FirasActivityLabel(text: preparation.label(env.prefs.lang), palette: env.prefs.palette, motionOn: motionOn)
+                        .padding(.top, rhythm.pair)
+                }
+            } else {
+                SkeletonView(kind: .transcript, palette: env.prefs.palette, motionOn: motionOn)
+                    .padding(.top, 12)
+            }
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 20)
+        .readingColumn(env.prefs.contentWidth)
+            }
     }
 
     // MARK: - Rhythm
@@ -143,6 +105,7 @@ struct TranscriptView: View {
         state: ConversationState?,
         motionOn: Bool
     ) -> some View {
+        return WithPerceptionTracking {
         let palette = env.prefs.palette
         let lang = env.prefs.lang
         let scale = env.prefs.fontScale
@@ -151,7 +114,8 @@ struct TranscriptView: View {
         let firstID = messages.first?.id
 
         ForEach(messages) { message in
-            if message.role == .user {
+            WithPerceptionTracking {
+if message.role == .user {
                 VStack(alignment: .leading, spacing: 0) {
                     gap(gaps.turn, isFirst: message.id == firstID)
                     UserTurnView(
@@ -167,6 +131,7 @@ struct TranscriptView: View {
                     .equatable()
                 }
                 .id(message.id)
+                .legacyTranscriptRowAnchor(message.id)
             } else if message.role == .assistant {
                 VStack(alignment: .leading, spacing: 0) {
                     gap(gaps.pair, isFirst: message.id == firstID)
@@ -191,8 +156,11 @@ struct TranscriptView: View {
                     .equatable()
                 }
                 .id(message.id)
+                .legacyTranscriptRowAnchor(message.id)
             }
-        }
+
+                }}
+            }
     }
 
     /// The step that opens a row — the big one before a new question, the small one before the
@@ -205,9 +173,11 @@ struct TranscriptView: View {
     /// VoiceOver either — empty space was never announced.
     @ViewBuilder
     private func gap(_ height: CGFloat, isFirst: Bool) -> some View {
+        return WithPerceptionTracking {
         if !isFirst {
             Color.clear.frame(height: height)
         }
+            }
     }
 
     private static func latestAssistantID(_ messages: [ChatMessage]) -> String? {
@@ -318,83 +288,4 @@ struct TranscriptView: View {
         env.chat.states[env.chat.resolve(conversationID)]
     }
 
-    // MARK: - Scrolling
-
-    private func seed(messages: [ChatMessage]) {
-        // Returning from a sheet or another surface must preserve the reader's position.
-        guard seededConversationID != conversationID else { return }
-        seededConversationID = conversationID
-        lastUserID = Self.latestUserID(messages)
-        followsTail = true
-        isUserScrolling = false
-        isJumping = false
-        showsChip = false
-        scrollToEnd(animated: false)
-    }
-
-    private func jump(motionOn: Bool) {
-        Keyboard.dismiss()
-        isUserScrolling = false
-        followsTail = true
-        isJumping = motionOn
-        showsChip = false
-        liveState?.isAtBottom = true
-        scrollToEnd(animated: motionOn)
-    }
-
-    /// An edge position is clamped by ScrollView. A lazy sentinel's estimated frame can land
-    /// beyond media while rows are being measured; neither a sentinel nor delayed jump tasks
-    /// participate here. A non-overshooting curve keeps explicit long jumps smooth.
-    private func scrollToEnd(animated: Bool) {
-        if animated {
-            withAnimation(.easeOut(duration: 0.30)) { position.scrollTo(edge: .bottom) }
-        } else {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) { position.scrollTo(edge: .bottom) }
-        }
-    }
-
-    // MARK: - Jump chip
-
-    @ViewBuilder
-    private func jumpChip(
-        palette: FirasPalette,
-        lang: AppLanguage,
-        motionOn: Bool
-    ) -> some View {
-        if showsChip {
-            Button {
-                /* THE KEYBOARD GOES FIRST. Pressing the chip with the keyboard up scrolled to a
-                   bottom that was then hidden behind it — the reader landed on the end of the
-                   conversation and still could not see the last line of the answer or the copy
-                   and share row under it: "ينزلني اخر شي بحيث اخر كلمة تكون ضاهرة امامي،
-                   والنسخ والمشاركة هم تكون ضاهرة". Dismissing first gives the scroll view its
-                   full height back, so the bottom it scrolls to is the bottom the reader sees;
-                   `jump` scrolls a second time once that height has stopped changing. */
-                Keyboard.dismiss()
-                liveState?.isAtBottom = true
-                jump(motionOn: motionOn)
-            } label: {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(palette.textSecondary)
-                    .frame(width: 36, height: 36)
-                    .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
-                    .frame(width: 44, height: 44)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .padding(.bottom, 12)
-            .transition(.opacity)
-            .accessibilityLabel(Text(Strings.Chat.scrollToBottom(lang)))
-        }
-    }
-}
-
-private struct ChatScrollMeasurement: Equatable {
-    var contentHeight: CGFloat = 0
-    var viewportHeight: CGFloat = 0
-    var pinned = true
-    var away = false
 }

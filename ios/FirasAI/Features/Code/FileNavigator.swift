@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The project's file rail: folder headings in project order, a coloured badge per extension,
 /// the active file highlighted, swipe to rename or delete, and `+` for a new file with the same
@@ -26,45 +27,57 @@ struct FileNavigator: View {
     private var files: [CodeFile] { env.code.project?.files ?? [] }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider().overlay(palette.border)
-            content
-        }
-        .background(palette.sidebar)
-        .alert(Strings.Code.newFilePrompt(lang), isPresented: $isAdding) {
-            TextField(Strings.Code.newFilePrompt(lang), text: $newPath)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
-            Button(Strings.Common.cancel(lang), role: .cancel) { newPath = "" }
-            Button(Strings.Common.done(lang)) {
-                let wanted = newPath
-                newPath = ""
-                guard !wanted.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                env.code.addFile(path: wanted)
+        WithPerceptionTracking {
+            VStack(spacing: 0) {
+                header
+                Divider().overlay(palette.border)
+                content
             }
-        }
-        .alert(Strings.Code.renameTitle(lang), isPresented: renameBinding) {
-            TextField(Strings.Code.renameTitle(lang), text: $renameText)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
-            Button(Strings.Common.cancel(lang), role: .cancel) { renamingFrom = nil }
-            Button(Strings.Common.rename(lang)) {
-                let from = renamingFrom
-                let to = renameText
-                renamingFrom = nil
-                guard let from, !to.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                env.code.renameFile(from: from, to: to)
+            .background(palette.sidebar)
+            .alert(Strings.Code.newFilePrompt(lang), isPresented: $isAdding) {
+                WithPerceptionTracking {
+                    TextField(Strings.Code.newFilePrompt(lang), text: $newPath)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                    Button(Strings.Common.cancel(lang), role: .cancel) { newPath = "" }
+                    Button(Strings.Common.done(lang)) {
+                        let wanted = newPath
+                        newPath = ""
+                        guard !wanted.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                        env.code.addFile(path: wanted)
+                    }
+
+                    }
             }
-        }
-        .alert(Strings.Code.deleteFileConfirm(lang), isPresented: deleteBinding) {
-            Button(Strings.Common.cancel(lang), role: .cancel) { deletingPath = nil }
-            Button(Strings.Common.delete(lang), role: .destructive) {
-                let path = deletingPath
-                deletingPath = nil
-                if let path { env.code.deleteFile(path: path) }
+            .alert(Strings.Code.renameTitle(lang), isPresented: renameBinding) {
+                WithPerceptionTracking {
+                    TextField(Strings.Code.renameTitle(lang), text: $renameText)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                    Button(Strings.Common.cancel(lang), role: .cancel) { renamingFrom = nil }
+                    Button(Strings.Common.rename(lang)) {
+                        let from = renamingFrom
+                        let to = renameText
+                        renamingFrom = nil
+                        guard let from, !to.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                        env.code.renameFile(from: from, to: to)
+                    }
+
+                    }
             }
-        }
+            .alert(Strings.Code.deleteFileConfirm(lang), isPresented: deleteBinding) {
+                WithPerceptionTracking {
+                    Button(Strings.Common.cancel(lang), role: .cancel) { deletingPath = nil }
+                    Button(Strings.Common.delete(lang), role: .destructive) {
+                        let path = deletingPath
+                        deletingPath = nil
+                        if let path { env.code.deleteFile(path: path) }
+                    }
+
+                    }
+            }
+
+            }
     }
 
     // MARK: - Header
@@ -116,24 +129,30 @@ struct FileNavigator: View {
         } else {
             List {
                 ForEach(groups, id: \.directory) { group in
-                    Section {
-                        if !collapsed.contains(group.directory) {
-                            ForEach(group.files) { file in
-                                row(for: file)
+                    WithPerceptionTracking {
+                        Section {
+                            if !collapsed.contains(group.directory) {
+                                ForEach(group.files) { file in
+                                    WithPerceptionTracking {
+                                        row(for: file)
+
+                                        }
+                                }
+                            }
+                        } header: {
+                            if !group.directory.isEmpty {
+                                folderHeader(group)
                             }
                         }
-                    } header: {
-                        if !group.directory.isEmpty {
-                            folderHeader(group)
+                        .listRowBackground(palette.sidebar)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 1, leading: 8, bottom: 1, trailing: 8))
+
                         }
-                    }
-                    .listRowBackground(palette.sidebar)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 1, leading: 8, bottom: 1, trailing: 8))
                 }
             }
             .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .firasScrollContentBackground(.hidden)
             .background(palette.sidebar)
         }
     }
@@ -215,17 +234,20 @@ struct FileNavigator: View {
             .tint(palette.accentDeep)
         }
         .contextMenu {
-            Button {
-                renameText = file.path
-                renamingFrom = file.path
-            } label: {
-                Label(Strings.Common.rename(lang), systemImage: "pencil")
-            }
-            Button(role: .destructive) {
-                deletingPath = file.path
-            } label: {
-                Label(Strings.Common.delete(lang), systemImage: "trash")
-            }
+            WithPerceptionTracking {
+                Button {
+                    renameText = file.path
+                    renamingFrom = file.path
+                } label: {
+                    Label(Strings.Common.rename(lang), systemImage: "pencil")
+                }
+                Button(role: .destructive) {
+                    deletingPath = file.path
+                } label: {
+                    Label(Strings.Common.delete(lang), systemImage: "trash")
+                }
+
+                }
         }
     }
 

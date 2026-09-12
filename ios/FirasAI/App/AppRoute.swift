@@ -1,6 +1,5 @@
 import Foundation
-import Observation
-
+import Perception
 // MARK: - Destinations
 
 /// A place in the app that something outside the app (a notification tap, an e-mail link, a shared
@@ -97,7 +96,7 @@ enum AppCover: Identifiable, Equatable {
 
 /// The single navigation source of truth. Screens never present sheets themselves — they write here.
 @MainActor
-@Observable
+@Perceptible
 final class Router {
     var product: ProductKind = .ai
     var selectedConversationID: String?

@@ -1,6 +1,5 @@
 import Foundation
-import Observation
-
+import Perception
 enum OmnixTelegramService {
     struct Configuration: Encodable, Sendable { let botToken: String; let telegramUserId: Int64 }
     static let path = "/api/omnix/telegram"
@@ -60,7 +59,7 @@ enum OmnixTelegramService {
 }
 
 /// Sheet-scoped; owner and generation checks discard every late response after leaving/sign-out.
-@MainActor @Observable
+@MainActor @Perceptible
 final class OmnixTelegramSettingsModel {
     private(set) var status: OmnixTelegramStatus?
     private(set) var pairing: OmnixTelegramPairing?
@@ -68,8 +67,8 @@ final class OmnixTelegramSettingsModel {
     private(set) var notice: String?
     private(set) var owner: String?
     private var generation = 0
-    @ObservationIgnored private let api: APIClient
-    @ObservationIgnored private let session: SessionStore
+    @PerceptionIgnored private let api: APIClient
+    @PerceptionIgnored private let session: SessionStore
 
     init(api: APIClient, session: SessionStore) { self.api = api; self.session = session }
     func activate() {

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 
 /// One entry in the dictation language list.
 ///
@@ -230,38 +231,44 @@ struct DialectPickerSheet: View {
     }
 
     var body: some View {
-        let selected = SpokenLanguageCatalog.selected(prefs: prefs)
-        let needle = ArabicText.normalize(query)
+        WithPerceptionTracking(content: {
+            let selected = SpokenLanguageCatalog.selected(prefs: prefs)
+            let needle = ArabicText.normalize(query)
 
-        return NavigationStack {
-            list(selected: selected, needle: needle)
-                .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
-                .background(palette.background)
-                .navigationTitle(Text(Strings.Voice.dialectTitle(lang)))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Text(Strings.Common.done(lang))
+            return FirasNavigationStack {
+                WithPerceptionTracking {
+                    list(selected: selected, needle: needle)
+                        .listStyle(.insetGrouped)
+                        .firasScrollContentBackground(.hidden)
+                        .background(palette.background)
+                        .navigationTitle(Text(Strings.Voice.dialectTitle(lang)))
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            WithPerceptionTracking {
+                                ToolbarItem(placement: .confirmationAction) {
+                                    Button {
+                                        dismiss()
+                                    } label: {
+                                        Text(Strings.Common.done(lang))
+                                    }
+                                    .tint(palette.accent)
+                                }
+                            }
                         }
-                        .tint(palette.accent)
-                    }
+                        .searchable(
+                            text: $query,
+                            placement: .navigationBarDrawer(displayMode: .always),
+                            prompt: Text(Strings.Settings.Voice.languageSearch(lang))
+                        )
                 }
-                .searchable(
-                    text: $query,
-                    placement: .navigationBarDrawer(displayMode: .always),
-                    prompt: Text(Strings.Settings.Voice.languageSearch(lang))
-                )
-        }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
-        .firasSheetBackground(palette)
-        .task(id: lang) {
-            await loadWorld(for: lang)
-        }
+            }
+            .firasPresentationDetents([.large])
+            .firasPresentationDragIndicator(.visible)
+            .firasSheetBackground(palette)
+            .task(id: lang) {
+                await loadWorld(for: lang)
+            }
+        }())
     }
 
     // MARK: - List
@@ -271,39 +278,45 @@ struct DialectPickerSheet: View {
         let others = world.filter { $0.matches(needle) }
 
         return List {
-            if !suggested.isEmpty {
-                Section {
-                    ForEach(suggested) { language in
-                        row(for: language, isSelected: language.id == selected)
+            WithPerceptionTracking {
+                if !suggested.isEmpty {
+                    Section {
+                        ForEach(suggested) { language in
+                            WithPerceptionTracking {
+                                row(for: language, isSelected: language.id == selected)
+                            }
+                        }
+                    } header: {
+                        header(Strings.Settings.Voice.languageSuggested(lang))
                     }
-                } header: {
-                    header(Strings.Settings.Voice.languageSuggested(lang))
+                    .listRowBackground(palette.surface)
                 }
-                .listRowBackground(palette.surface)
-            }
 
-            if !others.isEmpty {
-                Section {
-                    ForEach(others) { language in
-                        row(for: language, isSelected: language.id == selected)
+                if !others.isEmpty {
+                    Section {
+                        ForEach(others) { language in
+                            WithPerceptionTracking {
+                                row(for: language, isSelected: language.id == selected)
+                            }
+                        }
+                    } header: {
+                        header(Strings.Settings.Voice.languageAll(lang))
+                    } footer: {
+                        worldFooter(shown: others.count)
                     }
-                } header: {
-                    header(Strings.Settings.Voice.languageAll(lang))
-                } footer: {
-                    worldFooter(shown: others.count)
+                    .listRowBackground(palette.surface)
                 }
-                .listRowBackground(palette.surface)
-            }
 
-            if suggested.isEmpty && others.isEmpty {
-                Section {
-                    Text(Strings.Common.noResults(lang))
-                        .font(FirasType.label)
-                        .foregroundStyle(palette.textMuted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
+                if suggested.isEmpty && others.isEmpty {
+                    Section {
+                        Text(Strings.Common.noResults(lang))
+                            .font(FirasType.label)
+                            .foregroundStyle(palette.textMuted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 8)
+                    }
+                    .listRowBackground(palette.surface)
                 }
-                .listRowBackground(palette.surface)
             }
         }
     }

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The transcript rows of `AgentScreen`, the toolbar credits chip and the welcome templates.
 
@@ -32,7 +33,7 @@ struct AgentRow: Identifiable {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background {
-                        UnevenRoundedRectangle(
+                        FirasUnevenRoundedRectangle(
                             topLeadingRadius: 20,
                             bottomLeadingRadius: 20,
                             bottomTrailingRadius: 7,
@@ -68,6 +69,7 @@ struct AgentCreditsChip: View {
     let lang: AppLanguage
 
     var body: some View {
+        WithPerceptionTracking {
         HStack(spacing: 6) {
             Image(systemName: "creditcard")
                 .font(.system(size: 12, weight: .semibold))
@@ -83,7 +85,8 @@ struct AgentCreditsChip: View {
         .frame(minHeight: 30)
         .background { Capsule(style: .continuous).fill(palette.surfaceSunken) }
         .overlay { Capsule(style: .continuous).strokeBorder(palette.border, lineWidth: 1) }
-    }
+
+        }}
 
     private var value: String {
         let amount = credits.locked ? credits.allowance : credits.remaining

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The selected passage stays visible beside the question until it is sent or removed.
 struct QuotedTextContext: View {
@@ -8,6 +9,7 @@ struct QuotedTextContext: View {
     let onClear: () -> Void
 
     var body: some View {
+        return WithPerceptionTracking {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "text.quote")
                 .foregroundStyle(palette.accent)
@@ -30,6 +32,7 @@ struct QuotedTextContext: View {
         }
         .padding(.leading, 12)
         .background(palette.surfaceSunken, in: RoundedRectangle(cornerRadius: 14))
+            }
     }
 }
 
@@ -39,17 +42,19 @@ struct TranscriptBottomButton: View {
     let action: () -> Void
 
     var body: some View {
+        return WithPerceptionTracking {
         Button(action: action) {
             Image(systemName: "chevron.down")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(palette.textSecondary)
                 .frame(width: 44, height: 44)
-                .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
+                .firasGlass(.floating, palette: palette, in: FirasAnyShape(Circle()))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(Strings.Chat.scrollToBottom(lang)))
         .padding(.bottom, 12)
+            }
     }
 }
 
@@ -58,6 +63,7 @@ struct TranscriptScrollMetrics: Equatable {
     let height: CGFloat
     let viewport: CGFloat
 
+    @available(iOS 18.0, *)
     init(_ geometry: ScrollGeometry) {
         height = geometry.contentSize.height
         viewport = geometry.containerSize.height

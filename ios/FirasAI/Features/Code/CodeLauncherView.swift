@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// Which sessions the home screen is showing.
 enum CodeSessionFilter: String, CaseIterable, Identifiable, Sendable {
@@ -45,45 +46,51 @@ struct CodeLauncherView: View {
     private var motionOn: Bool { FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion) }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                connectRow
-                header
-                filterRow
-                sessionsSection
+        WithPerceptionTracking {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    connectRow
+                    header
+                    filterRow
+                    sessionsSection
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+                .padding(.bottom, 96)
+                .readingColumn(env.prefs.contentWidth)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 6)
-            .padding(.bottom, 96)
-            .readingColumn(env.prefs.contentWidth)
-        }
-        .background {
-            FirasBackground(palette: palette, showHalo: true).ignoresSafeArea()
-        }
-        .overlay(alignment: .bottom) { newSessionPill }
-        .navigationTitle(Strings.Code.homeTitle(lang))
-        .navigationBarTitleDisplayMode(.large)
-        .task {
-            await code.loadProjects()
-            await github.refreshStatus(api: env.api)
-        }
-        .refreshable {
-            await code.loadProjects()
-            await github.refreshStatus(api: env.api, force: true)
-        }
-        .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else { return }
-            Task { await github.refreshStatus(api: env.api, force: true) }
-        }
-        .alert(Strings.Code.deleteSessionConfirm(lang), isPresented: deleteBinding) {
-            Button(Strings.Common.cancel(lang), role: .cancel) { deleteCandidate = nil }
-            Button(Strings.Common.delete(lang), role: .destructive) {
-                let target = deleteCandidate
-                deleteCandidate = nil
-                guard let target else { return }
-                Task { await code.delete(target.id) }
+            .background {
+                FirasBackground(palette: palette, showHalo: true).ignoresSafeArea()
             }
-        }
+            .overlay(alignment: .bottom) { newSessionPill }
+            .navigationTitle(Strings.Code.homeTitle(lang))
+            .navigationBarTitleDisplayMode(.large)
+            .task {
+                await code.loadProjects()
+                await github.refreshStatus(api: env.api)
+            }
+            .refreshable {
+                await code.loadProjects()
+                await github.refreshStatus(api: env.api, force: true)
+            }
+            .firasOnChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                Task { await github.refreshStatus(api: env.api, force: true) }
+            }
+            .alert(Strings.Code.deleteSessionConfirm(lang), isPresented: deleteBinding) {
+                WithPerceptionTracking {
+                    Button(Strings.Common.cancel(lang), role: .cancel) { deleteCandidate = nil }
+                    Button(Strings.Common.delete(lang), role: .destructive) {
+                        let target = deleteCandidate
+                        deleteCandidate = nil
+                        guard let target else { return }
+                        Task { await code.delete(target.id) }
+                    }
+
+                    }
+            }
+
+            }
     }
 
     // MARK: - GitHub
@@ -155,18 +162,21 @@ struct CodeLauncherView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(CodeSessionFilter.allCases) { option in
-                    FirasPill(
-                        text: option.title(lang),
-                        symbol: nil,
-                        selected: filter == option,
-                        palette: palette
-                    ) {
-                        guard filter != option else { return }
-                        Haptics.select()
-                        withAnimation(FirasMotion.gated(FirasMotion.standard, motionOn: motionOn)) {
-                            filter = option
+                    WithPerceptionTracking {
+                        FirasPill(
+                            text: option.title(lang),
+                            symbol: nil,
+                            selected: filter == option,
+                            palette: palette
+                        ) {
+                            guard filter != option else { return }
+                            Haptics.select()
+                            withAnimation(FirasMotion.gated(FirasMotion.standard, motionOn: motionOn)) {
+                                filter = option
+                            }
                         }
-                    }
+
+                        }
                 }
             }
             .padding(.horizontal, 2)
@@ -213,7 +223,10 @@ struct CodeLauncherView: View {
         } else {
             LazyVStack(spacing: 10) {
                 ForEach(visibleSessions) { summary in
-                    sessionRow(summary)
+                    WithPerceptionTracking {
+                        sessionRow(summary)
+
+                        }
                 }
             }
             guestNotice
@@ -269,10 +282,13 @@ struct CodeLauncherView: View {
         .buttonStyle(.plain)
         .surfaceCard(palette)
         .contextMenu {
+            WithPerceptionTracking {
             Button(role: .destructive) {
                 deleteCandidate = summary
             } label: {
                 Label(Strings.Common.delete(lang), systemImage: "trash")
+            }
+
             }
         }
         .accessibilityLabel(Text(sessionTitle(summary)))

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// Default model → reply style → reply behaviour → images
 /// (`web-auth-account-settings.md §6.3`, `web-chat-ux.md §3.3–§6`).
@@ -18,13 +19,17 @@ struct ChatSettingsView: View {
     }
 
     var body: some View {
-        SettingsPageBody(palette: palette) {
-            modelPanel
-            stylePanel
-            behaviourPanel
-            imagesPanel
+        WithPerceptionTracking {
+            SettingsPageBody(palette: palette) {
+                modelPanel
+                stylePanel
+                behaviourPanel
+                imagesPanel
+            }
+            .sheet(isPresented: $showOmnixAccess) { WithPerceptionTracking {
+                OmnixAccessView(env: env)
+            } }
         }
-        .sheet(isPresented: $showOmnixAccess) { OmnixAccessView(env: env) }
     }
 
     // MARK: - Default model
@@ -37,28 +42,30 @@ struct ChatSettingsView: View {
             lang: lang
         ) {
             ForEach(ModelTier.allCases) { tier in
-                if tier != .mini {
-                    SettingsDivider(palette: palette)
-                }
-                SettingsChoiceRow(
-                    title: tier.label(lang),
-                    hint: tier.tagline(lang),
-                    badge: tier.badge.map { $0(lang) },
-                    symbol: tier.symbol,
-                    selected: tier == env.prefs.tier,
-                    palette: palette,
-                    lang: lang
-                ) {
-                    if tier == .omnix {
-                        showOmnixAccess = true
-                        return
+                WithPerceptionTracking {
+                    if tier != .mini {
+                        SettingsDivider(palette: palette)
                     }
-                    guard tier != env.prefs.tier else { return }
-                    Haptics.select()
-                    withAnimation(FirasMotion.gated(FirasMotion.tierPop, motionOn: motionOn)) {
-                        env.prefs.tier = tier
+                    SettingsChoiceRow(
+                        title: tier.label(lang),
+                        hint: tier.tagline(lang),
+                        badge: tier.badge.map { $0(lang) },
+                        symbol: tier.symbol,
+                        selected: tier == env.prefs.tier,
+                        palette: palette,
+                        lang: lang
+                    ) {
+                        if tier == .omnix {
+                            showOmnixAccess = true
+                            return
+                        }
+                        guard tier != env.prefs.tier else { return }
+                        Haptics.select()
+                        withAnimation(FirasMotion.gated(FirasMotion.tierPop, motionOn: motionOn)) {
+                            env.prefs.tier = tier
+                        }
+                        env.toasts.show(Strings.Settings.Chat.modelSet(lang))
                     }
-                    env.toasts.show(Strings.Settings.Chat.modelSet(lang))
                 }
             }
         }

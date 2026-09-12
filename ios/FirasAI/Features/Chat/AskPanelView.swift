@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The `firas-ask` clarifying-questions card.
 ///
@@ -28,6 +29,7 @@ struct AskPanelView: View {
     @State private var step: Int
     @State private var answers: [String: [String]]
     @State private var extra: String
+    @FocusState private var extraFocused: Bool
 
     init(
         spec: AskSpec,
@@ -69,27 +71,29 @@ struct AskPanelView: View {
     }
 
     var body: some View {
-        SurfaceCard(palette: palette) {
-            VStack(alignment: .leading, spacing: 14) {
-                intro
-                if let question = current {
-                    legend(for: question)
-                    options(of: question)
+        WithPerceptionTracking {
+            SurfaceCard(palette: palette) {
+                VStack(alignment: .leading, spacing: 14) {
+                    intro
+                    if let question = current {
+                        legend(for: question)
+                        options(of: question)
+                    }
+                    if isLastStep {
+                        extraField
+                    }
+                    footer
                 }
-                if isLastStep {
-                    extraField
-                }
-                footer
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
+            .bidiIsland(for: directionSample, fallback: lang)
+            .firasOnChange(of: shape) { _, _ in
+                answers = AskPanelView.seed(spec)
+                step = min(step, max(0, spec.questions.count - 1))
+            }
+            .accessibilityElement(children: .contain)
         }
-        .bidiIsland(for: directionSample, fallback: lang)
-        .onChange(of: shape) { _, _ in
-            answers = AskPanelView.seed(spec)
-            step = min(step, max(0, spec.questions.count - 1))
-        }
-        .accessibilityElement(children: .contain)
     }
 
     /// Identity of the QUESTION SET, not of the answers: the seed is rebuilt only when the parser
@@ -141,7 +145,9 @@ struct AskPanelView: View {
     private func options(of question: AskSpec.Question) -> some View {
         VStack(spacing: 6) {
             ForEach(question.options, id: \.id) { option in
-                optionRow(option, in: question)
+                WithPerceptionTracking {
+                    optionRow(option, in: question)
+                }
             }
         }
     }
@@ -198,15 +204,9 @@ struct AskPanelView: View {
     @ViewBuilder
     private var extraField: some View {
         if !answered {
-            TextField(
-                Strings.Chat.askExtraPlaceholder(lang),
-                text: $extra,
-                axis: .vertical
-            )
-            .lineLimit(1...3)
-            .textFieldStyle(.plain)
-            .font(FirasType.scaled(15, scale: scale))
-            .foregroundStyle(palette.textPrimary)
+            FirasGrowingTextField(text: $extra,
+                placeholder: Strings.Chat.askExtraPlaceholder(lang), maxLines: 3,
+                pointSize: 15 * scale.factor, palette: palette, isFocused: $extraFocused)
             .padding(.horizontal, 10)
             .padding(.vertical, 9)
             .background {

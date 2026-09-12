@@ -179,6 +179,10 @@ struct CodeChatMessage: Codable, Sendable, Equatable, Identifiable {
     /// How many files the AI turn changed — drawn as a chip.
     var n: Int?
     var applied: Bool?
+    var model: String?
+    var omnix: OmnixReceipt?
+    var edit: CodeEditReceipt?
+    var editPhase: String?
 
     init(role: String, content: String, at: Double? = nil, n: Int? = nil, applied: Bool? = nil) {
         self.id = UUID().uuidString
@@ -196,6 +200,12 @@ struct CodeChatMessage: Codable, Sendable, Equatable, Identifiable {
         at = LenientJSON.double(container, "ts") ?? LenientJSON.double(container, "at")
         n = LenientJSON.int(container, "n")
         applied = LenientJSON.bool(container, "applied")
+        model = LenientJSON.string(container, "model")
+        omnix = try? container.decodeIfPresent(OmnixReceipt.self, forKey: AnyCodingKey("omnix"))
+        if omnix?.isValid != true { omnix = nil }
+        edit = try? container.decodeIfPresent(CodeEditReceipt.self, forKey: AnyCodingKey("iosCodeEdit"))
+        if edit?.isValid != true { edit = nil }
+        editPhase = LenientJSON.string(container, "iosCodeEditPhase")
         // Old web turns have no id. Derive one from their original wire data so
         // reopening a session does not give every rendered answer a new identity.
         let legacy = role + "|" + String(at ?? 0) + "|" + content
@@ -211,6 +221,10 @@ struct CodeChatMessage: Codable, Sendable, Equatable, Identifiable {
         try container.encodeIfPresent(n, forKey: AnyCodingKey("n"))
         try container.encodeIfPresent(applied, forKey: AnyCodingKey("applied"))
         try container.encodeIfPresent(at, forKey: AnyCodingKey("ts"))
+        try container.encodeIfPresent(model, forKey: AnyCodingKey("model"))
+        try container.encodeIfPresent(omnix, forKey: AnyCodingKey("omnix"))
+        try container.encodeIfPresent(edit, forKey: AnyCodingKey("iosCodeEdit"))
+        try container.encodeIfPresent(editPhase, forKey: AnyCodingKey("iosCodeEditPhase"))
     }
 }
 
@@ -218,6 +232,7 @@ struct CodeChatMessage: Codable, Sendable, Equatable, Identifiable {
 /// `{"turns":[…]}`. Never create it before `messages[0]` exists.
 struct CodeChatThread: Codable, Sendable, Equatable {
     var messages: [CodeChatMessage]
+    var selection: CodeModelSelection
 
     /// Keep the last 40 turns; a turn's text is capped at `CW_TURN_MAX`; the encoded body must fit
     /// `CW_THREAD_BUDGET`.
@@ -225,8 +240,9 @@ struct CodeChatThread: Codable, Sendable, Equatable {
     static let maximumTurnCharacters = 90_000
     static let threadBudgetCharacters = 120_000
 
-    init(messages: [CodeChatMessage] = []) {
+    init(messages: [CodeChatMessage] = [], selection: CodeModelSelection = CodeModelSelection()) {
         self.messages = Self.uniquelyIdentified(messages)
+        self.selection = selection
     }
 
     init(from decoder: Decoder) throws {
@@ -235,6 +251,7 @@ struct CodeChatThread: Codable, Sendable, Equatable {
             ?? LenientJSON.array(container, "messages", of: CodeChatMessage.self)
             ?? []
         messages = Self.uniquelyIdentified(messages)
+        selection = try CodeModelSelection(from: decoder)
     }
 
     private static func uniquelyIdentified(_ turns: [CodeChatMessage]) -> [CodeChatMessage] {
@@ -253,6 +270,8 @@ struct CodeChatThread: Codable, Sendable, Equatable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: AnyCodingKey.self)
         try container.encode(messages, forKey: AnyCodingKey("turns"))
+        try container.encode(selection.model.rawValue, forKey: AnyCodingKey("model"))
+        try container.encode(selection.depth, forKey: AnyCodingKey("depth"))
     }
 
     /// Decodes the fence body (the base64 blob), or a whole ```` ```firas-code-chat ```` message.
@@ -266,7 +285,15 @@ struct CodeChatThread: Codable, Sendable, Equatable {
         }
         let compact = body.components(separatedBy: .whitespacesAndNewlines).joined()
         guard !compact.isEmpty else { return nil }
-        guard let data = Data(base64Encoded: compact, options: [.ignoreUnknownCharacters]) else { return nil }
+        let data: Data
+        if compact.hasPrefix("u16:") {
+            guard compact.count <= 200_000, let bytes = Data(base64Encoded: String(compact.dropFirst(4))), bytes.count % 2 == 0,
+                  let json = String(data: bytes, encoding: .utf16LittleEndian) else { return nil }
+            data = Data(json.utf8)
+        } else {
+            guard let bytes = Data(base64Encoded: compact, options: [.ignoreUnknownCharacters]) else { return nil }
+            data = bytes
+        }
         return try? JSONDecoder().decode(CodeChatThread.self, from: data)
     }
 
@@ -280,11 +307,11 @@ struct CodeChatThread: Codable, Sendable, Equatable {
             return copy
         }
 
-        var encoded = Self.base64(of: CodeChatThread(messages: kept))
+        var encoded = Self.base64(of: CodeChatThread(messages: kept, selection: selection))
         // Drop the oldest turns first, never the newest.
         while encoded.count > Self.threadBudgetCharacters, kept.count > 1 {
             kept.removeFirst()
-            encoded = Self.base64(of: CodeChatThread(messages: kept))
+            encoded = Self.base64(of: CodeChatThread(messages: kept, selection: selection))
         }
         // A single turn that is still too big is trimmed 30 % at a time.
         var guardCounter = 0
@@ -293,7 +320,7 @@ struct CodeChatThread: Codable, Sendable, Equatable {
             let text = kept[0].content
             guard text.count > 40 else { break }
             kept[0].content = String(text.prefix(Int(Double(text.count) * 0.7)))
-            encoded = Self.base64(of: CodeChatThread(messages: kept))
+            encoded = Self.base64(of: CodeChatThread(messages: kept, selection: selection))
         }
 
         return "```firas-code-chat\n" + encoded + "\n```"
@@ -323,6 +350,9 @@ struct CodeEditPlan: Sendable, Equatable {
     var deletes: [String]
     var renames: [(from: String, to: String)]
     var prose: String
+    var sourceProject: CodeProject?
+    var sourceProjectID: String?
+    var sourceOwnerID: String?
 
     init(
         writes: [CodeFileBlock] = [],
@@ -343,6 +373,9 @@ struct CodeEditPlan: Sendable, Equatable {
         guard lhs.writes == rhs.writes,
               lhs.deletes == rhs.deletes,
               lhs.prose == rhs.prose,
+              lhs.sourceProject == rhs.sourceProject,
+              lhs.sourceProjectID == rhs.sourceProjectID,
+              lhs.sourceOwnerID == rhs.sourceOwnerID,
               lhs.renames.count == rhs.renames.count else { return false }
         for (left, right) in zip(lhs.renames, rhs.renames) where left.from != right.from || left.to != right.to {
             return false

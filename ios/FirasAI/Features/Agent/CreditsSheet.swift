@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The Manus daily ledger (`web-agent-ux.md §14`, `server-agent.md §10.1`).
 ///
@@ -22,26 +23,32 @@ struct CreditsSheet: View {
     private var credits: AgentCredits? { env.agent.credits }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                content
-                    .padding(20)
-                    .readingColumn(env.prefs.contentWidth)
-            }
-            .background(palette.background)
-            .navigationTitle(Text(Strings.Agent.name(lang)))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: {
-                        Text(Strings.Common.close(lang))
+        WithPerceptionTracking {
+            FirasNavigationStack {
+                WithPerceptionTracking {
+                    ScrollView {
+                        content
+                            .padding(20)
+                            .readingColumn(env.prefs.contentWidth)
+                    }
+                    .background(palette.background)
+                    .navigationTitle(Text(Strings.Agent.name(lang)))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        WithPerceptionTracking {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button { dismiss() } label: {
+                                    Text(Strings.Common.close(lang))
+                                }
+                            }
+                        }
                     }
                 }
             }
+            .firasSheetBackground(palette)
+            .firasPresentationDetents([.medium, .large])
+            .task { await refresh() }
         }
-        .firasSheetBackground(palette)
-        .presentationDetents([.medium, .large])
-        .task { await refresh() }
     }
 
     // MARK: - Content
@@ -128,12 +135,14 @@ struct CreditsSheet: View {
         let allowance = max(credits.allowance, 1)
         let fraction = min(max(credits.remaining / allowance, 0), 1)
         return GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Capsule(style: .continuous)
-                    .fill(palette.surfaceSunken)
-                Capsule(style: .continuous)
-                    .fill(palette.accent)
-                    .frame(width: max(4, proxy.size.width * fraction))
+            WithPerceptionTracking {
+                ZStack(alignment: .leading) {
+                    Capsule(style: .continuous)
+                        .fill(palette.surfaceSunken)
+                    Capsule(style: .continuous)
+                        .fill(palette.accent)
+                        .frame(width: max(4, proxy.size.width * fraction))
+                }
             }
         }
         .frame(height: 8)

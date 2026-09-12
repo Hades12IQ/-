@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// Where every toast lands (`design-brief.md §7.1`).
 ///
@@ -21,21 +22,23 @@ struct ToastHostView: View {
     private var motionOn: Bool { FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion) }
 
     var body: some View {
-        VStack {
-            Spacer(minLength: 0)
-            if let toast = env.toasts.current {
-                capsule(for: toast)
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 96)
-                    .transition(motionOn ? FirasMotion.revealTransition : .opacity)
+        WithPerceptionTracking {
+            VStack {
+                Spacer(minLength: 0)
+                if let toast = env.toasts.current {
+                    capsule(for: toast)
+                        .padding(.horizontal, 18)
+                        .padding(.bottom, 96)
+                        .transition(motionOn ? FirasMotion.revealTransition : .opacity)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .animation(
+                FirasMotion.gated(FirasMotion.standard, motionOn: motionOn),
+                value: env.toasts.current
+            )
+            .allowsHitTesting(env.toasts.current != nil)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .animation(
-            FirasMotion.gated(FirasMotion.standard, motionOn: motionOn),
-            value: env.toasts.current
-        )
-        .allowsHitTesting(env.toasts.current != nil)
     }
 
     // MARK: - Pieces
@@ -70,7 +73,7 @@ struct ToastHostView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .frame(maxWidth: 560)
-        .firasGlass(.floating, palette: palette, in: AnyShape(Capsule(style: .continuous)))
+        .firasGlass(.floating, palette: palette, in: FirasAnyShape(Capsule(style: .continuous)))
         .contentShape(Capsule(style: .continuous))
         .onTapGesture { env.toasts.dismiss() }
         .accessibilityElement(children: .contain)

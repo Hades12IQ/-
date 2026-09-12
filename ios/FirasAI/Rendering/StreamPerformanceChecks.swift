@@ -1,6 +1,7 @@
 #if DEBUG
 import Foundation
 import QuartzCore
+import SwiftUI
 
 /// Real buffer/reveal fixtures used by the simulator smoke route. Timing is reported, not used as
 /// a flaky pass/fail threshold; the work and latency limits below are deterministic.
@@ -14,6 +15,23 @@ enum StreamPerformanceChecks {
     static func run() -> Result {
         var failures: [String] = []
         var metrics: [String: Double] = [:]
+        let presentationProbe = PresentationProbe()
+        let receivedBurst = String(repeating: "Arabic سَ 👩‍💻 and $\\theta$. ", count: 300)
+        let defaultView = StreamingText(text: receivedBurst, isStreaming: true, motionOn: true) {
+            presentationProbe.record($0)
+        }
+        _ = defaultView.body
+        if StreamingTextPresentation.standard != .receivedChunks || presentationProbe.text != receivedBurst {
+            failures.append("standard-view-delays-received-text-behind-a-synthetic-cursor")
+        }
+        let replacedView = StreamingText(text: "A shorter authoritative correction", isStreaming: false, motionOn: true) {
+            presentationProbe.record($0)
+        }
+        _ = replacedView.body
+        if presentationProbe.text != "A shorter authoritative correction" {
+            failures.append("standard-view-holds-a-stale-revealed-prefix")
+        }
+        metrics["receivedChunkPresentation"] = StreamingTextPresentation.standard == .receivedChunks ? 1 : 0
         let state = ConversationState(conversationID: "stream-performance-fixture")
         let buffer = StreamBuffer(state: state)
 
@@ -187,6 +205,14 @@ enum StreamPerformanceChecks {
         }
         reveal.reset()
         return Result(failures: failures, metrics: metrics)
+    }
+
+    private final class PresentationProbe {
+        var text = ""
+        func record(_ value: String) -> Text {
+            text = value
+            return Text(value)
+        }
     }
 }
 #endif

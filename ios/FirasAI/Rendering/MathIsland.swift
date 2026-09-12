@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Perception
 import SwiftUI
 import UIKit
 import WebKit
@@ -74,7 +74,7 @@ private enum MathIslandFailure {
 /// leaves the glyph absent, and `MathBlockView` keeps showing the Unicode form it was already
 /// showing. There is no state in which an equation renders as blank space or as an error box.
 @MainActor
-@Observable
+@Perceptible
 final class MathIsland {
 
     // MARK: - Tuning
@@ -143,10 +143,10 @@ final class MathIsland {
     /// that were waiting for one. Entries are only ever added, or evicted by the LRU below.
     private var store: [String: MathGlyph] = [:]
 
-    @ObservationIgnored private var lastUse: [String: Int] = [:]
-    @ObservationIgnored private var clock = 0
-    @ObservationIgnored private var bytes = 0
-    @ObservationIgnored private var persistentKeys: Set<String> = []
+    @PerceptionIgnored private var lastUse: [String: Int] = [:]
+    @PerceptionIgnored private var clock = 0
+    @PerceptionIgnored private var bytes = 0
+    @PerceptionIgnored private var persistentKeys: Set<String> = []
 
     /// Every expression the island has ever been asked to draw, by content id.
     ///
@@ -159,9 +159,9 @@ final class MathIsland {
        never rendered — settled on the Unicode form for the rest of the launch with nothing left
        in the app able to ask a second time. The island keeps the TeX, so the read *is* the
        request. */
-    @ObservationIgnored private var known: [String: MathIslandItem] = [:]
+    @PerceptionIgnored private var known: [String: MathIslandItem] = [:]
     /// How many times each composite key has been handed back for another attempt.
-    @ObservationIgnored private var retries: [String: Int] = [:]
+    @PerceptionIgnored private var retries: [String: Int] = [:]
 
     // MARK: - Queue
 
@@ -171,51 +171,51 @@ final class MathIsland {
         var previewGroup: String? = nil
     }
 
-    @ObservationIgnored private var queued: [Pending] = []
+    @PerceptionIgnored private var queued: [Pending] = []
     /// Membership of `queued`. A read asks on every redraw of every row it appears in, and a
     /// linear scan of 240 pending equations per read is a scroll dropped on the floor.
-    @ObservationIgnored private var queuedKeys: Set<String> = []
-    @ObservationIgnored private var previewGroups: [String: String] = [:]
+    @PerceptionIgnored private var queuedKeys: Set<String> = []
+    @PerceptionIgnored private var previewGroups: [String: String] = [:]
     // Only the current page can be promoted while it is outside `queued`; both sets are
     // bounded by chunkSize and are cleared when that page resolves.
-    @ObservationIgnored private var inFlightKeys: Set<String> = []
-    @ObservationIgnored private var inFlightPromotions: Set<String> = []
+    @PerceptionIgnored private var inFlightKeys: Set<String> = []
+    @PerceptionIgnored private var inFlightPromotions: Set<String> = []
     /// Composite keys already sent to a page — drawn or refused. Never retried in the same style.
-    @ObservationIgnored private var attempted: Set<String> = []
+    @PerceptionIgnored private var attempted: Set<String> = []
     /// The equations `attempted` is holding that nothing on screen can ever ask for again, with
     /// everything needed to ask on their behalf. See `retire`.
-    @ObservationIgnored private var exhausted: [String: Pending] = [:]
-    @ObservationIgnored private var amnesties = 0
-    @ObservationIgnored private var isAmnestyArmed = false
-    @ObservationIgnored private var recoveries = 0
-    @ObservationIgnored private var recoveryToken = 0
+    @PerceptionIgnored private var exhausted: [String: Pending] = [:]
+    @PerceptionIgnored private var amnesties = 0
+    @PerceptionIgnored private var isAmnestyArmed = false
+    @PerceptionIgnored private var recoveries = 0
+    @PerceptionIgnored private var recoveryToken = 0
     /// A pass put off because there was no scene to paint into, and how many in a row.
-    @ObservationIgnored private var isDeferred = false
-    @ObservationIgnored private var stalls = 0
+    @PerceptionIgnored private var isDeferred = false
+    @PerceptionIgnored private var stalls = 0
     /// Pages so far forgiven for coming back with nothing in them. Reset by a page that draws.
-    @ObservationIgnored private var blankRefunds = 0
+    @PerceptionIgnored private var blankRefunds = 0
     /// Which island a pass belongs to. Bumped by `reset`, so work that was already in flight when
     /// the reader signed out cannot put their equations back afterwards.
-    @ObservationIgnored private var epoch = 0
-    @ObservationIgnored private var isRendering = false
-    @ObservationIgnored private var isScheduled = false
-    @ObservationIgnored private var isUnavailable = false
-    @ObservationIgnored private var unavailableUntil: Date?
+    @PerceptionIgnored private var epoch = 0
+    @PerceptionIgnored private var isRendering = false
+    @PerceptionIgnored private var isScheduled = false
+    @PerceptionIgnored private var isUnavailable = false
+    @PerceptionIgnored private var unavailableUntil: Date?
 
 #if DEBUG
-    @ObservationIgnored private var diagnosticStart = Date()
-    @ObservationIgnored private var diagnosticEvents: [[String: Any]] = []
+    @PerceptionIgnored private var diagnosticStart = Date()
+    @PerceptionIgnored private var diagnosticEvents: [[String: Any]] = []
 #endif
 
     // MARK: - Page
 
-    @ObservationIgnored private var webView: WKWebView?
-    @ObservationIgnored private var bridge: MathIslandBridge?
-    @ObservationIgnored private var isBooted = false
-    @ObservationIgnored private var waiter: CheckedContinuation<MathIslandSignal, Never>?
-    @ObservationIgnored private var waitToken = 0
-    @ObservationIgnored private var idleToken = 0
-    @ObservationIgnored private var canvas = CGSize(width: 390, height: 2400)
+    @PerceptionIgnored private var webView: WKWebView?
+    @PerceptionIgnored private var bridge: MathIslandBridge?
+    @PerceptionIgnored private var isBooted = false
+    @PerceptionIgnored private var waiter: CheckedContinuation<MathIslandSignal, Never>?
+    @PerceptionIgnored private var waitToken = 0
+    @PerceptionIgnored private var idleToken = 0
+    @PerceptionIgnored private var canvas = CGSize(width: 390, height: 2400)
 
     private init() {}
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The ```` ```firas-code ```` deliverable card (`web-chat-ux.md §8.6`,
@@ -49,14 +50,18 @@ struct CodeCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            prose(meta.intro)
-            card
-            prose(meta.outro)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .sheet(isPresented: $isSharing) {
-            CodeCardShareSheet(items: shareURL.map { [$0] } ?? [])
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 10) {
+                prose(meta.intro)
+                card
+                prose(meta.outro)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .sheet(isPresented: $isSharing) {
+                WithPerceptionTracking {
+                    CodeCardShareSheet(items: shareURL.map { [$0] } ?? [])
+                }
+            }
         }
     }
 
@@ -86,9 +91,11 @@ struct CodeCard: View {
         HStack(spacing: 10) {
             HStack(spacing: 4) {
                 ForEach(0..<3, id: \.self) { _ in
-                    Circle()
-                        .fill(palette.borderStrong)
-                        .frame(width: 7, height: 7)
+                    WithPerceptionTracking {
+                        Circle()
+                            .fill(palette.borderStrong)
+                            .frame(width: 7, height: 7)
+                    }
                 }
             }
             .accessibilityHidden(true)

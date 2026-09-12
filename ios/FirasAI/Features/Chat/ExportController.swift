@@ -1,6 +1,6 @@
 import SwiftUI
 import UIKit
-import Observation
+import Perception
 import OSLog
 
 /// Turns an answer, a whole conversation or an assembled long file into a real file: a PDF, a Word
@@ -44,7 +44,7 @@ import OSLog
 /// laid out one block at a time, so what is alive at once is one page, not one document. A picture
 /// too tall for a bitmap becomes several pictures rather than one with its foot cut off.
 @MainActor
-@Observable
+@Perceptible
 final class ExportController {
 
     // MARK: - Formats
@@ -235,7 +235,7 @@ final class ExportController {
     private(set) var isWorking = false
     private(set) var lastError: LText?
     /// Counts and failure stages only; never stores HTML, document text or upstream responses.
-    @ObservationIgnored private(set) var documentDiagnostics: [String: Any] = [:]
+    @PerceptionIgnored private(set) var documentDiagnostics: [String: Any] = [:]
 
     func recordDocumentDiagnostics(_ value: [String: Any]) { documentDiagnostics = value }
     /// Settable so a view can bind `.sheet(item:)` to it and clear it on dismiss.
@@ -243,7 +243,7 @@ final class ExportController {
 
     /// The files the last picture export wrote, page one first. Handed straight to `Export.pages`
     /// and cleared on the next run; nothing outside `produce` reads it, so nothing observes it.
-    @ObservationIgnored private var picturePages: [URL] = []
+    @PerceptionIgnored private var picturePages: [URL] = []
 
     init(env: AppEnvironment) {
         self.env = env
@@ -996,8 +996,8 @@ final class ExportController {
     /// Measurement only: `render` is asked for the size and the drawing closure is not called, so
     /// nothing is rasterised here.
     private func measure(_ unit: ExportUnit, width: CGFloat) -> CGFloat {
-        let renderer = ImageRenderer(content: unit.view)
-        renderer.proposedSize = ProposedViewSize(width: width, height: nil)
+        let renderer = FirasViewRenderer(content: unit.view)
+        renderer.proposedSize = FirasProposedSize(width: width, height: nil)
         var height: CGFloat = 0
         renderer.render { size, _ in
             guard size.height.isFinite, size.height > 0 else { return }
@@ -1011,8 +1011,8 @@ final class ExportController {
     /// The clip is the whole point. Without it the parts of the unit that belong to another page
     /// are still painted, into the margin and past the edge of the sheet.
     private func draw(_ unit: ExportUnit, in slot: ExportSlot, width: CGFloat, into context: CGContext) {
-        let renderer = ImageRenderer(content: unit.view)
-        renderer.proposedSize = ProposedViewSize(width: width, height: nil)
+        let renderer = FirasViewRenderer(content: unit.view)
+        renderer.proposedSize = FirasProposedSize(width: width, height: nil)
         renderer.render { size, paint in
             guard size.width > 0, size.height > 0, size.height.isFinite else { return }
             let top = ExportPage.contentTop - slot.top
@@ -1049,8 +1049,8 @@ final class ExportController {
             .foregroundStyle(palette.textMuted)
             .frame(width: ExportPage.contentWidth, alignment: .center)
             .forceLTR()
-        let renderer = ImageRenderer(content: stamp)
-        renderer.proposedSize = ProposedViewSize(width: ExportPage.contentWidth, height: nil)
+        let renderer = FirasViewRenderer(content: stamp)
+        renderer.proposedSize = FirasProposedSize(width: ExportPage.contentWidth, height: nil)
         renderer.render { size, paint in
             guard size.height > 0, size.height.isFinite else { return }
             context.saveGState()
@@ -1186,8 +1186,8 @@ final class ExportController {
         // Everything below is in points, with the page's own top at `tall`.
         let top = tall - ExportCard.padTop
         for slot in slots {
-            let renderer = ImageRenderer(content: units[slot.unit].view)
-            renderer.proposedSize = ProposedViewSize(width: width, height: nil)
+            let renderer = FirasViewRenderer(content: units[slot.unit].view)
+            renderer.proposedSize = FirasProposedSize(width: width, height: nil)
             renderer.render { size, paint in
                 guard size.width > 0, size.height > 0, size.height.isFinite else { return }
                 let slotTop = top - slot.top
@@ -1327,28 +1327,30 @@ private struct ExportCardHead: View {
     let width: CGFloat
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            HStack(spacing: 10) {
-                FirasBrandMark(size: 24, palette: palette)
-                Text(verbatim: "Firas AI")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(palette.textSecondary)
-                    .forceLTR()
-                Spacer(minLength: 0)
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 22) {
+                HStack(spacing: 10) {
+                    FirasBrandMark(size: 24, palette: palette)
+                    Text(verbatim: "Firas AI")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(palette.textSecondary)
+                        .forceLTR()
+                    Spacer(minLength: 0)
+                }
+                if !title.isEmpty {
+                    Text(title)
+                        .font(.system(size: 25, weight: .semibold))
+                        .foregroundStyle(palette.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .bidiIsland(for: title, fallback: lang)
+                }
             }
-            if !title.isEmpty {
-                Text(title)
-                    .font(.system(size: 25, weight: .semibold))
-                    .foregroundStyle(palette.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .bidiIsland(for: title, fallback: lang)
-            }
+            .frame(width: width, alignment: .leading)
+            .environment(
+                \.layoutDirection,
+                lang == .arabic ? LayoutDirection.rightToLeft : LayoutDirection.leftToRight
+            )
         }
-        .frame(width: width, alignment: .leading)
-        .environment(
-            \.layoutDirection,
-            lang == .arabic ? LayoutDirection.rightToLeft : LayoutDirection.leftToRight
-        )
     }
 }
 
@@ -1364,12 +1366,14 @@ private struct ExportCardTurnView: View {
     let messageID: String
 
     var body: some View {
-        block
-            .frame(width: width, alignment: .leading)
-            .environment(
-                \.layoutDirection,
-                lang == .arabic ? LayoutDirection.rightToLeft : LayoutDirection.leftToRight
-            )
+        WithPerceptionTracking {
+            block
+                .frame(width: width, alignment: .leading)
+                .environment(
+                    \.layoutDirection,
+                    lang == .arabic ? LayoutDirection.rightToLeft : LayoutDirection.leftToRight
+                )
+        }
     }
 
     @ViewBuilder
@@ -1597,42 +1601,54 @@ struct ExportFormatPicker: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                ForEach(ExportController.Format.Family.allCases) { family in
-                    Section {
-                        ForEach(formats(in: family)) { format in
-                            row(format)
+        WithPerceptionTracking {
+            FirasNavigationStack {
+                WithPerceptionTracking {
+                    List {
+                        WithPerceptionTracking {
+                            ForEach(ExportController.Format.Family.allCases) { family in
+                                WithPerceptionTracking {
+                                    Section {
+                                        ForEach(formats(in: family)) { format in
+                                            WithPerceptionTracking {
+                                                row(format)
+                                            }
+                                        }
+                                    } header: {
+                                        Text(family.title(lang))
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(palette.textMuted)
+                                    }
+                                }
+                            }
                         }
-                    } header: {
-                        Text(family.title(lang))
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(palette.textMuted)
+                    }
+                    .listStyle(.insetGrouped)
+                    .navigationTitle(Text(Strings.Chat.exportAs(lang)))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        WithPerceptionTracking {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button(Strings.Common.cancel(lang)) { dismiss() }
+                            }
+                            // A long document takes a few seconds to set. Every row is disabled while it does,
+                            // and a row that has gone grey with nothing else on screen reads as broken.
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                if isWorking {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .tint(palette.accent)
+                                }
+                            }
+                        }
                     }
                 }
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle(Text(Strings.Chat.exportAs(lang)))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(Strings.Common.cancel(lang)) { dismiss() }
-                }
-                // A long document takes a few seconds to set. Every row is disabled while it does,
-                // and a row that has gone grey with nothing else on screen reads as broken.
-                ToolbarItem(placement: .topBarLeading) {
-                    if isWorking {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(palette.accent)
-                    }
-                }
-            }
+            .environment(
+                \.layoutDirection,
+                lang == .arabic ? LayoutDirection.rightToLeft : LayoutDirection.leftToRight
+            )
         }
-        .environment(
-            \.layoutDirection,
-            lang == .arabic ? LayoutDirection.rightToLeft : LayoutDirection.leftToRight
-        )
     }
 
     private func formats(in family: ExportController.Format.Family) -> [ExportController.Format] {

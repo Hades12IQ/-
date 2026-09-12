@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The deck as it sits in the conversation: the cover slide at a glance, its title, how many slides
 /// there are, and a way in.
@@ -20,25 +21,29 @@ struct DeckCard: View {
     private var deckPalette: DeckPalette { DeckPalette.named(deck.theme) }
 
     var body: some View {
-        VStack(spacing: 0) {
-            cover
-            footer
-        }
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous).fill(palette.surface)
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(palette.border, lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .onTapGesture { present() }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(deck.title.isEmpty ? DeckCopy.deck.text(lang) : deck.title))
-        .accessibilityHint(Text(DeckCopy.open.text(lang)))
-        .fullScreenCover(isPresented: $open) {
-            DeckViewer(deck: deck, lang: lang, appPalette: palette, motionOn: motionOn)
+        WithPerceptionTracking {
+            VStack(spacing: 0) {
+                cover
+                footer
+            }
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous).fill(palette.surface)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(palette.border, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .onTapGesture { present() }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text(deck.title.isEmpty ? DeckCopy.deck.text(lang) : deck.title))
+            .accessibilityHint(Text(DeckCopy.open.text(lang)))
+            .fullScreenCover(isPresented: $open) {
+                WithPerceptionTracking {
+                    DeckViewer(deck: deck, lang: lang, appPalette: palette, motionOn: motionOn)
+                }
+            }
         }
     }
 

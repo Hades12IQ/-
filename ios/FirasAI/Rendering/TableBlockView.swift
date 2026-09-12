@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// A markdown table.
@@ -76,37 +77,37 @@ struct TableBlockView: View {
     // MARK: - Body
 
     var body: some View {
-        let widths = columnWidths
-        return ScrollView(.horizontal) {
-            VStack(alignment: .leading, spacing: 0) {
-                if !header.isEmpty {
-                    line(header, widths: widths, isHeader: true, isLast: rows.isEmpty)
-                }
-                ForEach(Array(rows.indices), id: \.self) { index in
-                    line(
-                        rows[index],
-                        widths: widths,
-                        isHeader: false,
-                        isLast: index == rows.count - 1
-                    )
+        WithPerceptionTracking(content: {
+            let widths = columnWidths
+            return ScrollView(.horizontal) {
+                VStack(alignment: .leading, spacing: 0) {
+                    if !header.isEmpty {
+                        line(header, widths: widths, isHeader: true, isLast: rows.isEmpty)
+                    }
+                    ForEach(Array(rows.indices), id: \.self) { index in
+                        WithPerceptionTracking {
+                            line(
+                                rows[index],
+                                widths: widths,
+                                isHeader: false,
+                                isLast: index == rows.count - 1
+                            )
+                        }
+                    }
                 }
             }
-        }
-        // A table that already fits has nothing to reveal, and rubber-banding it sideways only
-        // makes the page feel loose.
-        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-        .environment(\.layoutDirection, direction)
-        .background(palette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: Metrics.radius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Metrics.radius, style: .continuous)
-                .strokeBorder(palette.border, lineWidth: 1)
-        )
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.size.width
-        } action: { width in
-            available = width
-        }
+            // A table that already fits has nothing to reveal, and rubber-banding it sideways only
+            // makes the page feel loose.
+            .firasScrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            .environment(\.layoutDirection, direction)
+            .background(palette.surface)
+            .clipShape(RoundedRectangle(cornerRadius: Metrics.radius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Metrics.radius, style: .continuous)
+                    .strokeBorder(palette.border, lineWidth: 1)
+            )
+            .modifier(TableWidthObserver(width: $available))
+        }())
     }
 
     // MARK: - Rows and cells
@@ -120,7 +121,9 @@ struct TableBlockView: View {
         // `.top`, so a two-line cell does not drag the short cells beside it down the row with it.
         HStack(alignment: .top, spacing: 0) {
             ForEach(Array(widths.indices), id: \.self) { column in
-                cell(at: column, in: cells, width: widths[column], isHeader: isHeader)
+                WithPerceptionTracking {
+                    cell(at: column, in: cells, width: widths[column], isHeader: isHeader)
+                }
             }
         }
         .background { ground(isHeader: isHeader) }
@@ -266,6 +269,41 @@ struct TableBlockView: View {
         /// instead of squeezing any further.
         static let wrapFloor: CGFloat = 132
         static let maxColumn: CGFloat = 280
+    }
+}
+
+/// Observe the viewport, never the horizontally overflowing table contents.
+private struct TableWidthObserver: ViewModifier {
+    @Binding var width: CGFloat
+
+    func body(content: Content) -> some View {
+        if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
+            content.onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { measured in
+                update(measured)
+            }
+        } else {
+            content.background {
+                GeometryReader { proxy in
+                    Color.clear.preference(key: TableViewportWidth.self, value: proxy.size.width)
+                }
+                .allowsHitTesting(false)
+            }
+            .onPreferenceChange(TableViewportWidth.self, perform: update)
+        }
+    }
+
+    private func update(_ measured: CGFloat) {
+        guard measured.isFinite, measured > 0, measured != width else { return }
+        width = measured
+    }
+}
+
+private struct TableViewportWidth: PreferenceKey {
+    static var defaultValue: CGFloat { 0 }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 

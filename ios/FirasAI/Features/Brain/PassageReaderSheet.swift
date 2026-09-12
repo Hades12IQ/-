@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The cited passage, exactly as it sits in the document: the two chunks before it, the chunk the
@@ -37,37 +38,45 @@ struct PassageReaderSheet: View {
     }
 
     var body: some View {
-        Group {
-            if embedded {
-                content
-            } else {
-                NavigationStack { content.toolbar { closeToolbar } }
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-                    .firasSheetBackground(env.prefs.palette)
+        WithPerceptionTracking {
+            Group {
+                if embedded {
+                    content
+                } else {
+                    FirasNavigationStack { WithPerceptionTracking {
+                        content.toolbar { WithPerceptionTracking {
+                            closeToolbar
+                        } }
+                    } }
+                        .firasPresentationDetents([.medium, .large])
+                        .firasPresentationDragIndicator(.visible)
+                        .firasSheetBackground(env.prefs.palette)
+                }
             }
+            .task { await load() }
         }
-        .task { await load() }
     }
 
     // MARK: - Layout
 
     private var content: some View {
         ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    header
-                    passageBody
+            WithPerceptionTracking {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        header
+                        passageBody
+                    }
+                    .padding(.horizontal, embedded ? 12 : 18)
+                    .padding(.vertical, 16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, embedded ? 12 : 18)
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .background(env.prefs.palette.background)
-            .safeAreaInset(edge: .bottom) { actionBar }
-            .onChange(of: didLoad) { _, loaded in
-                guard loaded else { return }
-                withAnimation(FirasMotion.fade) { proxy.scrollTo(Self.hitAnchor, anchor: .center) }
+                .background(env.prefs.palette.background)
+                .safeAreaInset(edge: .bottom) { actionBar }
+                .firasOnChange(of: didLoad) { _, loaded in
+                    guard loaded else { return }
+                    withAnimation(FirasMotion.fade) { proxy.scrollTo(Self.hitAnchor, anchor: .center) }
+                }
             }
         }
         .navigationTitle(Text(source.title))
@@ -76,7 +85,7 @@ struct PassageReaderSheet: View {
 
     @ToolbarContentBuilder
     private var closeToolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .navigationBarTrailing) {
             Button { dismiss() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .semibold))
@@ -118,12 +127,16 @@ struct PassageReaderSheet: View {
         } else if let passage {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(passage.before, id: \.ci) { neighbour in
-                    contextParagraph(neighbour.t)
+                    WithPerceptionTracking {
+                        contextParagraph(neighbour.t)
+                    }
                 }
                 hitParagraph(passage.text)
                     .id(Self.hitAnchor)
                 ForEach(passage.after, id: \.ci) { neighbour in
-                    contextParagraph(neighbour.t)
+                    WithPerceptionTracking {
+                        contextParagraph(neighbour.t)
+                    }
                 }
             }
         } else if let snippet = source.s, !snippet.trimmingCharacters(in: .whitespaces).isEmpty {

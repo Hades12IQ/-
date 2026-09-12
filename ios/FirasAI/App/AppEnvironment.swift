@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Perception
 import SwiftUI
 
 /// The one place every store is built.
@@ -286,7 +286,7 @@ final class AppEnvironment {
     /// change exactly once, so the re-arm has to happen before the work.
     private func observeIdentity() {
         let session = self.session
-        withObservationTracking {
+        withPerceptionTracking {
             _ = session.identityID
         } onChange: { [weak self] in
             Task { @MainActor in

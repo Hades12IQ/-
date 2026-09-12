@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 
 /// The console pane: level chips with counts, a text filter, a clock toggle, clear, and the
 /// "fix it with AI" hand-off that carries the runtime errors into the AI bar
@@ -68,13 +69,16 @@ struct ConsoleView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            toolbar
-            filterField
-            rowList(for: visible)
-            fixBar
-        }
-        .background(palette.surfaceSunken)
+        WithPerceptionTracking {
+            VStack(spacing: 0) {
+                toolbar
+                filterField
+                rowList(for: visible)
+                fixBar
+            }
+            .background(palette.surfaceSunken)
+
+            }
     }
 
     // MARK: - Toolbar
@@ -144,7 +148,7 @@ struct ConsoleView: View {
             .textFieldStyle(.plain)
             .font(.system(size: 13))
             .foregroundStyle(palette.textPrimary)
-            .autocorrectionDisabled(true)
+            .disableAutocorrection(true)
             .textInputAutocapitalization(.never)
             .submitLabel(.done)
 
@@ -194,7 +198,10 @@ struct ConsoleView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(rows) { line in
-                        row(line)
+                        WithPerceptionTracking {
+                            row(line)
+
+                            }
                     }
                 }
                 .padding(.vertical, 6)

@@ -1,10 +1,10 @@
 import Foundation
-import Observation
+import Perception
 import SwiftUI
 import UIKit
 
 /// A screen owns the selection request and decides which composer receives the quotation.
-@MainActor @Observable
+@MainActor @Perceptible
 final class FirasTextSelection {
     struct Request: Equatable {
         let id = UUID()
@@ -57,7 +57,25 @@ struct FirasSelectableText: UIViewRepresentable {
         context.coordinator.selection = selection
         context.coordinator.lang = lang
         context.coordinator.openURL = openURL
+        if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
+            view.onLegacyWidth = nil
+            view.configureLegacyAskFiras(title: nil, action: nil)
+        } else {
+            view.configureLegacyAskFiras(title: selection == nil ? nil : (lang == .arabic ? "اسأل فِراس" : "Ask Firas"),
+                action: selection == nil ? nil : { [weak coordinator = context.coordinator] quote in coordinator?.selection?.ask(quote) })
+            view.onLegacyWidth = { [weak view, weak coordinator = context.coordinator] width in
+                guard let view, let coordinator else { return }
+                coordinator.layoutWidth = width
+                updateText(view, coordinator: coordinator, width: width)
+            }
+        }
         updateText(view, coordinator: context.coordinator, width: context.coordinator.layoutWidth)
+    }
+
+    static func dismantleUIView(_ view: SelectableTextView, coordinator: Coordinator) {
+        view.onLegacyWidth = nil
+        view.configureLegacyAskFiras(title: nil, action: nil)
+        view.delegate = nil
     }
 
     private func updateText(_ view: SelectableTextView, coordinator: Coordinator, width: CGFloat) {
@@ -82,6 +100,7 @@ struct FirasSelectableText: UIViewRepresentable {
         view.invalidateIntrinsicContentSize()
     }
 
+    @available(iOS 16, *)
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: SelectableTextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width.isFinite, width > 0 else { return nil }
         if abs(context.coordinator.layoutWidth - width) > 0.5 {
@@ -129,12 +148,25 @@ struct FirasSelectableText: UIViewRepresentable {
             return visible
         }
 
+        @available(iOS 17, *)
         func textView(_ textView: UITextView, primaryActionFor textItem: UITextItem,
                       defaultAction: UIAction) -> UIAction? {
             guard case .link(let url) = textItem.content, let openURL else { return defaultAction }
             return UIAction { _ in openURL(url) }
         }
 
+        func textView(_ textView: UITextView, shouldInteractWith URL: URL, in characterRange: NSRange,
+                      interaction: UITextItemInteraction) -> Bool {
+            guard interaction == .invokeDefaultAction, let openURL else { return true }
+            openURL(URL)
+            return false
+        }
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            (textView as? SelectableTextView)?.refreshLegacySelectionMenu()
+        }
+
+        @available(iOS 16, *)
         func textView(_ textView: UITextView, editMenuForTextIn range: NSRange,
                       suggestedActions: [UIMenuElement]) -> UIMenu? {
             guard let view = textView as? SelectableTextView, let selection,
@@ -237,8 +269,96 @@ private extension NSAttributedString.Key {
 }
 
 final class SelectableTextView: UITextView {
+    var onLegacyWidth: ((CGFloat) -> Void)?
+    private var lastLegacyWidth: CGFloat = 0
+    private var legacyAskTitle: String?
+    private var legacyAskAction: ((String) -> Void)?
+    private var legacyAskItem: UIMenuItem?
+    private static weak var legacyMenuOwner: SelectableTextView?
+
+    /// The old system menu is shared by UIKit. Only the current responder leases one action;
+    /// releasing it removes that exact item and preserves any menu owned by another feature.
+    func configureLegacyAskFiras(title: String?, action: ((String) -> Void)?) {
+        if legacyAskTitle != title || action == nil { releaseLegacySelectionMenu() }
+        legacyAskTitle = title
+        legacyAskAction = action
+        refreshLegacySelectionMenu()
+    }
+
+    var canAskSelectedText: Bool {
+        legacyAskAction != nil && !selectedPlainText(selectedRange).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    func refreshLegacySelectionMenu() {
+        guard isFirstResponder, window != nil, canAskSelectedText, let title = legacyAskTitle else {
+            releaseLegacySelectionMenu()
+            return
+        }
+        guard Self.legacyMenuOwner !== self || legacyAskItem == nil else { return }
+        Self.legacyMenuOwner?.releaseLegacySelectionMenu()
+        let item = UIMenuItem(title: title, action: #selector(askFirasSelection(_:)))
+        legacyAskItem = item
+        Self.legacyMenuOwner = self
+        UIMenuController.shared.menuItems = (UIMenuController.shared.menuItems ?? []) + [item]
+        UIMenuController.shared.update()
+    }
+
+    private func releaseLegacySelectionMenu() {
+        guard let item = legacyAskItem else { return }
+        let remaining = (UIMenuController.shared.menuItems ?? []).filter { $0 !== item }
+        UIMenuController.shared.menuItems = remaining.isEmpty ? nil : remaining
+        legacyAskItem = nil
+        if Self.legacyMenuOwner === self { Self.legacyMenuOwner = nil }
+    }
+
+    @objc func askFirasSelection(_ sender: Any?) {
+        guard canAskSelectedText, let action = legacyAskAction else { return }
+        let quote = selectedPlainText(selectedRange)
+        releaseLegacySelectionMenu()
+        _ = resignFirstResponder()
+        action(quote)
+    }
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(askFirasSelection(_:)) { return canAskSelectedText }
+        return super.canPerformAction(action, withSender: sender)
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { refreshLegacySelectionMenu() }
+        return became
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { releaseLegacySelectionMenu() }
+        return resigned
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil { releaseLegacySelectionMenu() }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard let onLegacyWidth, bounds.width.isFinite, bounds.width > 0,
+              abs(lastLegacyWidth - bounds.width) > 0.5 else { return }
+        lastLegacyWidth = bounds.width
+        onLegacyWidth(bounds.width)
+        invalidateIntrinsicContentSize()
+    }
+
+    override var intrinsicContentSize: CGSize {
+        guard onLegacyWidth != nil, bounds.width.isFinite, bounds.width > 0 else { return super.intrinsicContentSize }
+        let fitted = super.sizeThatFits(CGSize(width: bounds.width, height: .greatestFiniteMagnitude))
+        return CGSize(width: UIView.noIntrinsicMetric, height: ceil(fitted.height))
+    }
+
     func selectedPlainText(_ range: NSRange) -> String {
-        guard range.location != NSNotFound, NSMaxRange(range) <= attributedText.length else { return "" }
+        guard range.location != NSNotFound, range.location >= 0, range.length >= 0,
+              range.location <= attributedText.length, range.length <= attributedText.length - range.location else { return "" }
         let selected = attributedText.attributedSubstring(from: range)
         var result = ""
         selected.enumerateAttributes(in: NSRange(location: 0, length: selected.length)) { attributes, part, _ in

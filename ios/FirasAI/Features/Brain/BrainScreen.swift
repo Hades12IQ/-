@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// Firas Brain (`design-brief.md §7.10`, `web-brain-ux.md §5`).
 ///
@@ -24,46 +25,54 @@ struct BrainScreen: View {
     }
 
     var body: some View {
-        layout
-            .environment(\.firasTextSelection, textSelection)
-            .onChange(of: textSelection.request) { _, request in
-                guard let request else { return }
-                quotedText = String(request.text.prefix(8_000))
-            }
-            .background {
-                FirasBackground(palette: palette, showHalo: true).ignoresSafeArea()
-            }
-            .navigationTitle(ProductKind.brain.title(lang))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    if !isRegular {
-                        FirasIconButton(
-                            symbol: "doc.text",
-                            label: Strings.Brain.sourcesHead(lang),
-                            palette: palette,
-                            action: { showLibrary = true }
-                        )
+        WithPerceptionTracking {
+            layout
+                .environment(\.firasTextSelection, textSelection)
+                .firasOnChange(of: textSelection.request) { _, request in
+                    guard let request else { return }
+                    quotedText = String(request.text.prefix(8_000))
+                }
+                .background {
+                    FirasBackground(palette: palette, showHalo: true).ignoresSafeArea()
+                }
+                .navigationTitle(ProductKind.brain.title(lang))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    WithPerceptionTracking {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            if !isRegular {
+                                FirasIconButton(
+                                    symbol: "doc.text",
+                                    label: Strings.Brain.sourcesHead(lang),
+                                    palette: palette,
+                                    action: { showLibrary = true }
+                                )
+                            }
+                        }
                     }
                 }
-            }
-            .task {
-                if let id = conversationID, !id.isEmpty {
-                    await env.chat.open(id)
+                .task {
+                    if let id = conversationID, !id.isEmpty {
+                        await env.chat.open(id)
+                    }
+                    await store.loadLibrary()
                 }
-                await store.loadLibrary()
-            }
-            .onChange(of: conversationID) { _, id in
-                quotedText = nil
-                guard let id, !id.isEmpty else { return }
-                Task { await env.chat.open(id) }
-            }
-            .sheet(isPresented: $showLibrary) {
-                BrainLibrarySheet(env: env)
-            }
-            .sheet(item: passageSheet) { source in
-                PassageReaderSheet(env: env, source: source, question: lastQuestion)
-            }
+                .firasOnChange(of: conversationID) { _, id in
+                    quotedText = nil
+                    guard let id, !id.isEmpty else { return }
+                    Task { await env.chat.open(id) }
+                }
+                .sheet(isPresented: $showLibrary) {
+                    WithPerceptionTracking {
+                        BrainLibrarySheet(env: env)
+                    }
+                }
+                .sheet(item: passageSheet) { source in
+                    WithPerceptionTracking {
+                        PassageReaderSheet(env: env, source: source, question: lastQuestion)
+                    }
+                }
+        }
     }
 
     // MARK: - Layout
@@ -211,31 +220,33 @@ private struct BrainComposer: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            if let quotedText {
-                QuotedTextContext(text: quotedText, palette: palette, lang: lang) { self.quotedText = nil }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
+        WithPerceptionTracking {
+            VStack(spacing: 0) {
+                if let quotedText {
+                    QuotedTextContext(text: quotedText, palette: palette, lang: lang) { self.quotedText = nil }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                }
+                SourceChipsRow(store: store, prefs: prefs, onOpenLibrary: onOpenLibrary)
+                HStack(alignment: .bottom, spacing: 6) {
+                    field
+                    summarizeButton
+                    dictationButton
+                    sendButton
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
             }
-            SourceChipsRow(store: store, prefs: prefs, onOpenLibrary: onOpenLibrary)
-            HStack(alignment: .bottom, spacing: 6) {
-                field
-                summarizeButton
-                dictationButton
-                sendButton
-            }
+            .firasGlass(
+                .floating,
+                palette: palette,
+                in: FirasAnyShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            )
             .padding(.horizontal, 12)
-            .padding(.bottom, 8)
-        }
-        .firasGlass(
-            .floating,
-            palette: palette,
-            in: AnyShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        )
-        .padding(.horizontal, 12)
-        .padding(.bottom, 10)
-        .onChange(of: quotedText) { _, value in
-            if value != nil { focused = true }
+            .padding(.bottom, 10)
+            .firasOnChange(of: quotedText) { _, value in
+                if value != nil { focused = true }
+            }
         }
     }
 
@@ -252,12 +263,9 @@ private struct BrainComposer: View {
     }
 
     private var field: some View {
-        TextField(placeholder, text: $draft, axis: .vertical)
-            .textFieldStyle(.plain)
-            .lineLimit(1...6)
-            .font(FirasType.scaled(16, scale: prefs.fontScale))
-            .foregroundStyle(palette.textPrimary)
-            .focused($focused)
+        FirasGrowingTextField(text: $draft, placeholder: placeholder,
+            maxLines: 6, pointSize: 16 * prefs.fontScale.factor,
+            palette: palette, isFocused: $focused)
             .disabled(!store.hasDocuments)
             .padding(.vertical, 10)
             .bidiIsland(for: draft, fallback: lang)

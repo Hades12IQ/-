@@ -1,5 +1,6 @@
 import PhotosUI
 import SwiftUI
+import Perception
 
 /// The four things the Studio can make, as one form.
 ///
@@ -18,9 +19,11 @@ struct MediaCreateForm: View {
     @State private var shape: ImageShape?
     @State private var seconds: Double = 10
     @State private var targetConversationID: String?
-    @State private var photoItem: PhotosPickerItem?
+    @State private var photoItem: FirasPhotoSelection?
     @State private var photoData: Data?
     @State private var sourceCreationID: String?
+    @FocusState private var promptFocused: Bool
+    @FocusState private var lyricsFocused: Bool
 
     init(env: AppEnvironment) {
         self.env = env
@@ -31,6 +34,7 @@ struct MediaCreateForm: View {
     private var media: MediaStore { env.media }
 
     var body: some View {
+        WithPerceptionTracking {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 kindPicker
@@ -51,14 +55,15 @@ struct MediaCreateForm: View {
         }
         .background(palette.background)
         .task { await prepare() }
-        .onChange(of: media.pendingEditSourceID) { _, _ in adoptPendingEdit() }
-        .onChange(of: media.videoDefaultSeconds) { _, newValue in
+        .firasOnChange(of: media.pendingEditSourceID) { _, _ in adoptPendingEdit() }
+        .firasOnChange(of: media.videoDefaultSeconds) { _, newValue in
             if kind == .video { seconds = Double(newValue) }
         }
-        .onChange(of: photoItem) { _, item in
+        .firasOnChange(of: photoItem) { _, item in
             Task { await loadPickedPhoto(item) }
         }
-    }
+
+        }}
 
     /// Everything the form does on appear, in one main-actor method: `.task` hands its body a
     /// `@Sendable` closure that does **not** inherit this view's isolation, so the state touching
@@ -85,6 +90,7 @@ struct MediaCreateForm: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(MediaCreateKind.allCases) { option in
+                    WithPerceptionTracking {
                     FirasPill(
                         text: option.label(lang),
                         symbol: option.symbol,
@@ -107,7 +113,8 @@ struct MediaCreateForm: View {
                         if option == .video { seconds = Double(media.videoDefaultSeconds) }
                     }
                     .opacity(media.unavailableKinds.contains(option.mediaKind) ? 0.4 : 1)
-                }
+
+                    }}
             }
             .padding(.horizontal, 2)
         }
@@ -120,12 +127,12 @@ struct MediaCreateForm: View {
             Text(Strings.Media.promptLabel(lang))
                 .font(FirasType.label)
                 .foregroundStyle(palette.textMuted)
-            TextField(
-                kind.placeholder(lang),
+            FirasGrowingTextField(
                 text: $prompt,
-                axis: .vertical
+                placeholder: kind.placeholder(lang),
+                minLines: 3, maxLines: 8, pointSize: 16,
+                palette: palette, isFocused: $promptFocused
             )
-            .lineLimit(3...8)
             .textFieldStyle(.plain)
             .font(.system(size: 16))
             .foregroundStyle(palette.textPrimary)
@@ -161,13 +168,15 @@ struct MediaCreateForm: View {
                         palette: palette
                     ) { shape = nil }
                     ForEach(ImageShape.allCases) { option in
+                        WithPerceptionTracking {
                         FirasPill(
                             text: Strings.Media.shapeLabel(option)(lang),
                             symbol: nil,
                             selected: shape == option,
                             palette: palette
                         ) { shape = option }
-                    }
+
+                        }}
                 }
                 .padding(.horizontal, 2)
             }
@@ -185,30 +194,38 @@ struct MediaCreateForm: View {
                 .font(FirasType.label)
                 .foregroundStyle(palette.textMuted)
             HStack(spacing: 8) {
-                PhotosPicker(selection: $photoItem, matching: .images) {
+                FirasPhotosPicker(selection: $photoItem) {
+                    WithPerceptionTracking {
                     Text(Strings.Media.sourceFromPhotos(lang))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(photoData == nil ? palette.textSecondary : palette.accent)
                         .padding(.horizontal, 14)
                         .frame(minHeight: 44)
                         .background { Capsule(style: .continuous).fill(palette.surfaceSunken) }
-                }
+
+                    }}
                 Menu {
+                    WithPerceptionTracking {
                     ForEach(media.editableImages.prefix(20)) { item in
+                        WithPerceptionTracking {
                         Button(String(item.meta.prompt.prefix(48))) {
                             sourceCreationID = item.id
                             photoData = nil
                             photoItem = nil
                         }
-                    }
-                } label: {
+
+                        }}
+
+                    }} label: {
+                    WithPerceptionTracking {
                     Text(Strings.Media.sourceFromLibrary(lang))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(sourceCreationID == nil ? palette.textSecondary : palette.accent)
                         .padding(.horizontal, 14)
                         .frame(minHeight: 44)
                         .background { Capsule(style: .continuous).fill(palette.surfaceSunken) }
-                }
+
+                    }}
                 .disabled(media.editableImages.isEmpty)
             }
             if photoData == nil && sourceCreationID == nil {
@@ -240,14 +257,16 @@ struct MediaCreateForm: View {
                 .font(FirasType.label)
                 .foregroundStyle(palette.textMuted)
             HStack(spacing: 8) {
-                PhotosPicker(selection: $photoItem, matching: .images) {
+                FirasPhotosPicker(selection: $photoItem) {
+                    WithPerceptionTracking {
                     Text(Strings.Media.firstFramePick(lang))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(photoData == nil ? palette.textSecondary : palette.accent)
                         .padding(.horizontal, 14)
                         .frame(minHeight: 44)
                         .background { Capsule(style: .continuous).fill(palette.surfaceSunken) }
-                }
+
+                    }}
                 if photoData != nil {
                     Button(Strings.Media.firstFrameClear(lang)) {
                         photoData = nil
@@ -280,8 +299,10 @@ struct MediaCreateForm: View {
             .tint(palette.accent)
 
             if useOwnLyrics {
-                TextField(Strings.Media.lyricsPlaceholder(lang), text: $lyrics, axis: .vertical)
-                    .lineLimit(4...12)
+                FirasGrowingTextField(text: $lyrics,
+                    placeholder: Strings.Media.lyricsPlaceholder(lang),
+                    minLines: 4, maxLines: 12, pointSize: 16,
+                    palette: palette, isFocused: $lyricsFocused)
                     .textFieldStyle(.plain)
                     .font(.system(size: 15))
                     .foregroundStyle(palette.textPrimary)
@@ -302,13 +323,15 @@ struct MediaCreateForm: View {
                         palette: palette
                     ) { genre = nil }
                     ForEach(MediaPromptPipeline.genrePresets(lang: lang)) { preset in
+                        WithPerceptionTracking {
                         FirasPill(
                             text: preset.label(lang),
                             symbol: nil,
                             selected: genre?.id == preset.id,
                             palette: palette
                         ) { genre = preset }
-                    }
+
+                        }}
                 }
                 .padding(.horizontal, 2)
             }
@@ -324,18 +347,24 @@ struct MediaCreateForm: View {
                 .foregroundStyle(palette.textMuted)
             Spacer(minLength: 8)
             Menu {
+                WithPerceptionTracking {
                 Button(Strings.Media.targetNewConversation(lang)) { targetConversationID = nil }
                 ForEach(env.chat.summaries(for: .ai).prefix(20)) { summary in
+                    WithPerceptionTracking {
                     Button(summary.title.isEmpty ? Strings.Media.untitledConversation(lang) : summary.title) {
                         targetConversationID = summary.id
                     }
-                }
-            } label: {
+
+                    }}
+
+                }} label: {
+                WithPerceptionTracking {
                 Text(targetTitle)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(palette.accent)
                     .lineLimit(1)
-            }
+
+                }}
         }
     }
 
@@ -349,6 +378,7 @@ struct MediaCreateForm: View {
             Haptics.send()
             Task { await submit() }
         } label: {
+            WithPerceptionTracking {
             HStack(spacing: 8) {
                 if media.isSubmitting { ProgressView().tint(palette.onAccent) }
                 Text(media.isSubmitting ? Strings.Media.createWorking(lang) : Strings.Media.createAction(lang))
@@ -359,7 +389,8 @@ struct MediaCreateForm: View {
             .frame(minHeight: 50)
             .background { Capsule(style: .continuous).fill(canSubmit ? palette.accent : palette.textMuted) }
             .contentShape(Capsule(style: .continuous))
-        }
+
+            }}
         .buttonStyle(.plain)
         .disabled(!canSubmit)
     }
@@ -392,6 +423,7 @@ struct MediaCreateForm: View {
                 Button {
                     env.router.showSignUp(feature: kind.mediaKind.featureKey)
                 } label: {
+                    WithPerceptionTracking {
                     Text(Strings.Media.guestCreateAccount(lang))
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(palette.onAccent)
@@ -399,7 +431,8 @@ struct MediaCreateForm: View {
                         .frame(minHeight: 44)
                         .background { Capsule(style: .continuous).fill(palette.accent) }
                         .contentShape(Capsule(style: .continuous))
-                }
+
+                    }}
                 .buttonStyle(.plain)
             }
             .padding(16)
@@ -426,11 +459,11 @@ struct MediaCreateForm: View {
 
     // MARK: - Actions
 
-    private func loadPickedPhoto(_ item: PhotosPickerItem?) async {
+    private func loadPickedPhoto(_ item: FirasPhotoSelection?) async {
         guard let item else { return }
         // HEIC from the camera roll is re-encoded to JPEG by the pipeline before it is sent; the
         // server accepts only png/jpeg/webp/bmp data URIs.
-        photoData = try? await item.loadTransferable(type: Data.self)
+        photoData = try? await item.loadData()
         if photoData != nil { sourceCreationID = nil }
     }
 

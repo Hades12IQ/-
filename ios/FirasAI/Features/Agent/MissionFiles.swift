@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The mission's deliverables: an image grid with the Firas attribution, and a document list that
@@ -29,9 +30,11 @@ struct MissionFiles: View {
     private var documents: [AgentFile] { files.filter { !MissionFiles.isImage($0) } }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            imageGrid
-            documentList
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 12) {
+                imageGrid
+                documentList
+            }
         }
     }
 
@@ -42,9 +45,13 @@ struct MissionFiles: View {
         if !images.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 120, maximum: 220), spacing: 8)], spacing: 8) {
-                    ForEach(images) { file in
-                        MissionImageTile(env: env, job: job, file: file) { request in
-                            onOpen(request)
+                    WithPerceptionTracking {
+                        ForEach(images) { file in
+                            WithPerceptionTracking {
+                                MissionImageTile(env: env, job: job, file: file) { request in
+                                    onOpen(request)
+                                }
+                            }
                         }
                     }
                 }
@@ -63,7 +70,9 @@ struct MissionFiles: View {
             DisclosureGroup(isExpanded: $documentsExpanded) {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(documents) { file in
-                        documentRow(file)
+                        WithPerceptionTracking {
+                            documentRow(file)
+                        }
                     }
                 }
                 .padding(.top, 8)
@@ -243,21 +252,23 @@ private struct MissionImageTile: View {
        the file was called and offers nothing — which reads as a picture the app could not fetch,
        and not as an app that ignores you. */
     var body: some View {
-        if let request {
-            Button {
-                Haptics.select()
-                onOpen(request)
-            } label: {
+        WithPerceptionTracking {
+            if let request {
+                Button {
+                    Haptics.select()
+                    onOpen(request)
+                } label: {
+                    content
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(MissionFiles.openLabel(file, lang: lang)))
+                .task(id: file.url) { await load(request) }
+            } else {
                 content
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Text(name))
+                    .accessibilityAddTraits(.isImage)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(MissionFiles.openLabel(file, lang: lang)))
-            .task(id: file.url) { await load(request) }
-        } else {
-            content
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text(name))
-                .accessibilityAddTraits(.isImage)
         }
     }
 

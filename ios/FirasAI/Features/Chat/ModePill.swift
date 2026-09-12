@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The composer's response-style pill: `تلقائي` ⚡ / `تخطيط` 📋.
 ///
@@ -52,19 +53,21 @@ struct ModePill: View {
     }
 
     var body: some View {
-        let palette = overridePalette ?? prefs.palette
-        let lang = overrideLang ?? prefs.lang
-        let mode = prefs.responseMode
+        WithPerceptionTracking(content: {
+            let palette = overridePalette ?? prefs.palette
+            let lang = overrideLang ?? prefs.lang
+            let mode = prefs.responseMode
 
-        return Menu {
-            row(.auto, current: mode, lang: lang)
-            row(.plan, current: mode, lang: lang)
-        } label: {
-            trigger(mode: mode, palette: palette, lang: lang)
-        }
-        .menuOrder(.fixed)
-        .accessibilityLabel(Text(Strings.Chat.modeLabel(lang)))
-        .accessibilityValue(Text(title(for: mode)(lang)))
+            return Menu {
+                row(.auto, current: mode, lang: lang)
+                row(.plan, current: mode, lang: lang)
+            } label: {
+                trigger(mode: mode, palette: palette, lang: lang)
+            }
+            .menuOrder(.fixed)
+            .accessibilityLabel(Text(Strings.Chat.modeLabel(lang)))
+            .accessibilityValue(Text(title(for: mode)(lang)))
+        }())
     }
 
     // MARK: - Pieces

@@ -145,6 +145,7 @@ enum NetworkReliabilityChecks {
             failures.append("An absent or server-rewritten cid was accepted for automatic replay")
         }
         failures += await checkJobTails()
+        failures += await checkWatcherRecovery()
         failures += await checkJobReceipts(request)
         failures += await checkBinaryUpload()
         failures += await checkOfficeDelivery()
@@ -162,6 +163,104 @@ enum NetworkReliabilityChecks {
             failures.append("An equal-length terminal correction was ignored")
         }
         return failures
+    }
+
+    private static func checkWatcherRecovery() async -> [String] {
+        var failures: [String] = []
+        for kind: JobKind in [.chat, .longdoc] {
+            let spec = JobKindSpecs.spec(kind)
+            for (elapsed, expected) in [(0.0, 0.35), (10.0, 0.7), (40.0, 1.2)] {
+                if JobKindSpecs.watcherInterval(spec, jobElapsed: 120,
+                    foregroundElapsed: elapsed, isBackground: false) != expected {
+                    failures.append("A reattached chat reader did not restart the website polling ladder")
+                }
+            }
+            if JobKindSpecs.watcherInterval(spec, jobElapsed: 120,
+                foregroundElapsed: 0, isBackground: true) != 5 {
+                failures.append("Foreground catch-up accelerated background polling")
+            }
+        }
+        if JobKindSpecs.watcherInterval(JobKindSpecs.spec(.image), jobElapsed: 120,
+            foregroundElapsed: 0, isBackground: false) != 5 {
+            failures.append("Chat reader catch-up changed the media polling budget")
+        }
+
+        let partial = Data(#"{"phase":"processing","text":"Received","reasoning":"Reasoning"}"#.utf8)
+        let complete = Data(#"{"phase":"completed","text":"Authoritative answer","reasoning":"Complete reasoning"}"#.utf8)
+        let scenario = NetworkFaultProtocol.scenario([
+            .response(200, partial), .fault(.networkConnectionLost), .response(200, complete)
+        ])
+        let pointer = JobPointer(id: "watcher-recovery-job", kind: .chat, ownerID: "fixture-owner",
+            cid: "watcher-cid", conversationID: "fixture-chat", startedAt: Date().addingTimeInterval(-120),
+            deadline: Date().addingTimeInterval(60))
+        let probe = WatcherProbe()
+        let watcher = JobWatcher(pointer: pointer, driver: ChatJobDriver(kind: .chat),
+            api: client(for: scenario), network: NetworkMonitor(), mode: .continuous, delegate: probe)
+        var waits: [(reads: Int, seconds: TimeInterval)] = []
+        watcher.debugWait = { seconds in
+            waits.append((NetworkFaultProtocol.calls(scenario).count, seconds))
+            await Task.yield()
+        }
+        watcher.start()
+        await waitForReader(watcher)
+        watcher.stop()
+        let calls = NetworkFaultProtocol.finish(scenario)
+        if calls.count != 3 || calls.contains(where: { $0.method != "GET" || $0.path != "/api/chat/job" }) {
+            failures.append("Watcher recovery replayed admission or failed to read the existing job")
+        }
+        if waits.count != 2 || waits.map(\.reads) != [1, 2] || waits.first?.seconds != 0.35
+            || !(0.96...1.44).contains(waits.last?.seconds ?? 0) {
+            failures.append("Watcher delayed its first read or added normal cadence after fault backoff")
+        }
+        if case .completed(let result)? = probe.terminal {
+            if result.text != "Authoritative answer" || result.reasoning != "Complete reasoning" {
+                failures.append("Watcher recovery changed the authoritative answer or reasoning")
+            }
+        } else { failures.append("The interrupted watcher did not reach authoritative completion") }
+
+        // URLSession may cancel only its read (for example during a lifecycle transition).
+        // End that loop without cancelling the server job; an explicit poke must resume it.
+        let cancelled = NetworkFaultProtocol.scenario([.fault(.cancelled), .response(200, complete)])
+        let cancelledProbe = WatcherProbe()
+        let cancelledWatcher = JobWatcher(pointer: pointer, driver: ChatJobDriver(kind: .chat),
+            api: client(for: cancelled), network: NetworkMonitor(), mode: .continuous, delegate: cancelledProbe)
+        var cancellationWaits = 0
+        cancelledWatcher.debugWait = { _ in cancellationWaits += 1; await Task.yield() }
+        cancelledWatcher.start()
+        await waitForReader(cancelledWatcher)
+        if cancelledWatcher.debugHasLoop || cancelledProbe.terminal != nil || cancellationWaits != 0
+            || NetworkFaultProtocol.calls(cancelled).count != 1 {
+            failures.append("A cancelled transport read retried automatically or ended server work")
+        }
+        cancelledWatcher.poke()
+        await waitForReader(cancelledWatcher)
+        cancelledWatcher.stop()
+        let resumed = NetworkFaultProtocol.finish(cancelled)
+        if resumed.count != 2 || resumed.contains(where: { $0.method != "GET" }) {
+            failures.append("Reattaching a cancelled reader failed or sent a new server operation")
+        }
+        if case .completed? = cancelledProbe.terminal {} else {
+            failures.append("A transport-cancelled reader could not resume on poke")
+        }
+        return failures
+    }
+
+    /// A deadlock guard for asynchronous fixture delivery, not a response-speed assertion.
+    private static func waitForReader(_ watcher: JobWatcher) async {
+        let deadline = ProcessInfo.processInfo.systemUptime + 5
+        while watcher.debugHasLoop, ProcessInfo.processInfo.systemUptime < deadline {
+            await JobClock.rest(0.01)
+        }
+    }
+
+    @MainActor
+    private final class WatcherProbe: JobWatcherDelegate {
+        var terminal: JobTerminal?
+        func watcher(_ watcher: JobWatcher, didProgress snapshot: JobSnapshot, pointer: JobPointer) {}
+        func watcher(_ watcher: JobWatcher, didFinish terminal: JobTerminal, pointer: JobPointer) {
+            self.terminal = terminal
+        }
+        func watcherNeedsReauthentication(_ watcher: JobWatcher, pointer: JobPointer) {}
     }
 
     private static func checkJobReceipts(_ request: ChatJobRequest) async -> [String] {
@@ -410,6 +509,11 @@ private final class NetworkFaultProtocol: URLProtocol, @unchecked Sendable {
     static func finish(_ host: String) -> [Call] {
         state.lock.lock(); defer { state.lock.unlock() }
         return state.scenarios.removeValue(forKey: host)?.calls ?? []
+    }
+
+    static func calls(_ host: String) -> [Call] {
+        state.lock.lock(); defer { state.lock.unlock() }
+        return state.scenarios[host]?.calls ?? []
     }
 
     override class func canInit(with request: URLRequest) -> Bool {

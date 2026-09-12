@@ -1,6 +1,5 @@
 import Foundation
-import Observation
-
+import Perception
 /// This receipt, saved on the assistant row before admission, is the authority for recovery.
 /// A session is reused only inside its original conversation. There is no automatic session roll.
 struct OmnixReceipt: Codable, Sendable, Equatable {
@@ -115,6 +114,8 @@ struct OmnixFile: Codable, Sendable, Equatable, Identifiable {
     var size: Int?
     var url: String?
     var sha256: String?
+    /// Part of the server's workspace-file identity, used to detect a later run's overwrite.
+    var modifiedAt: Double?
     var downloadPath: String? {
         guard OmnixReceipt.matches(id, #"^[a-f0-9]{64}$"#),
               let url, url == "/api/omnix/files/" + id else { return nil }
@@ -147,7 +148,7 @@ struct OmnixInputReceipt: Decodable, Sendable {
     let sha256: String
 }
 
-@MainActor @Observable
+@MainActor @Perceptible
 final class OmnixState {
     var owner: String?
     var generation = 0

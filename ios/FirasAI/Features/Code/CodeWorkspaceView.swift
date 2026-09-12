@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// Which half of a session the reader is in: the conversation, or the files behind it.
@@ -103,62 +104,75 @@ struct CodeWorkspaceView: View {
     private var link: CodeGitHubLink? { CodeGitHubModel.shared.link(for: projectID) }
 
     var body: some View {
-        VStack(spacing: 0) {
-            buildStrip
-            offlineStrip
-            content(for: code.project)
-        }
-        .background(palette.background.ignoresSafeArea())
-        .environment(\.firasTextSelection, textSelection)
-        .onChange(of: textSelection.request) { _, request in
-            guard let request else { return }
-            let quotation = request.text.components(separatedBy: "\n")
-                .map { "> " + $0 }.joined(separator: "\n")
-            composerPrefill = quotation + "\n\n" + (lang == .arabic ? "سؤالي: " : "My question: ")
-            surface = .session
-        }
-        .navigationTitle(code.openProjectName)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { toolbarContent }
-        .task(id: projectID) {
-            await code.open(projectID)
-        }
-        .alert(Strings.Code.newFilePrompt(lang), isPresented: $isAddingFile) {
-            TextField(Strings.Code.newFilePrompt(lang), text: $newFilePath)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
-            Button(Strings.Common.cancel(lang), role: .cancel) { newFilePath = "" }
-            Button(Strings.Common.done(lang)) { commitNewFile() }
-        }
-        .sheet(isPresented: $showsRepositoryPicker) {
-            CodeGitHubPickerSheet(env: env, projectID: projectID)
-        }
-        .sheet(
-            isPresented: $showsRepositoryFiles,
-            onDismiss: {
-                guard wantsRepositoryPicker else { return }
-                wantsRepositoryPicker = false
-                showsRepositoryPicker = true
-            },
-            content: {
-                CodeRepositoryBrowserSheet(
-                    env: env,
-                    projectID: projectID,
-                    onPickRepository: {
-                        wantsRepositoryPicker = true
-                        showsRepositoryFiles = false
-                    }
-                )
+        WithPerceptionTracking {
+            VStack(spacing: 0) {
+                buildStrip
+                offlineStrip
+                content(for: code.project)
             }
-        )
-        .sheet(item: $shareItem) { item in
-            CodeWorkspaceShareSheet(url: item.url)
-        }
-        .sheet(isPresented: sheetPlanBinding) { diffReview }
-        .inspector(isPresented: inspectorPlanBinding) {
-            diffReview
-                .inspectorColumnWidth(min: 320, ideal: 380, max: 520)
-        }
+            .background(palette.background.ignoresSafeArea())
+            .environment(\.firasTextSelection, textSelection)
+            .firasOnChange(of: textSelection.request) { _, request in
+                guard let request else { return }
+                let quotation = request.text.components(separatedBy: "\n")
+                    .map { "> " + $0 }.joined(separator: "\n")
+                composerPrefill = quotation + "\n\n" + (lang == .arabic ? "سؤالي: " : "My question: ")
+                surface = .session
+            }
+            .navigationTitle(code.openProjectName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbarContent }
+            .task(id: projectID) {
+                await code.open(projectID)
+            }
+            .alert(Strings.Code.newFilePrompt(lang), isPresented: $isAddingFile) {
+                WithPerceptionTracking {
+                    TextField(Strings.Code.newFilePrompt(lang), text: $newFilePath)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                    Button(Strings.Common.cancel(lang), role: .cancel) { newFilePath = "" }
+                    Button(Strings.Common.done(lang)) { commitNewFile() }
+
+                    }
+            }
+            .sheet(isPresented: $showsRepositoryPicker) {
+                WithPerceptionTracking {
+                    CodeGitHubPickerSheet(env: env, projectID: projectID)
+
+                    }
+            }
+            .sheet(
+                isPresented: $showsRepositoryFiles,
+                onDismiss: {
+                    guard wantsRepositoryPicker else { return }
+                    wantsRepositoryPicker = false
+                    showsRepositoryPicker = true
+                },
+                content: {
+                    WithPerceptionTracking {
+                        CodeRepositoryBrowserSheet(
+                            env: env,
+                            projectID: projectID,
+                            onPickRepository: {
+                                wantsRepositoryPicker = true
+                                showsRepositoryFiles = false
+                            }
+                        )
+                        }
+                }
+            )
+            .sheet(item: $shareItem) { item in
+                WithPerceptionTracking {
+                    CodeWorkspaceShareSheet(url: item.url)
+
+                    }
+            }
+            .sheet(isPresented: sheetPlanBinding) { WithPerceptionTracking {
+                diffReview
+                } }
+            .modifier(CodeInspectorCompatibility(isPresented: inspectorPlanBinding, review: { diffReview }))
+
+            }
     }
 
     // MARK: - Surfaces
@@ -274,7 +288,10 @@ struct CodeWorkspaceView: View {
         VStack(spacing: 0) {
             Picker(selection: $rightPane) {
                 ForEach(CodeWorkspaceRightPane.allCases) { pane in
+                    WithPerceptionTracking {
                     Text(pane.title(lang)).tag(pane)
+
+                    }
                 }
             } label: {
                 Text(Strings.Code.tabPreview(lang))
@@ -384,16 +401,20 @@ struct CodeWorkspaceView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
+        ToolbarItem(placement: .navigationBarLeading) {
+            WithPerceptionTracking {
             Button {
                 goHome()
             } label: {
                 Image(systemName: "chevron.backward")
             }
             .accessibilityLabel(Text(Strings.Code.home(lang)))
+
+            }
         }
 
         ToolbarItem(placement: .principal) {
+            WithPerceptionTracking {
             VStack(spacing: 1) {
                 Text(code.openProjectName)
                     .font(.system(size: 15, weight: .semibold))
@@ -406,9 +427,12 @@ struct CodeWorkspaceView: View {
                     .truncationMode(.middle)
                     .foregroundStyle(code.saveState == .saved ? palette.textMuted : palette.accent)
             }
+
+            }
         }
 
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .navigationBarTrailing) {
+            WithPerceptionTracking {
             Button {
                 toggleSurface()
             } label: {
@@ -421,14 +445,25 @@ struct CodeWorkspaceView: View {
                         : Strings.Code.workspaceBack(lang)
                 )
             )
+
+            }
         }
 
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .navigationBarTrailing) {
+            WithPerceptionTracking {
             Menu {
+                WithPerceptionTracking {
                 toolsMenu
+
+                }
             } label: {
+                WithPerceptionTracking {
                 Image(systemName: "ellipsis.circle")
                     .accessibilityLabel(Text(Strings.Code.moreTools(lang)))
+
+                }
+            }
+
             }
         }
     }
@@ -649,23 +684,32 @@ struct CodeRepositoryBrowserSheet: View {
     private var link: CodeGitHubLink? { github.link(for: projectID) }
 
     var body: some View {
-        NavigationStack {
+        WithPerceptionTracking {
+        FirasNavigationStack {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .background(palette.background.ignoresSafeArea())
                 .navigationTitle(Strings.CodeRepo.filesTitle(lang))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        WithPerceptionTracking {
                         Button(Strings.Common.close(lang)) { dismiss() }
+
+                        }
                     }
                 }
-                .navigationDestination(item: $opened) { file in
+                .firasNavigationDestination(item: $opened) { file in
+                    WithPerceptionTracking {
                     fileDetail(file)
+
+                    }
                 }
         }
         .firasSheetBackground(palette)
         .task { await load(force: false) }
+
+        }
     }
 
     // MARK: - Content
@@ -741,7 +785,10 @@ struct CodeRepositoryBrowserSheet: View {
                     quietLine(Strings.CodeRepo.filesNoMatch(lang))
                 } else {
                     ForEach(visible) { entry in
+                        WithPerceptionTracking {
                         fileRow(entry)
+
+                        }
                     }
                     if github.treeTruncated {
                         quietLine(Strings.CodeRepo.filesTruncated(lang))
@@ -777,7 +824,7 @@ struct CodeRepositoryBrowserSheet: View {
             }
             .textFieldStyle(.plain)
             .font(.system(size: 15))
-            .autocorrectionDisabled(true)
+            .disableAutocorrection(true)
             .textInputAutocapitalization(.never)
             .foregroundStyle(palette.textPrimary)
             .forceLTR()
@@ -898,13 +945,16 @@ struct CodeRepositoryBrowserSheet: View {
         .navigationTitle(file.path)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                WithPerceptionTracking {
                 Button {
                     guard env.code.importFile(path: file.path, content: file.content) else { return }
                     opened = nil
                     dismiss()
                 } label: {
                     Label(Strings.CodeRepo.fileImport(lang), systemImage: "square.and.arrow.down")
+                }
+
                 }
             }
         }
@@ -973,4 +1023,28 @@ struct CodeWorkspaceShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
+private struct CodeInspectorCompatibility<Review: View>: ViewModifier {
+    @Binding var isPresented: Bool
+    let review: () -> Review
+
+    init(isPresented: Binding<Bool>, @ViewBuilder review: @escaping () -> Review) {
+        _isPresented = isPresented
+        self.review = review
+    }
+
+    func body(content: Content) -> some View {
+        WithPerceptionTracking {
+            if #available(iOS 17, *), !FirasCompatibility.forceLegacyUI {
+                content.inspector(isPresented: $isPresented) {
+                    WithPerceptionTracking { review().inspectorColumnWidth(min: 320, ideal: 380, max: 520) }
+                }
+            } else {
+                content.sheet(isPresented: $isPresented) {
+                    WithPerceptionTracking { review() }
+                }
+            }
+        }
+    }
 }

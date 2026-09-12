@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 // The pieces every Settings page is built from. They are deliberately plain: a settings page is a
 // column of flat opaque `SurfaceCard`s inside one glass sheet, never glass on glass
@@ -31,15 +32,17 @@ struct SettingsPanel<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            header
-            VStack(alignment: .leading, spacing: 0) {
-                content
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 8) {
+                header
+                VStack(alignment: .leading, spacing: 0) {
+                    content
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .surfaceCard(palette)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .surfaceCard(palette)
+            .bidiIsland(for: title, fallback: lang)
         }
-        .bidiIsland(for: title, fallback: lang)
     }
 
     private var header: some View {
@@ -86,26 +89,28 @@ struct SettingsToggleRow: View {
     }
 
     var body: some View {
-        Toggle(isOn: $isOn) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(isDisabled ? palette.textMuted : palette.textPrimary)
-                if let hint, !hint.isEmpty {
-                    Text(hint)
-                        .font(.system(size: 12))
-                        .foregroundStyle(palette.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
+        WithPerceptionTracking {
+            Toggle(isOn: $isOn) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(isDisabled ? palette.textMuted : palette.textPrimary)
+                    if let hint, !hint.isEmpty {
+                        Text(hint)
+                            .font(.system(size: 12))
+                            .foregroundStyle(palette.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .toggleStyle(.switch)
+            .tint(palette.accent)
+            .disabled(isDisabled)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .frame(minHeight: 44)
         }
-        .toggleStyle(.switch)
-        .tint(palette.accent)
-        .disabled(isDisabled)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .frame(minHeight: 44)
     }
 }
 
@@ -133,27 +138,29 @@ struct SettingsValueRow<Value: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                if let title, !title.isEmpty {
-                    Text(title)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(palette.textPrimary)
+        WithPerceptionTracking {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    if let title, !title.isEmpty {
+                        Text(title)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(palette.textPrimary)
+                    }
+                    if let hint, !hint.isEmpty {
+                        Text(hint)
+                            .font(.system(size: 12))
+                            .foregroundStyle(palette.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                if let hint, !hint.isEmpty {
-                    Text(hint)
-                        .font(.system(size: 12))
-                        .foregroundStyle(palette.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            value
+                value
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .frame(minHeight: 44)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .frame(minHeight: 44)
     }
 }
 
@@ -163,11 +170,13 @@ struct SettingsDivider: View {
     let palette: FirasPalette
 
     var body: some View {
-        Rectangle()
-            .fill(palette.border)
-            .frame(height: 1)
-            .padding(.leading, 14)
-            .accessibilityHidden(true)
+        WithPerceptionTracking {
+            Rectangle()
+                .fill(palette.border)
+                .frame(height: 1)
+                .padding(.leading, 14)
+                .accessibilityHidden(true)
+        }
     }
 }
 
@@ -178,13 +187,15 @@ struct SettingsNote: View {
     let palette: FirasPalette
 
     var body: some View {
-        Text(text)
-            .font(.system(size: 13))
-            .foregroundStyle(palette.textSecondary)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
+        WithPerceptionTracking {
+            Text(text)
+                .font(.system(size: 13))
+                .foregroundStyle(palette.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 11)
+        }
     }
 }
 
@@ -224,30 +235,34 @@ struct SettingsSegmentedRow<Option: Hashable>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                if let title, !title.isEmpty {
-                    Text(title)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(palette.textPrimary)
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    if let title, !title.isEmpty {
+                        Text(title)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(palette.textPrimary)
+                    }
+                    if let hint, !hint.isEmpty {
+                        Text(hint)
+                            .font(.system(size: 12))
+                            .foregroundStyle(palette.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                if let hint, !hint.isEmpty {
-                    Text(hint)
-                        .font(.system(size: 12))
-                        .foregroundStyle(palette.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: 6) {
-                ForEach(options, id: \.self) { option in
-                    segment(option)
+                HStack(spacing: 6) {
+                    ForEach(options, id: \.self) { option in
+                        WithPerceptionTracking {
+                            segment(option)
+                        }
+                    }
                 }
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
     }
 
     private func segment(_ option: Option) -> some View {

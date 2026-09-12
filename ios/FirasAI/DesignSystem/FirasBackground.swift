@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The ground every screen sits on (`design-brief.md §2.4 (7), §7.1`).
@@ -20,20 +21,24 @@ struct FirasBackground: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            let extent = max(proxy.size.width, proxy.size.height)
-            ZStack {
-                palette.background
-                accentRadial(extent: extent)
-                halo(extent: extent)
-                bottomSettle
-                grain
+        WithPerceptionTracking {
+            GeometryReader { proxy in
+                WithPerceptionTracking {
+                    let extent = max(proxy.size.width, proxy.size.height)
+                    ZStack {
+                        palette.background
+                        accentRadial(extent: extent)
+                        halo(extent: extent)
+                        bottomSettle
+                        grain
+                    }
+                }
             }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+            .onAppear { settleHalo(animated: true) }
+            .firasOnChange(of: showHalo) { _, _ in settleHalo(animated: true) }
         }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
-        .onAppear { settleHalo(animated: true) }
-        .onChange(of: showHalo) { _, _ in settleHalo(animated: true) }
     }
 
     // MARK: - Layers

@@ -1,21 +1,29 @@
 import Foundation
-import Observation
+import Perception
 import QuartzCore
 import SwiftUI
 import UIKit
 
-/// The **pacing** half of the streaming feel: text that arrives in lumps and reads as typing.
+enum StreamingTextPresentation: Equatable, Sendable {
+    case receivedChunks
+    case paced
+
+    /// Matches the website's disabled SMOOTH_STREAM_CHARACTER_REVEAL. StreamBuffer already
+    /// coalesces network updates; a second character cursor only delays text and reparses math.
+    static let standard: Self = .receivedChunks
+}
+
+/// Received text appears immediately by default, with the normal stream caret and renderer.
+/// Explicitly paced surfaces may still use the grapheme-safe cursor below.
 ///
-/// `StreamBuffer` publishes what has *arrived* at up to ten times a second, and a job poll can
-/// deliver 2.5 seconds of answer in one go. Painting that directly is what the owner reads as
-/// broken — the answer lurches forward a paragraph at a time and then sits still. This view keeps a
-/// display cursor between the reader and the buffer: incoming text becomes a target, and the cursor
-/// walks towards it on the display link. It catches up within a short window instead of replaying
-/// a server snapshot for several seconds after the words have already arrived.
+/// `StreamBuffer` already coalesces arrivals at up to ten times a second. The standard mode passes
+/// those snapshots straight through, matching the website and avoiding a second reveal delay.
+/// In explicit `.paced` mode, incoming text becomes a target and a display cursor catches up within
+/// a short window. Its separate driver remains available for surfaces that need that presentation.
 ///
 /// Wrap it around anything that renders a growing answer — the closure is handed one revealed
 /// prefix and draws it, e.g. `MarkdownView(markdown: shown, messageID: …, streaming: …)`. What it
-/// guarantees to whatever it wraps:
+/// guarantees when `.paced` is requested:
 ///
 /// * The string handed to `content` is always a **grapheme-cluster prefix** of the text that has
 ///   arrived. Its last cluster is held briefly for a following harakah or emoji joiner, then
@@ -34,6 +42,7 @@ struct StreamingText<Content: View>: View {
     private let isStreaming: Bool
     private let motionOn: Bool
     private let identity: String
+    private let presentation: StreamingTextPresentation
     private let content: (String) -> Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -47,28 +56,41 @@ struct StreamingText<Content: View>: View {
     ///     read here as well, so a caller that forgets it still behaves.
     ///   - identity: the message id. Changing it throws the cursor away rather than continuing one
     ///     answer into another.
-    ///   - content: draws one revealed prefix.
+    ///   - presentation: received snapshots by default; `.paced` opts into the display cursor.
+    ///   - content: draws the received text, or one revealed prefix in `.paced` mode.
     init(
         text: String,
         isStreaming: Bool,
         motionOn: Bool,
         identity: String = "",
+        presentation: StreamingTextPresentation = .standard,
         @ViewBuilder content: @escaping (String) -> Content
     ) {
         self.text = text
         self.isStreaming = isStreaming
         self.motionOn = motionOn
         self.identity = identity
+        self.presentation = presentation
         self.content = content
     }
 
     var body: some View {
+        WithPerceptionTracking {
+            if presentation == .receivedChunks {
+                content(text)
+            } else {
+                pacedContent
+            }
+        }
+    }
+
+    private var pacedContent: some View {
         content(shown)
             .onAppear { reveal.resume(); apply() }
-            .onChange(of: text) { _, _ in apply() }
-            .onChange(of: isStreaming) { _, _ in apply() }
-            .onChange(of: animates) { _, _ in apply() }
-            .onChange(of: identity) { _, _ in
+            .firasOnChange(of: text) { _, _ in apply() }
+            .firasOnChange(of: isStreaming) { _, _ in apply() }
+            .firasOnChange(of: animates) { _, _ in apply() }
+            .firasOnChange(of: identity) { _, _ in
                 reveal.reset()
                 apply()
             }
@@ -104,7 +126,7 @@ struct StreamingText<Content: View>: View {
 /// frame. Driven from the main run loop only — the link fires there, and `StreamingText` touches it
 /// from `body`-adjacent callbacks. Not `@MainActor`, because SwiftUI has to build it inside a
 /// `@State` initializer: the shape `OrbMotionState` and `CodeEditorLink` already use here.
-@Observable
+@Perceptible
 final class StreamReveal {
 
     /// The revealed prefix. Always ends on a grapheme-cluster boundary.
@@ -119,29 +141,29 @@ final class StreamReveal {
     /// The part of the answer that has arrived and has not been revealed yet. A `Substring` so the
     /// per-tick slice is O(the run revealed) instead of O(the answer). Both lengths below are in
     /// UTF-8 bytes and are tracked rather than measured, so no per-frame count walks the string.
-    @ObservationIgnored private var pending: Substring = ""
-    @ObservationIgnored private var pendingBytes: Int = 0
-    @ObservationIgnored private var revealedBytes: Int = 0
-    @ObservationIgnored private var trailingGraphemeBytes: Int = 0
-    @ObservationIgnored private var trailingIsAvailable = false
-    @ObservationIgnored private var trailingTimer: Timer?
-    @ObservationIgnored private var trailingDeadline: CFTimeInterval = 0
+    @PerceptionIgnored private var pending: Substring = ""
+    @PerceptionIgnored private var pendingBytes: Int = 0
+    @PerceptionIgnored private var revealedBytes: Int = 0
+    @PerceptionIgnored private var trailingGraphemeBytes: Int = 0
+    @PerceptionIgnored private var trailingIsAvailable = false
+    @PerceptionIgnored private var trailingTimer: Timer?
+    @PerceptionIgnored private var trailingDeadline: CFTimeInterval = 0
 
     // MARK: Pacing state
 
-    @ObservationIgnored private var link: CADisplayLink?
-    @ObservationIgnored private var ticker: StreamRevealTicker?
-    @ObservationIgnored private var lastTickAt: CFTimeInterval = 0
-    @ObservationIgnored private var lastArrivalAt: CFTimeInterval = 0
+    @PerceptionIgnored private var link: CADisplayLink?
+    @PerceptionIgnored private var ticker: StreamRevealTicker?
+    @PerceptionIgnored private var lastTickAt: CFTimeInterval = 0
+    @PerceptionIgnored private var lastArrivalAt: CFTimeInterval = 0
     /// Bytes per second the answer is arriving at, and seconds between arrivals — both smoothed.
     /// The cursor never runs slower than the first, which keeps it from draining the buffer and
     /// stalling; the second tells it whether it is being fed by a stream (~0.1 s) or a job (~2.5 s).
-    @ObservationIgnored private var arrivalRate: Double = 0
-    @ObservationIgnored private var arrivalInterval: Double = 0
-    @ObservationIgnored private var isFinishing = false
-    @ObservationIgnored private var finishDeadline: CFTimeInterval = 0
-    @ObservationIgnored private var catchupDeadline: CFTimeInterval = 0
-    @ObservationIgnored private var isPaused = false
+    @PerceptionIgnored private var arrivalRate: Double = 0
+    @PerceptionIgnored private var arrivalInterval: Double = 0
+    @PerceptionIgnored private var isFinishing = false
+    @PerceptionIgnored private var finishDeadline: CFTimeInterval = 0
+    @PerceptionIgnored private var catchupDeadline: CFTimeInterval = 0
+    @PerceptionIgnored private var isPaused = false
     private let clock: () -> CFTimeInterval
 
     // MARK: Constants

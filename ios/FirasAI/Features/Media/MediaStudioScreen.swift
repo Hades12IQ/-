@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The fifth product: `الاستوديو`.
 ///
@@ -34,15 +35,17 @@ struct MediaStudioScreen: View {
     private var isRegular: Bool { sizeClass == .regular }
 
     var body: some View {
-        Group {
-            if isRegular {
-                regularLayout
-            } else {
-                compactLayout
+        WithPerceptionTracking {
+            Group {
+                if isRegular {
+                    regularLayout
+                } else {
+                    compactLayout
+                }
             }
+            .background(palette.background.ignoresSafeArea())
+            .task(id: env.session.identityID) { await env.media.reload() }
         }
-        .background(palette.background.ignoresSafeArea())
-        .task(id: env.session.identityID) { await env.media.reload() }
     }
 
     // MARK: - iPhone
@@ -63,17 +66,23 @@ struct MediaStudioScreen: View {
 
     private var tabContainer: some View {
         TabView(selection: $tab) {
-            NavigationStack {
-                libraryPane
-            }
-            .tabItem { Label(Strings.Media.libraryTab(lang), systemImage: "square.grid.2x2") }
-            .tag(StudioTab.library)
+            WithPerceptionTracking {
+                FirasNavigationStack {
+                    WithPerceptionTracking {
+                        libraryPane
+                    }
+                }
+                .tabItem { Label(Strings.Media.libraryTab(lang), systemImage: "square.grid.2x2") }
+                .tag(StudioTab.library)
 
-            NavigationStack {
-                createPane
+                FirasNavigationStack {
+                    WithPerceptionTracking {
+                        createPane
+                    }
+                }
+                .tabItem { Label(Strings.Media.createTab(lang), systemImage: "wand.and.stars") }
+                .tag(StudioTab.create)
             }
-            .tabItem { Label(Strings.Media.createTab(lang), systemImage: "wand.and.stars") }
-            .tag(StudioTab.create)
         }
         .tint(palette.accent)
     }
@@ -81,27 +90,47 @@ struct MediaStudioScreen: View {
     // MARK: - iPad
 
     private var regularLayout: some View {
-        NavigationStack {
-            libraryPane
-                .inspector(isPresented: $inspectorPresented) {
-                    MediaCreateForm(env: env)
-                        .inspectorColumnWidth(min: 320, ideal: 380, max: 460)
-                }
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            inspectorPresented.toggle()
-                        } label: {
-                            Image(systemName: "wand.and.stars")
+        FirasNavigationStack {
+            WithPerceptionTracking {
+                libraryWithInspector
+                    .toolbar {
+                        WithPerceptionTracking {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button {
+                                    inspectorPresented.toggle()
+                                } label: {
+                                    Image(systemName: "wand.and.stars")
+                                }
+                                .accessibilityLabel(Text(Strings.Media.createTab(lang)))
+                            }
                         }
-                        .accessibilityLabel(Text(Strings.Media.createTab(lang)))
                     }
-                }
+            }
         }
         .overlay(alignment: .bottom) { renderingStrip.padding(.bottom, 18) }
     }
 
     // MARK: - Panes
+
+    @ViewBuilder
+    private var libraryWithInspector: some View {
+        if #available(iOS 17, *), !FirasCompatibility.forceLegacyUI {
+            libraryPane.inspector(isPresented: $inspectorPresented) {
+                WithPerceptionTracking {
+                    MediaCreateForm(env: env)
+                        .inspectorColumnWidth(min: 320, ideal: 380, max: 460)
+                }
+            }
+        } else {
+            HStack(spacing: 0) {
+                libraryPane.frame(maxWidth: .infinity)
+                if inspectorPresented {
+                    Divider()
+                    MediaCreateForm(env: env).frame(width: 340)
+                }
+            }
+        }
+    }
 
     private var libraryPane: some View {
         MediaLibraryGrid(

@@ -1,5 +1,6 @@
 #if DEBUG
 import SwiftUI
+import Perception
 import UIKit
 import PDFKit
 
@@ -207,16 +208,18 @@ enum FileCardReliabilityChecks {
         let env: AppEnvironment
         let conversationID: String
         var body: some View {
-            ScrollView {
-                if let message = env.chat.conversation(conversationID)?.messages.last {
-                    AssistantTurnView(env: env, message: message, conversationID: conversationID,
-                        product: .ai, palette: env.prefs.palette, lang: env.prefs.lang,
-                        scale: env.prefs.fontScale, motionOn: false, isStreaming: false,
-                        liveText: "", liveReasoning: "", phaseLabel: nil, isLatest: false,
-                        showsPlanPill: false, expectsAsk: false)
-                    .padding(20)
-                }
-            }.background(env.prefs.palette.background)
+            WithPerceptionTracking {
+                ScrollView {
+                    if let message = env.chat.conversation(conversationID)?.messages.last {
+                        AssistantTurnView(env: env, message: message, conversationID: conversationID,
+                            product: .ai, palette: env.prefs.palette, lang: env.prefs.lang,
+                            scale: env.prefs.fontScale, motionOn: false, isStreaming: false,
+                            liveText: "", liveReasoning: "", phaseLabel: nil, isLatest: false,
+                            showsPlanPill: false, expectsAsk: false)
+                        .padding(20)
+                    }
+                }.background(env.prefs.palette.background)
+            }
         }
     }
 

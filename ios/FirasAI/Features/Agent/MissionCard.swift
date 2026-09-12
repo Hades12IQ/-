@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// What the card is drawing right now. `blocked`, `credits` and `stopped` are **client-derived**:
 /// the server never sends them (`web-agent-ux.md §6.2`, `server-agent.md §11.1`).
@@ -74,43 +75,47 @@ struct MissionCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            MissionCardHeader(phase: phase, job: job, palette: palette, lang: lang, motionOn: motionOn)
-            speech
-            blockedSentence
-            planSection
-            activitySection
-            filesSection
-            resultSection
-            MissionCardFooter(
-                env: env,
-                conversationID: conversationID,
-                phase: phase,
-                job: job,
-                blocked: blocked,
-                exportText: exportText
-            )
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(palette.accent.opacity(phase.isLive ? 0.6 : 0.85))
-                .frame(width: 3)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .strokeBorder(palette.border, lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.05), radius: 3, y: 1)
-        .task(id: exportSignature) { rebuildExport() }
-        .onChange(of: doneStepCount) { _, _ in
-            if phase.isLive { Haptics.toolStep() }
-        }
-        .sheet(item: $artifact) { request in
-            ArtifactViewer(env: env, jobID: request.jobID, index: request.index, name: request.name, type: request.type)
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 14) {
+                MissionCardHeader(phase: phase, job: job, palette: palette, lang: lang, motionOn: motionOn)
+                speech
+                blockedSentence
+                planSection
+                activitySection
+                filesSection
+                resultSection
+                MissionCardFooter(
+                    env: env,
+                    conversationID: conversationID,
+                    phase: phase,
+                    job: job,
+                    blocked: blocked,
+                    exportText: exportText
+                )
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(cardBackground)
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(palette.accent.opacity(phase.isLive ? 0.6 : 0.85))
+                    .frame(width: 3)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .strokeBorder(palette.border, lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.05), radius: 3, y: 1)
+            .task(id: exportSignature) { rebuildExport() }
+            .firasOnChange(of: doneStepCount) { _, _ in
+                if phase.isLive { Haptics.toolStep() }
+            }
+            .sheet(item: $artifact) { request in
+                WithPerceptionTracking {
+                    ArtifactViewer(env: env, jobID: request.jobID, index: request.index, name: request.name, type: request.type)
+                }
+            }
         }
     }
 
@@ -208,14 +213,16 @@ struct MissionCard: View {
             DisclosureGroup(isExpanded: $planExpanded) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(job.steps.indices, id: \.self) { index in
-                        MissionStepRow(
-                            index: index,
-                            step: job.steps[index],
-                            events: bucketedEvents(job: job, step: index),
-                            palette: palette,
-                            lang: lang,
-                            motionOn: motionOn
-                        )
+                        WithPerceptionTracking {
+                            MissionStepRow(
+                                index: index,
+                                step: job.steps[index],
+                                events: bucketedEvents(job: job, step: index),
+                                palette: palette,
+                                lang: lang,
+                                motionOn: motionOn
+                            )
+                        }
                     }
                 }
                 .padding(.top, 8)

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The follow-up chips under a finished answer (`web-chat-ux.md §8.2`, item 8).
 ///
@@ -29,7 +30,9 @@ struct QuickReplies: View {
     }
 
     var body: some View {
-        chips(QuickReplies.topics(in: markdown))
+        WithPerceptionTracking {
+            chips(QuickReplies.topics(in: markdown))
+        }
     }
 
     // MARK: - Row
@@ -42,14 +45,16 @@ struct QuickReplies: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(topics, id: \.self) { topic in
-                        FirasPill(
-                            text: topic,
-                            symbol: nil,
-                            selected: false,
-                            palette: palette
-                        ) {
-                            Haptics.select()
-                            onPick(QuickReplyCopy.ask.fmt(lang, topic))
+                        WithPerceptionTracking {
+                            FirasPill(
+                                text: topic,
+                                symbol: nil,
+                                selected: false,
+                                palette: palette
+                            ) {
+                                Haptics.select()
+                                onPick(QuickReplyCopy.ask.fmt(lang, topic))
+                            }
                         }
                     }
                 }

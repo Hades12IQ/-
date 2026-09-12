@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 
 /// The AI pane: the project thread on top, the command bar underneath
 /// (`web-code-ux.md §6.1`, `design-brief.md §7.9`).
@@ -46,29 +47,35 @@ struct CodeAIBar: View {
     private var motionOn: Bool { FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion) }
 
     var body: some View {
-        VStack(spacing: 0) {
-            thread
-            mentionRow
-            attachmentTray
-            composer
-        }
-        .background(palette.background)
-        .onAppear { absorbPrefill() }
-        .onChange(of: prefill) { _, _ in absorbPrefill() }
-        .onChange(of: draft) { _, newValue in
-            clamp(newValue)
-        }
-        .onChange(of: env.dictation.state) { _, newValue in
-            if case .failed = newValue { dictating = false }
-        }
-        .onChange(of: env.dictation.isActive) { wasActive, isActive in
-            if wasActive && !isActive { dictating = false }
-        }
-        .sheet(isPresented: $showsDiff) {
-            if let plan {
-                DiffReviewSheet(env: env, plan: plan)
-            }
-        }
+        WithPerceptionTracking {
+                VStack(spacing: 0) {
+                    thread
+                    mentionRow
+                    attachmentTray
+                    composer
+                }
+                .background(palette.background)
+                .onAppear { absorbPrefill() }
+                .firasOnChange(of: prefill) { _, _ in absorbPrefill() }
+                .firasOnChange(of: draft) { _, newValue in
+                    clamp(newValue)
+                }
+                .firasOnChange(of: env.dictation.state) { _, newValue in
+                    if case .failed = newValue { dictating = false }
+                }
+                .firasOnChange(of: env.dictation.isActive) { wasActive, isActive in
+                    if wasActive && !isActive { dictating = false }
+                }
+                .sheet(isPresented: $showsDiff) {
+                    WithPerceptionTracking {
+                            if let plan {
+                                DiffReviewSheet(env: env, plan: plan)
+                            }
+
+                            }
+                }
+
+                }
     }
 
     // MARK: - Thread
@@ -78,18 +85,7 @@ struct CodeAIBar: View {
         if turns.isEmpty && !isSending {
             emptyThread
         } else {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
-                    ForEach(Array(turns.enumerated()), id: \.offset) { pair in
-                        turnRow(pair.element)
-                    }
-                    if isSending { pendingRow }
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .defaultScrollAnchor(.bottom)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            CodeSessionThread(env: env)
         }
     }
 
@@ -152,20 +148,23 @@ struct CodeAIBar: View {
         if !tokens.isEmpty {
             HStack(spacing: 6) {
                 ForEach(tokens, id: \.self) { token in
-                    let known = CodeAskAI.matchPath(token, in: files) != nil
-                    Text(verbatim: token)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(known ? palette.accent : palette.textMuted)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
-                        .background {
-                            Capsule(style: .continuous)
-                                .fill(known ? palette.accentSoft : palette.surfaceSunken)
-                        }
-                        .forceLTR()
-                        .accessibilityLabel(
-                            Text(verbatim: known ? token : token + " — " + Strings.CodeUI.noFileMatches(lang))
-                        )
+                    WithPerceptionTracking {
+                            let known = CodeAskAI.matchPath(token, in: files) != nil
+                            Text(verbatim: token)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(known ? palette.accent : palette.textMuted)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background {
+                                    Capsule(style: .continuous)
+                                        .fill(known ? palette.accentSoft : palette.surfaceSunken)
+                                }
+                                .forceLTR()
+                                .accessibilityLabel(
+                                    Text(verbatim: known ? token : token + " — " + Strings.CodeUI.noFileMatches(lang))
+                                )
+
+                            }
                 }
             }
         }
@@ -181,10 +180,13 @@ struct CodeAIBar: View {
             )
             if let started = sendStartedAt {
                 TimelineView(.periodic(from: started, by: 1)) { context in
-                    let seconds = max(0, Int(context.date.timeIntervalSince(started)))
-                    Text(verbatim: Strings.CodeUI.aiWorkingFor.fmt(lang, ArabicText.count(seconds, lang)))
-                        .font(.system(size: 12))
-                        .foregroundStyle(palette.textMuted)
+                    WithPerceptionTracking {
+                            let seconds = max(0, Int(context.date.timeIntervalSince(started)))
+                            Text(verbatim: Strings.CodeUI.aiWorkingFor.fmt(lang, ArabicText.count(seconds, lang)))
+                                .font(.system(size: 12))
+                                .foregroundStyle(palette.textMuted)
+
+                            }
                 }
             }
         }
@@ -203,20 +205,23 @@ struct CodeAIBar: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(matches, id: \.self) { path in
-                            Button {
-                                insertMention(path)
-                            } label: {
-                                Text(verbatim: path)
-                                    .font(.system(size: 12, design: .monospaced))
-                                    .foregroundStyle(palette.textPrimary)
-                                    .padding(.horizontal, 10)
-                                    .frame(minHeight: 32)
-                                    .background {
-                                        Capsule(style: .continuous).fill(palette.surfaceSunken)
+                            WithPerceptionTracking {
+                                    Button {
+                                        insertMention(path)
+                                    } label: {
+                                        Text(verbatim: path)
+                                            .font(.system(size: 12, design: .monospaced))
+                                            .foregroundStyle(palette.textPrimary)
+                                            .padding(.horizontal, 10)
+                                            .frame(minHeight: 32)
+                                            .background {
+                                                Capsule(style: .continuous).fill(palette.surfaceSunken)
+                                            }
+                                            .forceLTR()
                                     }
-                                    .forceLTR()
-                            }
-                            .buttonStyle(.plain)
+                                    .buttonStyle(.plain)
+
+                                    }
                         }
                     }
                     .padding(.horizontal, 14)
@@ -257,6 +262,7 @@ struct CodeAIBar: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(Array(attachments.enumerated()), id: \.offset) { pair in
+                        WithPerceptionTracking {
                         HStack(spacing: 6) {
                             Image(systemName: pair.element.imageBase64 == nil ? "doc.text" : "photo")
                                 .font(.system(size: 11))
@@ -277,6 +283,8 @@ struct CodeAIBar: View {
                         .padding(.horizontal, 10)
                         .frame(minHeight: 32)
                         .background { Capsule(style: .continuous).fill(palette.surfaceSunken) }
+
+                        }
                     }
                 }
                 .padding(.horizontal, 14)
@@ -295,18 +303,8 @@ struct CodeAIBar: View {
     private var composer: some View {
         VStack(spacing: 6) {
             HStack(alignment: .bottom, spacing: 10) {
-                TextField(
-                    text: $draft,
-                    prompt: Text(verbatim: Strings.CodeUI.aiPlaceholder(lang)),
-                    axis: .vertical
-                ) {
-                    Text(verbatim: Strings.CodeUI.aiPlaceholder(lang))
-                }
-                .textFieldStyle(.plain)
-                .lineLimit(1...5)
-                .font(.system(size: 16))
-                .foregroundStyle(palette.textPrimary)
-                .focused($focused)
+                FirasGrowingTextField(text: $draft, placeholder: Strings.CodeUI.aiPlaceholder(lang),
+                    maxLines: 5, pointSize: 16, palette: palette, isFocused: $focused)
                 .disabled(isSending)
                 .bidiIsland(for: draft, fallback: lang)
 
@@ -334,7 +332,7 @@ struct CodeAIBar: View {
         .firasGlass(
             .floating,
             palette: palette,
-            in: AnyShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            in: FirasAnyShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         )
         .overlay {
             if dictating {
@@ -367,7 +365,15 @@ struct CodeAIBar: View {
 
     @ViewBuilder
     private var sendButton: some View {
-        if isSending {
+        if env.code.codeOmnix.active.contains(env.code.openProjectID ?? ""), let receipt = turns.last(where: { $0.role == "ai" })?.edit {
+            FirasIconButton(symbol: "stop.fill", label: Strings.Common.stop(lang), palette: palette) {
+                Task { await env.code.stopCodeEdit(receipt) }
+            }.disabled(env.code.codeOmnix.stopping.contains(receipt.cid))
+        } else if env.code.codeOmnix.active.contains(env.code.openProjectID ?? ""), let receipt = turns.last(where: { $0.role == "ai" })?.omnix {
+            FirasIconButton(symbol: "stop.fill", label: Strings.Common.stop(lang), palette: palette) {
+                Task { await env.code.stopCodeOmnix(receipt) }
+            }.disabled(env.code.codeOmnix.stopping.contains(receipt.requestKey))
+        } else if isSending {
             ProgressView()
                 .progressViewStyle(.circular)
                 .tint(palette.accent)

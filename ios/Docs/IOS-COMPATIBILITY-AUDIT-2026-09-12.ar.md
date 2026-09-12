@@ -1,0 +1,142 @@
+# تدقيق دعم iOS 15 و14 و13
+
+التاريخ: 2026-09-12. المرجع: الإصدار 77، المصدر `b391c52b276a39a644a783b4bfb1bf8b462b8967`.
+
+**النسخة الحالية تتطلب iOS 18. دعم iOS 15 ممكن كتطوير أصلي للتطبيق، لكنه لم يُنفّذ أو يُختبر بعد. دعم 13 و14 يحتاج مسار توافق أوسع وبيئة اختبار أقدم.** لم يغيّر هذا التدقيق هدف النشر أو أي ملف تنفيذ، ولم يحوّل التطبيق إلى غلاف للموقع.
+
+الأرقام أدناه مأخوذة من أرشيف المصدر المذكور، وليس من تعديلات Code والسرعة الجارية بالتوازي. شمل الجرد 387 ملف Swift و110,644 سطراً، بما فيها فحوص DEBUG. استُبعدت التعليقات والنصوص الحرفية من عدّ المراجع. هذه أعداد استخدامات في الكود وليست قائمة أخطاء صادرة عن مترجم يستهدف نظاماً قديماً؛ بعض الاستخدامات محمية أصلاً بشرط توفر، وبعض أسماء الدوال لها صيغ تختلف في التوفر.
+
+## القرار العملي
+
+| النظام المطلوب | التنفيذ المقترح | حجم العمل والحد الصادق حالياً |
+|---|---|---|
+| iOS 15 | مشاركة النماذج والخدمات والملفات والرياضيات الحالية؛ backport للحالة مع Perception أو جسر Combine؛ بدائل أصلية للتنقل والتمرير والاختيار والمشاركة | نقل توافق متعدد المراحل، وليس إعادة كتابة التطبيق كله. يشمل 30 مخزن حالة، وواجهات عديدة، وأربع محادثات ذات تمرير حساس. لا يكفي تعديل رقم deployment target. |
+| iOS 14 | كل عمل 15، ثم بدائل لواجهات SwiftUI وFoundation التي بدأت في 15؛ فصل الكود الذي يحتاج SDK حديثاً | مسار قديم مستقل في البناء والاختبار، مع مشاركة منطق التطبيق. لا توجد نسخة 14 مثبتة التشغيل. |
+| iOS 13 | كل عمل 14، مع تشغيل UIKit/SceneDelegate بدلاً من دورة SwiftUI App، وبدائل عناصر 14 | أكبر نطاقاً بوضوح؛ يحتاج جهازاً فعلياً أو Mac مناسباً لمحاكي قديم. لا توجد نسخة 13 مثبتة التشغيل. |
+
+المقترح الأول هو إنجاز 15 مع بقاء المسار الحديث، ثم تحديد مسار 13/14 حسب أقدم جهاز فعلي مطلوب. تقدير الزمن قبل أول بناء باستهداف 15 سيكون غير موثوق؛ القياس المفيد الآن هو مجموعات العمل أدناه، لا وعد بساعات قليلة.
+
+## أين تقع العوائق
+
+### الحالة وتحديث الواجهة
+
+| الاستخدام | المراجع / الملفات |
+|---|---:|
+| `@Observable` | 30 / 30 |
+| `@ObservationIgnored` | 234 / 24 |
+| `@Bindable` | 3 / 2 |
+| `withObservationTracking` | 2 / 2 |
+| حقن كائنات `.environment(object)` في AppEnvironment | 18 في دالة واحدة |
+
+Observation في SwiftUI يبدأ من iOS 17. لا يمكن إبقاء هذا المسار كما هو على 15. [توثيق Apple للانتقال إلى Observation](https://developer.apple.com/documentation/swiftui/migrating-from-the-observable-object-protocol-to-the-observable-macro).
+
+مواقع جوهرية في المرجع:
+
+- `ios/FirasAI/App/AppEnvironment.swift:289`: تتبع تغيّر الحالة، و`:406`: حقن البيئة حتى السطر 432.
+- `ios/FirasAI/Stores/MediaStore.swift:289`: تتبع آخر مرتبط بخدمات الوسائط.
+- `ios/FirasAI/Features/Shell/AppShell.swift:36` و`Features/Chat/TierPickerSheet.swift:185`: bindings تعتمد Observation.
+- `ios/FirasAI/Rendering/MathIsland.swift:77` و`Rendering/StreamingText.swift:107`: الحالة تشمل محرك العرض الحي؛ ليست مقتصرة على شاشات الإعدادات.
+
+Perception يوفر `@Perceptible` و`WithPerceptionTracking` و`@Perception.Bindable` وتتبعاً للنظام القديم حتى iOS 13. لكنه يحتاج إحاطة القراءات ذات الصلة، بما فيها view builders المؤجلة؛ إحاطة جذر التطبيق وحده ليست دليلاً على تحديث كل واجهة. الإصدار المثبت يجب اختباره مع المترجم المختار. [المصدر الرسمي للمكتبة](https://github.com/pointfreeco/swift-perception).
+
+الإصدار 2.0.10 يطلب Swift tools 6.0. لذلك لا يُفترض أنه يعمل على Xcode 15.4 ذي Swift 5.10؛ مسار 13/14 يحتاج إصداراً مثبتاً متوافقاً أو جسر Combine مناسباً. الإصدار الأحدث 2.0.12 يطلب 6.4، ولذلك لا يناسب مترجم CI الحالي 6.3. [بيان 2.0.10](https://github.com/pointfreeco/swift-perception/blob/2.0.10/Package.swift)، [بيان 2.0.12](https://github.com/pointfreeco/swift-perception/blob/2.0.12/Package.swift).
+
+### التمرير: أكثر جزء يحتاج عناية
+
+| الاستخدام | المراجع / الملفات | الحد ذي الصلة |
+|---|---:|---|
+| `.scrollPosition` مع `ScrollPosition` | 4 / 4 | iOS 18 |
+| `.onScrollGeometryChange` | 5 / 4 | iOS 18 |
+| `.onScrollPhaseChange` | 4 / 4 | iOS 18 |
+| `.scrollTargetLayout` | 2 / 2 | iOS 17 |
+| `.scrollDismissesKeyboard` | 10 / 9 | iOS 16 |
+
+الأنواع الحديثة موثّقة لدى Apple: [ScrollPosition](https://developer.apple.com/documentation/swiftui/scrollposition)، [مراقبة أبعاد التمرير](https://developer.apple.com/documentation/swiftui/view/onscrollgeometrychange(for:of:action:)).
+
+الواجهات الأربع هي `Features/Chat/TranscriptView.swift:23`، و`Features/Agent/AgentScreen.swift:18`، و`Features/Brain/BrainThreadView.swift:18`، و`Features/Code/CodeWorkspacePanes.swift:91`. كذلك `DesignSystem/QuotedTextContext.swift:61` يستقبل `ScrollGeometry` مباشرة.
+
+البديل يجب أن يتابع موضع المستخدم، حجم المحتوى، الهوامش والكيبورد عبر UIScrollView أو جسر أصلي مكافئ. عليه الحفاظ على النزول عند الإرسال، السهم السلس، عدم سحب من يقرأ الرسائل القديمة، وتغيّر ارتفاع الرياضيات والصور والأغاني. `scrollTo` داخل `onAppear` وحده لا يغطي هذا العقد. الأفضل إبقاء تنفيذ 18+ واستعمال طبقة توافق مشتركة للمحادثات الأقدم، مع نفس مخازن الحالة والرسائل.
+
+### التنقل والمرفقات والواجهات
+
+| الاستخدام | المراجع / الملفات | ما يحتاج مراجعة على 15 |
+|---|---:|---|
+| `NavigationStack` / `NavigationSplitView` | 32 / 25؛ 2 / 2 | NavigationView أو تنقل UIKit يحفظ المسارات |
+| `.navigationDestination` | 2 / 2 | ربط بالمسار البديل |
+| `PhotosPicker` / `PhotosPickerItem` | 3 / 2؛ 4 / 2 | PHPickerViewController على 14+ |
+| `ShareLink` | 10 / 10 | UIActivityViewController |
+| `ViewThatFits` | 3 / 3 | قياس أو تخطيط بديل |
+| `.presentationDetents` / `.presentationDragIndicator` | 16 / 16؛ 11 / 11 | تكييف sheet أصلي |
+| `.presentationSizing` | 3 / 3 | بديل؛ API يبدأ في 18 |
+| `.presentationBackground` | 2 / 1 | بديل؛ API يبدأ في 16.4 |
+| `UnevenRoundedRectangle` / `ContentUnavailableView` | 5 / 3؛ 1 / 1 | Shape وحالة فارغة بنفس الثيم |
+| `.onChange` | 88 / 43 | مراجعة overload؛ الصيغة الحديثة ذات القيمتين تتطلب 17 |
+| `.topBarLeading` / `.topBarTrailing` | 11 / 10؛ 15 / 12 | مواضع navigationBar الأقدم |
+
+مصادر توفر أساسية: [NavigationStack](https://developer.apple.com/documentation/swiftui/navigationstack)، [ShareLink](https://developer.apple.com/documentation/swiftui/sharelink)، [presentationSizing](https://developer.apple.com/documentation/swiftui/view/presentationsizing(_:))، [onChange الحديث](https://developer.apple.com/documentation/swiftui/view/onchange(of:initial:_:)). أعداد `onChange` تشمل كل الاستدعاءات، ولا تعني أن جميعها أخطاء توفر.
+
+هناك خمسة استخدامات مباشرة لـ`AVAudioApplication` عبر ثلاثة ملفات: `Features/Voice/CallEngine+Support.swift:15` و`:17`، و`DictationController.swift:602` و`:604`، و`CallScreen.swift:365`. يلزم مسار `AVAudioSession` للإذن قبل 17، حتى لا تُفقد المكالمة والإملاء. [توثيق AVAudioApplication](https://developer.apple.com/documentation/avfaudio/avaudioapplication).
+
+التحديد الدقيق و«اسأل فراس» لهما عقد مستقل: `Rendering/FirasSelectableText.swift:132` يستخدم `UITextItem` من 17، و`:138` يستخدم delegate قائمة تحرير من 16. على 15 وما قبله ينبغي حفظ تحديد الكلمات وربط الإجراء عبر UITextView/UIMenuController أو جسر متوافق، مع فحص وظيفي مكافئ. لا تكفي إزالة هذا المسار أو العودة إلى نسخ الرسالة كلها.
+
+### لماذا 13 و14 أوسع من 15
+
+| عائلة تحتاج بديلاً قبل iOS 15 | المراجع / الملفات |
+|---|---:|
+| `.foregroundStyle` / `.tint` | 741 / 122؛ 73 / 49 |
+| `.task` / `.safeAreaInset` | 58 / 45؛ 3 / 3 |
+| `.refreshable` / `.searchable` | 4 / 4؛ 2 / 2 |
+| `@FocusState` / `.focused` | 8 / 8؛ 9 / 7 |
+| `.onSubmit` / `.submitLabel` | 7 / 4؛ 9 / 6 |
+| `.textSelection` | 16 / 13 |
+| `Canvas` / `TimelineView` | 3 / 3؛ 8 / 8 |
+| `AttributedString` / `AsyncImage` | 48 / 9؛ 2 / 2 |
+
+كذلك `Core/APIClient.swift:85` و`:124` و`:162` و`:199` تستخدم عائلة URLSession async للبيانات والرفع والبث والتنزيل، و`Rendering/MathIsland+Assets.swift:175` ينزّل الأصول. النظامان الأقدمان يحتاجان جسور callbacks/delegate تحافظ على البث والإلغاء والأخطاء. هذا يختلف عن إمكانية back-deployment للغة async/await نفسها. إذن إشعارات النظام غير المتزامن وحفظ الصور يحتاجان المراجعة نفسها.
+
+وعند النزول إلى 13 تحديداً تظهر عائلات إضافية: `UTType` ‏16/6، و`ProgressView` ‏32/27، و`Menu` ‏12/10، و`Label` ‏47/16، و`LazyVStack` ‏12/11، و`LazyVGrid` ‏9/8، و`TextEditor` ‏1/1، و`ScrollViewReader` ‏1/1. نقطة الدخول `App/FirasAIApp.swift:13` تعتمد SwiftUI App وWindowGroup؛ يلزم bootstrap أصلي لـUIKit/SceneDelegate على 13 مع UIHostingController، مع مشاركة الخدمات بدلاً من تكرارها.
+
+الجرد ليس شاملاً لكل overload أو رمز SF Symbols أو تفصيل WebKit. خطوتا بناء فعلي باستهداف النظام القديم وتشغيله ضروريتان لكشف البقية. اسم `Layout` في الجرد يعود إلى نوع خاص بتصدير المستندات، لذلك لم يُحسب خطأً كاعتماد على SwiftUI Layout.
+
+## الحفاظ على الثيم والميزات
+
+`DesignSystem/FirasGlass.swift:89` يحمي Liquid Glass بشرط 26، لكن البديل عند `:92` يستخدم `toolbarBackground` الذي يحتاج 16؛ يلزمه بديل إضافي لـ15. الخلفية المادية عند `:119` مناسبة لمسار 15، بينما 13/14 يحتاجان UIVisualEffectView مع ألوان وحدود وظلال التطبيق.
+
+يمكن الحفاظ على الألوان والمسافات والفقاعات وصندوق الكتابة والضبابية الأصلية. تأثير Liquid Glass نفسه من النظام الجديد لا يوجد في الأنظمة الأقدم؛ يعوّض بتأثير أصلي قريب مع احترام تقليل الحركة. ينبغي تدقيق الرموز أيضاً لتجنب ظهور أزرار بلا أيقونة.
+
+الاعتماد الخارجي المثبت الوحيد هو ZIPFoundation 0.9.20، وبيان حزمتِه يدعم iOS 9، فلا يبدو عائقاً لهذا النقل. [Package.swift للإصدار المثبت](https://github.com/weichsel/ZIPFoundation/blob/0.9.20/Package.swift).
+
+أي target قديم منفصل يجب أن يشترك في API ونماذج المحادثات وملفات المستخدم والمهام السحابية وموارد الرياضيات/PDF. المشروع يستخدم source folder متزامناً؛ يجب ضبط عضوية الملفات واستثناء تنفيذ الواجهة الحديث عند الحاجة. إضافة target و`@main` ثانٍ فقط ستجلب تعارضات وأسماء SDK غير معروفة. `#available` يعالج توفر وقت التشغيل، ولا يجعل المترجم القديم يعرف نوعاً غير موجود في SDK الخاص به. كما أن Xcode 14.3.1 لا يوفر مترجم macros المستخدم هنا؛ يلزم فصل ملائم أو مترجم أحدث متوافق، لا تبديل اسم Xcode عشوائياً.
+
+## هل CI الحالية تستطيع إثبات الدعم القديم؟
+
+**لا يوجد حالياً اختبار على 15 أو14 أو13.** الإعداد الفعلي هو `macos-26` في `.github/workflows/build-ios-ipa.yml:27`، واختيار أحدث Xcode 26 عند `:40`. السكربت `ios/scripts/simulator-smoke.sh:6` يختار أول iPhone متاح، ولا يثبت إصدار نظام بعينه. هدف المشروع ما زال 18.0 في `ios/FirasAI.xcodeproj/project.pbxproj:280` و`:310`.
+
+Apple تفصل بين نطاق deployment والربط بجهاز ومحاكيات التشغيل. Xcode 26.6 يدعم deployment من 15، مع device/simulator من 15؛ Xcode 15.4 يدعم deployment من 12، لكن قائمة محاكياته تبدأ من 15. Xcode 15.0.x يذكر محاكي 14.0.1+، و14.3.1 يذكر 13.7+. وهناك استثناء مهم: محاكيات iOS 15 غير مدعومة على macOS Sonoma 14.x. لذلك Xcode 15.4 على macos-14 ليس حلاً صالحاً لاختبار 15. [جدول Apple الرسمي واستثناءاته](https://developer.apple.com/xcode/system-requirements/).
+
+| البيئة | ما ثبت من المصدر | النتيجة العملية |
+|---|---|---|
+| GitHub `macos-26` الحالي | صورة runner المنشورة تحتوي محاكيات iOS 26.2 و26.4 و26.5 | لا تحتوي 15/14/13 جاهزة. نجاح build77 لا يثبت أي نظام قديم. |
+| توفير runtime 15 على البيئة الحديثة | يتطلب تنزيل runtime متوافق وتسجيله وإقلاعه بنجاح | مرشح لتجربة provisioning مستقلة؛ لم ينفذها هذا التدقيق، فلا يُعلن نجاحها. |
+| `macos-14` مع Xcode قديم | تتوفر أدوات أقدم، لكن المحاكيات المنشورة حديثة؛ واستثناء Sonoma يمنع محاكي 15 | ليس إثباتاً للدعم القديم ولا بنية طويلة الأمد. |
+| 13/14 على Mac مخصص أو جهاز فعلي | يحتاجان نظام مضيف وXcode/runtime متوافقين واختبار المنتج الفعلي | المسار العملي عند تعذر provisioning في hosted CI. لا توجد نتيجة تشغيل حتى الآن. |
+
+قائمة runner الرسمية هي مصدر المحاكيات والأدوات المثبتة: [macos-26](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md)، [macos-14](https://github.com/actions/runner-images/blob/main/images/macos/macos-14-Readme.md). سياسة إزالة runtimes القديمة تسمح بتنزيل إضافي، لكنها لا تثبت أن إصدار 15 معين سيقلع على كل مضيف: [إعلان فريق runner-images](https://github.com/actions/runner-images/issues/13392).
+
+runner `macos-13` أُوقف في 4 ديسمبر 2025؛ لا يمكن اعتماده كبديل hosted جاهز. [إعلان GitHub](https://github.blog/changelog/2025-09-19-github-actions-macos-13-runner-image-is-closing-down/). كما أن صورة macos-14 في دورة إيقاف تنتهي في 2 نوفمبر 2026 بحسب إعلانها المنشور. يجب فحص توفر الصورة عند التنفيذ وعدم بناء وعد دعم دائم عليها.
+
+## مراحل تنفيذ 15 ومعيار القبول
+
+1. **الحالة والبناء:** تثبيت مكتبة التوافق أو جسر الحالة؛ تكييف المتاجر والحقن والـbindings والتتبع. فحص تحديث الرسالة الحية، استعادة المحادثة، الخروج من الحساب، واستمرار المهام دون تكرار اشتراكات.
+2. **مكونات الواجهة:** بدائل التنقل والـsheet والصور والمشاركة وأذونات الميكروفون وتحديد الكلمات؛ تبقى بيانات التطبيق والثيم موحدة.
+3. **المحادثات الأربع:** تنفيذ طبقة تمرير قديمة مشتركة؛ اختبار الإرسال من أعلى المحادثة، الكيبورد، السهم، تحديد النص، تغيّر ارتفاع الرياضيات والوسائط وعدم وجود فراغ نهائي زائد.
+4. **إثبات التشغيل:** build مع حد 15، ثم runtime 15 محدد ومثبت الإقلاع أو جهاز 15 فعلي، إلى جانب اختبار النسخة الحديثة. تشمل الفحوص دخول الحساب، Chat/Agent/Code/Brain، عرض الرياضيات أثناء البث وبعد الاستعادة، إنشاء/فتح/تعديل PDF وOffice، الصور/الأغاني/الفيديو، المكالمات والإملاء، الإشعارات وربط Telegram.
+5. **النشر:** تخفيض هدف النسخة المنشورة فقط بعد نجاح المسار المستهدف وتوثيق إصدار النظام والجهاز/المحاكي وSHA المصدر. اختبار محاكي 13.7 وحده لا يثبت كل إصدار 13.0؛ يجب أن يطابق الحد المعلن ما جرى التحقق منه فعلاً.
+
+لم يُجر هذا التدقيق بناء باستهداف 15 أو تشغيل محاكي قديم أو اختبار جهاز قديم. النتيجة الآن خطة توافق محددة بالأدلة؛ الإصدار 77 يظل إصدار iOS 18+، ولا يتغير ادعاء دعمه بسبب هذا المستند.
+
+## تقدم التنفيذ بعد التدقيق
+
+أُضيف لاحقاً أساس توافق إلى شجرة العمل: مرجع SwiftPM بإصدار Perception 2.0.10 المحدد وSHA `25ac73741c3436605d61eceb5207e896973918e7`، مع تثبيت التبعيات من ملف resolved المنشور لذلك الإصدار. هذه بذرة قفل موثقة المصدر وليست ادعاءً بإتمام resolver محلي؛ سيؤكد Xcode الحل والبناء. أُضيفت بدائل أصلية منفصلة للتنقل البسيط والتغيرات والنوافذ وإخفاء الكيبورد وخلفيات List والرموز، مع فحص حالة محدود لا ينشر إعادة رسم عامة.
+
+العلم DEBUG `--reliability-legacy-ui` يتيح اختبار فروع الواجهة القديمة على المحاكي الحديث. هذا لا يغيّر إصدار نظام المحاكي ولا يجبر مكتبة Perception على اختيار registrar قديم، ولذلك يضاف إلى اختبار iOS 15 الفعلي ولا يستبدله. بقي هدف النشر 18.0 عند إضافة هذا الأساس؛ ربط بقية الشاشات وإثباتها مرحلة لاحقة.

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// One equation, in place, typeset.
@@ -74,6 +75,7 @@ struct MathBlockView: View {
     }
 
     var body: some View {
+        WithPerceptionTracking {
         let style = MathIslandStyle(palette: palette, background: background, fontScale: fontScale)
         let identifier = MathScanner.identifier(tex: tex, isDisplay: isDisplay)
         let typesettable = MathScanner.isTypesettable(tex)
@@ -86,12 +88,13 @@ struct MathBlockView: View {
         let line = unicode.isEmpty ? tex : unicode
 
         let visibleGlyph = glyph ?? (streaming && previousStyle == style.key ? previousGlyph : nil)
-        return layout(visibleGlyph, line: line)
+        layout(visibleGlyph, line: line)
             .transaction { $0.animation = nil }
-            .onChange(of: glyph.map { ObjectIdentifier($0.image) }, initial: true) {
+            .firasOnChange(of: glyph.map { ObjectIdentifier($0.image) }, initial: true) {
                 if let glyph { previousGlyph = glyph; previousStyle = style.key }
             }
             .contextMenu {
+                WithPerceptionTracking {
                 Button(lang == .arabic ? "نسخ" : "Copy", systemImage: "doc.on.doc") {
                     UIPasteboard.general.string = line
                 }
@@ -100,9 +103,11 @@ struct MathBlockView: View {
                         selection.ask(line)
                     }
                 }
-            }
+
+                }}
             .task(id: identifier + "|" + style.key) { await request(style) }
-    }
+
+        }}
 
     /// `.task` runs when the row appears and whenever its id changes, so a row that scrolled away
     /// and came back asks again — which is what lets the island's LRU evict without stranding a
@@ -138,17 +143,22 @@ struct MathBlockView: View {
         let spoken = spokenText(line)
 
         if isDisplay {
-            ViewThatFits(in: .horizontal) {
+            FirasHorizontalFit {
+                WithPerceptionTracking {
                 HStack(spacing: 0) {
                     Spacer(minLength: 0)
                     picture
                     Spacer(minLength: 0)
                 }
+
+                }} fallback: {
+                WithPerceptionTracking {
                 ScrollView(.horizontal, showsIndicators: false) {
                     picture.padding(.horizontal, 2)
                 }
-                .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-            }
+                .firasScrollBounceBehavior(.basedOnSize, axes: .horizontal)
+
+                }}
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
             .forceLTR()

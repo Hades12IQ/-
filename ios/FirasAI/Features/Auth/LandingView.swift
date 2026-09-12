@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The logged-out hero (`design-brief.md §7.17 (3)`, copy verbatim in
 /// `web-auth-account-settings.md §2`).
@@ -31,32 +32,34 @@ struct LandingView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            FirasBackground(palette: palette, showHalo: true)
+        WithPerceptionTracking {
+            ZStack(alignment: .bottom) {
+                FirasBackground(palette: palette, showHalo: true)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 30) {
-                    hero
-                    scaleRow
-                    featuresBlock
-                    imageNote
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 30) {
+                        hero
+                        scaleRow
+                        featuresBlock
+                        imageNote
+                    }
+                    .frame(maxWidth: columnWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 52)
+                    .padding(.bottom, 260)
                 }
-                .frame(maxWidth: columnWidth, alignment: .leading)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 22)
-                .padding(.top, 52)
-                .padding(.bottom, 260)
-            }
-            .scrollIndicators(.hidden)
+                .firasScrollIndicators(.hidden)
 
-            ctaBar
-        }
-        .background(palette.background)
-        .preferredColorScheme(prefs.theme.isLight ? .light : .dark)
-        .tint(palette.accent)
-        .onChange(of: env.session.errorText) { _, newValue in
-            guard let newValue, !newValue.isEmpty else { return }
-            AccessibilityNotification.Announcement(newValue).post()
+                ctaBar
+            }
+            .background(palette.background)
+            .preferredColorScheme(prefs.theme.isLight ? .light : .dark)
+            .tint(palette.accent)
+            .firasOnChange(of: env.session.errorText) { _, newValue in
+                guard let newValue, !newValue.isEmpty else { return }
+                AccessibilityNotification.Announcement(newValue).post()
+            }
         }
     }
 
@@ -84,26 +87,30 @@ struct LandingView: View {
             columns: [GridItem(.adaptive(minimum: 132), spacing: 10)],
             spacing: 10
         ) {
-            ForEach(Strings.Auth.landingScale) { mark in
-                VStack(spacing: 4) {
-                    Text(verbatim: mark.name)
-                        .font(FirasType.scaled(13, scale: prefs.fontScale, weight: .semibold))
-                        .foregroundStyle(palette.accent)
-                        .forceLTR()
+            WithPerceptionTracking {
+                ForEach(Strings.Auth.landingScale) { mark in
+                    WithPerceptionTracking {
+                        VStack(spacing: 4) {
+                            Text(verbatim: mark.name)
+                                .font(FirasType.scaled(13, scale: prefs.fontScale, weight: .semibold))
+                                .foregroundStyle(palette.accent)
+                                .forceLTR()
 
-                    Text(verbatim: mark.label(lang))
-                        .font(FirasType.scaled(14, scale: prefs.fontScale))
-                        .foregroundStyle(palette.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                            Text(verbatim: mark.label(lang))
+                                .font(FirasType.scaled(14, scale: prefs.fontScale))
+                                .foregroundStyle(palette.textPrimary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background {
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .fill(palette.surfaceSunken)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(palette.surfaceSunken)
-                }
-                .accessibilityElement(children: .combine)
             }
         }
     }
@@ -127,8 +134,12 @@ struct LandingView: View {
             .bidiIsland(for: Strings.Auth.landingFeaturesTitle(lang), fallback: lang)
 
             LazyVGrid(columns: featureColumns, alignment: .leading, spacing: 12) {
-                ForEach(Strings.Auth.landingFeatures) { feature in
-                    featureCard(feature)
+                WithPerceptionTracking {
+                    ForEach(Strings.Auth.landingFeatures) { feature in
+                        WithPerceptionTracking {
+                            featureCard(feature)
+                        }
+                    }
                 }
             }
         }

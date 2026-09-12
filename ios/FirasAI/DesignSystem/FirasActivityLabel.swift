@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The "still working" label: a short sentence with an accent sweep travelling
 /// through it while the app is busy.
@@ -28,15 +29,17 @@ struct FirasActivityLabel: View {
     }
 
     var body: some View {
-        base
-            .opacity(motionOn ? 1 : (dimmed ? 0.32 : 1))
-            .overlay { sweepLayer }
-            .onAppear { restart() }
-            .onChange(of: motionOn) { _, _ in restart() }
-            .onChange(of: text) { _, _ in restart() }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(text))
-            .accessibilityAddTraits(.updatesFrequently)
+        WithPerceptionTracking {
+            base
+                .opacity(motionOn ? 1 : (dimmed ? 0.32 : 1))
+                .overlay { sweepLayer }
+                .onAppear { restart() }
+                .firasOnChange(of: motionOn) { _, _ in restart() }
+                .firasOnChange(of: text) { _, _ in restart() }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(text))
+                .accessibilityAddTraits(.updatesFrequently)
+        }
     }
 
     private var base: some View {
@@ -50,18 +53,20 @@ struct FirasActivityLabel: View {
     private var sweepLayer: some View {
         if motionOn {
             GeometryReader { proxy in
-                let band = max(42, proxy.size.width * 0.48)
-                LinearGradient(
-                    colors: [
-                        Color.clear,
-                        palette.accent.opacity(0.88),
-                        Color.clear
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: band)
-                .offset(x: -band + (proxy.size.width + band) * sweep)
+                WithPerceptionTracking {
+                    let band = max(42, proxy.size.width * 0.48)
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            palette.accent.opacity(0.88),
+                            Color.clear
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: band)
+                    .offset(x: -band + (proxy.size.width + band) * sweep)
+                }
             }
             .mask { base }
             .allowsHitTesting(false)

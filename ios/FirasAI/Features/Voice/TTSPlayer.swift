@@ -1,7 +1,6 @@
 import AVFoundation
 import Foundation
-import Observation
-
+import Perception
 /// "اسمع / Listen" — reads one assistant answer aloud.
 ///
 /// One speaker token for the whole app: pressing Listen on a second message silently abandons the
@@ -10,7 +9,7 @@ import Observation
 /// device voice from the failed index — never a restart, never a stop
 /// (`web-voice-call-mic.md §8.1`).
 @MainActor
-@Observable
+@Perceptible
 final class TTSPlayer {
 
     // MARK: - Published state
@@ -31,18 +30,18 @@ final class TTSPlayer {
 
     // MARK: - Dependencies
 
-    @ObservationIgnored private let api: APIClient
-    @ObservationIgnored private let prefs: PreferencesStore
-    @ObservationIgnored private let toasts: ToastCenter
+    @PerceptionIgnored private let api: APIClient
+    @PerceptionIgnored private let prefs: PreferencesStore
+    @PerceptionIgnored private let toasts: ToastCenter
 
-    @ObservationIgnored private let chunkPlayer = TTSChunkPlayer()
-    @ObservationIgnored private let deviceSpeaker = TTSDeviceSpeaker()
+    @PerceptionIgnored private let chunkPlayer = TTSChunkPlayer()
+    @PerceptionIgnored private let deviceSpeaker = TTSDeviceSpeaker()
 
-    @ObservationIgnored private var storedCallActive = false
-    @ObservationIgnored private var token = 0
-    @ObservationIgnored private var cache: [String: Data] = [:]
-    @ObservationIgnored private var cacheOrder: [String] = []
-    @ObservationIgnored private var holdsSession = false
+    @PerceptionIgnored private var storedCallActive = false
+    @PerceptionIgnored private var token = 0
+    @PerceptionIgnored private var cache: [String: Data] = [:]
+    @PerceptionIgnored private var cacheOrder: [String] = []
+    @PerceptionIgnored private var holdsSession = false
 
     private static let cacheLimit = 16
     nonisolated static let chunkLimit = 1_300

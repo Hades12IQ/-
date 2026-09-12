@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The principal toolbar pill: the model the next turn will use.
 ///
@@ -31,15 +32,17 @@ struct TierPill: View {
     }
 
     var body: some View {
-        Button(action: action) {
-            label
+        WithPerceptionTracking {
+            Button(action: action) {
+                label
+            }
+            .buttonStyle(.plain)
+            .scaleEffect(pop)
+            .firasOnChange(of: tier) { _, _ in bounce() }
+            .accessibilityLabel(Text(Strings.Chat.modelPickerHint(lang)))
+            .accessibilityValue(Text(tier.label(lang)))
+            .accessibilityHint(Text(tier.tagline(lang)))
         }
-        .buttonStyle(.plain)
-        .scaleEffect(pop)
-        .onChange(of: tier) { _, _ in bounce() }
-        .accessibilityLabel(Text(Strings.Chat.modelPickerHint(lang)))
-        .accessibilityValue(Text(tier.label(lang)))
-        .accessibilityHint(Text(tier.tagline(lang)))
     }
 
     // MARK: - Pieces
@@ -79,7 +82,7 @@ struct TierPill: View {
                 Capsule(style: .continuous).fill(palette.maxTierBg)
             }
         }
-        .firasGlass(.floating, palette: palette, in: AnyShape(Capsule(style: .continuous)))
+        .firasGlass(.floating, palette: palette, in: FirasAnyShape(Capsule(style: .continuous)))
         .frame(minHeight: 44)
         .contentShape(Capsule(style: .continuous))
     }

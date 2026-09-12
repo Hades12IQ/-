@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// Which field the keyboard is on. Declared next to the screen that owns the focus order; the name
 /// is feature-prefixed so it cannot collide with another feature's focus enum.
@@ -73,39 +74,43 @@ struct AuthView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            FirasBackground(palette: palette, showHalo: false)
+        WithPerceptionTracking {
+            ZStack(alignment: .top) {
+                FirasBackground(palette: palette, showHalo: false)
 
-            ScrollView {
-                VStack(spacing: 24) {
-                    header
-                    cardContent
+                ScrollView {
+                    VStack(spacing: 24) {
+                        header
+                        cardContent
+                    }
+                    .frame(maxWidth: columnWidth)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 74)
+                    .padding(.bottom, 48)
                 }
-                .frame(maxWidth: columnWidth)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 22)
-                .padding(.top, 74)
-                .padding(.bottom, 48)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .scrollIndicators(.hidden)
+                .firasScrollDismissesKeyboard(.interactively)
+                .firasScrollIndicators(.hidden)
 
-            topBar
-        }
-        .background(palette.background)
-        .preferredColorScheme(prefs.theme.isLight ? .light : .dark)
-        .tint(palette.accent)
-        .sheet(item: $recovery) { requested in
-            ForgotPasswordSheet(env: env, mode: requested)
-        }
-        .onAppear { consumePendingRoute() }
-        .onChange(of: env.router.pendingRoute) { _, _ in consumePendingRoute() }
-        .onChange(of: bannerText) { _, newValue in
-            guard let newValue, !newValue.isEmpty else { return }
-            AccessibilityNotification.Announcement(newValue).post()
-        }
-        .onChange(of: env.session.isMember) { _, isMember in
-            if isMember { close() }
+                topBar
+            }
+            .background(palette.background)
+            .preferredColorScheme(prefs.theme.isLight ? .light : .dark)
+            .tint(palette.accent)
+            .sheet(item: $recovery) { requested in
+                WithPerceptionTracking {
+                    ForgotPasswordSheet(env: env, mode: requested)
+                }
+            }
+            .onAppear { consumePendingRoute() }
+            .firasOnChange(of: env.router.pendingRoute) { _, _ in consumePendingRoute() }
+            .firasOnChange(of: bannerText) { _, newValue in
+                guard let newValue, !newValue.isEmpty else { return }
+                AccessibilityNotification.Announcement(newValue).post()
+            }
+            .firasOnChange(of: env.session.isMember) { _, isMember in
+                if isMember { close() }
+            }
         }
     }
 

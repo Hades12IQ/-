@@ -1,6 +1,5 @@
 import Foundation
-import Observation
-
+import Perception
 /// One unsent message per conversation, kept across screens and across launches.
 ///
 /// The web keeps `firas_ai_drafts` (`web-chat-ux.md §7.2`): a map keyed by conversation id or by
@@ -12,7 +11,7 @@ import Observation
 /// and never on every keystroke — a multi-kilobyte write per character is exactly the hitch
 /// `audit-ios-chat.md §Major M14` measured.
 @MainActor
-@Observable
+@Perceptible
 final class DraftStore {
 
     private static let path = "drafts.json"
@@ -22,8 +21,8 @@ final class DraftStore {
 
     private var entries: [String: DraftEntry] = [:]
 
-    @ObservationIgnored private var saveTask: Task<Void, Never>?
-    @ObservationIgnored private var didRestore = false
+    @PerceptionIgnored private var saveTask: Task<Void, Never>?
+    @PerceptionIgnored private var didRestore = false
 
     init() {
         Task { [weak self] in

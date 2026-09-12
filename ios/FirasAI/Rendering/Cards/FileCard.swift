@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The ```` ```firas-file ```` deliverable card (`web-chat-ux.md §8.5`,
 /// `server-chat-jobs-chats.md §4.3`).
@@ -113,11 +114,13 @@ struct FileCard: View {
     }
 
     var body: some View {
-        content
-            .padding(12)
-            .frame(maxWidth: 520, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .surfaceCard(palette)
+        WithPerceptionTracking {
+            content
+                .padding(12)
+                .frame(maxWidth: 520, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .surfaceCard(palette)
+        }
     }
 
     @ViewBuilder
@@ -277,9 +280,11 @@ struct FileCard: View {
                     .background {
                         #if DEBUG
                         GeometryReader { geometry in
-                            Color.clear.onAppear {
-                                reliabilityProbe?.buttonSize = geometry.size
-                                reliabilityProbe?.open = onOpen
+                            WithPerceptionTracking {
+                                Color.clear.onAppear {
+                                    reliabilityProbe?.buttonSize = geometry.size
+                                    reliabilityProbe?.open = onOpen
+                                }
                             }
                         }.allowsHitTesting(false)
                         #endif
@@ -366,11 +371,13 @@ struct FileCard: View {
 
     private func bar(_ fraction: Double) -> some View {
         GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Capsule().fill(palette.surfaceSunken)
-                Capsule()
-                    .fill(palette.accent)
-                    .frame(width: max(4, proxy.size.width * fraction))
+            WithPerceptionTracking {
+                ZStack(alignment: .leading) {
+                    Capsule().fill(palette.surfaceSunken)
+                    Capsule()
+                        .fill(palette.accent)
+                        .frame(width: max(4, proxy.size.width * fraction))
+                }
             }
         }
         .frame(height: 5)

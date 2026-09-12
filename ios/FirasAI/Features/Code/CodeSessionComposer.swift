@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 import UniformTypeIdentifiers
 
 /// The Code session composer.
@@ -42,6 +43,7 @@ struct CodeSessionComposer: View {
     @State private var isImporting = false
     @State private var isReadingAttachments = false
     @State private var isSending = false
+    @State private var showsModels = false
     @State private var dictating = false
     @FocusState private var focused: Bool
 
@@ -64,50 +66,56 @@ struct CodeSessionComposer: View {
     private var link: CodeGitHubLink? { CodeGitHubModel.shared.link(for: projectID) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            attachmentTray
-            field
-            if dictating {
-                DictationBar(
-                    dictation: env.dictation,
-                    dialect: env.prefs.dictationDialect,
-                    palette: palette,
-                    lang: lang,
-                    motionOn: motionOn,
-                    onCancel: cancelDictation,
-                    onFinish: finishDictation,
-                    onPickDialect: { env.router.sheet = .dialectPicker }
-                )
-            } else {
-                controlRow
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 6) {
+                attachmentTray
+                field
+                if dictating {
+                    DictationBar(
+                        dictation: env.dictation,
+                        dialect: env.prefs.dictationDialect,
+                        palette: palette,
+                        lang: lang,
+                        motionOn: motionOn,
+                        onCancel: cancelDictation,
+                        onFinish: finishDictation,
+                        onPickDialect: { env.router.sheet = .dialectPicker }
+                    )
+                } else {
+                    controlRow
+                }
             }
-        }
-        .padding(8)
-        .firasGlass(
-            .floating,
-            palette: palette,
-            in: AnyShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        )
-        .padding(.horizontal, 12)
-        .padding(.bottom, 10)
-        .animation(FirasMotion.gated(FirasMotion.composer, motionOn: motionOn), value: dictating)
-        .onAppear { absorbPrefill() }
-        .onChange(of: prefill) { _, _ in absorbPrefill() }
-        .onChange(of: draft) { _, value in
-            if value.count > Self.instructionLimit {
-                draft = String(value.prefix(Self.instructionLimit))
+            .padding(8)
+            .firasGlass(
+                .floating,
+                palette: palette,
+                in: FirasAnyShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            )
+            .padding(.horizontal, 12)
+            .padding(.bottom, 10)
+            .animation(FirasMotion.gated(FirasMotion.composer, motionOn: motionOn), value: dictating)
+            .onAppear { absorbPrefill() }
+            .sheet(isPresented: $showsModels) { WithPerceptionTracking {
+                CodeModelPicker(env: env)
+                } }
+            .firasOnChange(of: prefill) { _, _ in absorbPrefill() }
+            .firasOnChange(of: draft) { _, value in
+                if value.count > Self.instructionLimit {
+                    draft = String(value.prefix(Self.instructionLimit))
+                }
             }
-        }
-        .onChange(of: env.dictation.state) { _, value in
-            if case .failed = value { dictating = false }
-        }
-        .fileImporter(
-            isPresented: $isImporting,
-            allowedContentTypes: ChatAttachmentProcessor.acceptedFileTypes,
-            allowsMultipleSelection: true
-        ) { result in
-            handleImport(result)
-        }
+            .firasOnChange(of: env.dictation.state) { _, value in
+                if case .failed = value { dictating = false }
+            }
+            .fileImporter(
+                isPresented: $isImporting,
+                allowedContentTypes: ChatAttachmentProcessor.acceptedFileTypes,
+                allowsMultipleSelection: true
+            ) { result in
+                handleImport(result)
+            }
+
+            }
     }
 
     // MARK: - Row one: the field
@@ -116,19 +124,8 @@ struct CodeSessionComposer: View {
     /// middle of its band instead of on the floor of it: a `frame(minHeight:)` centres its child,
     /// so the caret, the placeholder and the buttons in the row below all share one optical centre.
     private var field: some View {
-        TextField(
-            text: $draft,
-            prompt: Text(verbatim: Strings.CodeUI.composerPlaceholder(lang)),
-            axis: .vertical
-        ) {
-            Text(verbatim: Strings.CodeUI.composerPlaceholder(lang))
-        }
-        .textFieldStyle(.plain)
-        .lineLimit(1...6)
-        .font(FirasType.scaled(17, scale: env.prefs.fontScale))
-        .foregroundStyle(palette.textPrimary)
-        .tint(palette.accent)
-        .focused($focused)
+        FirasGrowingTextField(text: $draft, placeholder: Strings.CodeUI.composerPlaceholder(lang),
+            maxLines: 6, pointSize: 17 * env.prefs.fontScale.factor, palette: palette, isFocused: $focused)
         .disabled(isSending)
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -172,20 +169,21 @@ struct CodeSessionComposer: View {
         .frame(minHeight: 44)
     }
 
-    /// Code chooses models per stage; the global Chat tier is not its execution model.
+    /// Selection belongs to this Code project and is snapshotted by each request.
     private var tierPill: some View {
         FirasPill(
-            text: Strings.CodeUI.automaticModel(lang),
-            symbol: "sparkles",
+            text: env.code.modelSelection.model.label(lang),
+            symbol: env.code.modelSelection.model.symbol,
             selected: false,
             palette: palette
         ) {
             Haptics.select()
-            env.toasts.show(Strings.CodeUI.automaticModelHint(lang))
+            showsModels = true
         }
         .layoutPriority(1)
         .accessibilityLabel(Text(verbatim: Strings.CodeUI.contextModel(lang)))
-        .accessibilityValue(Text(verbatim: Strings.CodeUI.automaticModel(lang)))
+        .accessibilityValue(Text(verbatim: env.code.modelSelection.model.label(lang)))
+        .disabled(isSending || env.code.isAsking || env.code.isBuilding(projectID: projectID) || env.code.codeOmnix.active.contains(projectID))
     }
 
     private var repositoryPill: some View {
@@ -210,7 +208,15 @@ struct CodeSessionComposer: View {
 
     @ViewBuilder
     private var sendButton: some View {
-        if isSending {
+        if env.code.codeOmnix.active.contains(projectID), let receipt = env.code.thread.messages.last(where: { $0.role == "ai" })?.edit {
+            FirasIconButton(symbol: "stop.fill", label: Strings.Common.stop(lang), palette: palette) {
+                Task { await env.code.stopCodeEdit(receipt) }
+            }.disabled(env.code.codeOmnix.stopping.contains(receipt.cid))
+        } else if env.code.codeOmnix.active.contains(projectID), let receipt = env.code.thread.messages.last(where: { $0.role == "ai" })?.omnix {
+            FirasIconButton(symbol: "stop.fill", label: Strings.Common.stop(lang), palette: palette) {
+                Task { await env.code.stopCodeOmnix(receipt) }
+            }.disabled(env.code.codeOmnix.stopping.contains(receipt.requestKey))
+        } else if isSending {
             ProgressView()
                 .progressViewStyle(.circular)
                 .tint(palette.accent)
@@ -253,7 +259,10 @@ struct CodeSessionComposer: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(Array(attachments.enumerated()), id: \.offset) { pair in
+                        WithPerceptionTracking {
                         attachmentChip(pair.element, index: pair.offset)
+
+                        }
                     }
                 }
                 .padding(.horizontal, 2)
@@ -318,7 +327,7 @@ struct CodeSessionComposer: View {
         focused = false
         Keyboard.dismiss()
         let staged = attachments
-        let buildFirst = isBlankScaffold && !instruction.isEmpty
+        let buildFirst = isBlankScaffold && !instruction.isEmpty && env.code.modelSelection.model != .omnix
 
         Task {
             if buildFirst {

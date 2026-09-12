@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// One Brain answer: the markdown body with tappable `[Sn]` citations, the source list underneath
@@ -63,8 +64,9 @@ struct BrainAnswerView: View {
     private var scale: FontScale { prefs.fontScale }
 
     var body: some View {
+        WithPerceptionTracking {
         let parts = Self.parse(markdown)
-        return VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 14) {
             columns(parts)
             if !parts.sources.isEmpty {
                 sourceList(parts.sources)
@@ -75,17 +77,22 @@ struct BrainAnswerView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .sheet(isPresented: $picking) {
+            WithPerceptionTracking {
             ExportFormatPicker(lang: lang, palette: palette, isWorking: exporting) { format in
                 export(format, parts: Self.parse(markdown))
             }
-        }
+
+            }}
         .sheet(item: $exported) { file in
+            WithPerceptionTracking {
             FirasActivitySheet(url: file.url)
-        }
+
+            }}
         .environment(\.openURL, OpenURLAction { url in
             open(url, in: parts.sources)
         })
-    }
+
+        }}
 
     // MARK: - Body
 
@@ -94,15 +101,19 @@ struct BrainAnswerView: View {
         if parts.columns.count > 1 && sizeClass == .regular {
             HStack(alignment: .top, spacing: 18) {
                 ForEach(Array(parts.columns.indices), id: \.self) { index in
+                    WithPerceptionTracking {
                     column(parts.columns[index], index: index)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                }
+
+                    }}
             }
         } else {
             VStack(alignment: .leading, spacing: 18) {
                 ForEach(Array(parts.columns.indices), id: \.self) { index in
+                    WithPerceptionTracking {
                     column(parts.columns[index], index: index)
-                }
+
+                    }}
             }
         }
     }
@@ -134,8 +145,10 @@ struct BrainAnswerView: View {
                 .lineLimit(1)
 
             ForEach(sources) { source in
+                WithPerceptionTracking {
                 sourceRow(source)
-            }
+
+                }}
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -146,6 +159,7 @@ struct BrainAnswerView: View {
         Button {
             onCitation(source)
         } label: {
+            WithPerceptionTracking {
             HStack(alignment: .top, spacing: 10) {
                 CitationChip(
                     number: source.n,
@@ -159,7 +173,8 @@ struct BrainAnswerView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
-        }
+
+            }}
         .buttonStyle(.plain)
     }
 
@@ -208,16 +223,21 @@ struct BrainAnswerView: View {
     /// measures the row's *ideal* width — the untruncated labels — so the fall to the stacked
     /// variant happens before anything is clipped, in either language and at any font size.
     private func copyBar(_ parts: Parts) -> some View {
-        ViewThatFits(in: .horizontal) {
+        FirasHorizontalFit {
+            WithPerceptionTracking {
             HStack(spacing: 8) {
                 copyButtons(parts)
                 Spacer(minLength: 0)
             }
+
+            }} fallback: {
+            WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 6) {
                 copyButtons(parts)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-        }
+
+            }}
     }
 
     @ViewBuilder
@@ -225,19 +245,23 @@ struct BrainAnswerView: View {
         Button {
             copy(Self.plainText(parts, lang: lang, withPages: false))
         } label: {
+            WithPerceptionTracking {
             barLabel(
                 copied ? Strings.Common.copied(lang) : Strings.Brain.copyAll(lang),
                 symbol: "doc.on.doc"
             )
-        }
+
+            }}
         .buttonStyle(.plain)
 
         if !parts.sources.isEmpty {
             Button {
                 copy(Self.plainText(parts, lang: lang, withPages: true))
             } label: {
+                WithPerceptionTracking {
                 barLabel(Strings.Brain.copyWithPages(lang), symbol: "text.quote")
-            }
+
+                }}
             .buttonStyle(.plain)
         }
 
@@ -248,8 +272,10 @@ struct BrainAnswerView: View {
             Haptics.select()
             picking = true
         } label: {
+            WithPerceptionTracking {
             barLabel(Strings.Brain.exportAnswer(lang), symbol: "square.and.arrow.down")
-        }
+
+            }}
         .buttonStyle(.plain)
         .disabled(exporting)
     }

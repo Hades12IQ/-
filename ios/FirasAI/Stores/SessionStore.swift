@@ -1,6 +1,5 @@
 import Foundation
-import Observation
-
+import Perception
 /// The single source of identity. Cookies are the only credential: this store never reads,
 /// copies or stores them — it only makes the calls whose `Set-Cookie` the shared jar keeps
 /// across launches. Nothing here presents UI: screens observe `phase`, `sessionExpiredNotice`
@@ -9,7 +8,7 @@ import Observation
 /// Sign-in, verification and account operations live in `SessionStore+Account.swift`; the
 /// members they share are internal (never `private`) so both files compile independently.
 @MainActor
-@Observable
+@Perceptible
 final class SessionStore {
     enum Phase: Equatable {
         case booting
@@ -57,14 +56,14 @@ final class SessionStore {
     /// Persist/hand over owned work before logout invalidates its credentials.
     var onWillSignOut: (() async -> Void)?
 
-    @ObservationIgnored let api: APIClient
-    @ObservationIgnored private let prefs: PreferencesStore
-    @ObservationIgnored private let network: NetworkMonitor
-    @ObservationIgnored private var lastKnownUser: User?
-    @ObservationIgnored private var lastValidatedAt: Date?
-    @ObservationIgnored private var isHandlingUnauthorized = false
-    @ObservationIgnored private var unauthorizedTask: Task<Void, Never>?
-    @ObservationIgnored private var connectivityTask: Task<Void, Never>?
+    @PerceptionIgnored let api: APIClient
+    @PerceptionIgnored private let prefs: PreferencesStore
+    @PerceptionIgnored private let network: NetworkMonitor
+    @PerceptionIgnored private var lastKnownUser: User?
+    @PerceptionIgnored private var lastValidatedAt: Date?
+    @PerceptionIgnored private var isHandlingUnauthorized = false
+    @PerceptionIgnored private var unauthorizedTask: Task<Void, Never>?
+    @PerceptionIgnored private var connectivityTask: Task<Void, Never>?
 
     private static let revalidateAfter: TimeInterval = 600
     private static let resendCooldown: TimeInterval = 30

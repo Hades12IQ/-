@@ -275,8 +275,10 @@ enum CodeAskAI {
         project: CodeProject,
         instruction: String,
         attachmentText: String,
-        lang: AppLanguage
+        lang: AppLanguage,
+        selection: CodeModelSelection = CodeModelSelection()
     ) async throws -> Outcome {
+        guard selection.model != .omnix else { throw APIError.decoding("omnix_cloud_route_required") }
         switch route(instruction, lang: lang) {
         case .documentRedirect:
             return .redirect(documentRedirect(lang))
@@ -289,7 +291,7 @@ enum CodeAskAI {
                     instruction: instruction,
                     attachmentText: attachmentText
                 ),
-                tier: .pro
+                tier: selection.model, think: selection.think
             )
             return .answer(strippingFileBlocks(answer))
 
@@ -303,7 +305,7 @@ enum CodeAskAI {
                     attachmentText: attachmentText,
                     focusPaths: focus
                 ),
-                tier: .max
+                tier: selection.model, think: selection.think
             )
             var rounds = 0
             while rounds < continuationRounds, let open = openBlock(in: answer) {
@@ -312,7 +314,7 @@ enum CodeAskAI {
                 let more = try await complete(
                     api: api,
                     messages: continuationMessages(path: open.path, tail: tail),
-                    tier: .max
+                    tier: selection.model, think: selection.think
                 )
                 if more.isEmpty { break }
                 answer += more
@@ -328,12 +330,14 @@ enum CodeAskAI {
     static func complete(
         api: APIClient,
         messages: [OutgoingMessage],
-        tier: ModelTier
+        tier: ModelTier,
+        think: Bool = false
     ) async throws -> String {
+        guard tier != .omnix else { throw APIError.decoding("omnix_cloud_route_required") }
         let request = ChatStreamRequest(
             messages: messages,
             tier: tier.rawValue,
-            think: false,
+            think: tier == .mini ? false : think,
             cid: IDs.cid(),
             chatId: nil,
             product: "code",

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// One item in the composer's tray: a picked image or document, from the moment it is picked to the
@@ -70,18 +71,22 @@ struct AttachmentTray: View {
     }
 
     var body: some View {
-        ScrollView(.horizontal) {
-            HStack(alignment: .top, spacing: 8) {
-                ForEach(items) { item in
-                    cell(for: item)
+        WithPerceptionTracking {
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: 8) {
+                    ForEach(items) { item in
+                        WithPerceptionTracking {
+                            cell(for: item)
+                        }
+                    }
                 }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
             }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 2)
+            .firasScrollIndicators(.hidden)
+            .frame(height: 78)
+            .accessibilityLabel(Text(Strings.Composer.attachHint(lang)))
         }
-        .scrollIndicators(.hidden)
-        .frame(height: 78)
-        .accessibilityLabel(Text(Strings.Composer.attachHint(lang)))
     }
 
     @ViewBuilder
@@ -119,22 +124,24 @@ private struct AttachmentThumbCell: View {
     @State private var image: UIImage?
 
     var body: some View {
-        thumb
-            .frame(width: 64, height: 64)
-            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .strokeBorder(palette.border, lineWidth: 1)
-            }
-            .overlay(alignment: .topTrailing) {
-                RemoveBadge(palette: palette, lang: lang, action: onRemove)
-                    .offset(x: 5, y: -5)
-            }
-            .padding(.top, 5)
-            .padding(.trailing, 5)
-            .task(id: item.prepared?.thumbnailDataURL) { await load() }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(Text(item.name))
+        WithPerceptionTracking {
+            thumb
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(palette.border, lineWidth: 1)
+                }
+                .overlay(alignment: .topTrailing) {
+                    RemoveBadge(palette: palette, lang: lang, action: onRemove)
+                        .offset(x: 5, y: -5)
+                }
+                .padding(.top, 5)
+                .padding(.trailing, 5)
+                .task(id: item.prepared?.thumbnailDataURL) { await load() }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(Text(item.name))
+        }
     }
 
     @ViewBuilder
@@ -175,58 +182,60 @@ private struct AttachmentFileChip: View {
     let onTruncatedTap: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(verbatim: ChatAttachmentProcessor.kindTag(for: item.kind))
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(item.truncated ? palette.onAccent : palette.textSecondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(item.truncated ? palette.codeWarn : palette.surfaceSunken)
-                }
-                .forceLTR()
+        WithPerceptionTracking {
+            HStack(spacing: 8) {
+                Text(verbatim: ChatAttachmentProcessor.kindTag(for: item.kind))
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(item.truncated ? palette.onAccent : palette.textSecondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(item.truncated ? palette.codeWarn : palette.surfaceSunken)
+                    }
+                    .forceLTR()
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(item.name)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(palette.textPrimary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-
-                if item.isReading {
-                    Text(Strings.Composer.chipReading(lang))
-                        .font(.system(size: 11))
-                        .foregroundStyle(palette.textMuted)
-                } else if item.truncated {
-                    Text(percentLine)
-                        .font(.system(size: 11))
-                        .foregroundStyle(palette.codeWarn)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(item.name)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(palette.textPrimary)
                         .lineLimit(1)
-                }
-            }
-            .bidiIsland(for: item.name, fallback: lang)
+                        .truncationMode(.middle)
 
-            RemoveBadge(palette: palette, lang: lang, action: onRemove)
+                    if item.isReading {
+                        Text(Strings.Composer.chipReading(lang))
+                            .font(.system(size: 11))
+                            .foregroundStyle(palette.textMuted)
+                    } else if item.truncated {
+                        Text(percentLine)
+                            .font(.system(size: 11))
+                            .foregroundStyle(palette.codeWarn)
+                            .lineLimit(1)
+                    }
+                }
+                .bidiIsland(for: item.name, fallback: lang)
+
+                RemoveBadge(palette: palette, lang: lang, action: onRemove)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(maxWidth: 240)
+            .background {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(palette.surfaceSunken)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .strokeBorder(item.truncated ? palette.codeWarn.opacity(0.55) : palette.border, lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .onTapGesture {
+                if item.truncated { onTruncatedTap() }
+            }
+            .padding(.top, 4)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text(item.name))
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: 240)
-        .background {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(palette.surfaceSunken)
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .strokeBorder(item.truncated ? palette.codeWarn.opacity(0.55) : palette.border, lineWidth: 1)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .onTapGesture {
-            if item.truncated { onTruncatedTap() }
-        }
-        .padding(.top, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(item.name))
     }
 
     /// The chip only has room for the number; the full sentence is the toast behind the tap.
@@ -244,15 +253,17 @@ private struct RemoveBadge: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: "xmark")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(palette.onAccent)
-                .frame(width: 18, height: 18)
-                .background { Circle().fill(palette.textSecondary) }
-                .contentShape(Circle())
+        WithPerceptionTracking {
+            Button(action: action) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(palette.onAccent)
+                    .frame(width: 18, height: 18)
+                    .background { Circle().fill(palette.textSecondary) }
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(Strings.Composer.removeAttachment(lang)))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(Strings.Composer.removeAttachment(lang)))
     }
 }

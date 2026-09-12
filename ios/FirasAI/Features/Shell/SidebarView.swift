@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The sidebar: the drawer's content on iPhone, the leading column on iPad
 /// (`design-brief.md §7.2`, `web-chat-ux.md §2, §11, §14`).
@@ -25,22 +26,24 @@ struct SidebarView: View {
     private var isRegular: Bool { horizontalSizeClass == .regular }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            controls
-            /* There is exactly ONE new-conversation control in this panel, and it is the glass
-               circle beside the account name in `SidebarAccountPill` — «و نيو جات على اليمين
-               منها». The floating accent pill that used to hover over the bottom of this list sat
-               about 60 pt above that circle, so the drawer shipped with two New chat buttons in
-               view at once. */
-            SidebarHistoryList(env: env, query: query)
-            footer
+        WithPerceptionTracking {
+            VStack(spacing: 0) {
+                header
+                controls
+                /* There is exactly ONE new-conversation control in this panel, and it is the glass
+                   circle beside the account name in `SidebarAccountPill` — «و نيو جات على اليمين
+                   منها». The floating accent pill that used to hover over the bottom of this list sat
+                   about 60 pt above that circle, so the drawer shipped with two New chat buttons in
+                   view at once. */
+                SidebarHistoryList(env: env, query: query)
+                footer
+            }
+            /* Opaque on both widths now. It used to be clear on compact because the drawer behind it
+               carried glass; that glass is gone (the drawer is a solid panel, like Claude's), so the
+               list needs its own ground or it draws on nothing. */
+            .background(isRegular ? palette.sidebar : palette.surface)
+            .task(id: env.session.identityID) { await refresh() }
         }
-        /* Opaque on both widths now. It used to be clear on compact because the drawer behind it
-           carried glass; that glass is gone (the drawer is a solid panel, like Claude's), so the
-           list needs its own ground or it draws on nothing. */
-        .background(isRegular ? palette.sidebar : palette.surface)
-        .task(id: env.session.identityID) { await refresh() }
     }
 
     // MARK: - Header
@@ -98,7 +101,7 @@ struct SidebarView: View {
                 .foregroundStyle(palette.textPrimary)
                 .frame(width: 38, height: 38)
                 .background { Circle().fill(chipFill) }
-                .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
+                .firasGlass(.floating, palette: palette, in: FirasAnyShape(Circle()))
                 .overlay {
                     Circle()
                         .strokeBorder(palette.border, lineWidth: 1)

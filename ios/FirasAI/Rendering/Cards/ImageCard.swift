@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The ```` ```firas-image ```` card (`web-media-ux.md §3.5–3.8`, `design-brief.md §7.12`).
@@ -121,20 +122,22 @@ struct ImageCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            mediaFrame
-            noteLine
-            actionBar
-        }
-        .frame(maxWidth: cardWidth, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .animation(
-            FirasMotion.gated(.easeOut(duration: 0.5), motionOn: motionOn),
-            value: cardWidth
-        )
-        .task(id: reloadKey) { await load() }
-        .onChange(of: startedAt) { _, updated in
-            if let updated { since = updated }
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 8) {
+                mediaFrame
+                noteLine
+                actionBar
+            }
+            .frame(maxWidth: cardWidth, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .animation(
+                FirasMotion.gated(.easeOut(duration: 0.5), motionOn: motionOn),
+                value: cardWidth
+            )
+            .task(id: reloadKey) { await load() }
+            .firasOnChange(of: startedAt) { _, updated in
+                if let updated { since = updated }
+            }
         }
     }
 
@@ -202,10 +205,12 @@ struct ImageCard: View {
     /// or gone, and a plate that can never stop is the one state this card refuses to draw.
     private var renderingPlate: some View {
         TimelineView(.periodic(from: since, by: 5)) { context in
-            if ImageCard.seconds(from: since, to: context.date) > renderCeiling {
-                stalledPlate
-            } else {
-                cover(ratio: 1, words: ImageCard.loaderWords(lang))
+            WithPerceptionTracking {
+                if ImageCard.seconds(from: since, to: context.date) > renderCeiling {
+                    stalledPlate
+                } else {
+                    cover(ratio: 1, words: ImageCard.loaderWords(lang))
+                }
             }
         }
     }

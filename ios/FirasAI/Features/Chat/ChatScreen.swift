@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The conversation screen. Firas AI, Firas Agent and Firas Brain all render through it — the
 /// product only changes the toolbar, the placeholder and which extras a turn may show.
@@ -52,31 +53,37 @@ struct ChatScreen: View {
     }
 
     var body: some View {
-        let palette = env.prefs.palette
-        let lang = env.prefs.lang
+        WithPerceptionTracking(content: {
+            let palette = env.prefs.palette
+            let lang = env.prefs.lang
 
-        return content
-            .background { FirasBackground(palette: palette, showHalo: isEmptyConversation) }
-            .environment(\.firasMathPersistenceAllowed, !isTemporary)
-            .toolbar { toolbarContent }
-            .navigationBarTitleDisplayMode(.inline)
-            /* Keyed on the new-chat counter as well as the id: pressing New chat while already on a
-               blank conversation leaves the id at nil, and a task keyed on nil alone never re-runs. */
-            .task(id: "\(conversationID ?? "")#\(env.router.newChatNonce)") { await prepare() }
-            .task(id: messageCount) { updateHistoryNote() }
-            .sheet(item: $exportSheet) { route in
-                exportSheetBody(route)
-            }
-            .confirmationDialog(
-                Strings.Chat.temporaryAsk(lang),
-                isPresented: $isConfirmingTemporaryExit,
-                titleVisibility: .visible
-            ) {
-                Button(Strings.Chat.temporaryEnd(lang), role: .destructive) {
-                    env.router.newConversation(in: product)
+            return content
+                .background { FirasBackground(palette: palette, showHalo: isEmptyConversation) }
+                .environment(\.firasMathPersistenceAllowed, !isTemporary)
+                .toolbar { WithPerceptionTracking {
+                    toolbarContent
+                } }
+                .navigationBarTitleDisplayMode(.inline)
+                /* Keyed on the new-chat counter as well as the id: pressing New chat while already on a
+                   blank conversation leaves the id at nil, and a task keyed on nil alone never re-runs. */
+                .task(id: "\(conversationID ?? "")#\(env.router.newChatNonce)") { await prepare() }
+                .task(id: messageCount) { updateHistoryNote() }
+                .sheet(item: $exportSheet) { route in
+                    WithPerceptionTracking {
+                        exportSheetBody(route)
+                    }
                 }
-                Button(Strings.Common.cancel(lang), role: .cancel) {}
-            }
+                .confirmationDialog(
+                    Strings.Chat.temporaryAsk(lang),
+                    isPresented: $isConfirmingTemporaryExit,
+                    titleVisibility: .visible
+                ) {
+                    Button(Strings.Chat.temporaryEnd(lang), role: .destructive) {
+                        env.router.newConversation(in: product)
+                    }
+                    Button(Strings.Common.cancel(lang), role: .cancel) {}
+                }
+        }())
     }
 
     // MARK: - Layout
@@ -121,17 +128,22 @@ struct ChatScreen: View {
     private var transcript: some View {
         if let id = activeID {
             if isEmptyConversation {
-                ScrollView {
-                    WelcomeView(
-                        product: product,
-                        firstName: env.session.user?.firstName,
-                        palette: env.prefs.palette,
-                        lang: env.prefs.lang,
-                        motionOn: FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion)
-                    )
-                    .padding(.top, 60)
+                GeometryReader { geometry in
+                    WithPerceptionTracking {
+                        ScrollView {
+                            WelcomeView(
+                                product: product,
+                                firstName: env.session.user?.firstName,
+                                palette: env.prefs.palette,
+                                lang: env.prefs.lang,
+                                motionOn: FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion),
+                                containerHeight: geometry.size.height
+                            )
+                            .padding(.top, 60)
+                        }
+                        .firasScrollBounceBehavior(.basedOnSize)
+                    }
                 }
-                .scrollBounceBehavior(.basedOnSize)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 TranscriptView(env: env, conversationID: id, product: product)
@@ -152,7 +164,7 @@ struct ChatScreen: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         if horizontalSizeClass == .compact {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .navigationBarLeading) {
                 Button {
                     openDrawer()
                 } label: {
@@ -166,7 +178,7 @@ struct ChatScreen: View {
             principalItem
         }
 
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .navigationBarTrailing) {
             trailingControls
         }
     }

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The empty conversation: the mark, one greeting line, nothing else — and both of them in the
 /// middle of the page, the way Claude's iPhone app opens.
@@ -16,6 +17,7 @@ struct WelcomeView: View {
     private let palette: FirasPalette
     private let lang: AppLanguage
     private let motionOn: Bool
+    private let containerHeight: CGFloat?
 
     @State private var appeared = false
 
@@ -24,32 +26,44 @@ struct WelcomeView: View {
         firstName: String?,
         palette: FirasPalette,
         lang: AppLanguage,
-        motionOn: Bool
+        motionOn: Bool,
+        containerHeight: CGFloat? = nil
     ) {
         self.product = product
         self.firstName = firstName
         self.palette = palette
         self.lang = lang
         self.motionOn = motionOn
+        self.containerHeight = containerHeight
     }
 
     var body: some View {
-        block
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 24)
-            /* Vertical centring, and the one subtle thing in this file. The host (`ChatScreen`)
-               hands this view to a `ScrollView` and pads it 60 pt down from the navigation bar, so
-               asking for the container's full height would push the block half a title below the
-               middle and leave the page scrollable by exactly that padding. Taking 120 pt off
-               instead — the padding above, the same again below — puts the centre of this frame on
-               the centre of the scroll view and leaves the page shorter than its container, which
-               is why it does not scroll at all. The floor keeps a greeting that wrapped onto three
-               lines from being squeezed. */
-            .containerRelativeFrame(.vertical, alignment: .center) { height, _ in
-                max(240, height - 120)
-            }
-            .accessibilityElement(children: .combine)
-            .onAppear { reveal() }
+        WithPerceptionTracking {
+            centeredBlock
+                /* Vertical centring, and the one subtle thing in this file. The host (`ChatScreen`)
+                   hands this view to a `ScrollView` and pads it 60 pt down from the navigation bar, so
+                   asking for the container's full height would push the block half a title below the
+                   middle and leave the page scrollable by exactly that padding. Taking 120 pt off
+                   instead — the padding above, the same again below — puts the centre of this frame on
+                   the centre of the scroll view and leaves the page shorter than its container, which
+                   is why it does not scroll at all. The floor keeps a greeting that wrapped onto three
+                   lines from being squeezed. */
+                .accessibilityElement(children: .combine)
+                .onAppear { reveal() }
+        }
+    }
+
+    @ViewBuilder
+    private var centeredBlock: some View {
+        if #available(iOS 17, *), !FirasCompatibility.forceLegacyUI {
+            block.frame(maxWidth: .infinity).padding(.horizontal, 24)
+                .containerRelativeFrame(.vertical, alignment: .center) { height, _ in
+                    max(240, height - 120)
+                }
+        } else {
+            block.frame(maxWidth: .infinity).padding(.horizontal, 24)
+                .frame(height: max(240, (containerHeight ?? 360) - 120), alignment: .center)
+        }
     }
 
     /// The mark, then the words. Centred on the cross axis by the stack, centred on the page by the

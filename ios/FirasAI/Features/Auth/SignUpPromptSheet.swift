@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The guest upsell (`web-auth-account-settings.md §5.4`, `openSignUpPrompt(feature)`).
 ///
@@ -28,47 +29,49 @@ struct SignUpPromptSheet: View {
     private var message: String { Strings.Auth.upsellBody(feature).text(lang) }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                FirasBrandMark(size: 46, showsWordmark: false, palette: palette)
-                    .padding(.top, 4)
+        WithPerceptionTracking {
+            ScrollView {
+                VStack(spacing: 18) {
+                    FirasBrandMark(size: 46, showsWordmark: false, palette: palette)
+                        .padding(.top, 4)
 
-                Text(verbatim: title)
-                    .font(FirasType.scaled(20, scale: prefs.fontScale, weight: .semibold))
-                    .foregroundStyle(palette.textPrimary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(verbatim: title)
+                        .font(FirasType.scaled(20, scale: prefs.fontScale, weight: .semibold))
+                        .foregroundStyle(palette.textPrimary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                Text(verbatim: message)
-                    .font(FirasType.scaled(15, scale: prefs.fontScale))
-                    .foregroundStyle(palette.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(lang == .arabic ? 6 : 3)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(verbatim: message)
+                        .font(FirasType.scaled(15, scale: prefs.fontScale))
+                        .foregroundStyle(palette.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(lang == .arabic ? 6 : 3)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                primaryButton
-                laterButton
+                    primaryButton
+                    laterButton
 
-                Text(verbatim: Strings.Auth.guestKeepsWork(lang))
-                    .font(FirasType.caption)
-                    .foregroundStyle(palette.textMuted)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(verbatim: Strings.Auth.guestKeepsWork(lang))
+                        .font(FirasType.caption)
+                        .foregroundStyle(palette.textMuted)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: 420)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.top, 26)
+                .padding(.bottom, 28)
             }
-            .frame(maxWidth: 420)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 24)
-            .padding(.top, 26)
-            .padding(.bottom, 28)
+            .firasScrollBounceBehavior(.basedOnSize)
+            .firasSheetBackground(palette)
+            .firasPresentationDetents([.medium])
+            .firasPresentationDragIndicator(.visible)
+            .firasPresentationSizing(.form)
+            .preferredColorScheme(prefs.theme.isLight ? .light : .dark)
+            .tint(palette.accent)
+            .bidiIsland(for: title, fallback: lang)
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .firasSheetBackground(palette)
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.visible)
-        .presentationSizing(.form)
-        .preferredColorScheme(prefs.theme.isLight ? .light : .dark)
-        .tint(palette.accent)
-        .bidiIsland(for: title, fallback: lang)
     }
 
     // MARK: - Actions

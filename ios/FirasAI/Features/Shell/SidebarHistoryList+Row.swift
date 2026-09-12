@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// One conversation, in the two shapes the app shows it in.
 ///
@@ -54,14 +55,18 @@ extension SidebarHistoryList {
         }
 
         var body: some View {
-            Group {
-                if isRenaming {
-                    renameField
-                } else {
-                    openButton
+            WithPerceptionTracking {
+                Group {
+                    if isRenaming {
+                        renameField
+                    } else {
+                        openButton
+                    }
                 }
+                .contextMenu { WithPerceptionTracking {
+                    menu
+                } }
             }
-            .contextMenu { menu }
         }
 
         // MARK: - Open
@@ -173,7 +178,7 @@ extension SidebarHistoryList {
             .focused($renameFocused)
             .submitLabel(.done)
             .onSubmit { commitRename() }
-            .onChange(of: renameFocused) { _, focused in
+            .firasOnChange(of: renameFocused) { _, focused in
                 if !focused { commitRename() }
             }
             .accessibilityLabel(Text(Strings.Shell.renamePrompt(lang)))
@@ -299,42 +304,44 @@ extension SidebarHistoryList {
 
         @ViewBuilder
         var body: some View {
-            if env.chat.isLoadingList {
-                SkeletonView(kind: .sidebar, palette: palette, motionOn: motionOn)
-                    .padding(.horizontal, 12)
-            } else if let error = env.chat.listError {
-                EmptyStateView(
-                    title: Strings.Chat.chatsLoadError.text(lang),
-                    subtitle: error,
-                    buttonTitle: Strings.Common.retry(lang),
-                    palette: palette
-                ) {
-                    Task { await env.chat.loadConversations() }
-                }
-            } else if !trimmedQuery.isEmpty {
-                EmptyStateView(
-                    title: Strings.Shell.searchEmptyTitle.text(lang),
-                    subtitle: Strings.Shell.searchEmptySubtitle.text(lang),
-                    buttonTitle: nil,
-                    palette: palette,
-                    action: nil
-                )
-            } else if pinnedOnly {
-                EmptyStateView(
-                    title: Strings.Shell.pinnedEmptyTitle.text(lang),
-                    subtitle: Strings.Shell.pinnedEmptySubtitle.text(lang),
-                    buttonTitle: nil,
-                    palette: palette,
-                    action: nil
-                )
-            } else {
-                EmptyStateView(
-                    title: Strings.Shell.emptyHistory(for: env.router.product).text(lang),
-                    subtitle: nil,
-                    buttonTitle: Strings.Chat.newChat(lang),
-                    palette: palette
-                ) {
-                    env.router.newConversation(in: env.router.product)
+            WithPerceptionTracking {
+                if env.chat.isLoadingList {
+                    SkeletonView(kind: .sidebar, palette: palette, motionOn: motionOn)
+                        .padding(.horizontal, 12)
+                } else if let error = env.chat.listError {
+                    EmptyStateView(
+                        title: Strings.Chat.chatsLoadError.text(lang),
+                        subtitle: error,
+                        buttonTitle: Strings.Common.retry(lang),
+                        palette: palette
+                    ) {
+                        Task { await env.chat.loadConversations() }
+                    }
+                } else if !trimmedQuery.isEmpty {
+                    EmptyStateView(
+                        title: Strings.Shell.searchEmptyTitle.text(lang),
+                        subtitle: Strings.Shell.searchEmptySubtitle.text(lang),
+                        buttonTitle: nil,
+                        palette: palette,
+                        action: nil
+                    )
+                } else if pinnedOnly {
+                    EmptyStateView(
+                        title: Strings.Shell.pinnedEmptyTitle.text(lang),
+                        subtitle: Strings.Shell.pinnedEmptySubtitle.text(lang),
+                        buttonTitle: nil,
+                        palette: palette,
+                        action: nil
+                    )
+                } else {
+                    EmptyStateView(
+                        title: Strings.Shell.emptyHistory(for: env.router.product).text(lang),
+                        subtitle: nil,
+                        buttonTitle: Strings.Chat.newChat(lang),
+                        palette: palette
+                    ) {
+                        env.router.newConversation(in: env.router.product)
+                    }
                 }
             }
         }

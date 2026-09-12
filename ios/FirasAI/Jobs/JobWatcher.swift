@@ -47,6 +47,13 @@ final class JobWatcher {
     private var isBackground = false
     private var wakeRequested = false
     private var hold: BackgroundHold?
+    private var foregroundReadStartedAt = ProcessInfo.processInfo.systemUptime
+
+#if DEBUG
+    /// Records the real watcher's chosen waits without making fault fixtures sleep/back off.
+    var debugWait: (@MainActor (TimeInterval) async -> Void)?
+    var debugHasLoop: Bool { loop != nil }
+#endif
 
     private var transportFailures = 0
     private var unknownReads = 0
@@ -79,6 +86,7 @@ final class JobWatcher {
 
     func start() {
         guard loop == nil, !isStopped, !isFinished else { return }
+        if !isBackground { foregroundReadStartedAt = ProcessInfo.processInfo.systemUptime }
         loop = Task { [weak self] in
             await self?.run()
             self?.clearLoop()
@@ -123,6 +131,7 @@ final class JobWatcher {
         } else {
             hold?.end()
             hold = nil
+            foregroundReadStartedAt = ProcessInfo.processInfo.systemUptime
             wakeRequested = true
         }
     }
@@ -162,24 +171,27 @@ final class JobWatcher {
                 if outcome == .terminal { return }
                 // The stream ended or dropped: take one authoritative read before trusting anything,
                 // then rebuild the stream with a doubling delay (1 s → 15 s).
-                await pollOnce()
+                if await pollOnce() == .ended { return }
                 if isFinished || isStopped || Task.isCancelled { return }
                 await idle(streamBackoff.next())
                 continue
             }
             let answered = await pollOnce()
             if isFinished || isStopped || Task.isCancelled { return }
+            if answered == .ended { return }
             if mode == .singleRead {
                 // Only a read that actually came back spends the one later check. A Wi-Fi blip
                 // must not: the whole point of this mode is that one authoritative answer is
                 // worth a great deal, and there is no second chance after it.
-                if answered {
+                if answered == .answered {
                     await finish(.expired)
                     return
                 }
                 continue
             }
-            await idle(interval(for: spec))
+            // A failed transport read already waited in handle(_:) using its bounded Backoff.
+            // Do not add a second normal cadence delay before the recovery read.
+            if answered == .answered { await idle(interval(for: spec)) }
         }
     }
 
@@ -214,10 +226,16 @@ final class JobWatcher {
         }
     }
 
-    /// Returns whether the server actually answered. `false` means the read never landed — a
-    /// transport failure, already counted and backed off by `handle(_:)`.
+    private enum PollOutcome: Equatable {
+        case answered
+        case retry
+        case ended
+    }
+
+    /// A transient miss has already backed off. Transport cancellation ends only this reader;
+    /// keeping that result distinct lets a later poke resume without cancelling server work.
     @discardableResult
-    private func pollOnce() async -> Bool {
+    private func pollOnce() async -> PollOutcome {
         do {
             let read = try await driver.read(pointer, api: api, previous: lastRead)
             transportFailures = 0
@@ -237,10 +255,9 @@ final class JobWatcher {
             case .terminal(let terminal):
                 await finish(terminal)
             }
-            return true
+            return .answered
         } catch {
-            _ = await handle(error)
-            return false
+            return await handle(error) ? .ended : .retry
         }
     }
 
@@ -342,9 +359,9 @@ final class JobWatcher {
 
     private func interval(for spec: JobKindSpec) -> TimeInterval {
         let elapsed = Date().timeIntervalSince(pointer.startedAt)
-        return isBackground
-            ? JobKindSpecs.backgroundInterval(spec, elapsed: elapsed)
-            : JobKindSpecs.foregroundInterval(spec, elapsed: elapsed)
+        return JobKindSpecs.watcherInterval(spec, jobElapsed: elapsed,
+            foregroundElapsed: max(0, ProcessInfo.processInfo.systemUptime - foregroundReadStartedAt),
+            isBackground: isBackground)
     }
 
     /// A poke-interruptible wait, built out of short naps rather than one long one.
@@ -353,6 +370,13 @@ final class JobWatcher {
     /// resume away from a watcher that never reads again, which is the one failure this whole
     /// folder exists to prevent. A tenth of a second of granularity costs nothing and cannot hang.
     private func idle(_ seconds: TimeInterval) async {
+#if DEBUG
+        if let debugWait {
+            guard !isStopped, !isFinished, !Task.isCancelled else { return }
+            await debugWait(seconds)
+            return
+        }
+#endif
         let end = Date().addingTimeInterval(seconds)
         while !isStopped, !isFinished, !Task.isCancelled {
             if wakeRequested {

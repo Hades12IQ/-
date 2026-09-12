@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The ```` ```firas-agent ```` summary card inside a transcript (`web-agent-ux.md §6.3, §7`).
 ///
@@ -32,24 +33,26 @@ struct AgentCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            summary
-            if let text = errorSentence {
-                errorLine(text)
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 12) {
+                summary
+                if let text = errorSentence {
+                    errorLine(text)
+                }
+                if showsResume, let onResume {
+                    resumeButton(onResume)
+                }
             }
-            if showsResume, let onResume {
-                resumeButton(onResume)
-            }
+            .padding(14)
+            .frame(maxWidth: 560, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .surfaceCard(palette)
+            .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .onTapGesture { onOpen?() }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(title))
+            .accessibilityAddTraits(onOpen == nil ? [] : .isButton)
         }
-        .padding(14)
-        .frame(maxWidth: 560, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .surfaceCard(palette)
-        .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .onTapGesture { onOpen?() }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text(title))
-        .accessibilityAddTraits(onOpen == nil ? [] : .isButton)
     }
 
     // MARK: - Summary
@@ -255,10 +258,12 @@ private struct AgentCardLatinRun: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if enabled {
-            content.forceLTR()
-        } else {
-            content
+        WithPerceptionTracking {
+            if enabled {
+                content.forceLTR()
+            } else {
+                content
+            }
         }
     }
 }

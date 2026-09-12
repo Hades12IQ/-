@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 
 // MARK: - Model
 //
@@ -83,24 +84,30 @@ struct DiffReviewSheet: View {
     private var lang: AppLanguage { env.prefs.lang }
 
     var body: some View {
-        NavigationStack {
-            content
-                .background(palette.background)
-                .navigationTitle(Text(verbatim: Strings.CodeUI.diffTitle(lang)))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button {
-                            close()
-                        } label: {
-                            Text(verbatim: Strings.Common.cancel(lang))
+        WithPerceptionTracking {
+            FirasNavigationStack {
+                content
+                    .background(palette.background)
+                    .navigationTitle(Text(verbatim: Strings.CodeUI.diffTitle(lang)))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            WithPerceptionTracking {
+                                Button {
+                                    close()
+                                } label: {
+                                    Text(verbatim: Strings.Common.cancel(lang))
+                                }
+
+                                }
                         }
                     }
-                }
-        }
-        .firasSheetBackground(palette)
-        .presentationDetents([.large])
-        .task { await build() }
+            }
+            .firasSheetBackground(palette)
+            .firasPresentationDetents([.large])
+            .task { await build() }
+
+            }
     }
 
     // MARK: - Content
@@ -123,7 +130,10 @@ struct DiffReviewSheet: View {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         summary
                         ForEach(items) { item in
-                            row(item)
+                            WithPerceptionTracking {
+                                row(item)
+
+                                }
                         }
                     }
                     .padding(16)
@@ -282,10 +292,13 @@ struct DiffReviewSheet: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 1) {
                     ForEach(item.lines) { line in
+                        WithPerceptionTracking {
                         Text(verbatim: prefix(for: line) + line.text)
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundStyle(color(for: line.mark))
                             .forceLTR()
+
+                        }
                     }
                 }
             }

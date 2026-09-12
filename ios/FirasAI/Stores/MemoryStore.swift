@@ -1,6 +1,5 @@
 import Foundation
-import Observation
-
+import Perception
 /// The facts the server keeps about the signed-in member ("what Firas remembers about you").
 ///
 /// The list is member-only: `GET /api/memory` answers 401 for a guest, so every screen gates on
@@ -10,7 +9,7 @@ import Observation
 /// (`DELETE /api/memory?i=<index>`), which is why a delete is always followed by a reload: every
 /// entry after the removed one has just changed id.
 @MainActor
-@Observable
+@Perceptible
 final class MemoryStore {
 
     private(set) var entries: [MemoryEntry] = []
@@ -24,7 +23,7 @@ final class MemoryStore {
     /// Distinguishes "not fetched yet" from "fetched and empty".
     private(set) var hasLoaded = false
 
-    @ObservationIgnored private let api: APIClient
+    @PerceptionIgnored private let api: APIClient
 
     init(api: APIClient) {
         self.api = api

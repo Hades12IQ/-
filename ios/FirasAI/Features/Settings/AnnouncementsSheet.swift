@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The site-updates feed: pinned first, then newest, with the built-in launch post merged in
@@ -20,28 +21,34 @@ struct AnnouncementsSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            content
-                .navigationTitle(Strings.Settings.Announcements.title(lang))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button {
-                            env.router.sheet = nil
-                            dismiss()
-                        } label: {
-                            Text(Strings.Common.done(lang))
-                                .font(.system(size: 16, weight: .semibold))
+        WithPerceptionTracking {
+            FirasNavigationStack {
+                WithPerceptionTracking {
+                    content
+                        .navigationTitle(Strings.Settings.Announcements.title(lang))
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            WithPerceptionTracking {
+                                ToolbarItem(placement: .confirmationAction) {
+                                    Button {
+                                        env.router.sheet = nil
+                                        dismiss()
+                                    } label: {
+                                        Text(Strings.Common.done(lang))
+                                            .font(.system(size: 16, weight: .semibold))
+                                    }
+                                }
+                            }
                         }
-                    }
                 }
+            }
+            .firasPresentationDetents([.medium, .large])
+            .firasPresentationDragIndicator(.visible)
+            .firasSheetBackground(palette)
+            .tint(palette.accent)
+            .preferredColorScheme(env.prefs.theme.isLight ? .light : .dark)
+            .task { await open() }
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .firasSheetBackground(palette)
-        .tint(palette.accent)
-        .preferredColorScheme(env.prefs.theme.isLight ? .light : .dark)
-        .task { await open() }
     }
 
     // MARK: - Content
@@ -72,12 +79,18 @@ struct AnnouncementsSheet: View {
                     }
                 } else {
                     ForEach(env.announcements.items) { item in
-                        NavigationLink {
-                            AnnouncementReader(env: env, announcement: item)
-                        } label: {
-                            AnnouncementRow(announcement: item, palette: palette, lang: lang)
+                        WithPerceptionTracking {
+                            NavigationLink {
+                                WithPerceptionTracking {
+                                    AnnouncementReader(env: env, announcement: item)
+                                }
+                            } label: {
+                                WithPerceptionTracking {
+                                    AnnouncementRow(announcement: item, palette: palette, lang: lang)
+                                }
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -87,7 +100,7 @@ struct AnnouncementsSheet: View {
             .padding(.top, 8)
             .padding(.bottom, 28)
         }
-        .scrollContentBackground(.hidden)
+        .firasScrollContentBackground(.hidden)
         .background(Color.clear)
     }
 
@@ -133,39 +146,41 @@ struct AnnouncementRow: View {
     let lang: AppLanguage
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            if let image = announcement.image, !image.isEmpty {
-                AnnouncementImageView(source: image, palette: palette)
-                    .frame(width: 64, height: 64)
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-            }
+        WithPerceptionTracking {
+            HStack(alignment: .top, spacing: 12) {
+                if let image = announcement.image, !image.isEmpty {
+                    AnnouncementImageView(source: image, palette: palette)
+                        .frame(width: 64, height: 64)
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                }
 
-            VStack(alignment: .leading, spacing: 5) {
-                badges
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(palette.textPrimary)
-                    .lineLimit(2)
-                Text(excerpt)
-                    .font(.system(size: 13))
-                    .foregroundStyle(palette.textSecondary)
-                    .lineLimit(2)
-                Text(AnnouncementFormat.stamp(announcement.date, lang: lang))
-                    .font(.system(size: 11))
+                VStack(alignment: .leading, spacing: 5) {
+                    badges
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(palette.textPrimary)
+                        .lineLimit(2)
+                    Text(excerpt)
+                        .font(.system(size: 13))
+                        .foregroundStyle(palette.textSecondary)
+                        .lineLimit(2)
+                    Text(AnnouncementFormat.stamp(announcement.date, lang: lang))
+                        .font(.system(size: 11))
+                        .foregroundStyle(palette.textMuted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(palette.textMuted)
+                    .padding(.top, 4)
+                    .accessibilityHidden(true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Image(systemName: "chevron.forward")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(palette.textMuted)
-                .padding(.top, 4)
-                .accessibilityHidden(true)
+            .padding(12)
+            .surfaceCard(palette)
+            .bidiIsland(for: title, fallback: lang)
+            .accessibilityElement(children: .combine)
         }
-        .padding(12)
-        .surfaceCard(palette)
-        .bidiIsland(for: title, fallback: lang)
-        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder
@@ -228,24 +243,26 @@ struct AnnouncementImageView: View {
     }
 
     var body: some View {
-        Group {
-            if let decoded {
-                Image(uiImage: decoded)
-                    .resizable()
-                    .scaledToFill()
-            } else if let remote = AnnouncementImageView.remoteURL(source) {
-                AsyncImage(url: remote) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
+        WithPerceptionTracking {
+            Group {
+                if let decoded {
+                    Image(uiImage: decoded)
+                        .resizable()
+                        .scaledToFill()
+                } else if let remote = AnnouncementImageView.remoteURL(source) {
+                    AsyncImage(url: remote) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
+                        placeholder
+                    }
+                } else {
                     placeholder
                 }
-            } else {
-                placeholder
             }
+            .clipped()
+            .task { await decodeIfNeeded() }
+            .accessibilityHidden(true)
         }
-        .clipped()
-        .task { await decodeIfNeeded() }
-        .accessibilityHidden(true)
     }
 
     private var placeholder: some View {

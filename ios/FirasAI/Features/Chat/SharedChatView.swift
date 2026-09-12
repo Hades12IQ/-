@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The `?share=` target: a read-only snapshot of a conversation — or of a single answer — fetched
@@ -34,18 +35,22 @@ struct SharedChatView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
+        WithPerceptionTracking {
+        FirasNavigationStack {
+            WithPerceptionTracking {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .navigationTitle(Text(navigationTitleText))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { toolbarContent }
-        }
+
+            }}
         .firasSheetBackground(palette)
         .task(id: shareID) {
             await load()
         }
-    }
+
+        }}
 
     private var palette: FirasPalette { env.prefs.palette }
     private var lang: AppLanguage { env.prefs.lang }
@@ -57,14 +62,18 @@ struct SharedChatView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
+        ToolbarItem(placement: .navigationBarLeading) {
+            WithPerceptionTracking {
             Button {
                 dismiss()
             } label: {
+                WithPerceptionTracking {
                 Text(Strings.Common.close(lang))
-            }
+
+                }}
             .foregroundStyle(palette.accent)
-        }
+
+            }}
     }
 
     // MARK: - States
@@ -115,8 +124,10 @@ struct SharedChatView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     header
                     ForEach(Array(messages.indices), id: \.self) { index in
+                        WithPerceptionTracking {
                         row(messages[index])
-                    }
+
+                        }}
                     callToAction
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -180,8 +191,8 @@ struct SharedChatView: View {
         .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
-    private var bubbleShape: UnevenRoundedRectangle {
-        UnevenRoundedRectangle(
+    private var bubbleShape: FirasUnevenRoundedRectangle {
+        FirasUnevenRoundedRectangle(
             topLeadingRadius: 20,
             bottomLeadingRadius: 20,
             bottomTrailingRadius: 7,
@@ -216,8 +227,10 @@ struct SharedChatView: View {
                 spacing: 8
             ) {
                 ForEach(Array(thumbs.indices), id: \.self) { index in
+                    WithPerceptionTracking {
                     SharedThumbnailView(dataURL: thumbs[index], palette: palette)
-                }
+
+                    }}
             }
             .frame(maxWidth: 320, alignment: .leading)
         }
@@ -240,6 +253,7 @@ struct SharedChatView: View {
             Button {
                 startFree()
             } label: {
+                WithPerceptionTracking {
                 Text(SharedChatCopy.cta(lang))
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(palette.onAccent)
@@ -247,7 +261,8 @@ struct SharedChatView: View {
                     .frame(minHeight: 44)
                     .background(Capsule(style: .continuous).fill(palette.accent))
                     .contentShape(Capsule(style: .continuous))
-            }
+
+                }}
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -327,6 +342,7 @@ private struct SharedThumbnailView: View {
     @State private var image: UIImage?
 
     var body: some View {
+        WithPerceptionTracking {
         Group {
             if let image {
                 Image(uiImage: image)
@@ -348,7 +364,8 @@ private struct SharedThumbnailView: View {
             }
         }
         .accessibilityHidden(true)
-    }
+
+        }}
 
     private static func decode(_ dataURL: String) async -> Data? {
         await Task.detached(priority: .utility) { () -> Data? in

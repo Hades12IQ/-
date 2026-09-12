@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The entry point.
 ///
@@ -35,15 +36,17 @@ struct FirasAIApp: App {
 
     var body: some Scene {
         WindowGroup {
-            #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--reliability-smoke") {
-                ReliabilitySmokeView(env: env)
-            } else {
+            WithPerceptionTracking {
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("--reliability-smoke") {
+                    ReliabilitySmokeView(env: env)
+                } else {
+                    liveRoot
+                }
+                #else
                 liveRoot
+                #endif
             }
-            #else
-            liveRoot
-            #endif
         }
     }
 
@@ -60,7 +63,7 @@ struct FirasAIApp: App {
                 .onOpenURL { url in
                     lifecycle.handle(url: url)
                 }
-                .onChange(of: scenePhase) { _, phase in
+                .firasOnChange(of: scenePhase) { _, phase in
                     handle(phase: phase)
                 }
     }

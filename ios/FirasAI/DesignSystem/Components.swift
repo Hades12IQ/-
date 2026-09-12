@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 // MARK: - FirasPill
 
@@ -31,12 +32,14 @@ struct FirasPill: View {
     }
 
     var body: some View {
-        Button(action: action) {
-            content
+        WithPerceptionTracking {
+            Button(action: action) {
+                content
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(text))
+            .accessibilityAddTraits(traits)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(text))
-        .accessibilityAddTraits(traits)
     }
 
     private var content: some View {
@@ -100,18 +103,20 @@ struct FirasIconButton: View {
     }
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: prominent ? 17 : 16, weight: .semibold))
-                .foregroundStyle(prominent ? palette.onAccent : palette.textPrimary)
-                .frame(width: 44, height: 44)
-                .background {
-                    Circle().fill(prominent ? palette.accent : Color.clear)
-                }
-                .contentShape(Circle())
+        WithPerceptionTracking {
+            Button(action: action) {
+                Image(systemName: symbol)
+                    .font(.system(size: prominent ? 17 : 16, weight: .semibold))
+                    .foregroundStyle(prominent ? palette.onAccent : palette.textPrimary)
+                    .frame(width: 44, height: 44)
+                    .background {
+                        Circle().fill(prominent ? palette.accent : Color.clear)
+                    }
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(label))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(label))
     }
 }
 
@@ -133,14 +138,16 @@ struct LiveDot: View {
     }
 
     var body: some View {
-        Circle()
-            .fill(palette.accent)
-            .frame(width: 8, height: 8)
-            .scaleEffect(motionOn && breathing ? 1.35 : 1)
-            .opacity(breathing ? 0.38 : 1)
-            .onAppear { restart() }
-            .onChange(of: motionOn) { _, _ in restart() }
-            .accessibilityHidden(true)
+        WithPerceptionTracking {
+            Circle()
+                .fill(palette.accent)
+                .frame(width: 8, height: 8)
+                .scaleEffect(motionOn && breathing ? 1.35 : 1)
+                .opacity(breathing ? 0.38 : 1)
+                .onAppear { restart() }
+                .firasOnChange(of: motionOn) { _, _ in restart() }
+                .accessibilityHidden(true)
+        }
     }
 
     private func restart() {
@@ -181,11 +188,13 @@ struct SkeletonView: View {
     }
 
     var body: some View {
-        blocks
-            .overlay { shimmer }
-            .onAppear { restart() }
-            .onChange(of: motionOn) { _, _ in restart() }
-            .accessibilityHidden(true)
+        WithPerceptionTracking {
+            blocks
+                .overlay { shimmer }
+                .onAppear { restart() }
+                .firasOnChange(of: motionOn) { _, _ in restart() }
+                .accessibilityHidden(true)
+        }
     }
 
     // MARK: Shapes
@@ -226,7 +235,9 @@ struct SkeletonView: View {
     private var sidebarBlocks: some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(0..<7, id: \.self) { index in
-                bar(width: index.isMultiple(of: 2) ? 268 : 196, height: 14)
+                WithPerceptionTracking {
+                    bar(width: index.isMultiple(of: 2) ? 268 : 196, height: 14)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -237,10 +248,14 @@ struct SkeletonView: View {
             columns: [GridItem(.adaptive(minimum: 108), spacing: 10)],
             spacing: 10
         ) {
-            ForEach(0..<6, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(palette.surfaceSunken)
-                    .aspectRatio(1, contentMode: .fit)
+            WithPerceptionTracking {
+                ForEach(0..<6, id: \.self) { _ in
+                    WithPerceptionTracking {
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(palette.surfaceSunken)
+                            .aspectRatio(1, contentMode: .fit)
+                    }
+                }
             }
         }
     }
@@ -258,18 +273,20 @@ struct SkeletonView: View {
     private var shimmer: some View {
         if motionOn {
             GeometryReader { proxy in
-                let band = max(72, proxy.size.width * 0.4)
-                LinearGradient(
-                    colors: [
-                        Color.clear,
-                        palette.textPrimary.opacity(0.07),
-                        Color.clear
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: band)
-                .offset(x: -band + (proxy.size.width + band) * sweep)
+                WithPerceptionTracking {
+                    let band = max(72, proxy.size.width * 0.4)
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            palette.textPrimary.opacity(0.07),
+                            Color.clear
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: band)
+                    .offset(x: -band + (proxy.size.width + band) * sweep)
+                }
             }
             .mask { blocks }
             .allowsHitTesting(false)
@@ -315,24 +332,26 @@ struct EmptyStateView: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
-            Text(title)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(palette.textPrimary)
+        WithPerceptionTracking {
+            VStack(spacing: 10) {
+                Text(title)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(palette.textPrimary)
 
-            if let subtitle, !subtitle.isEmpty {
-                Text(subtitle)
-                    .font(.system(size: 15))
-                    .foregroundStyle(palette.textSecondary)
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.system(size: 15))
+                        .foregroundStyle(palette.textSecondary)
+                }
+
+                actionButton
             }
-
-            actionButton
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: 360)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 28)
+            .frame(maxWidth: .infinity)
         }
-        .multilineTextAlignment(.center)
-        .frame(maxWidth: 360)
-        .padding(.horizontal, 24)
-        .padding(.vertical, 28)
-        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder

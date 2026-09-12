@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 // MARK: - Quota panel
 
@@ -21,27 +22,29 @@ struct MediaQuotaPanel: View {
     private var lang: AppLanguage { env.prefs.lang }
 
     var body: some View {
-        SurfaceCard(palette: palette) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(Strings.Media.quotaTitle(lang))
-                    .font(FirasType.label)
-                    .foregroundStyle(palette.textMuted)
-                Text(allowanceLine)
-                    .font(.system(size: 14))
-                    .foregroundStyle(palette.textSecondary)
-                if let minutes = env.media.freesInMinutes[kind.rawValue] {
-                    Text(Strings.Media.quotaFreesIn.fmt(lang, ArabicText.count(minutes, lang)))
-                        .font(FirasType.caption)
+        WithPerceptionTracking {
+            SurfaceCard(palette: palette) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(Strings.Media.quotaTitle(lang))
+                        .font(FirasType.label)
                         .foregroundStyle(palette.textMuted)
+                    Text(allowanceLine)
+                        .font(.system(size: 14))
+                        .foregroundStyle(palette.textSecondary)
+                    if let minutes = env.media.freesInMinutes[kind.rawValue] {
+                        Text(Strings.Media.quotaFreesIn.fmt(lang, ArabicText.count(minutes, lang)))
+                            .font(FirasType.caption)
+                            .foregroundStyle(palette.textMuted)
+                    }
+                    if kind == .image {
+                        Text(Strings.Media.quotaResets(lang))
+                            .font(FirasType.caption)
+                            .foregroundStyle(palette.textMuted)
+                    }
                 }
-                if kind == .image {
-                    Text(Strings.Media.quotaResets(lang))
-                        .font(FirasType.caption)
-                        .foregroundStyle(palette.textMuted)
-                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// Theme, text size, reading width, motion, language — in that order
 /// (`web-auth-account-settings.md §6.2`, minus the web-only "UI 2.0" switch: this build *is* the
@@ -16,12 +17,14 @@ struct AppearanceSettingsView: View {
     }
 
     var body: some View {
-        SettingsPageBody(palette: palette) {
-            themePanel
-            textSizePanel
-            widthPanel
-            motionPanel
-            languagePanel
+        WithPerceptionTracking {
+            SettingsPageBody(palette: palette) {
+                themePanel
+                textSizePanel
+                widthPanel
+                motionPanel
+                languagePanel
+            }
         }
     }
 
@@ -38,8 +41,12 @@ struct AppearanceSettingsView: View {
                 columns: [GridItem(.adaptive(minimum: 132), spacing: 10)],
                 spacing: 10
             ) {
-                ForEach(FirasTheme.allCases) { theme in
-                    themeTile(theme)
+                WithPerceptionTracking {
+                    ForEach(FirasTheme.allCases) { theme in
+                        WithPerceptionTracking {
+                            themeTile(theme)
+                        }
+                    }
                 }
             }
             .padding(14)
@@ -59,9 +66,11 @@ struct AppearanceSettingsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 4) {
                     ForEach(Array(colors.indices), id: \.self) { index in
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(colors[index])
-                            .frame(height: 26)
+                        WithPerceptionTracking {
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .fill(colors[index])
+                                .frame(height: 26)
+                        }
                     }
                 }
                 .overlay {

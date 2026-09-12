@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 
 /// The privacy page: the one switch that decides whether this reader's conversations may be used
 /// by the Firas AI team to train and improve the models, plus the two other places privacy is
@@ -34,9 +35,11 @@ struct PrivacySettingsView: View {
     }
 
     var body: some View {
-        SettingsPageBody(palette: palette) {
-            trainingPanel
-            elsewherePanel
+        WithPerceptionTracking {
+            SettingsPageBody(palette: palette) {
+                trainingPanel
+                elsewherePanel
+            }
         }
     }
 
@@ -84,12 +87,16 @@ struct PrivacySettingsView: View {
             lang: lang
         ) {
             NavigationLink {
-                MemorySettingsView(env: env)
+                WithPerceptionTracking {
+                    MemorySettingsView(env: env)
+                }
             } label: {
-                pushRow(
-                    title: Strings.Settings.Memory.open(lang),
-                    symbol: "sparkles.rectangle.stack"
-                )
+                WithPerceptionTracking {
+                    pushRow(
+                        title: Strings.Settings.Memory.open(lang),
+                        symbol: "sparkles.rectangle.stack"
+                    )
+                }
             }
             .buttonStyle(.plain)
 

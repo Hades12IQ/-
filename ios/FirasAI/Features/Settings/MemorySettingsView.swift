@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// "What Firas remembers about you" — the member-only memory list
 /// (`web-auth-account-settings.md §7`, `server-auth-session-account.md §5.5`).
@@ -20,28 +21,30 @@ struct MemorySettingsView: View {
     }
 
     var body: some View {
-        SettingsPageBody(palette: palette) {
-            if env.session.isMember {
-                memberBody
-            } else {
-                guestPanel
+        WithPerceptionTracking {
+            SettingsPageBody(palette: palette) {
+                if env.session.isMember {
+                    memberBody
+                } else {
+                    guestPanel
+                }
             }
-        }
-        .navigationTitle(Strings.Settings.Memory.title(lang))
-        .navigationBarTitleDisplayMode(.inline)
-        .task { await loadIfMember() }
-        .confirmationDialog(
-            Text(Strings.Settings.Memory.clearAllConfirm(lang)),
-            isPresented: $confirmsClearAll,
-            titleVisibility: .visible
-        ) {
-            Button(role: .destructive) {
-                delete(id: nil)
-            } label: {
-                Text(Strings.Settings.Memory.clearAll(lang))
-            }
-            Button(role: .cancel) {} label: {
-                Text(Strings.Common.cancel(lang))
+            .navigationTitle(Strings.Settings.Memory.title(lang))
+            .navigationBarTitleDisplayMode(.inline)
+            .task { await loadIfMember() }
+            .confirmationDialog(
+                Text(Strings.Settings.Memory.clearAllConfirm(lang)),
+                isPresented: $confirmsClearAll,
+                titleVisibility: .visible
+            ) {
+                Button(role: .destructive) {
+                    delete(id: nil)
+                } label: {
+                    Text(Strings.Settings.Memory.clearAll(lang))
+                }
+                Button(role: .cancel) {} label: {
+                    Text(Strings.Common.cancel(lang))
+                }
             }
         }
     }
@@ -72,10 +75,12 @@ struct MemorySettingsView: View {
 
     private var entryRows: some View {
         ForEach(env.memory.entries) { entry in
-            if entry.id != env.memory.entries.first?.id {
-                SettingsDivider(palette: palette)
+            WithPerceptionTracking {
+                if entry.id != env.memory.entries.first?.id {
+                    SettingsDivider(palette: palette)
+                }
+                row(entry)
             }
-            row(entry)
         }
     }
 

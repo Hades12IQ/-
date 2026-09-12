@@ -33,8 +33,8 @@ enum CodeBuildHandoff {
         return ChatJobRequest(
             messages: generic ? messages(ticket: ticket, checkpoint: checkpoint)
                 : [OutgoingMessage(role: "user", content: task, images: nil)],
-            tier: generic ? ModelTier.ultra.rawValue : ModelTier.pro.rawValue,
-            think: false,
+            tier: ticket.selection?.model.rawValue ?? (generic ? ModelTier.ultra.rawValue : ModelTier.pro.rawValue),
+            think: ticket.selection?.think ?? false,
             cid: ticket.cid,
             // The store writes the project fence to its chat after validation.
             chatId: "",
@@ -43,7 +43,7 @@ enum CodeBuildHandoff {
             lang: ticket.lang,
             title: ticket.name,
             task: generic ? nil : task,
-            nomem: generic ? true : nil,
+            nomem: generic && ticket.selection == nil ? true : nil,
             nokb: generic ? true : nil
         )
     }

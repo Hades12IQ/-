@@ -52,7 +52,7 @@ extension AuthView {
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
-        .firasGlass(.sheet, palette: palette, in: AnyShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
+        .firasGlass(.sheet, palette: palette, in: FirasAnyShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
         .disabled(isBusy)
         .opacity(isBusy ? 0.7 : 1)
         .accessibilityLabel(Text(verbatim: Strings.Auth.google(lang)))
@@ -87,7 +87,7 @@ extension AuthView {
                     }
                     .textContentType(.name)
                     .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
+                    .disableAutocorrection()
                     .submitLabel(.next)
                     .focused($focus, equals: .name)
                     .onSubmit { focus = .email }
@@ -101,7 +101,7 @@ extension AuthView {
                 .textContentType(.emailAddress)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
+                .disableAutocorrection()
                 .submitLabel(.next)
                 .focused($focus, equals: .email)
                 .onSubmit { focus = .password }
@@ -135,7 +135,7 @@ extension AuthView {
             .multilineTextAlignment(.leading)
             .padding(.horizontal, 15)
             .frame(height: 50)
-            .firasGlass(.sheet, palette: palette, in: AnyShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
+            .firasGlass(.sheet, palette: palette, in: FirasAnyShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
             .accessibilityLabel(Text(verbatim: label))
     }
 

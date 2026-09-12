@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Perception
 import OSLog
 import UIKit
 
@@ -48,15 +48,15 @@ struct ConsoleLine: Identifiable, Sendable, Equatable {
 /// the result lands through `JobObserver` exactly as before: `chatId: ""` on the wire, files landed
 /// by this store, and the pointer never forgotten before they are written (`§3.3`).
 @MainActor
-@Observable
+@Perceptible
 final class CodeStore: JobObserver {
 
     // MARK: - Frozen state
 
     private(set) var projects: [ChatSummary] = []
     private(set) var openProjectID: String?
-    private(set) var project: CodeProject?
-    private(set) var thread: CodeChatThread = CodeChatThread()
+    var project: CodeProject?
+    var thread: CodeChatThread = CodeChatThread()
     private(set) var buildPhase: JobPhase?
     private(set) var buildElapsed: TimeInterval = 0
     var selectedPath: String?
@@ -91,26 +91,28 @@ final class CodeStore: JobObserver {
 
     // MARK: - Dependencies
 
-    private let api: APIClient
-    private let session: SessionStore
-    private let jobs: JobManager
+    let api: APIClient
+    let session: SessionStore
+    let jobs: JobManager
     private let chat: ChatStore
-    private let prefs: PreferencesStore
-    private let toasts: ToastCenter
+    let prefs: PreferencesStore
+    let toasts: ToastCenter
     private let router: Router
-    private let cache: CodeProjectCache
+    let cache: CodeProjectCache
+    let codeOmnix = CodeOmnixState()
+    @PerceptionIgnored var codeWrites: [String: Task<Void, Error>] = [:]
 
     // MARK: - Private state
 
     private var records: [String: CodeProjectRecord] = [:]
-    @ObservationIgnored private var commitTask: Task<Void, Never>?
-    @ObservationIgnored private var elapsedTask: Task<Void, Never>?
-    @ObservationIgnored private var landedFences: [String: String] = [:]
-    @ObservationIgnored private var pendingDeletes: Set<String> = []
-    @ObservationIgnored private var undoFiles: [CodeFile]?
-    @ObservationIgnored private var activeOwnerID: String?
-    @ObservationIgnored private var handoffTasks: [String: Task<Void, Never>] = [:]
-    @ObservationIgnored private var buildNames: [String: String] = [:]
+    @PerceptionIgnored private var commitTask: Task<Void, Never>?
+    @PerceptionIgnored private var elapsedTask: Task<Void, Never>?
+    @PerceptionIgnored private var landedFences: [String: String] = [:]
+    @PerceptionIgnored private var pendingDeletes: Set<String> = []
+    @PerceptionIgnored private var undoFiles: [CodeFile]?
+    @PerceptionIgnored private var activeOwnerID: String?
+    @PerceptionIgnored private var handoffTasks: [String: Task<Void, Never>] = [:]
+    @PerceptionIgnored private var buildNames: [String: String] = [:]
     /// The build running in front of the reader, per project. At most one per project, and its
     /// existence is what tells `open`, `job(_:didProgress:)` and the elapsed timer that the copy on
     /// screen is newer than anything the cache or the server could hand them.
@@ -121,28 +123,28 @@ final class CodeStore: JobObserver {
     private var liveBuilds: [String: Task<Void, Never>] = [:]
     /// Every ticket this identity owns, mirrored in memory so the synchronous readers
     /// (`isBuilding`, `syncBuildState`) never have to await the cache actor.
-    @ObservationIgnored private var tickets: [String: CodeBuildTicket] = [:]
+    @PerceptionIgnored private var tickets: [String: CodeBuildTicket] = [:]
     /// Handovers in flight. Home and the background notification can fire in the same run loop
     /// turn; the queue would answer both with the same job id, but one POST is enough.
-    @ObservationIgnored private var handingOff: Set<String> = []
+    @PerceptionIgnored private var handingOff: Set<String> = []
     /// Projects whose ticket is being written to disk but whose builder task does not exist yet.
     /// The window is one actor hop wide and nothing normally runs inside it, but a `resumeLiveBuilds`
     /// that landed there would see a ticket with no live build and hand it straight to the server —
     /// which is the one outcome this whole design exists to avoid.
-    @ObservationIgnored private var startingBuilds: Set<String> = []
+    @PerceptionIgnored private var startingBuilds: Set<String> = []
     /// Projects whose live build has finished writing and is being landed — cached, put in the
     /// conversation, pushed, and only then forgotten. The task still exists throughout, so without
     /// this a reader who hits Home during those four awaits would have the finished turn handed to
     /// the queue, which would build the whole project a second time and land it over the copy they
     /// had just watched being written.
-    @ObservationIgnored private var finishingBuilds: Set<String> = []
+    @PerceptionIgnored private var finishingBuilds: Set<String> = []
     /// How many times a handover has failed on the network for a project, so the retry can back off
     /// instead of hammering a dead connection for the ticket's whole two-hour life.
-    @ObservationIgnored private var handoffAttempts: [String: Int] = [:]
-    @ObservationIgnored private var observingLifecycle = false
+    @PerceptionIgnored private var handoffAttempts: [String: Int] = [:]
+    @PerceptionIgnored private var observingLifecycle = false
     /// Where `buildElapsed` counts from: the ticket's start while the build is live, the pointer's
     /// once the server has it. Never refreshed — the strip measures the age of the build.
-    @ObservationIgnored private var buildStartedAt: Date?
+    @PerceptionIgnored private var buildStartedAt: Date?
 
     /// The web's caps. `task` carries the attachment read as well, because the frozen
     /// `ChatJobRequest` has no `attach` field; the worker reads `body.task` either way.
@@ -215,6 +217,12 @@ final class CodeStore: JobObserver {
     // MARK: - Reading
 
     var lang: AppLanguage { prefs.lang }
+    var modelSelection: CodeModelSelection { thread.selection }
+    func selectModel(_ selection: CodeModelSelection) {
+        guard let id = openProjectID, !isAsking, !isBuilding(projectID: id), !codeOmnix.active.contains(id) else { return }
+        thread.selection = selection
+        scheduleCommit()
+    }
 
     var isGuest: Bool { session.isGuest }
 
@@ -256,6 +264,9 @@ final class CodeStore: JobObserver {
     /// cannot be used after this point, so only retain old tickets for recovery.
     func identityDidChange(to ownerID: String?) {
         guard activeOwnerID != ownerID else { return }
+        codeOmnix.reset(owner: ownerID)
+        for write in codeWrites.values { write.cancel() }
+        codeWrites = [:]
         if let previous = activeOwnerID, let id = openProjectID, let current = project {
             let conversation = thread
             Task {
@@ -448,6 +459,7 @@ final class CodeStore: JobObserver {
         await resumeLiveBuilds()
         syncBuildState()
         isOpening = false
+        restoreCodeJobs(in: id)
     }
 
     /// Leaves the workspace. The launcher must never keep a half-open project alive behind it.
@@ -618,7 +630,12 @@ final class CodeStore: JobObserver {
     // MARK: - AI edits
 
     func askAI(instruction: String, attachments: [PreparedAttachment]) async -> CodeEditPlan? {
-        await ask(
+        if thread.selection.model == .omnix {
+            await sendCodeOmnix(instruction: instruction, attachments: attachments)
+            return nil
+        }
+        guard !codeOmnix.active.contains(openProjectID ?? "") else { return nil }
+        return await ask(
             instruction: instruction,
             attachmentText: Self.attachmentText(attachments, cap: Self.inIDEAttachmentCap),
             attachmentCount: attachments.count
@@ -631,108 +648,19 @@ final class CodeStore: JobObserver {
     /// turns out to be a question, and by then the composer has already folded its attachments into
     /// the string the ticket would have carried. Handing that string straight through means a
     /// question asked with a file attached is answered with the file, not without it.
-    private func ask(
-        instruction: String,
-        attachmentText: String,
-        attachmentCount: Int
-    ) async -> CodeEditPlan? {
-        guard !isAsking, let current = project,
-              let requestProjectID = openProjectID else { return nil }
-        let requestOwnerID = session.identityID
-        var request = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
-        if request.isEmpty, !attachmentText.isEmpty {
-            request = Strings.Code.attachmentsOnly(lang)
-        }
-        guard !request.isEmpty else { return nil }
-
-        var turn = String(request.prefix(CodeAskAI.requestLimit))
-        if attachmentCount > 0 {
-            turn += "\n\n" + Strings.Code.attachmentCount.fmt(lang, ArabicText.count(attachmentCount, lang))
-        }
-        appendThreadTurn(role: "user", text: turn)
-
-        isAsking = true
-        askStartedAt = Date()
-        defer {
-            isAsking = false
-            askStartedAt = nil
-        }
-
-        // 1 — a document request is never a software project, and it is never charged for.
-        if CodeAskAI.route(request, lang: lang) == .documentRedirect {
-            appendThreadTurn(role: "ai", text: CodeAskAI.documentRedirect(lang))
-            await save()
-            return nil
-        }
-
-        // 2 — one Code unit, before any model call. Members are unmetered.
-        guard await charge(), openProjectID == requestProjectID,
-              session.identityID == requestOwnerID else { return nil }
-
-        // 3 — the repository this session is pointed at, if there is one. It rides in with the
-        // attachments because `CodeAskAI` builds both prompts and this store does not own it; the
-        // block says loudly, in its first sentence, that it is context and not a second project.
-        var context = attachmentText
-        let repository = await repositoryContext(for: request)
-        guard openProjectID == requestProjectID,
-              session.identityID == requestOwnerID else { return nil }
-        if !repository.isEmpty { context += repository }
-
-        do {
-            let outcome = try await CodeAskAI.run(
-                api: api,
-                // Re-read: the charge and the repository gather are two suspension points, and the
-                // reader is free to type into a file across either of them.
-                project: project ?? current,
-                instruction: request,
-                attachmentText: context,
-                lang: lang
-            )
-            guard openProjectID == requestProjectID,
-                  session.identityID == requestOwnerID else { return nil }
-            switch outcome {
-            case .redirect(let text):
-                appendThreadTurn(role: "ai", text: text)
-                await save()
-                return nil
-
-            case .answer(let text):
-                let body = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                appendThreadTurn(role: "ai", text: body.isEmpty ? Strings.Code.askFailed(lang) : body)
-                await save()
-                return nil
-
-            case .plan(let plan):
-                let changeCount = plan.writes.count + plan.deletes.count + plan.renames.count
-                guard changeCount > 0 else {
-                    appendThreadTurn(
-                        role: "ai",
-                        text: plan.prose.isEmpty ? Strings.Code.noChanges(lang) : plan.prose
-                    )
-                    toasts.show(Strings.Code.noChanges(lang))
-                    await save()
-                    return nil
-                }
-                appendThreadTurn(
-                    role: "ai",
-                    text: plan.prose.isEmpty ? Strings.Code.diffTitle(lang) : plan.prose,
-                    n: changeCount
-                )
-                await save()
-                return plan
-            }
-        } catch {
-            guard openProjectID == requestProjectID,
-                  session.identityID == requestOwnerID else { return nil }
-            appendThreadTurn(role: "ai", text: Strings.Code.askFailed(lang))
-            toasts.show(Strings.Code.askFailed(lang), isError: true)
-            await save()
-            return nil
-        }
+    private func ask(instruction: String, attachmentText: String, attachmentCount: Int) async -> CodeEditPlan? {
+        await sendCodeEdit(instruction: instruction, attachmentText: attachmentText)
+        return nil
     }
 
     func apply(_ plan: CodeEditPlan, selected: Set<String>) {
         guard let current = project else { return }
+        guard plan.sourceProject.map({ $0 == current }) ?? true,
+              plan.sourceProjectID.map({ $0 == openProjectID }) ?? true,
+              plan.sourceOwnerID.map({ $0 == session.identityID }) ?? true else {
+            toasts.show(lang == .arabic ? "تغيّر المشروع منذ تجهيز التعديلات. افتح مراجعة جديدة." : "The project changed after preparing these edits. Open a fresh review.", isError: true)
+            return
+        }
         var files = current.files
         undoFiles = files
 
@@ -788,7 +716,7 @@ final class CodeStore: JobObserver {
     /// context from the prompt and nothing else. The reader asked a question about their code; they
     /// did not ask for a report on GitHub's availability, and an answer with four of six files in
     /// front of it is worth more than an error.
-    private func repositoryContext(for request: String) async -> String {
+    func repositoryContext(for request: String) async -> String {
         guard let projectID = openProjectID, !projectID.isEmpty else { return "" }
         let github = CodeGitHubModel.shared
         guard let link = github.link(for: projectID), !link.repo.isEmpty, github.isConnected else {
@@ -974,6 +902,12 @@ final class CodeStore: JobObserver {
     /// The one exception is a request that turns out to be a question — that is answered inline,
     /// and this call does not return until it has been.
     func startBuild(projectID: String, name: String, brief: String, attach: String) async {
+        if thread.selection.model == .omnix {
+            let input = attach.isEmpty ? [] : [PreparedAttachment(name: "attachments.txt", kind: "text", text: attach)]
+            await sendCodeOmnix(instruction: brief, attachments: input)
+            return
+        }
+        guard !codeOmnix.active.contains(projectID) else { return }
         /* A QUESTION IS NOT A BUILD.
 
            The session composer sends the first message of an untouched session here, because an
@@ -1020,7 +954,8 @@ final class CodeStore: JobObserver {
             brief: String(brief.prefix(Self.taskCharacterCap)),
             attach: String(attach.prefix(Self.attachmentCharacterCap)),
             lang: lang.rawValue,
-            startedAt: Date().timeIntervalSince1970
+            startedAt: Date().timeIntervalSince1970,
+            selection: thread.selection
         )
         startingBuilds.insert(projectID)
         tickets[projectID] = ticket
@@ -1041,9 +976,9 @@ final class CodeStore: JobObserver {
         startingBuilds.remove(projectID)
         beginBuildDisplay(projectID: projectID, startedAt: Date(timeIntervalSince1970: ticket.startedAt))
 
-        liveBuilds[projectID] = Task { [weak self] in
-            await self?.runLiveBuild(ticket)
-        }
+        // New model selections execute on the server from admission onward. Internal
+        // foreground helpers must not silently substitute Ollama for the selected Pro model.
+        handOff(ticket)
     }
 
     /// Retry after a failed build: a new `cid`, the same brief.
@@ -1081,7 +1016,7 @@ final class CodeStore: JobObserver {
                     attach: ticket.attach,
                     uiLang: uiLang
                 ),
-                tier: .ultra
+                tier: ticket.selection?.model ?? .ultra, think: ticket.selection?.think ?? false
             )
             steps = Self.parsePlan(raw, kind: kind, brief: ticket.brief)
         } catch {
@@ -1181,7 +1116,7 @@ final class CodeStore: JobObserver {
 
         while true {
             let lengthAtStart = body.count
-            let stream = await api.chatStream(Self.streamRequest(messages: messages, tier: .ultra))
+            let stream = await api.chatStream(Self.streamRequest(messages: messages, tier: ticket.selection?.model ?? .ultra, think: ticket.selection?.think ?? false))
             for try await frame in stream {
                 try Task.checkCancellation()
                 if frame.isDone { break }
@@ -1365,6 +1300,12 @@ final class CodeStore: JobObserver {
         }
 
         guard session.identityID == ticket.ownerID else { return }
+        guard ticket.selection?.model != .omnix else {
+            await cache.deleteTicket(projectID: projectID)
+            tickets[projectID] = nil; pendingBuilds.remove(projectID)
+            toasts.show(OmnixCopy.unavailable(lang), isError: true)
+            return
+        }
 
         let checkpoint = await cache.load(id: projectID, ownerID: ticket.ownerID)
         guard session.identityID == ticket.ownerID else { return }
@@ -1699,7 +1640,26 @@ final class CodeStore: JobObserver {
 
     // MARK: - Persistence
 
-    private func push(project: CodeProject, thread: CodeChatThread, to id: String) async throws {
+    func push(project: CodeProject, thread: CodeChatThread, to id: String) async throws {
+        guard let owner = session.identityID else { throw APIError.cancelled }
+        let generation = codeOmnix.generation
+        let previous = codeWrites[id]
+        let write = Task { @MainActor [weak self] in
+            _ = try? await previous?.value
+            guard let self, !Task.isCancelled, self.session.identityID == owner, self.codeOmnix.generation == generation else { throw APIError.cancelled }
+            let latestProject = self.openProjectID == id ? self.project ?? project : await self.cache.load(id: id, ownerID: owner) ?? project
+            let latestThread = self.openProjectID == id ? self.thread : await self.cache.loadThread(id: id, ownerID: owner) ?? thread
+            guard !Task.isCancelled, self.session.identityID == owner, self.codeOmnix.generation == generation else { throw APIError.cancelled }
+            try await self.pushSnapshot(project: latestProject, thread: latestThread, to: id)
+        }
+        codeWrites[id] = write
+        try await write.value
+    }
+
+    private func pushSnapshot(project: CodeProject, thread: CodeChatThread, to id: String) async throws {
+        let owner = session.identityID
+        let saved = try await api.getChat(id: id)
+        guard session.identityID == owner, saved.id == id else { throw APIError.cancelled }
         var messages: [PersistedMessage] = [
             PersistedMessage(
                 role: ChatRole.assistant.rawValue,
@@ -1709,7 +1669,7 @@ final class CodeStore: JobObserver {
             )
         ]
         // Never before `messages[0]` exists (`web-code-ux.md §1.3`).
-        if !thread.messages.isEmpty {
+        if !thread.messages.isEmpty || thread.selection != CodeModelSelection() {
             messages.append(
                 PersistedMessage(
                     role: ChatRole.assistant.rawValue,
@@ -1719,6 +1679,9 @@ final class CodeStore: JobObserver {
                 )
             )
         }
+        messages.append(contentsOf: saved.messages.filter {
+            $0.role == .assistant && $0.content.hasPrefix("```firas-code-edit\n")
+        }.map(MessageSerializer.persisted))
         try await api.updateChat(
             id: id,
             UpdateChatRequest(title: String(project.name.prefix(Self.nameCharacterCap)), messages: messages)
@@ -1813,7 +1776,7 @@ final class CodeStore: JobObserver {
         if messages.count > CodeChatThread.maximumTurns {
             messages.removeFirst(messages.count - CodeChatThread.maximumTurns)
         }
-        thread = CodeChatThread(messages: messages)
+        thread.messages = messages
     }
 
     /// One assistant turn about the build, in the project's own conversation, and the conversation

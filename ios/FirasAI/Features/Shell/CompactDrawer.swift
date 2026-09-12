@@ -1,4 +1,4 @@
-import Observation
+import Perception
 import SwiftUI
 import UIKit
 
@@ -15,7 +15,7 @@ import UIKit
 /// each of them, and the shell cannot wrap call sites it does not own. Here the drawer notices the
 /// change and animates itself.
 @MainActor
-@Observable
+@Perceptible
 final class DrawerMotion {
 
     static let shared = DrawerMotion()
@@ -88,19 +88,23 @@ struct CompactDrawer: View {
     private var motionOn: Bool { FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion) }
 
     var body: some View {
-        GeometryReader { proxy in
-            let measured = Self.panelWidth(for: proxy.size.width)
+        WithPerceptionTracking {
+            GeometryReader { proxy in
+                WithPerceptionTracking {
+                    let measured = Self.panelWidth(for: proxy.size.width)
 
-            ZStack(alignment: .leading) {
-                scrim
-                panel
-                edgeSwipe
+                    ZStack(alignment: .leading) {
+                        scrim
+                        panel
+                        edgeSwipe
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .onAppear { adopt(width: measured) }
+                    .firasOnChange(of: measured) { _, newValue in motion.panelWidth = newValue }
+                    .firasOnChange(of: isOpen) { _, open in animate(to: open) }
+                    .onDisappear { dragOrigin = nil }
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .onAppear { adopt(width: measured) }
-            .onChange(of: measured) { _, newValue in motion.panelWidth = newValue }
-            .onChange(of: isOpen) { _, open in animate(to: open) }
-            .onDisappear { dragOrigin = nil }
         }
     }
 

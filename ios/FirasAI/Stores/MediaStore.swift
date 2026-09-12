@@ -1,7 +1,6 @@
 import Foundation
 import CryptoKit
-import Observation
-
+import Perception
 /// Everything the Studio knows: what has been made, what is being made, and what the day's
 /// allowance looks like.
 ///
@@ -15,7 +14,7 @@ import Observation
 /// The store never polls. It hands the job to `JobManager` and is called back on the main actor
 /// when the render is terminal — which is why closing the app mid-render loses nothing.
 @MainActor
-@Observable
+@Perceptible
 final class MediaStore: JobObserver {
 
     // MARK: - Published state
@@ -37,7 +36,7 @@ final class MediaStore: JobObserver {
 
     private(set) var isReloading = false
     private(set) var isSubmitting = false
-    @ObservationIgnored private var submittingOwner: String?
+    @PerceptionIgnored private var submittingOwner: String?
 
     /// The last refusal, already localized, for the create form's inline plate.
     private(set) var lastFailureText: String?
@@ -66,24 +65,24 @@ final class MediaStore: JobObserver {
     let router: Router
     let assets: MediaAssetRepository
 
-    @ObservationIgnored private var downloading: Set<String> = []
+    @PerceptionIgnored private var downloading: Set<String> = []
     /* THE FETCH ITSELF, not merely a flag that one is running. A second caller for the same
        bytes awaits this task; before it existed, `localURL` answered `nil` — the same `nil` it
        returns for a real failure — and the card drew a download error over a picture that was
        on its way. Keyed by creation id, cleared when the task settles. */
-    @ObservationIgnored private var inFlight: [String: Task<URL?, Never>] = [:]
-    @ObservationIgnored private var indexLoaded = false
-    @ObservationIgnored private var loadedIndexOwner: String?
-    @ObservationIgnored private var reloadingOwner: String?
-    @ObservationIgnored private var visibleOwner: String?
+    @PerceptionIgnored private var inFlight: [String: Task<URL?, Never>] = [:]
+    @PerceptionIgnored private var indexLoaded = false
+    @PerceptionIgnored private var loadedIndexOwner: String?
+    @PerceptionIgnored private var reloadingOwner: String?
+    @PerceptionIgnored private var visibleOwner: String?
 
     /// Armed once; re-armed from its own callback for as long as the app lives.
-    @ObservationIgnored private var observingConversations = false
+    @PerceptionIgnored private var observingConversations = false
     /// How many messages of each loaded transcript have already been read for fences. A live answer
     /// rewrites its last row thousands of times, and re-reading a whole transcript on each of those
     /// is the difference between this being free and this being a stutter.
-    @ObservationIgnored private var scannedMessageCounts: [String: Int] = [:]
-    @ObservationIgnored private var adoptionScheduled = false
+    @PerceptionIgnored private var scannedMessageCounts: [String: Int] = [:]
+    @PerceptionIgnored private var adoptionScheduled = false
 
     /* NOT INSIDE `media/`. The index used to live in the very folder `MediaAssetRepository` keeps
        the renders in, which made it an asset as far as that folder is concerned: the newest-200
@@ -286,7 +285,7 @@ final class MediaStore: JobObserver {
 
     private func armConversationObservation() {
         let transcripts = self.chat
-        withObservationTracking {
+        withPerceptionTracking {
             _ = transcripts.conversations
         } onChange: { [weak self] in
             Task { @MainActor in

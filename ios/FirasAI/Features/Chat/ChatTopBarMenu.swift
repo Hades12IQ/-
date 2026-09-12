@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The «…» that sits beside New chat once a conversation has a turn in it.
 ///
@@ -47,24 +48,26 @@ struct ChatTopBarMenu: View {
     }
 
     var body: some View {
-        let lang = env.prefs.lang
+        WithPerceptionTracking(content: {
+            let lang = env.prefs.lang
 
-        return Menu {
-            items
-        } label: {
-            Image(systemName: "ellipsis")
-        }
-        .menuOrder(.fixed)
-        .accessibilityLabel(Text(Strings.Chat.conversationActions(lang)))
-        .alert(Strings.Common.rename(lang), isPresented: $isRenaming) {
-            TextField(Strings.Shell.renamePrompt(lang), text: $renameDraft)
-            Button(Strings.Common.cancel(lang), role: .cancel) {
-                renameDraft = ""
+            return Menu {
+                items
+            } label: {
+                Image(systemName: "ellipsis")
             }
-            Button(Strings.Common.save(lang)) {
-                commitRename()
+            .menuOrder(.fixed)
+            .accessibilityLabel(Text(Strings.Chat.conversationActions(lang)))
+            .alert(Strings.Common.rename(lang), isPresented: $isRenaming) {
+                TextField(Strings.Shell.renamePrompt(lang), text: $renameDraft)
+                Button(Strings.Common.cancel(lang), role: .cancel) {
+                    renameDraft = ""
+                }
+                Button(Strings.Common.save(lang)) {
+                    commitRename()
+                }
             }
-        }
+        }())
     }
 
     // MARK: - Items

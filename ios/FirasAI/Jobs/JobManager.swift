@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Perception
 import OSLog
 import UIKit
 
@@ -29,7 +29,7 @@ protocol JobObserver: AnyObject {
 /// the ones nobody meets in development: `unknown`, a malformed record, a 403 from another
 /// account's job on a shared device.
 @MainActor
-@Observable
+@Perceptible
 final class JobManager: JobWatcherDelegate {
 
     private(set) var pointers: [JobPointer] = []
@@ -44,14 +44,14 @@ final class JobManager: JobWatcherDelegate {
     private let network: NetworkMonitor
     private let store: JobPointerStore
 
-    @ObservationIgnored private var watchers: [String: JobWatcher] = [:]
-    @ObservationIgnored private var observers: [JobKind: [ObserverBox]] = [:]
-    @ObservationIgnored private var delivering: Set<String> = []
-    @ObservationIgnored private var activeOwner: String?
-    @ObservationIgnored private var isBackground = false
-    @ObservationIgnored private var didLoadPointers = false
-    @ObservationIgnored private var networkTask: Task<Void, Never>?
-    @ObservationIgnored private var returnRead: Task<Void, Never>?
+    @PerceptionIgnored private var watchers: [String: JobWatcher] = [:]
+    @PerceptionIgnored private var observers: [JobKind: [ObserverBox]] = [:]
+    @PerceptionIgnored private var delivering: Set<String> = []
+    @PerceptionIgnored private var activeOwner: String?
+    @PerceptionIgnored private var isBackground = false
+    @PerceptionIgnored private var didLoadPointers = false
+    @PerceptionIgnored private var networkTask: Task<Void, Never>?
+    @PerceptionIgnored private var returnRead: Task<Void, Never>?
 
     /// How long the one-shot read on returning to the foreground may take before it is abandoned.
     /// It is a courtesy, not the mechanism: the watchers keep their own cadence either way.

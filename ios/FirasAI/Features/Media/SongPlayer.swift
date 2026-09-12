@@ -1,5 +1,5 @@
 import AVFoundation
-import Observation
+import Perception
 import SwiftUI
 
 /// One song at a time, on the right audio session.
@@ -10,7 +10,7 @@ import SwiftUI
 /// `AudioSessionArbiter` — the only object in the app allowed to touch `AVAudioSession` — stops the
 /// read-aloud voice before it starts, and gets out of the way when a call takes the session.
 @MainActor
-@Observable
+@Perceptible
 final class SongPlayer {
 
     static let shared = SongPlayer()
@@ -25,7 +25,7 @@ final class SongPlayer {
     /// Set when a call starts. A live call outranks a song, so the song ends rather than ducks.
     ///
     /// Computed over an ignored stored flag rather than a stored property with a `didSet`: the
-    /// `@Observable` macro rewrites every eligible stored property into a computed one, and a
+    /// `@Perceptible` macro rewrites every eligible stored property into a computed one, and a
     /// property observer cannot survive that rewrite (same pattern as `TTSPlayer.callActive` and
     /// `PreferencesStore`).
     var callActive: Bool {
@@ -36,12 +36,12 @@ final class SongPlayer {
         }
     }
 
-    @ObservationIgnored private var storedCallActive = false
+    @PerceptionIgnored private var storedCallActive = false
 
-    @ObservationIgnored private var player: AVPlayer?
-    @ObservationIgnored private var timeObserver: Any?
-    @ObservationIgnored private var endObserver: NSObjectProtocol?
-    @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
+    @PerceptionIgnored private var player: AVPlayer?
+    @PerceptionIgnored private var timeObserver: Any?
+    @PerceptionIgnored private var endObserver: NSObjectProtocol?
+    @PerceptionIgnored private var interruptionObserver: NSObjectProtocol?
 
     private init() {
         observeInterruptions()
@@ -214,11 +214,13 @@ struct SongPlayerBar: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            transportButton
-            VStack(spacing: 4) {
-                slider
-                times
+        WithPerceptionTracking {
+            HStack(spacing: 12) {
+                transportButton
+                VStack(spacing: 4) {
+                    slider
+                    times
+                }
             }
         }
     }

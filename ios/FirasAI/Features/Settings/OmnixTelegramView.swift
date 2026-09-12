@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 @MainActor
@@ -23,53 +24,57 @@ struct OmnixTelegramView: View {
     }
 
     var body: some View {
-        SettingsPageBody(palette: palette) {
-            Text(ar ? "استخدم أومنكس من بوتك الخاص في تيليغرام، بنفس حسابك ومساحة العمل السحابية." : "Use Omnix from your private Telegram bot, with the same account and cloud workspace.")
-                .font(.subheadline).foregroundStyle(palette.textSecondary)
-            if accountKey == nil {
-                SettingsNoticeBanner(text: ar ? "سجّل الدخول لربط بوت خاص بحسابك." : "Sign in to link your private bot.", kind: .info, palette: palette)
-                SettingsSubmitButton(title: ar ? "تسجيل الدخول" : "Sign in", palette: palette) { env.router.showSignUp(feature: .generic) }
-            } else if ownsState {
-                statusPanel
-                if let notice = model.notice {
-                    SettingsNoticeBanner(text: notice, kind: .error, palette: palette)
-                }
-                if model.status?.mayConfigure == true { configurationPanel }
-                if model.status?.state == .pairing { pairingPanel }
-                if model.status?.state == .connected { connectedPanel }
-                if model.status?.state.canDisconnect == true {
-                    SettingsSubmitButton(title: ar ? "إزالة الربط" : "Remove connection", symbol: "link.badge.plus", palette: palette,
-                                         prominent: false, destructive: true, isDisabled: model.busy) { confirmDisconnect = true }
-                }
-            } else { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
-            instructionsPanel
-        }
-        .foregroundStyle(palette.textPrimary)
-        .tint(palette.accent)
-        .task(id: accountKey) {
-            botToken = ""; telegramID = ""; confirmDisconnect = false
-            model.activate()
-            await model.refresh(lang: lang)
-            while !Task.isCancelled && accountKey != nil {
-                do { try await Task.sleep(for: .seconds(5)) } catch { return }
-                model.expirePairing()
-                if scenePhase == .active && model.status?.state.awaitingChange == true { await model.refresh(lang: lang) }
+        WithPerceptionTracking {
+            SettingsPageBody(palette: palette) {
+                Text(ar ? "استخدم أومنكس من بوتك الخاص في تيليغرام، بنفس حسابك ومساحة العمل السحابية." : "Use Omnix from your private Telegram bot, with the same account and cloud workspace.")
+                    .font(.subheadline).foregroundStyle(palette.textSecondary)
+                if accountKey == nil {
+                    SettingsNoticeBanner(text: ar ? "سجّل الدخول لربط بوت خاص بحسابك." : "Sign in to link your private bot.", kind: .info, palette: palette)
+                    SettingsSubmitButton(title: ar ? "تسجيل الدخول" : "Sign in", palette: palette) { env.router.showSignUp(feature: .generic) }
+                } else if ownsState {
+                    statusPanel
+                    if let notice = model.notice {
+                        SettingsNoticeBanner(text: notice, kind: .error, palette: palette)
+                    }
+                    if model.status?.mayConfigure == true { configurationPanel }
+                    if model.status?.state == .pairing { pairingPanel }
+                    if model.status?.state == .connected { connectedPanel }
+                    if model.status?.state.canDisconnect == true {
+                        SettingsSubmitButton(title: ar ? "إزالة الربط" : "Remove connection", symbol: "link.badge.plus", palette: palette,
+                                             prominent: false, destructive: true, isDisabled: model.busy) { confirmDisconnect = true }
+                    }
+                } else { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
+                instructionsPanel
             }
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await model.refresh(lang: lang) } }
-            else { botToken = "" }
-        }
-        .onDisappear { botToken = ""; telegramID = ""; model.deactivate() }
-        .sheet(isPresented: $showAccess) { OmnixAccessView(env: env) }
-        .confirmationDialog(ar ? "إزالة ربط تيليغرام؟" : "Remove Telegram connection?", isPresented: $confirmDisconnect, titleVisibility: .visible) {
-            Button(ar ? "إزالة الربط" : "Remove connection", role: .destructive) {
-                botToken = ""; telegramID = ""
-                Task { await model.disconnect(lang: lang) }
+            .foregroundStyle(palette.textPrimary)
+            .tint(palette.accent)
+            .task(id: accountKey) {
+                botToken = ""; telegramID = ""; confirmDisconnect = false
+                model.activate()
+                await model.refresh(lang: lang)
+                while !Task.isCancelled && accountKey != nil {
+                do { try await Task.sleep(nanoseconds: 5_000_000_000) } catch { return }
+                    model.expirePairing()
+                    if scenePhase == .active && model.status?.state.awaitingChange == true { await model.refresh(lang: lang) }
+                }
             }
-            Button(Strings.Common.cancel(lang), role: .cancel) {}
-        } message: {
-            Text(ar ? "تُحذف بيانات الربط والرمز والطابور وسجلات التسليم من فراس، ويُطلب إيقاف مهامه الجارية. تبقى ملفات حسابك وذاكرته ومحادثاته. لا يُحذف البوت أو الرسائل التي وصلت إلى تيليغرام. انتظر تأكيد الإزالة قبل ربط بوت آخر." : "Firas erases the connection, token, queue and delivery records, and requests that running tasks stop. Account files, memory and conversations remain. The bot and messages already delivered to Telegram are not deleted. Wait for confirmed removal before linking another bot.")
+            .firasOnChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await model.refresh(lang: lang) } }
+                else { botToken = "" }
+            }
+            .onDisappear { botToken = ""; telegramID = ""; model.deactivate() }
+            .sheet(isPresented: $showAccess) { WithPerceptionTracking {
+                OmnixAccessView(env: env)
+            } }
+            .confirmationDialog(ar ? "إزالة ربط تيليغرام؟" : "Remove Telegram connection?", isPresented: $confirmDisconnect, titleVisibility: .visible) {
+                Button(ar ? "إزالة الربط" : "Remove connection", role: .destructive) {
+                    botToken = ""; telegramID = ""
+                    Task { await model.disconnect(lang: lang) }
+                }
+                Button(Strings.Common.cancel(lang), role: .cancel) {}
+            } message: {
+                Text(ar ? "تُحذف بيانات الربط والرمز والطابور وسجلات التسليم من فراس، ويُطلب إيقاف مهامه الجارية. تبقى ملفات حسابك وذاكرته ومحادثاته. لا يُحذف البوت أو الرسائل التي وصلت إلى تيليغرام. انتظر تأكيد الإزالة قبل ربط بوت آخر." : "Firas erases the connection, token, queue and delivery records, and requests that running tasks stop. Account files, memory and conversations remain. The bot and messages already delivered to Telegram are not deleted. Wait for confirmed removal before linking another bot.")
+            }
         }
     }
 
@@ -83,7 +88,7 @@ struct OmnixTelegramView: View {
                 }
                 Text(statusDetail).font(.subheadline).foregroundStyle(palette.textSecondary)
                 if let name = model.status?.bot?.username {
-                    Text("@" + name).font(.subheadline.monospaced()).environment(\.layoutDirection, .leftToRight)
+                    Text("@" + name).font(.system(.subheadline, design: .monospaced)).environment(\.layoutDirection, .leftToRight)
                 }
                 if let id = model.status?.telegramUserId {
                     Text((ar ? "معرّفك: " : "Your ID: ") + String(id)).font(.footnote).foregroundStyle(palette.textMuted).privacySensitive()
@@ -102,16 +107,16 @@ struct OmnixTelegramView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text(ar ? "رمز البوت من BotFather" : "Bot token from BotFather").font(.subheadline.weight(.medium))
                 SecureField(ar ? "الصق رمز البوت" : "Paste bot token", text: $botToken)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled().textContentType(nil)
-                    .font(.body.monospaced()).environment(\.layoutDirection, .leftToRight)
+                    .textInputAutocapitalization(.never).disableAutocorrection().textContentType(nil)
+                    .font(.system(.body, design: .monospaced)).environment(\.layoutDirection, .leftToRight)
                     .padding(12).background(palette.background, in: RoundedRectangle(cornerRadius: 12)).privacySensitive()
-                    .onChange(of: botToken) { _, value in if value.count > 225 { botToken = String(value.prefix(225)) } }
+                    .firasOnChange(of: botToken) { _, value in if value.count > 225 { botToken = String(value.prefix(225)) } }
                 Text(ar ? "معرّف حسابك الشخصي في تيليغرام" : "Your personal Telegram user ID").font(.subheadline.weight(.medium))
                 TextField(ar ? "المعرّف الرقمي" : "Numeric user ID", text: $telegramID)
-                    .keyboardType(.numberPad).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .keyboardType(.numberPad).textInputAutocapitalization(.never).disableAutocorrection()
                     .environment(\.layoutDirection, .leftToRight).padding(12)
                     .background(palette.background, in: RoundedRectangle(cornerRadius: 12)).privacySensitive()
-                    .onChange(of: telegramID) { _, value in if value.count > 16 { telegramID = String(value.prefix(16)) } }
+                    .firasOnChange(of: telegramID) { _, value in if value.count > 16 { telegramID = String(value.prefix(16)) } }
                 Text(ar ? "ليس رقم الهاتف أو اسم المستخدم أو معرّف البوت. يُقبل الربط من هذا الحساب الشخصي فقط." : "This is not your phone number, username or bot ID. Only this personal account can complete pairing.")
                     .font(.footnote).foregroundStyle(palette.textMuted)
                 SettingsSubmitButton(title: ar ? "ربط تيليغرام" : "Link Telegram", symbol: "paperplane", palette: palette,
@@ -138,7 +143,7 @@ struct OmnixTelegramView: View {
                 if let pairing = model.pairing, let command = pairing.command(owner: accountKey, status: model.status) {
                     Text(ar ? "افتح البوت واضغط Start من حساب المعرّف الذي أدخلته، أو أرسل هذا الأمر في محادثته الخاصة." : "Open the bot and tap Start from the account whose ID you entered, or send this command in its private chat.")
                         .font(.subheadline)
-                    Text(command).font(.footnote.monospaced()).environment(\.layoutDirection, .leftToRight)
+                    Text(command).font(.system(.footnote, design: .monospaced)).environment(\.layoutDirection, .leftToRight)
                         .padding(10).frame(maxWidth: .infinity, alignment: .leading).background(palette.background, in: RoundedRectangle(cornerRadius: 10)).privacySensitive()
                     Text(ar ? "رمز مؤقت، لا تشاركه. يختفي عند مغادرة هذه الصفحة." : "Temporary code. Do not share it. It disappears when you leave this page.")
                         .font(.footnote).foregroundStyle(palette.textMuted)

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// One conversation's worth of creations, as a sticky-header section.
@@ -54,29 +55,35 @@ struct MediaLibraryGrid: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 18, pinnedViews: [.sectionHeaders]) {
-                filterRow
-                if env.media.isReloading && items.isEmpty {
-                    SkeletonView(kind: .tiles, palette: palette, motionOn: motionOn)
-                        .padding(.horizontal, 16)
-                } else if items.isEmpty {
-                    emptyState
-                } else {
-                    ForEach(groups) { group in
-                        Section {
-                            grid(group.items)
-                        } header: {
-                            header(for: group)
+        WithPerceptionTracking {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 18, pinnedViews: [.sectionHeaders]) {
+                    WithPerceptionTracking {
+                        filterRow
+                        if env.media.isReloading && items.isEmpty {
+                            SkeletonView(kind: .tiles, palette: palette, motionOn: motionOn)
+                                .padding(.horizontal, 16)
+                        } else if items.isEmpty {
+                            emptyState
+                        } else {
+                            ForEach(groups) { group in
+                                WithPerceptionTracking {
+                                    Section {
+                                        grid(group.items)
+                                    } header: {
+                                        header(for: group)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+                .padding(.vertical, 12)
             }
-            .padding(.vertical, 12)
+            .background(palette.background)
+            .refreshable { await env.media.reload() }
+            .task { await env.media.reload() }
         }
-        .background(palette.background)
-        .refreshable { await env.media.reload() }
-        .task { await env.media.reload() }
     }
 
     // MARK: - Pieces
@@ -94,14 +101,16 @@ struct MediaLibraryGrid: View {
                     filter = nil
                 }
                 ForEach(MediaKind.allCases) { kind in
-                    FirasPill(
-                        text: Strings.Media.kindLabel(kind)(lang),
-                        symbol: Self.symbol(kind),
-                        selected: filter == kind,
-                        palette: palette
-                    ) {
-                        Haptics.select()
-                        filter = (filter == kind) ? nil : kind
+                    WithPerceptionTracking {
+                        FirasPill(
+                            text: Strings.Media.kindLabel(kind)(lang),
+                            symbol: Self.symbol(kind),
+                            selected: filter == kind,
+                            palette: palette
+                        ) {
+                            Haptics.select()
+                            filter = (filter == kind) ? nil : kind
+                        }
                     }
                 }
             }
@@ -147,8 +156,12 @@ struct MediaLibraryGrid: View {
             ),
             spacing: 8
         ) {
-            ForEach(items) { item in
-                MediaTile(env: env, creation: item)
+            WithPerceptionTracking {
+                ForEach(items) { item in
+                    WithPerceptionTracking {
+                        MediaTile(env: env, creation: item)
+                    }
+                }
             }
         }
         .padding(.horizontal, 16)
@@ -181,25 +194,29 @@ struct MediaTile: View {
     private var motionOn: Bool { env.prefs.motionEnabled }
 
     var body: some View {
-        Button {
-            // A tile that is still rendering has nothing to show full screen yet, and a failed or
-            // expired one has no cache key at all. The viewer pages only over creations that carry
-            // a key, so opening a keyless one selects nothing and the pager falls back to the
-            // newest item — the reader taps a failure and lands on somebody else's picture. Both
-            // cases stop here; the long press still works, which is where regenerate and remove
-            // live.
-            guard !creation.phase.isLive, !creation.meta.key.isEmpty else { return }
-            Haptics.select()
-            env.router.cover = .mediaViewer(creationID: creation.id)
-        } label: {
-            tile
+        WithPerceptionTracking {
+            Button {
+                // A tile that is still rendering has nothing to show full screen yet, and a failed or
+                // expired one has no cache key at all. The viewer pages only over creations that carry
+                // a key, so opening a keyless one selects nothing and the pager falls back to the
+                // newest item — the reader taps a failure and lands on somebody else's picture. Both
+                // cases stop here; the long press still works, which is where regenerate and remove
+                // live.
+                guard !creation.phase.isLive, !creation.meta.key.isEmpty else { return }
+                Haptics.select()
+                env.router.cover = .mediaViewer(creationID: creation.id)
+            } label: {
+                tile
+            }
+            .buttonStyle(.plain)
+            .contextMenu { WithPerceptionTracking {
+                menu
+            } }
+            .accessibilityLabel(Text(Strings.Media.tileLabel(creation.kind).fmt(lang, String(creation.meta.prompt.prefix(120)))))
+            // Keyed on the local filename so the tile paints as soon as the bytes land, not only when
+            // the row is first built.
+            .task(id: creation.localFilename ?? creation.id) { await loadThumbnail() }
         }
-        .buttonStyle(.plain)
-        .contextMenu { menu }
-        .accessibilityLabel(Text(Strings.Media.tileLabel(creation.kind).fmt(lang, String(creation.meta.prompt.prefix(120)))))
-        // Keyed on the local filename so the tile paints as soon as the bytes land, not only when
-        // the row is first built.
-        .task(id: creation.localFilename ?? creation.id) { await loadThumbnail() }
     }
 
     private var tile: some View {

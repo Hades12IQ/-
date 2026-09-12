@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The four quick commands (`web-chat-ux.md §7.1` and the Appendix A prompt bodies).
 ///
@@ -79,30 +80,34 @@ struct SlashMenu: View {
     static var commands: [SlashCommand] { SlashCommand.allCases }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(Strings.Composer.slashTitle(lang))
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(palette.textMuted)
-                .padding(.horizontal, 14)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(Strings.Composer.slashTitle(lang))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(palette.textMuted)
+                    .padding(.horizontal, 14)
+                    .padding(.top, 10)
+                    .padding(.bottom, 6)
 
-            ForEach(Array(Self.commands.enumerated()), id: \.element.id) { index, command in
-                row(command, highlighted: index == selection)
-                if command != Self.commands.last {
-                    Divider().overlay(palette.border)
+                ForEach(Array(Self.commands.enumerated()), id: \.element.id) { index, command in
+                    WithPerceptionTracking {
+                        row(command, highlighted: index == selection)
+                        if command != Self.commands.last {
+                            Divider().overlay(palette.border)
+                        }
+                    }
                 }
             }
+            .padding(.bottom, 6)
+            .frame(maxWidth: 360)
+            .firasGlass(
+                .sheet,
+                palette: palette,
+                in: FirasAnyShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            )
+            .shadow(color: palette.glassShadow, radius: 18, y: 6)
+            .accessibilityLabel(Text(Strings.Composer.slashTitle(lang)))
         }
-        .padding(.bottom, 6)
-        .frame(maxWidth: 360)
-        .firasGlass(
-            .sheet,
-            palette: palette,
-            in: AnyShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        )
-        .shadow(color: palette.glassShadow, radius: 18, y: 6)
-        .accessibilityLabel(Text(Strings.Composer.slashTitle(lang)))
     }
 
     private func row(_ command: SlashCommand, highlighted: Bool) -> some View {

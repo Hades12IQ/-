@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 import WebKit
 
@@ -49,15 +50,21 @@ struct CodeViewerSheet: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .navigationTitle(Text(navigationTitleText))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { toolbarContent }
+        WithPerceptionTracking {
+            FirasNavigationStack {
+                WithPerceptionTracking {
+                    content
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .navigationTitle(Text(navigationTitleText))
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar { WithPerceptionTracking {
+                            toolbarContent
+                        } }
+                }
+            }
+            .firasSheetBackground(palette)
+            .onAppear { resolve() }
         }
-        .firasSheetBackground(palette)
-        .onAppear { resolve() }
     }
 
     private var palette: FirasPalette { env.prefs.palette }
@@ -70,7 +77,7 @@ struct CodeViewerSheet: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
+        ToolbarItem(placement: .navigationBarLeading) {
             Button {
                 dismiss()
             } label: {
@@ -78,7 +85,7 @@ struct CodeViewerSheet: View {
             }
             .foregroundStyle(palette.accent)
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .navigationBarTrailing) {
             if let artifact {
                 Button {
                     copy(artifact.code)

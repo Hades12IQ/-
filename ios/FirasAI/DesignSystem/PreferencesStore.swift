@@ -1,17 +1,16 @@
 import Foundation
-import Observation
-
+import Perception
 /// Every device preference, backed by `UserDefaults`. The keys are the ones the Codex build already
 /// wrote, so an existing install keeps its theme, language and tier across the rewrite.
 ///
-/// Each preference is a hand-written computed property over `@ObservationIgnored` storage rather
-/// than a stored property with a `didSet`: the `@Observable` macro turns every eligible stored
+/// Each preference is a hand-written computed property over `@PerceptionIgnored` storage rather
+/// than a stored property with a `didSet`: the `@Perceptible` macro turns every eligible stored
 /// property into a computed one, and a property observer cannot coexist with the getter the macro
 /// installs. `access(keyPath:)` / `withMutation(keyPath:)` are the macro's own entry points, so
 /// observation behaves exactly as it would for a plain stored property, and the write to
 /// `UserDefaults` happens on the same turn as the mutation.
 @MainActor
-@Observable
+@Perceptible
 final class PreferencesStore {
 
     // MARK: - Appearance
@@ -189,27 +188,27 @@ final class PreferencesStore {
 
     // MARK: - Storage
 
-    @ObservationIgnored private let defaults: UserDefaults
+    @PerceptionIgnored private let defaults: UserDefaults
 
-    @ObservationIgnored private var storedTheme: FirasTheme
-    @ObservationIgnored private var storedLanguage: AppLanguage
-    @ObservationIgnored private var storedFontScale: FontScale
-    @ObservationIgnored private var storedContentWidth: ContentWidth
-    @ObservationIgnored private var storedMotionPreference: MotionPreference
-    @ObservationIgnored private var storedTier: ModelTier
-    @ObservationIgnored private var storedResponseMode: ResponseMode
-    @ObservationIgnored private var storedWebSearchEnabled: Bool
-    @ObservationIgnored private var storedThinkingEnabled: Bool
-    @ObservationIgnored private var storedSendOnReturn: Bool
-    @ObservationIgnored private var storedSharpenImages: Bool
-    @ObservationIgnored private var storedCallVoice: CallVoice
-    @ObservationIgnored private var storedBargeInEnabled: Bool
-    @ObservationIgnored private var storedDictationDialect: DictationDialect
-    @ObservationIgnored private var storedUISoundsEnabled: Bool
-    @ObservationIgnored private var storedGuestActive: Bool
-    @ObservationIgnored private var storedConsentAccepted: Bool
-    @ObservationIgnored private var storedNotificationsExplained: Bool
-    @ObservationIgnored private var storedLastSeenAnnouncementAt: Double
+    @PerceptionIgnored private var storedTheme: FirasTheme
+    @PerceptionIgnored private var storedLanguage: AppLanguage
+    @PerceptionIgnored private var storedFontScale: FontScale
+    @PerceptionIgnored private var storedContentWidth: ContentWidth
+    @PerceptionIgnored private var storedMotionPreference: MotionPreference
+    @PerceptionIgnored private var storedTier: ModelTier
+    @PerceptionIgnored private var storedResponseMode: ResponseMode
+    @PerceptionIgnored private var storedWebSearchEnabled: Bool
+    @PerceptionIgnored private var storedThinkingEnabled: Bool
+    @PerceptionIgnored private var storedSendOnReturn: Bool
+    @PerceptionIgnored private var storedSharpenImages: Bool
+    @PerceptionIgnored private var storedCallVoice: CallVoice
+    @PerceptionIgnored private var storedBargeInEnabled: Bool
+    @PerceptionIgnored private var storedDictationDialect: DictationDialect
+    @PerceptionIgnored private var storedUISoundsEnabled: Bool
+    @PerceptionIgnored private var storedGuestActive: Bool
+    @PerceptionIgnored private var storedConsentAccepted: Bool
+    @PerceptionIgnored private var storedNotificationsExplained: Bool
+    @PerceptionIgnored private var storedLastSeenAnnouncementAt: Double
 
     // MARK: - Lifecycle
 

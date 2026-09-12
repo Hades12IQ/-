@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The model sheet reached from the principal `TierPill`.
 ///
@@ -32,44 +33,52 @@ struct TierPickerSheet: View {
     }
 
     var body: some View {
-        let palette = prefs.palette
-        let lang = prefs.lang
-        let motionOn = FirasMotion.isOn(prefs: prefs, reduceMotion: reduceMotion)
+        WithPerceptionTracking(content: {
+            let palette = prefs.palette
+            let lang = prefs.lang
+            let motionOn = FirasMotion.isOn(prefs: prefs, reduceMotion: reduceMotion)
 
-        return NavigationStack {
-            ScrollView {
-                VStack(spacing: 18) {
-                    tierCard(palette: palette, lang: lang, motionOn: motionOn)
-                    thinkCard(palette: palette, lang: lang)
-                    styleCard(palette: palette, lang: lang)
+            return FirasNavigationStack {
+                WithPerceptionTracking {
+                    ScrollView {
+                        VStack(spacing: 18) {
+                            tierCard(palette: palette, lang: lang, motionOn: motionOn)
+                            thinkCard(palette: palette, lang: lang)
+                            styleCard(palette: palette, lang: lang)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .opacity(appeared ? 1 : 0)
+                        .offset(y: appeared ? 0 : 10)
+                    }
+                    .firasScrollBounceBehavior(.basedOnSize)
+                    .navigationTitle(Text(Strings.Chat.modelSheetTitle(lang)))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        WithPerceptionTracking {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button(Strings.Common.done(lang)) { dismiss() }
+                            }
+                        }
+                    }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .opacity(appeared ? 1 : 0)
-                .offset(y: appeared ? 0 : 10)
             }
-            .scrollBounceBehavior(.basedOnSize)
-            .navigationTitle(Text(Strings.Chat.modelSheetTitle(lang)))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(Strings.Common.done(lang)) { dismiss() }
+            .firasSheetBackground(palette)
+            .firasPresentationDetents([.medium, .large])
+            .firasPresentationDragIndicator(.visible)
+            .onAppear { reveal(motionOn: motionOn) }
+            .sheet(isPresented: $showOmnixAccess) {
+                WithPerceptionTracking {
+                    if let env { OmnixAccessView(env: env) }
                 }
             }
-        }
-        .firasSheetBackground(palette)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .onAppear { reveal(motionOn: motionOn) }
-        .sheet(isPresented: $showOmnixAccess) {
-            if let env { OmnixAccessView(env: env) }
-        }
+        }())
     }
 
     private func reveal(motionOn: Bool) {
         guard !appeared else { return }
         if motionOn {
-            withAnimation(.snappy(duration: 0.42, extraBounce: 0.035)) { appeared = true }
+            withAnimation(.firasSnappy(duration: 0.42, extraBounce: 0.035)) { appeared = true }
         } else {
             withAnimation(FirasMotion.fade) { appeared = true }
         }
@@ -81,10 +90,12 @@ struct TierPickerSheet: View {
         SurfaceCard(palette: palette) {
             VStack(spacing: 0) {
                 ForEach(ModelTier.allCases.filter { product == .ai || $0 != .omnix }) { tier in
-                    if tier != ModelTier.mini {
-                        Rectangle().fill(palette.border).frame(height: 1).padding(.leading, 46)
+                    WithPerceptionTracking {
+                        if tier != ModelTier.mini {
+                            Rectangle().fill(palette.border).frame(height: 1).padding(.leading, 46)
+                        }
+                        tierRow(tier, palette: palette, lang: lang, motionOn: motionOn)
                     }
-                    tierRow(tier, palette: palette, lang: lang, motionOn: motionOn)
                 }
             }
         }
@@ -182,11 +193,10 @@ struct TierPickerSheet: View {
     // MARK: - Think
 
     private func thinkCard(palette: FirasPalette, lang: AppLanguage) -> some View {
-        @Bindable var bindable = prefs
         return Group {
             if prefs.tier.showThinking {
                 SurfaceCard(palette: palette) {
-                    Toggle(isOn: $bindable.thinkingEnabled) {
+                    Toggle(isOn: thinkingBinding) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(Strings.Chat.thinkLabel(lang))
                                 .font(.system(size: 16, weight: .semibold))
@@ -208,14 +218,13 @@ struct TierPickerSheet: View {
     // MARK: - Response style
 
     private func styleCard(palette: FirasPalette, lang: AppLanguage) -> some View {
-        @Bindable var bindable = prefs
         return SurfaceCard(palette: palette) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(Strings.Chat.responseStyle(lang))
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(palette.textPrimary)
 
-                Picker(selection: $bindable.responseMode) {
+                Picker(selection: responseModeBinding) {
                     Text(Strings.Chat.modeAuto(lang)).tag(ResponseMode.auto)
                     Text(Strings.Chat.modePlan(lang)).tag(ResponseMode.plan)
                 } label: {
@@ -234,6 +243,26 @@ struct TierPickerSheet: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
+        }
+    }
+
+    private var thinkingBinding: Binding<Bool> {
+        if #available(iOS 17, *) {
+            @SwiftUI.Bindable var model = prefs
+            return $model.thinkingEnabled
+        } else {
+            @Perception.Bindable var model = prefs
+            return $model.thinkingEnabled
+        }
+    }
+
+    private var responseModeBinding: Binding<ResponseMode> {
+        if #available(iOS 17, *) {
+            @SwiftUI.Bindable var model = prefs
+            return $model.responseMode
+        } else {
+            @Perception.Bindable var model = prefs
+            return $model.responseMode
         }
     }
 }

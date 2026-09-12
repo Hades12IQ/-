@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Perception
 import UIKit
 
 // MARK: - Wire shapes (`server.mjs` handleGithub*)
@@ -163,7 +163,7 @@ private struct CodeGitHubBranchesEnvelope: Decodable, Sendable {
 /// authentication session would never see a callback it could match and would sit there until the
 /// reader dismissed it. `refreshStatus(api:force:)` on the next foreground is the completion signal.
 @MainActor
-@Observable
+@Perceptible
 final class CodeGitHubModel {
 
     static let shared = CodeGitHubModel()
@@ -194,14 +194,14 @@ final class CodeGitHubModel {
 
     private(set) var links: [String: CodeGitHubLink] = [:]
 
-    @ObservationIgnored private let defaults: UserDefaults
-    @ObservationIgnored private var lastStatusRead: Date?
+    @PerceptionIgnored private let defaults: UserDefaults
+    @PerceptionIgnored private var lastStatusRead: Date?
 
     /// Blob bodies already read, keyed `owner/repo@ref:path`, newest last. A ref is a moving
     /// target, so this is a per-launch cache and never reaches disk: the point is that asking two
     /// questions about the same file does not read it twice, not that yesterday's HEAD is still true.
-    @ObservationIgnored private var fileBodies: [String: String] = [:]
-    @ObservationIgnored private var fileBodyOrder: [String] = []
+    @PerceptionIgnored private var fileBodies: [String: String] = [:]
+    @PerceptionIgnored private var fileBodyOrder: [String] = []
 
     /// How many blob bodies stay in memory. Six per question, a handful more from the browser.
     static let fileCacheLimit = 40

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The long-press menu on a turn.
 ///
@@ -27,17 +28,19 @@ struct MessageContextMenu: View {
     }
 
     var body: some View {
-        let lang = env.prefs.lang
+        WithPerceptionTracking {
+            let lang = env.prefs.lang
 
-        Button {
-            copy(lang: lang)
-        } label: {
-            Text(Strings.Common.copy(lang))
-            Image(systemName: "doc.on.doc")
-        }
+            Button {
+                copy(lang: lang)
+            } label: {
+                Text(Strings.Common.copy(lang))
+                Image(systemName: "doc.on.doc")
+            }
 
-        if message.role == .assistant {
-            assistantItems(lang: lang)
+            if message.role == .assistant {
+                assistantItems(lang: lang)
+            }
         }
     }
 

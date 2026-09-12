@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The pieces of `MissionCard`: identity header with the elapsed clock, one plan step, the footer
 /// actions, and the credits chip that rides along with a blocked state.
@@ -14,15 +15,17 @@ struct MissionCardHeader: View {
     let motionOn: Bool
 
     var body: some View {
-        HStack(spacing: 10) {
-            FirasBrandMark(size: 22, showsWordmark: false, palette: palette)
-                .accessibilityHidden(true)
-            Text(Strings.Agent.name(lang))
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(palette.textPrimary)
-            statusPill
-            Spacer(minLength: 8)
-            clock
+        WithPerceptionTracking {
+            HStack(spacing: 10) {
+                FirasBrandMark(size: 22, showsWordmark: false, palette: palette)
+                    .accessibilityHidden(true)
+                Text(Strings.Agent.name(lang))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(palette.textPrimary)
+                statusPill
+                Spacer(minLength: 8)
+                clock
+            }
         }
     }
 
@@ -70,8 +73,10 @@ struct MissionCardHeader: View {
                 clockLabel(seconds: Int(max(0, endedAt - startedAt) / 1000))
             } else {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
-                    let now = context.date.timeIntervalSince1970 * 1000
-                    clockLabel(seconds: Int(max(0, now - startedAt) / 1000))
+                    WithPerceptionTracking {
+                        let now = context.date.timeIntervalSince1970 * 1000
+                        clockLabel(seconds: Int(max(0, now - startedAt) / 1000))
+                    }
                 }
             }
         }
@@ -101,27 +106,29 @@ struct MissionStepRow: View {
     @State private var expanded = false
 
     var body: some View {
-        DisclosureGroup(isExpanded: $expanded) {
-            detailBody(for: step)
-                .padding(.top, 6)
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Image(systemName: glyph)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(glyphColor)
-                    .accessibilityHidden(true)
-                Text(step.title)
-                    .font(.system(size: 14))
-                    .foregroundStyle(palette.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 6)
-                Text(metaWord)
-                    .font(FirasType.caption)
-                    .foregroundStyle(palette.textMuted)
+        WithPerceptionTracking {
+            DisclosureGroup(isExpanded: $expanded) {
+                detailBody(for: step)
+                    .padding(.top, 6)
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: glyph)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(glyphColor)
+                        .accessibilityHidden(true)
+                    Text(step.title)
+                        .font(.system(size: 14))
+                        .foregroundStyle(palette.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 6)
+                    Text(metaWord)
+                        .font(FirasType.caption)
+                        .foregroundStyle(palette.textMuted)
+                }
             }
+            .tint(palette.accent)
+            .onAppear { if step.s == .run { expanded = true } }
         }
-        .tint(palette.accent)
-        .onAppear { if step.s == .run { expanded = true } }
     }
 
     private var glyph: String {
@@ -171,10 +178,12 @@ struct MissionStepRow: View {
         } else if !events.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(events.suffix(8)) { event in
-                    Text(event.text.isEmpty ? event.arg : event.text)
-                        .font(.system(size: 13))
-                        .foregroundStyle(palette.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    WithPerceptionTracking {
+                        Text(event.text.isEmpty ? event.arg : event.text)
+                            .font(.system(size: 13))
+                            .foregroundStyle(palette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
         } else {
@@ -202,29 +211,31 @@ struct MissionCardFooter: View {
 
     @ViewBuilder
     var body: some View {
-        if showsResume || showsOpenRunning || !exportText.isEmpty {
-            HStack(spacing: 10) {
-                if showsResume {
-                    Button {
-                        Task { await env.agent.resume(in: conversationID) }
-                    } label: {
-                        footerLabel(Strings.Agent.resume(lang), filled: true)
+        WithPerceptionTracking {
+            if showsResume || showsOpenRunning || !exportText.isEmpty {
+                HStack(spacing: 10) {
+                    if showsResume {
+                        Button {
+                            Task { await env.agent.resume(in: conversationID) }
+                        } label: {
+                            footerLabel(Strings.Agent.resume(lang), filled: true)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
-                }
-                if showsOpenRunning {
-                    Button(action: openRunning) {
-                        footerLabel(Strings.Agent.openRunning(lang), filled: false)
+                    if showsOpenRunning {
+                        Button(action: openRunning) {
+                            footerLabel(Strings.Agent.openRunning(lang), filled: false)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
-                }
-                if !exportText.isEmpty {
-                    ShareLink(item: exportText) {
-                        footerLabel(Strings.Agent.exportMarkdown(lang), filled: false)
+                    if !exportText.isEmpty {
+                        ShareLink(item: exportText) {
+                            footerLabel(Strings.Agent.exportMarkdown(lang), filled: false)
+                        }
+                        .accessibilityHint(Text(Strings.Agent.exportMarkdownHint(lang)))
                     }
-                    .accessibilityHint(Text(Strings.Agent.exportMarkdownHint(lang)))
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
             }
         }
     }
@@ -280,17 +291,19 @@ struct MissionCreditsChipLabel: View {
     let lang: AppLanguage
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "creditcard")
-                .font(.system(size: 12, weight: .semibold))
-                .accessibilityHidden(true)
-            Text(ArabicText.count(Int(credits.remaining.rounded()), lang) + " " + Strings.Agent.creditsChip(lang))
-                .font(.system(size: 13, weight: .medium))
+        WithPerceptionTracking {
+            HStack(spacing: 6) {
+                Image(systemName: "creditcard")
+                    .font(.system(size: 12, weight: .semibold))
+                    .accessibilityHidden(true)
+                Text(ArabicText.count(Int(credits.remaining.rounded()), lang) + " " + Strings.Agent.creditsChip(lang))
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .foregroundStyle(palette.textSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background { Capsule(style: .continuous).fill(palette.surface) }
+            .overlay { Capsule(style: .continuous).strokeBorder(palette.border, lineWidth: 1) }
         }
-        .foregroundStyle(palette.textSecondary)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background { Capsule(style: .continuous).fill(palette.surface) }
-        .overlay { Capsule(style: .continuous).strokeBorder(palette.border, lineWidth: 1) }
     }
 }

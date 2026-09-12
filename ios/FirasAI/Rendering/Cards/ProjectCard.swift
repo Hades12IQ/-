@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The ```` ```firas-project ```` block: a whole little codebase the model wrote inside one answer.
 ///
@@ -38,18 +39,20 @@ struct ProjectCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            head
-            divider
-            files
-            if let onOpen {
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 0) {
+                head
                 divider
-                openRow(onOpen)
+                files
+                if let onOpen {
+                    divider
+                    openRow(onOpen)
+                }
             }
+            .frame(maxWidth: 620, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .surfaceCard(palette)
         }
-        .frame(maxWidth: 620, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .surfaceCard(palette)
     }
 
     private var divider: some View {
@@ -106,8 +109,10 @@ struct ProjectCard: View {
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(project.files.enumerated()), id: \.offset) { pair in
-                    if pair.offset > 0 { divider }
-                    fileRow(pair.element)
+                    WithPerceptionTracking {
+                        if pair.offset > 0 { divider }
+                        fileRow(pair.element)
+                    }
                 }
             }
         }

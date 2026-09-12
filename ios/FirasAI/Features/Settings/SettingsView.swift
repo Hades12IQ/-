@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The settings sheet.
 ///
@@ -43,13 +44,15 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        WithPerceptionTracking {
         sized(layout)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
+            .firasPresentationDetents([.large])
+            .firasPresentationDragIndicator(.visible)
             .firasSheetBackground(env.prefs.palette)
             .tint(env.prefs.palette.accent)
             .preferredColorScheme(env.prefs.theme.isLight ? .light : .dark)
-    }
+
+        }}
 
     // MARK: - Layout
 
@@ -62,28 +65,79 @@ struct SettingsView: View {
         }
     }
 
+    @ViewBuilder
     private var stackLayout: some View {
-        NavigationStack(path: $path) {
-            sectionList
-                .navigationTitle(Strings.Settings.title(lang))
-                .navigationBarTitleDisplayMode(.inline)
-                .navigationDestination(for: Page.self) { destination($0) }
-                .toolbar { doneButton }
+        if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
+            modernStackLayout
+        } else {
+            FirasNavigationStack {
+                WithPerceptionTracking {
+                sectionList
+                    .navigationTitle(Strings.Settings.title(lang))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar { doneButton }
+
+                }}
         }
     }
 
+    @available(iOS 16, *)
+    private var modernStackLayout: some View {
+        NavigationStack(path: $path) {
+            WithPerceptionTracking {
+            sectionList
+                .navigationTitle(Strings.Settings.title(lang))
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationDestination(for: Page.self) { page in WithPerceptionTracking {
+                destination(page)
+                } }
+                .toolbar { doneButton }
+
+            }}
+    }
+
+    @ViewBuilder
     private var splitLayout: some View {
+        if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
+            modernSplitLayout
+        } else {
+            HStack(spacing: 0) {
+                FirasNavigationStack {
+                    WithPerceptionTracking {
+                    sectionList
+                        .navigationTitle(Strings.Settings.title(lang))
+                        .navigationBarTitleDisplayMode(.inline)
+
+                    }}
+                .frame(width: 270)
+                Divider()
+                FirasNavigationStack { WithPerceptionTracking {
+                destination(section).toolbar { doneButton }
+                } }
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    @available(iOS 16, *)
+    private var modernSplitLayout: some View {
         NavigationSplitView(columnVisibility: .constant(.all)) {
+            WithPerceptionTracking {
             sectionList
                 .navigationTitle(Strings.Settings.title(lang))
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationSplitViewColumnWidth(min: 240, ideal: 270, max: 300)
-        } detail: {
-            NavigationStack {
+
+            }} detail: {
+            WithPerceptionTracking {
+            FirasNavigationStack {
+                WithPerceptionTracking {
                 destination(section)
                     .toolbar { doneButton }
-            }
-        }
+
+                }}
+
+            }}
         .navigationSplitViewStyle(.balanced)
     }
 
@@ -96,15 +150,19 @@ struct SettingsView: View {
        giving it one costs the user every button on the screen. */
     @ViewBuilder
     private var sectionList: some View {
-        if sizeClass == .regular {
-            List(selection: selectionBinding) { sectionListBody }
+        if #available(iOS 16, *), sizeClass == .regular, !FirasCompatibility.forceLegacyUI {
+            List(selection: selectionBinding) { WithPerceptionTracking {
+            sectionListBody
+            } }
                 .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
+                .firasScrollContentBackground(.hidden)
                 .environment(\.defaultMinListRowHeight, 52)
         } else {
-            List { sectionListBody }
+            List { WithPerceptionTracking {
+            sectionListBody
+            } }
                 .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
+                .firasScrollContentBackground(.hidden)
                 .environment(\.defaultMinListRowHeight, 52)
         }
     }
@@ -114,8 +172,10 @@ struct SettingsView: View {
         Group {
             Section {
                 ForEach(Self.pages, id: \.self) { item in
+                    WithPerceptionTracking {
                     row(item)
-                }
+
+                    }}
             } header: {
                 Text(Strings.Settings.subtitle(lang))
                     .font(.system(size: 12))
@@ -130,10 +190,28 @@ struct SettingsView: View {
     @ViewBuilder
     private func row(_ item: Page) -> some View {
         if sizeClass == .regular {
-            rowContent(item).tag(item)
+            if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
+                rowContent(item).tag(item)
+            } else {
+                Button { section = item } label: { WithPerceptionTracking {
+                rowContent(item)
+                } }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(section == item ? [.isSelected] : [])
+            }
         } else {
-            NavigationLink(value: item) { rowContent(item) }
+            if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
+                NavigationLink(value: item) { rowContent(item) }
+            } else {
+                NavigationLink(destination: destination(item), tag: item, selection: legacySelection) {
+                    rowContent(item)
+                }
+            }
         }
+    }
+
+    private var legacySelection: Binding<Page?> {
+        Binding(get: { path.last }, set: { path = $0.map { [$0] } ?? [] })
     }
 
     private func rowContent(_ item: Page) -> some View {
@@ -189,14 +267,18 @@ struct SettingsView: View {
 
     private var doneButton: some ToolbarContent {
         ToolbarItem(placement: .confirmationAction) {
+            WithPerceptionTracking {
             Button {
                 env.router.sheet = nil
                 dismiss()
             } label: {
+                WithPerceptionTracking {
                 Text(Strings.Common.done(lang))
                     .font(.system(size: 16, weight: .semibold))
-            }
-        }
+
+                }}
+
+            }}
     }
 
     // MARK: - Page metadata
@@ -267,7 +349,7 @@ struct SettingsView: View {
     @ViewBuilder
     private func sized<V: View>(_ view: V) -> some View {
         if sizeClass == .regular {
-            view.presentationSizing(.form)
+            view.firasPresentationSizing(.form)
         } else {
             view
         }

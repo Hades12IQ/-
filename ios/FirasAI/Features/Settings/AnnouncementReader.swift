@@ -1,6 +1,7 @@
 import AVKit
 import Foundation
 import SwiftUI
+import Perception
 
 /// One announcement, full width: language toggle, video or image, title, date, markdown body
 /// (`web-auth-account-settings.md §8.4`).
@@ -33,25 +34,27 @@ struct AnnouncementReader: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                languageToggle
-                media
-                heading
-                bodyText
+        WithPerceptionTracking {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    languageToggle
+                    media
+                    heading
+                    bodyText
+                }
+                .frame(maxWidth: 700, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 36)
             }
-            .frame(maxWidth: 700, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 36)
+            .firasScrollContentBackground(.hidden)
+            .background(Color.clear)
+            .navigationTitle(Strings.Settings.Announcements.title(lang))
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear { preparePlayer() }
+            .onDisappear { player?.pause() }
         }
-        .scrollContentBackground(.hidden)
-        .background(Color.clear)
-        .navigationTitle(Strings.Settings.Announcements.title(lang))
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear { preparePlayer() }
-        .onDisappear { player?.pause() }
     }
 
     // MARK: - Language

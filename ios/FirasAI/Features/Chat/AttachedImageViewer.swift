@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// A picture the reader attached, opened full screen.
@@ -41,22 +42,24 @@ struct AttachedImageViewer: View {
     private var isZoomed: Bool { zoom > 1.02 }
 
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
+        WithPerceptionTracking {
+            ZStack {
+                Color.black.ignoresSafeArea()
 
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
-                .scaleEffect(zoom)
-                .offset(x: offset.width + drag.width, y: offset.height + drag.height)
-                .gesture(magnification)
-                .simultaneousGesture(pan)
-                .onTapGesture(count: 2) { toggleZoom() }
-                .accessibilityLabel(Text(Strings.Chat.attachedImage(lang)))
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .scaleEffect(zoom)
+                    .offset(x: offset.width + drag.width, y: offset.height + drag.height)
+                    .gesture(magnification)
+                    .simultaneousGesture(pan)
+                    .onTapGesture(count: 2) { toggleZoom() }
+                    .accessibilityLabel(Text(Strings.Chat.attachedImage(lang)))
+            }
+            .overlay(alignment: .top) { bar }
+            .statusBarHidden(true)
+            .accessibilityAction(.escape) { close() }
         }
-        .overlay(alignment: .top) { bar }
-        .statusBarHidden(true)
-        .accessibilityAction(.escape) { close() }
     }
 
     // MARK: - Chrome
@@ -76,9 +79,11 @@ struct AttachedImageViewer: View {
                     .background {
                         #if DEBUG
                         GeometryReader { geometry in
-                            Color.clear.onAppear {
-                                closeProbe?.buttonSize = geometry.size
-                                closeProbe?.action = close
+                            WithPerceptionTracking {
+                                Color.clear.onAppear {
+                                    closeProbe?.buttonSize = geometry.size
+                                    closeProbe?.action = close
+                                }
                             }
                         }
                         .allowsHitTesting(false)

@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Perception
 import UIKit
 import UserNotifications
 
@@ -20,7 +20,7 @@ import UserNotifications
 /// (denied, provisional, ephemeral) is answered without a prompt, and `NotificationSettingsView`
 /// carries the path into system settings for the denied case.
 @MainActor
-@Observable
+@Perceptible
 final class NotificationManager {
 
     private let prefs: PreferencesStore
@@ -242,7 +242,7 @@ final class NotificationManager {
     /// leaving long jobs running is offered the thing that makes them useful again.
     private static let explainerDeferral: TimeInterval = 3 * 24 * 60 * 60
 
-    @ObservationIgnored private var isPresentingExplainer = false
+    @PerceptionIgnored private var isPresentingExplainer = false
 
     /// The frontmost view controller of the active window scene, or `nil` when there is none —
     /// which is exactly when nothing should be presented anyway.
@@ -290,7 +290,7 @@ final class NotificationManager {
         UNUserNotificationCenter.current().setNotificationCategories([job, call])
     }
 
-    @ObservationIgnored private var registeredCategoryLanguage: AppLanguage?
+    @PerceptionIgnored private var registeredCategoryLanguage: AppLanguage?
 
     // MARK: - Plumbing
 

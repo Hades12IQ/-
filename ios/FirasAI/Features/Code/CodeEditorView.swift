@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The file editor.
@@ -52,10 +53,13 @@ struct CodeEditorView: View {
     }
 
     var body: some View {
-        content
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(palette.surfaceSunken)
-            .onDisappear { link.coordinator?.commitPending() }
+        WithPerceptionTracking {
+                content
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(palette.surfaceSunken)
+                    .onDisappear { link.coordinator?.commitPending() }
+
+                }
     }
 
     @ViewBuilder

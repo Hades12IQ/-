@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UniformTypeIdentifiers
 
 /// The Brain library: the hero, the add control, the sources and everything the web's rail shows
@@ -24,36 +25,42 @@ struct BrainLibrarySheet: View {
     }
 
     var body: some View {
-        Group {
-            if embedded {
-                content
-            } else {
-                NavigationStack { content.toolbar { closeToolbar } }
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-                    .firasSheetBackground(env.prefs.palette)
+        WithPerceptionTracking {
+            Group {
+                if embedded {
+                    content
+                } else {
+                    FirasNavigationStack { WithPerceptionTracking {
+                        content.toolbar { WithPerceptionTracking {
+                            closeToolbar
+                        } }
+                    } }
+                        .firasPresentationDetents([.large])
+                        .firasPresentationDragIndicator(.visible)
+                        .firasSheetBackground(env.prefs.palette)
+                }
             }
-        }
-        .task { await env.brain.loadLibrary() }
-        .fileImporter(
-            isPresented: $isPicking,
-            allowedContentTypes: Self.contentTypes,
-            allowsMultipleSelection: true
-        ) { result in
-            handlePick(result)
-        }
-        .confirmationDialog(
-            Text(Strings.Brain.deleteConfirm(env.prefs.lang)),
-            isPresented: Binding(
-                get: { pendingDelete != nil },
-                set: { if !$0 { pendingDelete = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button(Strings.Common.delete(env.prefs.lang), role: .destructive) { confirmDelete() }
-            Button(Strings.Common.cancel(env.prefs.lang), role: .cancel) { pendingDelete = nil }
-        } message: {
-            Text(pendingDelete?.title ?? "")
+            .task { await env.brain.loadLibrary() }
+            .fileImporter(
+                isPresented: $isPicking,
+                allowedContentTypes: Self.contentTypes,
+                allowsMultipleSelection: true
+            ) { result in
+                handlePick(result)
+            }
+            .confirmationDialog(
+                Text(Strings.Brain.deleteConfirm(env.prefs.lang)),
+                isPresented: Binding(
+                    get: { pendingDelete != nil },
+                    set: { if !$0 { pendingDelete = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button(Strings.Common.delete(env.prefs.lang), role: .destructive) { confirmDelete() }
+                Button(Strings.Common.cancel(env.prefs.lang), role: .cancel) { pendingDelete = nil }
+            } message: {
+                Text(pendingDelete?.title ?? "")
+            }
         }
     }
 
@@ -72,7 +79,7 @@ struct BrainLibrarySheet: View {
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .scrollDismissesKeyboard(.immediately)
+        .firasScrollDismissesKeyboard(.immediately)
         .background(env.prefs.palette.background)
         .navigationTitle(Text(Strings.Brain.sourcesHead(env.prefs.lang)))
         .navigationBarTitleDisplayMode(.inline)
@@ -80,7 +87,7 @@ struct BrainLibrarySheet: View {
 
     @ToolbarContentBuilder
     private var closeToolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .navigationBarTrailing) {
             Button { dismiss() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .semibold))
@@ -183,14 +190,16 @@ struct BrainLibrarySheet: View {
         if !env.brain.imports.isEmpty {
             VStack(spacing: 8) {
                 ForEach(env.brain.imports) { progress in
-                    BrainLibraryImportRow(
-                        progress: progress,
-                        palette: env.prefs.palette,
-                        lang: env.prefs.lang,
-                        scale: env.prefs.fontScale,
-                        motionOn: motionOn,
-                        onStop: { env.brain.cancelImport(id: progress.id) }
-                    )
+                    WithPerceptionTracking {
+                        BrainLibraryImportRow(
+                            progress: progress,
+                            palette: env.prefs.palette,
+                            lang: env.prefs.lang,
+                            scale: env.prefs.fontScale,
+                            motionOn: motionOn,
+                            onStop: { env.brain.cancelImport(id: progress.id) }
+                        )
+                    }
                 }
             }
         }
@@ -213,17 +222,19 @@ struct BrainLibrarySheet: View {
         } else {
             VStack(spacing: 8) {
                 ForEach(env.brain.docs) { document in
-                    BrainLibraryDocumentRow(
-                        document: document,
-                        isActive: !env.brain.excluded.contains(document.id),
-                        isPinned: env.brain.pins.contains(document.id),
-                        palette: env.prefs.palette,
-                        lang: env.prefs.lang,
-                        scale: env.prefs.fontScale,
-                        onToggle: { toggle(document) },
-                        onPin: { togglePin(document) },
-                        onDelete: { pendingDelete = document }
-                    )
+                    WithPerceptionTracking {
+                        BrainLibraryDocumentRow(
+                            document: document,
+                            isActive: !env.brain.excluded.contains(document.id),
+                            isPinned: env.brain.pins.contains(document.id),
+                            palette: env.prefs.palette,
+                            lang: env.prefs.lang,
+                            scale: env.prefs.fontScale,
+                            onToggle: { toggle(document) },
+                            onPin: { togglePin(document) },
+                            onDelete: { pendingDelete = document }
+                        )
+                    }
                 }
             }
         }
@@ -309,30 +320,32 @@ private struct BrainLibraryImportRow: View {
     let onStop: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(progress.name)
-                    .font(FirasType.scaled(14, scale: scale, weight: .medium))
-                    .foregroundStyle(palette.textPrimary)
-                    .lineLimit(1)
-                    .bidiIsland(for: progress.name, fallback: lang)
-                Text(phaseLine)
-                    .font(FirasType.scaled(12, scale: scale))
-                    .foregroundStyle(isFailed ? palette.error : palette.textMuted)
-                    .lineLimit(2)
-                ProgressView(value: fraction)
-                    .tint(palette.accent)
-                    .frame(height: 3)
+        WithPerceptionTracking {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(progress.name)
+                        .font(FirasType.scaled(14, scale: scale, weight: .medium))
+                        .foregroundStyle(palette.textPrimary)
+                        .lineLimit(1)
+                        .bidiIsland(for: progress.name, fallback: lang)
+                    Text(phaseLine)
+                        .font(FirasType.scaled(12, scale: scale))
+                        .foregroundStyle(isFailed ? palette.error : palette.textMuted)
+                        .lineLimit(2)
+                    ProgressView(value: fraction)
+                        .tint(palette.accent)
+                        .frame(height: 3)
+                }
+                if !isFinished {
+                    Button(Strings.Common.stop(lang)) { onStop() }
+                        .font(FirasType.scaled(13, scale: scale, weight: .semibold))
+                        .tint(palette.textSecondary)
+                }
             }
-            if !isFinished {
-                Button(Strings.Common.stop(lang)) { onStop() }
-                    .font(FirasType.scaled(13, scale: scale, weight: .semibold))
-                    .tint(palette.textSecondary)
-            }
+            .padding(12)
+            .surfaceCard(palette)
+            .accessibilityElement(children: .combine)
         }
-        .padding(12)
-        .surfaceCard(palette)
-        .accessibilityElement(children: .combine)
     }
 
     private var isFailed: Bool {
@@ -396,39 +409,41 @@ private struct BrainLibraryDocumentRow: View {
     let onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            Button(action: onToggle) { rowBody }
+        WithPerceptionTracking {
+            HStack(spacing: 10) {
+                Button(action: onToggle) { rowBody }
+                    .buttonStyle(.plain)
+                    .allowsHitTesting(!isPinned)
+                    .accessibilityLabel(Text(document.title + " — " + meta))
+                    .accessibilityAddTraits(isActive ? .isSelected : [])
+
+                Button(action: onPin) {
+                    Image(systemName: isPinned ? "pin.fill" : "pin")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(isPinned ? palette.accent : palette.textMuted)
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
+                }
                 .buttonStyle(.plain)
-                .allowsHitTesting(!isPinned)
-                .accessibilityLabel(Text(document.title + " — " + meta))
-                .accessibilityAddTraits(isActive ? .isSelected : [])
+                .accessibilityLabel(
+                    Text(isPinned ? Strings.Brain.pinDrop(lang) : Strings.Brain.pinAdd(lang))
+                )
 
-            Button(action: onPin) {
-                Image(systemName: isPinned ? "pin.fill" : "pin")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(isPinned ? palette.accent : palette.textMuted)
-                    .frame(width: 36, height: 36)
-                    .contentShape(Rectangle())
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(palette.textMuted)
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(Strings.Common.delete(lang)))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(
-                Text(isPinned ? Strings.Brain.pinDrop(lang) : Strings.Brain.pinAdd(lang))
-            )
-
-            Button(action: onDelete) {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(palette.textMuted)
-                    .frame(width: 36, height: 36)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(Strings.Common.delete(lang)))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .surfaceCard(palette)
+            .opacity(isActive ? 1 : 0.62)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .surfaceCard(palette)
-        .opacity(isActive ? 1 : 0.62)
     }
 
     private var rowBody: some View {

@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The ```` ```firas-sources ```` block under a Brain answer (`web-brain-ux.md §11.2`).
 ///
@@ -25,14 +26,16 @@ struct SourcesCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            heading
-            content
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 10) {
+                heading
+                content
+            }
+            .padding(14)
+            .frame(maxWidth: 620, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .surfaceCard(palette)
         }
-        .padding(14)
-        .frame(maxWidth: 620, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .surfaceCard(palette)
     }
 
     private var heading: some View {
@@ -54,13 +57,15 @@ struct SourcesCard: View {
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(sources.enumerated()), id: \.offset) { pair in
-                    if pair.offset > 0 {
-                        Rectangle()
-                            .fill(palette.border)
-                            .frame(height: 1)
-                            .padding(.vertical, 2)
+                    WithPerceptionTracking {
+                        if pair.offset > 0 {
+                            Rectangle()
+                                .fill(palette.border)
+                                .frame(height: 1)
+                                .padding(.vertical, 2)
+                        }
+                        row(pair.element)
                     }
-                    row(pair.element)
                 }
             }
         }

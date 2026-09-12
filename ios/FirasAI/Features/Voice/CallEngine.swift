@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Perception
 import UIKit
 
 /// Which rung of the ladder is carrying the call. Kept at file scope (not nested inside the
@@ -32,7 +32,7 @@ struct CallDiagnostics: Sendable, Equatable {
 /// Nothing here ends the call when the app is backgrounded — `UIBackgroundModes: audio` keeps the
 /// socket and the engine alive, and an end that happens off-screen posts a local notification.
 @MainActor
-@Observable
+@Perceptible
 final class CallEngine {
 
     enum Phase: Equatable {
@@ -72,38 +72,38 @@ final class CallEngine {
 
     // MARK: - Dependencies
 
-    @ObservationIgnored let api: APIClient
-    @ObservationIgnored let session: SessionStore
-    @ObservationIgnored let prefs: PreferencesStore
-    @ObservationIgnored let jobs: JobManager
-    @ObservationIgnored let notifications: NotificationManager
-    @ObservationIgnored let tts: TTSPlayer
+    @PerceptionIgnored let api: APIClient
+    @PerceptionIgnored let session: SessionStore
+    @PerceptionIgnored let prefs: PreferencesStore
+    @PerceptionIgnored let jobs: JobManager
+    @PerceptionIgnored let notifications: NotificationManager
+    @PerceptionIgnored let tts: TTSPlayer
 
     // MARK: - Internal state (shared with `CallEngine+ThreeHop.swift`, hence not private)
 
-    @ObservationIgnored var graph: CallAudioGraph?
-    @ObservationIgnored var transport: (any CallTransport)?
-    @ObservationIgnored var rung: CallRung = .none
-    @ObservationIgnored var isEnding = false
-    @ObservationIgnored var isConnected = false
-    @ObservationIgnored var micGated = false
-    @ObservationIgnored var startedAt: Date?
-    @ObservationIgnored var lastVoiceAt: Date = .distantPast
-    @ObservationIgnored var hardDeadline: Date?
-    @ObservationIgnored var currentToken: LiveToken?
-    @ObservationIgnored var lastCloseCode: Int?
-    @ObservationIgnored var lastCloseReason: String = ""
-    @ObservationIgnored var threeHopHistory: [OutgoingMessage] = []
-    @ObservationIgnored var echoFloor: Float = 0
-    @ObservationIgnored var echoRun = 0
-    @ObservationIgnored private var responseAudioDone = false
+    @PerceptionIgnored var graph: CallAudioGraph?
+    @PerceptionIgnored var transport: (any CallTransport)?
+    @PerceptionIgnored var rung: CallRung = .none
+    @PerceptionIgnored var isEnding = false
+    @PerceptionIgnored var isConnected = false
+    @PerceptionIgnored var micGated = false
+    @PerceptionIgnored var startedAt: Date?
+    @PerceptionIgnored var lastVoiceAt: Date = .distantPast
+    @PerceptionIgnored var hardDeadline: Date?
+    @PerceptionIgnored var currentToken: LiveToken?
+    @PerceptionIgnored var lastCloseCode: Int?
+    @PerceptionIgnored var lastCloseReason: String = ""
+    @PerceptionIgnored var threeHopHistory: [OutgoingMessage] = []
+    @PerceptionIgnored var echoFloor: Float = 0
+    @PerceptionIgnored var echoRun = 0
+    @PerceptionIgnored private var responseAudioDone = false
 
-    @ObservationIgnored private var eventTask: Task<Void, Never>?
-    @ObservationIgnored private var pumpTask: Task<Void, Never>?
-    @ObservationIgnored private var clockTask: Task<Void, Never>?
-    @ObservationIgnored private var gateTask: Task<Void, Never>?
-    @ObservationIgnored private var safetyTask: Task<Void, Never>?
-    @ObservationIgnored var threeHopTask: Task<Void, Never>?
+    @PerceptionIgnored private var eventTask: Task<Void, Never>?
+    @PerceptionIgnored private var pumpTask: Task<Void, Never>?
+    @PerceptionIgnored private var clockTask: Task<Void, Never>?
+    @PerceptionIgnored private var gateTask: Task<Void, Never>?
+    @PerceptionIgnored private var safetyTask: Task<Void, Never>?
+    @PerceptionIgnored var threeHopTask: Task<Void, Never>?
 
     init(
         api: APIClient,

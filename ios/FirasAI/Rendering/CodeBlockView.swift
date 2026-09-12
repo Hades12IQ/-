@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// An opaque code box: always LTR, mono 13, a header carrying the language and — when the fence
@@ -55,19 +56,21 @@ struct CodeBlockView: View {
 
     @ViewBuilder
     var body: some View {
-        if allowsInlinePreview, let kind = HTMLPreviewCard.Document.kind(language: language, code: code) {
-            HTMLPreviewCard(
-                code: code,
-                language: language,
-                filename: filename,
-                kind: kind,
-                companions: companions,
-                palette: palette,
-                lang: lang,
-                collapsible: collapsible
-            )
-        } else {
-            plainBox
+        WithPerceptionTracking {
+            if allowsInlinePreview, let kind = HTMLPreviewCard.Document.kind(language: language, code: code) {
+                HTMLPreviewCard(
+                    code: code,
+                    language: language,
+                    filename: filename,
+                    kind: kind,
+                    companions: companions,
+                    palette: palette,
+                    lang: lang,
+                    collapsible: collapsible
+                )
+            } else {
+                plainBox
+            }
         }
     }
 
@@ -98,7 +101,9 @@ struct CodeBlockView: View {
         )
         .forceLTR()
         .sheet(isPresented: $isSharing) {
-            CodeBlockShareSheet(items: shareURL.map { [$0] } ?? [])
+            WithPerceptionTracking {
+                CodeBlockShareSheet(items: shareURL.map { [$0] } ?? [])
+            }
         }
     }
 
@@ -379,8 +384,10 @@ struct CodeListing: View {
     let fadesTail: Bool
 
     var body: some View {
-        listing(for: shownCode)
-            .overlay(alignment: .bottom) { fade }
+        WithPerceptionTracking {
+            listing(for: shownCode)
+                .overlay(alignment: .bottom) { fade }
+        }
     }
 
     @ViewBuilder

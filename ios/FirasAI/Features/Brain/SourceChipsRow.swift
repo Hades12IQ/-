@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The row above the Brain composer (`web-brain-ux.md §10`, `design-brief.md §7.10`):
 /// the `المصادر` button, one chip per active or pinned document, the page-range chip and the
@@ -41,23 +42,27 @@ struct SourceChipsRow: View {
     }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                libraryButton
-                rangeChip
-                compareChip
-                documentChips
+        WithPerceptionTracking {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    libraryButton
+                    rangeChip
+                    compareChip
+                    documentChips
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
             }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 2)
-        }
-        .padding(.horizontal, 10)
-        .padding(.top, 8)
-        .padding(.bottom, 2)
-        .sheet(isPresented: $editingRange) {
-            rangeEditor
-                .presentationDetents([.height(260)])
-                .firasSheetBackground(prefs.palette)
+            .padding(.horizontal, 10)
+            .padding(.top, 8)
+            .padding(.bottom, 2)
+            .sheet(isPresented: $editingRange) {
+                WithPerceptionTracking {
+                    rangeEditor
+                        .firasPresentationDetents([.height(260)])
+                        .firasSheetBackground(prefs.palette)
+                }
+            }
         }
     }
 
@@ -140,20 +145,22 @@ struct SourceChipsRow: View {
 
     private var documentChips: some View {
         ForEach(store.docs) { document in
-            let isActive = !store.excluded.contains(document.id)
-            let isPinned = store.pins.contains(document.id)
-            FirasPill(
-                text: chipTitle(document),
-                symbol: isPinned ? "pin.fill" : (isActive ? "checkmark" : "circle"),
-                selected: isActive,
-                palette: palette,
-                action: {
-                    store.toggleExcluded(document.id)
-                    Haptics.select()
-                }
-            )
-            .opacity(isPinned ? 0.95 : 1)
-            .accessibilityValue(Text(verbatim: document.title))
+            WithPerceptionTracking {
+                let isActive = !store.excluded.contains(document.id)
+                let isPinned = store.pins.contains(document.id)
+                FirasPill(
+                    text: chipTitle(document),
+                    symbol: isPinned ? "pin.fill" : (isActive ? "checkmark" : "circle"),
+                    selected: isActive,
+                    palette: palette,
+                    action: {
+                        store.toggleExcluded(document.id)
+                        Haptics.select()
+                    }
+                )
+                .opacity(isPinned ? 0.95 : 1)
+                .accessibilityValue(Text(verbatim: document.title))
+            }
         }
     }
 

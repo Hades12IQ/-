@@ -1,6 +1,5 @@
 import Foundation
-import Observation
-
+import Perception
 /// The site-updates feed behind the drawer bell.
 ///
 /// Two sources, one list: `GET /api/announcements` and the launch post that ships inside the app
@@ -11,7 +10,7 @@ import Observation
 /// The unread dot is a timestamp comparison, never a count the server has to keep:
 /// `prefs.lastSeenAnnouncementAt` holds the newest `ts` the reader has opened.
 @MainActor
-@Observable
+@Perceptible
 final class AnnouncementStore {
 
     /// Pinned first, then newest — the order the server already answers in, re-applied locally
@@ -27,9 +26,9 @@ final class AnnouncementStore {
     /// "still loading" from "loaded and empty".
     private(set) var hasLoaded = false
 
-    @ObservationIgnored private let api: APIClient
-    @ObservationIgnored private let prefs: PreferencesStore
-    @ObservationIgnored private var translations: [TranslationKey: Translation] = [:]
+    @PerceptionIgnored private let api: APIClient
+    @PerceptionIgnored private let prefs: PreferencesStore
+    @PerceptionIgnored private var translations: [TranslationKey: Translation] = [:]
 
     init(api: APIClient, prefs: PreferencesStore) {
         self.api = api

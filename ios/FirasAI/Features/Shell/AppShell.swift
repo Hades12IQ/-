@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The signed-in root: one product on screen, the sidebar beside it or over it, and every sheet
 /// and cover in the app presented from exactly one place (`ARCHITECTURE.md §2.8`,
@@ -22,7 +23,7 @@ struct AppShell: View {
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var sidebarVisible = true
 
     init(env: AppEnvironment) {
         self.env = env
@@ -33,26 +34,30 @@ struct AppShell: View {
     private var isCompact: Bool { horizontalSizeClass != .regular }
 
     var body: some View {
-        @Bindable var router = env.router
-
-        return ZStack {
+        WithPerceptionTracking {
+        ZStack {
             palette.background.ignoresSafeArea()
-            layout(drawerOpen: $router.drawerOpen)
+            layout(drawerOpen: Binding(get: { env.router.drawerOpen }, set: { env.router.drawerOpen = $0 }))
             ToastHostView(env: env)
             KeyboardCommands(env: env)
         }
         .environment(\.layoutDirection, .leftToRight)
         .tint(palette.accent)
         .preferredColorScheme(env.prefs.theme.isLight ? .light : .dark)
-        .sheet(item: $router.sheet) { sheet in
+        .sheet(item: Binding(get: { env.router.sheet }, set: { env.router.sheet = $0 })) { sheet in
+            WithPerceptionTracking {
             sheetView(sheet)
-        }
-        .fullScreenCover(item: $router.cover) { cover in
+
+            }}
+        .fullScreenCover(item: Binding(get: { env.router.cover }, set: { env.router.cover = $0 })) { cover in
+            WithPerceptionTracking {
             coverView(cover)
-        }
+
+            }}
         .onAppear { consumePendingRoute() }
-        .onChange(of: env.router.pendingRoute) { _, _ in consumePendingRoute() }
-    }
+        .firasOnChange(of: env.router.pendingRoute) { _, _ in consumePendingRoute() }
+
+        }}
 
     // MARK: - Layout
 
@@ -69,7 +74,9 @@ struct AppShell: View {
     private func layout(drawerOpen: Binding<Bool>) -> some View {
         if isCompact {
             ZStack {
-                DrawerPushLayer(motion: DrawerMotion.shared) { detail }
+                DrawerPushLayer(motion: DrawerMotion.shared) { WithPerceptionTracking {
+                detail
+                } }
                 CompactDrawer(env: env, isOpen: drawerOpen)
             }
         } else {
@@ -77,24 +84,52 @@ struct AppShell: View {
         }
     }
 
+    @ViewBuilder
     private var splitLayout: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(env: env)
-                .navigationSplitViewColumnWidth(min: 270, ideal: 300, max: 360)
-        } detail: {
-            extendedBackground(detail)
+        Group {
+            if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
+                modernSplitLayout
+            } else {
+                HStack(spacing: 0) {
+                    if sidebarVisible {
+                        FirasNavigationStack { WithPerceptionTracking {
+                        SidebarView(env: env)
+                        } }
+                            .frame(width: 300)
+                        Divider()
+                    }
+                    detail.frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
         }
-        .navigationSplitViewStyle(.balanced)
         /* `⌘⇧O` — and anything else that asks for the panel — speaks `drawerOpen`, which only the
            compact drawer draws. On a split view the column is `columnVisibility`, so the request is
            consumed here and turned into a column toggle. Clearing the flag on the way through is
            what keeps `Router.select` / `switchTo` / `newConversation`, all of which set
            `drawerOpen = false` on every navigation, from collapsing the iPad sidebar. */
-        .onChange(of: env.router.drawerOpen) { _, open in
+        .firasOnChange(of: env.router.drawerOpen) { _, open in
             guard open else { return }
             env.router.drawerOpen = false
-            columnVisibility = (columnVisibility == .detailOnly) ? .all : .detailOnly
+            sidebarVisible.toggle()
         }
+    }
+
+    @available(iOS 16, *)
+    private var modernSplitLayout: some View {
+        NavigationSplitView(columnVisibility: Binding(
+            get: { sidebarVisible ? .all : .detailOnly },
+            set: { sidebarVisible = $0 != .detailOnly }
+        )) {
+            WithPerceptionTracking {
+            SidebarView(env: env)
+                .navigationSplitViewColumnWidth(min: 270, ideal: 300, max: 360)
+
+            }} detail: {
+            WithPerceptionTracking {
+            extendedBackground(detail)
+
+            }}
+        .navigationSplitViewStyle(.balanced)
     }
 
     /// On iOS 26 the sidebar floats as glass; the conversation is asked to continue underneath it
@@ -114,24 +149,30 @@ struct AppShell: View {
     private var detail: some View {
         switch env.router.product {
         case .ai:
-            NavigationStack {
+            FirasNavigationStack {
+                WithPerceptionTracking {
                 ChatScreen(
                     env: env,
                     conversationID: env.router.selectedConversationID,
                     product: .ai
                 )
-            }
+
+                }}
         case .agent:
             // `AgentScreen` owns its own `NavigationStack` (it presents the credits sheet from
             // inside it); a second container here would draw a second navigation bar.
             AgentScreen(env: env, conversationID: env.router.selectedConversationID)
         case .code:
-            NavigationStack { codeDetail }
+            FirasNavigationStack { WithPerceptionTracking {
+            codeDetail
+            } }
         case .brain:
-            NavigationStack {
+            FirasNavigationStack {
+                WithPerceptionTracking {
                 BrainScreen(env: env, conversationID: env.router.selectedConversationID)
                     .toolbar { drawerToolbarItem }
-            }
+
+                }}
         case .studio:
             studioDetail
         }
@@ -172,14 +213,18 @@ struct AppShell: View {
     @ToolbarContentBuilder
     private var drawerToolbarItem: some ToolbarContent {
         if isCompact {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .navigationBarLeading) {
+                WithPerceptionTracking {
                 Button {
                     openDrawer()
                 } label: {
+                    WithPerceptionTracking {
                     Image(systemName: "sidebar.leading")
-                }
+
+                    }}
                 .accessibilityLabel(Text(Strings.Shell.openSidebar(lang)))
-            }
+
+                }}
         }
     }
 
@@ -187,14 +232,16 @@ struct AppShell: View {
         Button {
             openDrawer()
         } label: {
+            WithPerceptionTracking {
             Image(systemName: "sidebar.leading")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(palette.textPrimary)
                 .frame(width: 38, height: 38)
                 .contentShape(Circle())
-        }
+
+            }}
         .buttonStyle(.plain)
-        .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
+        .firasGlass(.floating, palette: palette, in: FirasAnyShape(Circle()))
         .accessibilityLabel(Text(Strings.Shell.openSidebar(lang)))
     }
 
@@ -243,20 +290,26 @@ struct AppShell: View {
     /// they carry a `navigationTitle` and nothing else, so the shell supplies the container and the
     /// one way out.
     private func pushedSheet<C: View>(@ViewBuilder _ content: () -> C) -> some View {
-        NavigationStack {
+        FirasNavigationStack {
+            WithPerceptionTracking {
             content()
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
+                        WithPerceptionTracking {
                         Button {
                             env.router.sheet = nil
                         } label: {
+                            WithPerceptionTracking {
                             Text(Strings.Common.done(lang))
-                        }
-                    }
+
+                            }}
+
+                        }}
                 }
-        }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+
+            }}
+        .firasPresentationDetents([.large])
+        .firasPresentationDragIndicator(.visible)
         .firasSheetBackground(palette)
         .tint(palette.accent)
         .preferredColorScheme(env.prefs.theme.isLight ? .light : .dark)
@@ -292,7 +345,8 @@ struct AppShell: View {
                 type: request.type
             )
         } else {
-            NavigationStack {
+            FirasNavigationStack {
+                WithPerceptionTracking {
                 EmptyStateView(
                     title: Strings.Shell.artifactUnavailable.text(lang),
                     subtitle: nil,
@@ -303,7 +357,8 @@ struct AppShell: View {
                 }
                 .frame(maxHeight: .infinity)
                 .background(palette.background.ignoresSafeArea())
-            }
+
+                }}
         }
     }
 
@@ -365,10 +420,12 @@ private struct DrawerPushLayer<Content: View>: View {
     }
 
     var body: some View {
+        WithPerceptionTracking {
         content
             .offset(x: motion.contentPush)
             /* The scrim above already swallows taps, but the part of the conversation that has been
                pushed past the screen edge must not answer a touch either. */
             .allowsHitTesting(!motion.isEngaged)
-    }
+
+        }}
 }

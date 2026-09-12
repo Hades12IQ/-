@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 
 /// The MentronX signature that plays over the ground on first run and on a cold
 /// authentication, while `/api/auth/me` is in flight. It *is* the loading state
@@ -31,35 +32,37 @@ struct MentronXEntryView: View {
     }
 
     var body: some View {
-        let palette = resolvedPalette
+        WithPerceptionTracking(content: {
+            let palette = resolvedPalette
 
-        return ZStack {
-            palette.background
-                .ignoresSafeArea()
+            return ZStack {
+                palette.background
+                    .ignoresSafeArea()
 
-            HStack(spacing: lockupVisible ? 13 : 0) {
-                MentronXMark(
-                    primaryProgress: primaryProgress,
-                    crossProgress: crossProgress,
-                    palette: palette
-                )
-                .frame(
-                    width: lockupVisible ? 62 : 198,
-                    height: lockupVisible ? 50 : 160
-                )
+                HStack(spacing: lockupVisible ? 13 : 0) {
+                    MentronXMark(
+                        primaryProgress: primaryProgress,
+                        crossProgress: crossProgress,
+                        palette: palette
+                    )
+                    .frame(
+                        width: lockupVisible ? 62 : 198,
+                        height: lockupVisible ? 50 : 160
+                    )
 
-                if lockupVisible {
-                    lockup(palette: palette)
+                    if lockupVisible {
+                        lockup(palette: palette)
+                    }
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(verbatim: "BY MentronX"))
+                .accessibilityAddTraits(.isButton)
+                .opacity(contentOpacity)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(verbatim: "BY MentronX"))
-            .accessibilityAddTraits(.isButton)
-            .opacity(contentOpacity)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { finish() }
-        .onAppear { start() }
+            .contentShape(Rectangle())
+            .onTapGesture { finish() }
+            .onAppear { start() }
+        }())
     }
 
     private func lockup(palette: FirasPalette) -> some View {
@@ -181,38 +184,40 @@ private struct MentronXMark: View {
     let palette: FirasPalette
 
     var body: some View {
-        ZStack {
-            MentronXPrimaryStroke()
-                .trim(from: 0, to: primaryProgress)
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            palette.accent,
-                            palette.accentHover,
-                            palette.textPrimary
-                        ],
-                        startPoint: .bottomLeading,
-                        endPoint: .topTrailing
-                    ),
-                    style: StrokeStyle(
-                        lineWidth: 5.2,
-                        lineCap: .round,
-                        lineJoin: .round
+        WithPerceptionTracking {
+            ZStack {
+                MentronXPrimaryStroke()
+                    .trim(from: 0, to: primaryProgress)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                palette.accent,
+                                palette.accentHover,
+                                palette.textPrimary
+                            ],
+                            startPoint: .bottomLeading,
+                            endPoint: .topTrailing
+                        ),
+                        style: StrokeStyle(
+                            lineWidth: 5.2,
+                            lineCap: .round,
+                            lineJoin: .round
+                        )
                     )
-                )
 
-            MentronXCrossStroke()
-                .trim(from: 0, to: crossProgress)
-                .stroke(
-                    palette.accent,
-                    style: StrokeStyle(
-                        lineWidth: 5.2,
-                        lineCap: .round,
-                        lineJoin: .round
+                MentronXCrossStroke()
+                    .trim(from: 0, to: crossProgress)
+                    .stroke(
+                        palette.accent,
+                        style: StrokeStyle(
+                            lineWidth: 5.2,
+                            lineCap: .round,
+                            lineJoin: .round
+                        )
                     )
-                )
+            }
+            .padding(5)
         }
-        .padding(5)
     }
 }
 

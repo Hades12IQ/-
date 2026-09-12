@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// `‹ ٢/٣ ›` above an answer that was regenerated.
 ///
@@ -28,20 +29,22 @@ struct VersionPager: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(Strings.Chat.verLabel(lang))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(palette.textMuted)
+        WithPerceptionTracking {
+            HStack(spacing: 8) {
+                Text(Strings.Chat.verLabel(lang))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(palette.textMuted)
 
-            HStack(spacing: 2) {
-                step(symbol: "chevron.left", label: Strings.Chat.verPrev(lang), delta: -1)
-                counter
-                step(symbol: "chevron.right", label: Strings.Chat.verNext(lang), delta: 1)
+                HStack(spacing: 2) {
+                    step(symbol: "chevron.left", label: Strings.Chat.verPrev(lang), delta: -1)
+                    counter
+                    step(symbol: "chevron.right", label: Strings.Chat.verNext(lang), delta: 1)
+                }
+                .forceLTR()
             }
-            .forceLTR()
+            .accessibilityElement(children: .contain)
+            .accessibilityHint(Text(Strings.Chat.verHint(lang)))
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityHint(Text(Strings.Chat.verHint(lang)))
     }
 
     private var counter: some View {

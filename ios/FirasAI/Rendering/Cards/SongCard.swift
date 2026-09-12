@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Perception
 
 /// The ```` ```firas-music ```` card (`web-media-ux.md §6.4`, `design-brief.md §7.12`).
 ///
@@ -145,17 +146,19 @@ struct SongCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
-            stateBody
-            lyricsDisclosure
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .surfaceCard(palette)
-        .task(id: taskKey) { await load() }
-        .onChange(of: startedAt) { _, updated in
-            if let updated { since = updated }
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 12) {
+                header
+                stateBody
+                lyricsDisclosure
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .surfaceCard(palette)
+            .task(id: taskKey) { await load() }
+            .firasOnChange(of: startedAt) { _, updated in
+                if let updated { since = updated }
+            }
         }
     }
 
@@ -243,7 +246,9 @@ struct SongCard: View {
     /// never stops.
     var renderingBody: some View {
         TimelineView(.periodic(from: since, by: 1)) { context in
-            renderingRow(elapsed: SongCard.seconds(from: since, to: context.date))
+            WithPerceptionTracking {
+                renderingRow(elapsed: SongCard.seconds(from: since, to: context.date))
+            }
         }
     }
 

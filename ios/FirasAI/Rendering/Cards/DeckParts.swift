@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// A slide's picture. The model writes either a `data:` URI or an ordinary link, so both are
@@ -11,28 +12,30 @@ struct DeckImage: View {
     let palette: DeckPalette
 
     var body: some View {
-        if let ready = DeckImageCache.image(for: source) ?? DeckImage.inlineImage(source) {
-            Image(uiImage: ready)
-                .resizable()
-                .scaledToFill()
-        } else if let url = DeckImage.remoteURL(source) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image.resizable().scaledToFill()
-                case .failure:
-                    placeholder
-                case .empty:
-                    ZStack {
+        WithPerceptionTracking {
+            if let ready = DeckImageCache.image(for: source) ?? DeckImage.inlineImage(source) {
+                Image(uiImage: ready)
+                    .resizable()
+                    .scaledToFill()
+            } else if let url = DeckImage.remoteURL(source) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    case .failure:
                         placeholder
-                        ProgressView().tint(palette.accent)
+                    case .empty:
+                        ZStack {
+                            placeholder
+                            ProgressView().tint(palette.accent)
+                        }
+                    @unknown default:
+                        placeholder
                     }
-                @unknown default:
-                    placeholder
                 }
+            } else {
+                placeholder
             }
-        } else {
-            placeholder
         }
     }
 
@@ -118,19 +121,21 @@ struct DeckChartView: View {
     private var progress: CGFloat { (reveal || !motionOn) ? 1 : 0 }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if !chart.title.isEmpty {
-                Text(chart.title)
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(palette.inkMuted)
+        WithPerceptionTracking {
+            VStack(alignment: .leading, spacing: 12) {
+                if !chart.title.isEmpty {
+                    Text(chart.title)
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(palette.inkMuted)
+                }
+                plot
+                    .animation(motionOn ? .easeOut(duration: 0.9) : nil, value: reveal)
+                if chart.kind != .doughnut {
+                    labelsRow
+                }
             }
-            plot
-                .animation(motionOn ? .easeOut(duration: 0.9) : nil, value: reveal)
-            if chart.kind != .doughnut {
-                labelsRow
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -146,26 +151,30 @@ struct DeckChartView: View {
 
     private var bars: some View {
         GeometryReader { geo in
-            let values = chart.series.first?.data ?? []
-            let peak = max(values.map(abs).max() ?? 1, 0.0001)
-            let slot = geo.size.width / CGFloat(max(values.count, 1))
-            let width = min(slot * 0.55, 84)
-            HStack(alignment: .bottom, spacing: 0) {
-                ForEach(Array(values.enumerated()), id: \.offset) { pair in
-                    let height = geo.size.height * CGFloat(abs(pair.element) / peak) * progress
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [palette.accent, palette.accent.opacity(0.55)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .frame(width: width, height: max(height, 2))
-                        .frame(width: slot, alignment: .center)
+            WithPerceptionTracking {
+                let values = chart.series.first?.data ?? []
+                let peak = max(values.map(abs).max() ?? 1, 0.0001)
+                let slot = geo.size.width / CGFloat(max(values.count, 1))
+                let width = min(slot * 0.55, 84)
+                HStack(alignment: .bottom, spacing: 0) {
+                    ForEach(Array(values.enumerated()), id: \.offset) { pair in
+                        WithPerceptionTracking {
+                            let height = geo.size.height * CGFloat(abs(pair.element) / peak) * progress
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [palette.accent, palette.accent.opacity(0.55)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                                .frame(width: width, height: max(height, 2))
+                                .frame(width: slot, alignment: .center)
+                        }
+                    }
                 }
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
             }
-            .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
         }
     }
 
@@ -173,23 +182,25 @@ struct DeckChartView: View {
 
     private var line: some View {
         GeometryReader { geo in
-            let values = chart.series.first?.data ?? []
-            let peak = max(values.map(abs).max() ?? 1, 0.0001)
-            ZStack {
-                DeckLinePath(values: values, peak: peak)
-                    .trim(from: 0, to: progress)
-                    .stroke(palette.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-                DeckLinePath(values: values, peak: peak, closed: true)
-                    .fill(
-                        LinearGradient(
-                            colors: [palette.accent.opacity(0.30), palette.accent.opacity(0.02)],
-                            startPoint: .top,
-                            endPoint: .bottom
+            WithPerceptionTracking {
+                let values = chart.series.first?.data ?? []
+                let peak = max(values.map(abs).max() ?? 1, 0.0001)
+                ZStack {
+                    DeckLinePath(values: values, peak: peak)
+                        .trim(from: 0, to: progress)
+                        .stroke(palette.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                    DeckLinePath(values: values, peak: peak, closed: true)
+                        .fill(
+                            LinearGradient(
+                                colors: [palette.accent.opacity(0.30), palette.accent.opacity(0.02)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
                         )
-                    )
-                    .opacity(Double(progress))
+                        .opacity(Double(progress))
+                }
+                .frame(width: geo.size.width, height: geo.size.height)
             }
-            .frame(width: geo.size.width, height: geo.size.height)
         }
     }
 
@@ -199,22 +210,26 @@ struct DeckChartView: View {
         let values = (chart.series.first?.data ?? []).map { abs($0) }
         let total = max(values.reduce(0, +), 0.0001)
         return GeometryReader { geo in
-            let side = min(geo.size.width, geo.size.height)
-            ZStack {
-                ForEach(Array(values.enumerated()), id: \.offset) { pair in
-                    let start = values.prefix(pair.offset).reduce(0, +) / total
-                    let end = start + pair.element / total
-                    Circle()
-                        .trim(from: CGFloat(start) * progress, to: CGFloat(end) * progress)
-                        .stroke(
-                            palette.accent.opacity(1 - Double(pair.offset) * 0.16),
-                            style: StrokeStyle(lineWidth: side * 0.20, lineCap: .butt)
-                        )
-                        .rotationEffect(.degrees(-90))
+            WithPerceptionTracking {
+                let side = min(geo.size.width, geo.size.height)
+                ZStack {
+                    ForEach(Array(values.enumerated()), id: \.offset) { pair in
+                        WithPerceptionTracking {
+                            let start = values.prefix(pair.offset).reduce(0, +) / total
+                            let end = start + pair.element / total
+                            Circle()
+                                .trim(from: CGFloat(start) * progress, to: CGFloat(end) * progress)
+                                .stroke(
+                                    palette.accent.opacity(1 - Double(pair.offset) * 0.16),
+                                    style: StrokeStyle(lineWidth: side * 0.20, lineCap: .butt)
+                                )
+                                .rotationEffect(.degrees(-90))
+                        }
+                    }
                 }
+                .frame(width: side * 0.8, height: side * 0.8)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
             }
-            .frame(width: side * 0.8, height: side * 0.8)
-            .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
         }
     }
 
@@ -223,12 +238,14 @@ struct DeckChartView: View {
     private var labelsRow: some View {
         HStack(spacing: 0) {
             ForEach(Array(chart.labels.enumerated()), id: \.offset) { pair in
-                Text(pair.element)
-                    .font(.system(size: 20))
-                    .foregroundStyle(palette.inkMuted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .frame(maxWidth: .infinity)
+                WithPerceptionTracking {
+                    Text(pair.element)
+                        .font(.system(size: 20))
+                        .foregroundStyle(palette.inkMuted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .frame(maxWidth: .infinity)
+                }
             }
         }
     }

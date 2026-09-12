@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// Points one session at one repository and branch.
 ///
@@ -30,19 +31,22 @@ struct CodeGitHubPickerSheet: View {
     private var currentLink: CodeGitHubLink? { github.link(for: projectID) }
 
     var body: some View {
-        NavigationStack {
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .background(palette.background.ignoresSafeArea())
-                .navigationTitle(pickedRepo == nil ? Strings.Code.repoTitle(lang) : Strings.Code.branchTitle(lang))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { toolbarContent }
-        }
-        .firasSheetBackground(palette)
-        .task {
-            await github.refreshStatus(api: env.api)
-            await github.loadRepos(api: env.api)
-        }
+        WithPerceptionTracking {
+            FirasNavigationStack {
+                content
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .background(palette.background.ignoresSafeArea())
+                    .navigationTitle(pickedRepo == nil ? Strings.Code.repoTitle(lang) : Strings.Code.branchTitle(lang))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar { toolbarContent }
+            }
+            .firasSheetBackground(palette)
+            .task {
+                await github.refreshStatus(api: env.api)
+                await github.loadRepos(api: env.api)
+            }
+
+            }
     }
 
     // MARK: - Content
@@ -158,7 +162,10 @@ struct CodeGitHubPickerSheet: View {
                         .padding(.top, 8)
                 } else {
                     ForEach(filteredRepos) { repo in
-                        repoRow(repo)
+                        WithPerceptionTracking {
+                            repoRow(repo)
+
+                            }
                     }
                 }
             }
@@ -183,7 +190,7 @@ struct CodeGitHubPickerSheet: View {
             }
             .textFieldStyle(.plain)
             .font(.system(size: 15))
-            .autocorrectionDisabled(true)
+            .disableAutocorrection(true)
             .textInputAutocapitalization(.never)
             .foregroundStyle(palette.textPrimary)
             .forceLTR()
@@ -299,7 +306,10 @@ struct CodeGitHubPickerSheet: View {
                         .foregroundStyle(palette.textMuted)
                 } else {
                     ForEach(branchOptions(for: repo), id: \.self) { branch in
+                        WithPerceptionTracking {
                         branchRow(repo: repo, branch: branch)
+
+                        }
                     }
                 }
             }
@@ -349,7 +359,8 @@ struct CodeGitHubPickerSheet: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
+        ToolbarItem(placement: .navigationBarLeading) {
+            WithPerceptionTracking {
             if pickedRepo == nil {
                 Button(Strings.Common.close(lang)) { dismiss() }
             } else {
@@ -359,21 +370,32 @@ struct CodeGitHubPickerSheet: View {
                     Label(Strings.Common.back(lang), systemImage: "chevron.backward")
                 }
             }
+
+            }
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .navigationBarTrailing) {
+            WithPerceptionTracking {
             if github.isConnected, !github.login.isEmpty {
                 Menu {
+                    WithPerceptionTracking {
                     Button(role: .destructive) {
                         Task { await github.disconnect(api: env.api) }
                     } label: {
                         Label(Strings.Code.gitHubDisconnect(lang), systemImage: "link.badge.plus")
                     }
+
+                    }
                 } label: {
+                    WithPerceptionTracking {
                     Text(verbatim: github.login)
                         .font(.system(size: 13, weight: .medium))
                         .lineLimit(1)
                         .forceLTR()
+
+                    }
                 }
+            }
+
             }
         }
     }

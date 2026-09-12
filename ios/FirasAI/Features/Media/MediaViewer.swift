@@ -1,5 +1,6 @@
 import AVKit
 import SwiftUI
+import Perception
 import UIKit
 
 /// The full-screen look at one creation, and the only place the file itself is handed anywhere:
@@ -34,15 +35,17 @@ struct MediaViewer: View {
     private var current: MediaCreation? { items.first { $0.id == selection } }
 
     var body: some View {
-        ZStack {
-            palette.background.ignoresSafeArea()
-            pages
+        WithPerceptionTracking {
+            ZStack {
+                palette.background.ignoresSafeArea()
+                pages
+            }
+            // Keep controls outside the paging/zoom host so the image's gestures never own this area.
+            .overlay(alignment: .top) { header }
+            .overlay(alignment: .bottom) { actionBar }
+            .task { await prepare() }
+            .accessibilityAction(.escape) { close() }
         }
-        // Keep controls outside the paging/zoom host so the image's gestures never own this area.
-        .overlay(alignment: .top) { header }
-        .overlay(alignment: .bottom) { actionBar }
-        .task { await prepare() }
-        .accessibilityAction(.escape) { close() }
     }
 
     /// A main-actor method rather than an inline `.task` body: that body is `@Sendable` and does
@@ -70,9 +73,13 @@ struct MediaViewer: View {
             )
         } else {
             TabView(selection: $selection) {
-                ForEach(items) { item in
-                    MediaViewerPage(env: env, creation: item)
-                        .tag(item.id)
+                WithPerceptionTracking {
+                    ForEach(items) { item in
+                        WithPerceptionTracking {
+                            MediaViewerPage(env: env, creation: item)
+                                .tag(item.id)
+                        }
+                    }
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
@@ -91,15 +98,17 @@ struct MediaViewer: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(palette.textPrimary)
                     .frame(width: 40, height: 40)
-                    .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
+                    .firasGlass(.floating, palette: palette, in: FirasAnyShape(Circle()))
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                     .background {
                         #if DEBUG
                         GeometryReader { geometry in
-                            Color.clear.onAppear {
-                                closeProbe?.buttonSize = geometry.size
-                                closeProbe?.action = close
+                            WithPerceptionTracking {
+                                Color.clear.onAppear {
+                                    closeProbe?.buttonSize = geometry.size
+                                    closeProbe?.action = close
+                                }
                             }
                         }
                         .allowsHitTesting(false)
@@ -172,15 +181,17 @@ private struct MediaViewerPage: View {
     private var lang: AppLanguage { env.prefs.lang }
 
     var body: some View {
-        VStack(spacing: 14) {
-            Spacer(minLength: 0)
-            content
-            caption
-            Spacer(minLength: 96)
+        WithPerceptionTracking {
+            VStack(spacing: 14) {
+                Spacer(minLength: 0)
+                content
+                caption
+                Spacer(minLength: 96)
+            }
+            .frame(maxWidth: .infinity)
+            .task(id: creation.localFilename ?? creation.id) { await load() }
+            .onDisappear { player?.pause() }
         }
-        .frame(maxWidth: .infinity)
-        .task(id: creation.localFilename ?? creation.id) { await load() }
-        .onDisappear { player?.pause() }
     }
 
     @ViewBuilder
@@ -377,39 +388,41 @@ struct MediaActionBar: View {
     private var lang: AppLanguage { env.prefs.lang }
 
     var body: some View {
-        HStack(spacing: 8) {
-            if creation.kind != .music {
-                action(symbol: "square.and.arrow.down", label: Strings.Media.saveToPhotos(lang)) {
-                    Task {
-                        isSaving = true
-                        _ = await env.media.saveToPhotos(creation.id)
-                        isSaving = false
+        WithPerceptionTracking {
+            HStack(spacing: 8) {
+                if creation.kind != .music {
+                    action(symbol: "square.and.arrow.down", label: Strings.Media.saveToPhotos(lang)) {
+                        Task {
+                            isSaving = true
+                            _ = await env.media.saveToPhotos(creation.id)
+                            isSaving = false
+                        }
+                    }
+                    .disabled(isSaving)
+                }
+                shareButton
+                action(symbol: "bubble.left.and.text.bubble.right", label: Strings.Media.openInChat(lang)) {
+                    env.media.openInChat(creation.id)
+                }
+                if creation.kind == .image {
+                    action(symbol: "wand.and.stars", label: Strings.Media.editPicture(lang)) {
+                        // The create form reads this once and opens on the edit tab with the picture
+                        // already chosen as the source.
+                        env.media.pendingEditSourceID = creation.id
+                        SongPlayer.shared.stop()
+                        env.router.cover = nil
+                        env.router.switchTo(product: .studio)
                     }
                 }
-                .disabled(isSaving)
-            }
-            shareButton
-            action(symbol: "bubble.left.and.text.bubble.right", label: Strings.Media.openInChat(lang)) {
-                env.media.openInChat(creation.id)
-            }
-            if creation.kind == .image {
-                action(symbol: "wand.and.stars", label: Strings.Media.editPicture(lang)) {
-                    // The create form reads this once and opens on the edit tab with the picture
-                    // already chosen as the source.
-                    env.media.pendingEditSourceID = creation.id
-                    SongPlayer.shared.stop()
-                    env.router.cover = nil
-                    env.router.switchTo(product: .studio)
+                action(symbol: "arrow.triangle.2.circlepath", label: Strings.Media.regenerateItem(lang)) {
+                    Task { await env.media.regenerate(creation.id) }
                 }
             }
-            action(symbol: "arrow.triangle.2.circlepath", label: Strings.Media.regenerateItem(lang)) {
-                Task { await env.media.regenerate(creation.id) }
-            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .firasGlass(.floating, palette: palette, in: FirasAnyShape(Capsule(style: .continuous)))
+            .task(id: creation.id) { await refreshShareFile() }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .firasGlass(.floating, palette: palette, in: AnyShape(Capsule(style: .continuous)))
-        .task(id: creation.id) { await refreshShareFile() }
     }
 
     /// Same reason as everywhere else in this file: the `.task` body is `@Sendable`, so the write

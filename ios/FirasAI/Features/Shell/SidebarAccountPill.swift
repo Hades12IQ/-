@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 
 /// The account row at the foot of the sidebar (`web-chat-ux.md §14`,
 /// `web-auth-account-settings.md §4`).
@@ -31,27 +32,31 @@ struct SidebarAccountPill: View {
     private var isGuest: Bool { env.session.isGuest }
 
     var body: some View {
-        if isGuest {
-            row
-                .contextMenu { guestExitItem }
-                .confirmationDialog(
-                    Text(Strings.Shell.guestExitConfirm(lang)),
-                    isPresented: $confirmsGuestExit,
-                    titleVisibility: .visible
-                ) {
-                    Button(role: .destructive) {
-                        Task { await env.session.logout() }
-                    } label: {
-                        Text(Strings.Shell.guestExit(lang))
+        WithPerceptionTracking {
+            if isGuest {
+                row
+                    .contextMenu { WithPerceptionTracking {
+                        guestExitItem
+                    } }
+                    .confirmationDialog(
+                        Text(Strings.Shell.guestExitConfirm(lang)),
+                        isPresented: $confirmsGuestExit,
+                        titleVisibility: .visible
+                    ) {
+                        Button(role: .destructive) {
+                            Task { await env.session.logout() }
+                        } label: {
+                            Text(Strings.Shell.guestExit(lang))
+                        }
+                        Button(role: .cancel) {
+                            confirmsGuestExit = false
+                        } label: {
+                            Text(Strings.Common.cancel(lang))
+                        }
                     }
-                    Button(role: .cancel) {
-                        confirmsGuestExit = false
-                    } label: {
-                        Text(Strings.Common.cancel(lang))
-                    }
-                }
-        } else {
-            row
+            } else {
+                row
+            }
         }
     }
 
@@ -94,7 +99,7 @@ struct SidebarAccountPill: View {
             .forceLTR()
             .frame(width: 40, height: 40)
             .background { Circle().fill(palette.accentSoft) }
-            .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
+            .firasGlass(.floating, palette: palette, in: FirasAnyShape(Circle()))
             .overlay {
                 Circle()
                     .strokeBorder(palette.accentRing, lineWidth: 1)
@@ -116,7 +121,7 @@ struct SidebarAccountPill: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .firasGlass(.floating, palette: palette, in: AnyShape(Circle()))
+        .firasGlass(.floating, palette: palette, in: FirasAnyShape(Circle()))
         .overlay {
             Circle()
                 .strokeBorder(palette.accentRing, lineWidth: 1)

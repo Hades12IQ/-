@@ -1,4 +1,5 @@
 import SwiftUI
+import Perception
 import UIKit
 
 /// The wording this feature needs. Kept beside it rather than in the shared string files: a deck is
@@ -38,39 +39,47 @@ struct DeckViewer: View {
     private var palette: DeckPalette { DeckPalette.named(deck.theme) }
 
     var body: some View {
-        ZStack {
-            palette.ground.ignoresSafeArea()
+        WithPerceptionTracking {
+            ZStack {
+                palette.ground.ignoresSafeArea()
 
-            TabView(selection: $current) {
-                ForEach(Array(deck.slides.enumerated()), id: \.offset) { pair in
-                    DeckSlideView(
-                        slide: pair.element,
-                        deck: deck,
-                        palette: palette,
-                        index: pair.offset,
-                        total: deck.slides.count,
-                        reveal: current == pair.offset,
-                        motionOn: motionOn
-                    )
-                    .padding(.horizontal, 8)
-                    .tag(pair.offset)
+                TabView(selection: $current) {
+                    WithPerceptionTracking {
+                        ForEach(Array(deck.slides.enumerated()), id: \.offset) { pair in
+                            WithPerceptionTracking {
+                                DeckSlideView(
+                                    slide: pair.element,
+                                    deck: deck,
+                                    palette: palette,
+                                    index: pair.offset,
+                                    total: deck.slides.count,
+                                    reveal: current == pair.offset,
+                                    motionOn: motionOn
+                                )
+                                .padding(.horizontal, 8)
+                                .tag(pair.offset)
+                            }
+                        }
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .environment(\.layoutDirection, deck.isArabic ? .rightToLeft : .leftToRight)
+                .ignoresSafeArea(edges: .bottom)
+
+                if chrome {
+                    chromeLayer.transition(.opacity)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .environment(\.layoutDirection, deck.isArabic ? .rightToLeft : .leftToRight)
-            .ignoresSafeArea(edges: .bottom)
-
-            if chrome {
-                chromeLayer.transition(.opacity)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(FirasMotion.gated(FirasMotion.standard, motionOn: motionOn)) { chrome.toggle() }
             }
+            .statusBarHidden(true)
+            .sheet(isPresented: $showsNotes) { WithPerceptionTracking {
+                notesSheet
+            } }
+            .task(id: current) { await prefetchNeighbours() }
         }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(FirasMotion.gated(FirasMotion.standard, motionOn: motionOn)) { chrome.toggle() }
-        }
-        .statusBarHidden(true)
-        .sheet(isPresented: $showsNotes) { notesSheet }
-        .task(id: current) { await prefetchNeighbours() }
     }
 
     // MARK: - Chrome
@@ -152,25 +161,29 @@ struct DeckViewer: View {
         let notes = deck.slides.indices.contains(current)
             ? deck.slides[current].notes.trimmingCharacters(in: .whitespacesAndNewlines)
             : ""
-        return NavigationStack {
-            ScrollView {
-                Text(notes.isEmpty ? DeckCopy.noNotes.text(lang) : notes)
-                    .font(.system(size: 16))
-                    .foregroundStyle(notes.isEmpty ? appPalette.textMuted : appPalette.textPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(18)
-                    .bidiIsland(for: notes, fallback: lang)
-            }
-            .background(appPalette.background)
-            .navigationTitle(DeckCopy.notes.text(lang))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button { showsNotes = false } label: { Text(Strings.Common.done(lang)) }
+        return FirasNavigationStack {
+            WithPerceptionTracking {
+                ScrollView {
+                    Text(notes.isEmpty ? DeckCopy.noNotes.text(lang) : notes)
+                        .font(.system(size: 16))
+                        .foregroundStyle(notes.isEmpty ? appPalette.textMuted : appPalette.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(18)
+                        .bidiIsland(for: notes, fallback: lang)
+                }
+                .background(appPalette.background)
+                .navigationTitle(DeckCopy.notes.text(lang))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    WithPerceptionTracking {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button { showsNotes = false } label: { Text(Strings.Common.done(lang)) }
+                        }
+                    }
                 }
             }
         }
-        .presentationDetents([.medium])
+        .firasPresentationDetents([.medium])
         .firasSheetBackground(appPalette)
         .tint(appPalette.accent)
     }
@@ -232,7 +245,7 @@ enum DeckPDF {
             )
             .frame(width: size.width, height: size.height)
 
-            let renderer = ImageRenderer(content: page)
+            let renderer = FirasViewRenderer(content: page)
             renderer.scale = 2
             renderer.render { _, draw in
                 context.beginPDFPage(nil)

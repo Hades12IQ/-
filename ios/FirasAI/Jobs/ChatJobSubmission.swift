@@ -35,7 +35,7 @@ enum ChatJobSubmission {
             guard hasReplayKey(request.cid), canReplay(after: error) else { throw error }
             try Task.checkCancellation()
             guard ownerIsCurrent() else { throw CancellationError() }
-            try await Task.sleep(for: .milliseconds(250))
+            try await Task.sleep(nanoseconds: 250_000_000)
             try Task.checkCancellation()
             guard ownerIsCurrent() else { throw CancellationError() }
             let response = try await operation(request)
