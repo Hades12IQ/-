@@ -35,34 +35,39 @@ final class FirasViewRenderer<Content: View> {
     private func renderLegacy(_ action: (CGSize, (CGContext) -> Void) -> Void) {
         let host = UIHostingController(rootView: content
             .frame(width: proposedSize.width, height: proposedSize.height)
-            .fixedSize(horizontal: proposedSize.width == nil, vertical: proposedSize.height == nil))
+            .fixedSize(horizontal: proposedSize.width == nil, vertical: proposedSize.height == nil)
+            // A document has its own margins. Inheriting the phone's safe area after mounting
+            // shifts its first line down while retaining the earlier measured height.
+            .ignoresSafeArea())
         host.loadViewIfNeeded()
         host.view.backgroundColor = .clear
         host.view.isOpaque = false
-        let fitting = host.sizeThatFits(in: CGSize(width: proposedSize.width ?? 4096,
-                                                   height: proposedSize.height ?? 32768))
-        let size = CGSize(width: proposedSize.width ?? fitting.width,
-                          height: proposedSize.height ?? fitting.height)
-        guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else {
-            action(.zero, { _ in })
-            return
-        }
         // Mount outside the visible viewport so SwiftUI resolves its native text/layout tree.
-        // The host is removed synchronously when the caller finishes drawing this unit.
+        // Measure in that same mounted environment, not before it acquires window traits.
         let parent = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             .flatMap(\.windows).first(where: \.isKeyWindow)?.rootViewController
         parent?.addChild(host)
-        host.view.frame = CGRect(x: (parent?.view.bounds.maxX ?? 0) + 100,
-                                 y: 0, width: size.width, height: size.height)
+        let origin = CGPoint(x: (parent?.view.bounds.maxX ?? 0) + 100, y: 0)
+        host.view.frame = CGRect(origin: origin, size: CGSize(width: proposedSize.width ?? 4096,
+                                                            height: proposedSize.height ?? 1))
         parent?.view.addSubview(host.view)
         host.didMove(toParent: parent)
-        host.view.setNeedsLayout()
-        host.view.layoutIfNeeded()
         defer {
             host.willMove(toParent: nil)
             host.view.removeFromSuperview()
             host.removeFromParent()
         }
+        let fitting = host.sizeThatFits(in: CGSize(width: proposedSize.width ?? 4096,
+                                                   height: proposedSize.height ?? 32768))
+        let size = CGSize(width: proposedSize.width ?? ceil(fitting.width),
+                          height: proposedSize.height ?? ceil(fitting.height))
+        guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else {
+            action(.zero, { _ in })
+            return
+        }
+        host.view.frame = CGRect(origin: origin, size: size)
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
         action(size) { context in
             context.saveGState()
             // ImageRenderer's drawing closure uses a bottom-left origin; CALayer uses top-left.

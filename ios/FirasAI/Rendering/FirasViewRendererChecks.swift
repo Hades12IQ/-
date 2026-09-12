@@ -8,7 +8,9 @@ enum FirasViewRendererChecks {
         let page = VStack(alignment: .leading, spacing: 12) {
             Text("Native document export").font(.system(size: 22, weight: .bold))
             Text("العربية والرياضيات · x² + y² = 25").font(.system(size: 18))
-            Text("Every line remains inside the page margins.").font(.system(size: 16))
+            // A distinct last line detects a nonblank image that nevertheless lost its ending.
+            Text("Every line remains inside the page margins.")
+                .font(.system(size: 16)).foregroundColor(.blue)
         }
         .foregroundColor(.black).padding(20).frame(width: 360, alignment: .leading)
         let renderer = FirasViewRenderer(content: page)
@@ -38,8 +40,29 @@ enum FirasViewRendererChecks {
             bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return ["legacy-export-pixel-context"] }
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        let ink = stride(from: 0, to: pixels.count, by: 4).filter { pixels[$0] < 160 && pixels[$0+1] < 160 && pixels[$0+2] < 160 }.count
-        return ink > 300 ? [] : ["legacy-export-blank-render"]
+        var ink = 0
+        var minimumX = width, maximumX = -1, minimumY = height, maximumY = -1
+        var endingMinimumY = height, endingMaximumY = -1
+        for offset in stride(from: 0, to: pixels.count, by: 4) {
+            let red = pixels[offset], green = pixels[offset + 1], blue = pixels[offset + 2]
+            let darkInk = red < 160 && green < 160 && blue < 160
+            let endingInk = red < 100 && green < 100 && blue > 160
+            guard darkInk || endingInk else { continue }
+            ink += 1
+            let x = (offset / 4) % width, y = (offset / 4) / width
+            minimumX = min(minimumX, x); maximumX = max(maximumX, x)
+            minimumY = min(minimumY, y); maximumY = max(maximumY, y)
+            if endingInk { endingMinimumY = min(endingMinimumY, y); endingMaximumY = max(endingMaximumY, y) }
+        }
+        var failures: [String] = []
+        if ink <= 300 { failures.append("legacy-export-blank-render") }
+        if endingMaximumY - endingMinimumY < 10 { failures.append("legacy-export-final-line-missing-or-clipped") }
+        // The authored 20pt padding must survive rasterization on every edge. Two pixels allow
+        // normal glyph antialiasing; testing both vertical edges is independent of bitmap origin.
+        if minimumX < 18 || minimumY < 18 || width - 1 - maximumX < 18 || height - 1 - maximumY < 18 {
+            failures.append("legacy-export-ink-crosses-authored-page-margins")
+        }
+        return failures
     }
 }
 #endif
