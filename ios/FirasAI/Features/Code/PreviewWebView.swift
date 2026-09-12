@@ -636,7 +636,7 @@ private struct PreviewCanvas: UIViewRepresentable {
         view.backgroundColor = .clear
         view.isOpaque = false
         #if DEBUG
-        view.isInspectable = true
+        if #available(iOS 16.4, *) { view.isInspectable = true }
         #endif
         link.webView = view
         return view
