@@ -1,0 +1,12 @@
+Internal Error: DecodingError.dataCorrupted: Data was corrupted. Debug description: Corrupted JSON. Underlying error: unexpected end of file
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore.swift:1677:51: error: main actor-isolated property 'identityID' can not be referenced from a nonisolated autoclosure
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore.swift:1677:89: error: main actor-isolated property 'generation' can not be referenced from a nonisolated autoclosure
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore.swift:1678:29: error: call to main actor-isolated instance method 'acceptsProjectWrites' in a synchronous nonisolated context
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore.swift:1678:83: error: call to main actor-isolated instance method 'pending(owner:projectID:)' in a synchronous nonisolated context
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:392:47: warning: main actor-isolated static property 'taskCharacterCap' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:394:58: warning: main actor-isolated static property 'attachmentCharacterCap' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:532:85: warning: main actor-isolated static property 'taskCharacterCap' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:534:51: warning: main actor-isolated static property 'planAttachmentLimit' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:575:35: warning: main actor-isolated static property 'fileBriefLimit' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Stores/CodeStore+Project.swift:577:51: warning: main actor-isolated static property 'fileAttachmentLimit' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+** BUILD FAILED **
