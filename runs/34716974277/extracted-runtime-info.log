@@ -1,0 +1,25 @@
+{
+  "BuildMachineOSBuild" => "20A241133"
+  "CFBundleDevelopmentRegion" => "English"
+  "CFBundleExecutable" => "iOS 15.5"
+  "CFBundleIdentifier" => "com.apple.CoreSimulator.SimRuntime.iOS-15-5"
+  "CFBundleInfoDictionaryVersion" => "6.0"
+  "CFBundleName" => "iOS 15.5"
+  "CFBundlePackageType" => "BNDL"
+  "CFBundleShortVersionString" => "291"
+  "CFBundleSignature" => "????"
+  "CFBundleSupportedPlatforms" => [
+    0 => "MacOSX"
+  ]
+  "CFBundleVersion" => "291"
+  "DTCompiler" => "com.apple.compilers.llvm.clang.1_0"
+  "DTPlatformBuild" => "13E6049a"
+  "DTPlatformName" => "macosx"
+  "DTPlatformVersion" => "11.0"
+  "DTSDKBuild" => "20A2411"
+  "DTSDKName" => "macosx11.0internal"
+  "DTXcode" => "1330"
+  "DTXcodeBuild" => "13E6049a"
+  "LSMinimumSystemVersion" => "10.10"
+  "NSHumanReadableCopyright" => "Copyright © 2013-2020 Apple Inc. All rights reserved."
+}
