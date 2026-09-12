@@ -1,0 +1,64 @@
+{
+  "actualOSVersion" : "15.5",
+  "authenticatedSessionRestored" : false,
+  "deterministicLocalFixture" : true,
+  "errors" : [
+
+  ],
+  "evidence" : "Actual native app screens. Forced compatibility branches do not emulate an older OS runtime.",
+  "forcedLegacyUI" : false,
+  "networkBase" : "https:\/\/native-gallery.invalid",
+  "operatingSystemDescription" : "Version 15.5 (Build 19F70)",
+  "runtimeKind" : "simulator",
+  "screens" : [
+    {
+      "components" : [
+        "ChatScreen",
+        "TranscriptView",
+        "MarkdownView",
+        "ComposerView"
+      ],
+      "file" : "native-gallery-ios-15-5-modern-chat.png",
+      "pixelHeight" : 2532,
+      "pixelWidth" : 1170,
+      "screen" : "chat"
+    },
+    {
+      "components" : [
+        "SettingsView"
+      ],
+      "file" : "native-gallery-ios-15-5-modern-settings.png",
+      "pixelHeight" : 2532,
+      "pixelWidth" : 1170,
+      "screen" : "settings"
+    },
+    {
+      "components" : [
+        "OmnixTelegramView"
+      ],
+      "file" : "native-gallery-ios-15-5-modern-telegram.png",
+      "pixelHeight" : 2532,
+      "pixelWidth" : 1170,
+      "screen" : "telegram"
+    },
+    {
+      "components" : [
+        "CodeWorkspaceView"
+      ],
+      "file" : "native-gallery-ios-15-5-modern-code.png",
+      "pixelHeight" : 2532,
+      "pixelWidth" : 1170,
+      "screen" : "code"
+    },
+    {
+      "components" : [
+        "CodeModelPicker"
+      ],
+      "file" : "native-gallery-ios-15-5-modern-code-models.png",
+      "pixelHeight" : 2532,
+      "pixelWidth" : 1170,
+      "screen" : "code-models"
+    }
+  ],
+  "status" : "passed"
+}
