@@ -20,6 +20,12 @@ xcodebuild -project ios/FirasAI.xcodeproj -scheme FirasAI -configuration Debug \
   }
 APP="$RUNNER_TEMP/FirasAI-Smoke/Build/Products/Debug-iphonesimulator/FirasAI.app"
 xcrun simctl install "$DEVICE_ID" "$APP"
+# Capture actual UI independently of unrelated behavioral assertions. Failed galleries still
+# fail the release; their original metadata and images remain available for diagnosis.
+GALLERY_FAILED=0
+bash ios/scripts/native-gallery-smoke.sh "$DEVICE_ID" "$ARTIFACT_ROOT" native || GALLERY_FAILED=1
+bash ios/scripts/native-gallery-smoke.sh "$DEVICE_ID" "$ARTIFACT_ROOT" forced-legacy || GALLERY_FAILED=1
+xcrun simctl terminate "$DEVICE_ID" org.firasai.FirasAI || true
 xcrun simctl launch "$DEVICE_ID" org.firasai.FirasAI --reliability-smoke
 CONTAINER="$(xcrun simctl get_app_container "$DEVICE_ID" org.firasai.FirasAI data)"
 REPORT="$CONTAINER/Documents/reliability-smoke.json"
@@ -58,8 +64,7 @@ done
 xcrun simctl io "$DEVICE_ID" screenshot "$ARTIFACT_ROOT/forced-legacy-simulator.png"
 cat "$ARTIFACT_ROOT/legacy-reliability-smoke.json"
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("status")=="passed", d' "$ARTIFACT_ROOT/legacy-reliability-smoke.json"
-bash ios/scripts/native-gallery-smoke.sh "$DEVICE_ID" "$ARTIFACT_ROOT" native
-bash ios/scripts/native-gallery-smoke.sh "$DEVICE_ID" "$ARTIFACT_ROOT" forced-legacy
+test "$GALLERY_FAILED" -eq 0
 (
   cd "$ARTIFACT_ROOT"
   zip -q FirasAI-smoke-evidence.zip reliability-smoke.json legacy-reliability-smoke.json final-pdf-qa.json native-gallery-*.json *.png *.pdf

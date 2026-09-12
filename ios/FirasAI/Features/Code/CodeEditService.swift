@@ -151,7 +151,7 @@ enum CodeEditService {
 
     static func proposal(text: String, source: CodeProject, expectedBaseHash: String) throws -> CodeEditPlan {
         guard try sourceHash(source) == expectedBaseHash else { throw Failure.sourceChanged }
-        guard let fence = FirasFence.firstFence(in: text), fence.name == "firas-code-edit",
+        guard let fence = FirasFence.firstFence(in: text, including: ["firas-code-edit"]), fence.name == "firas-code-edit",
               fence.body.utf16.count <= 190_000 else { throw Failure.invalidProposal }
         let bytes = Data(fence.body.utf8)
         guard let object = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any],

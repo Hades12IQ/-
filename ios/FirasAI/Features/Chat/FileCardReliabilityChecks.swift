@@ -89,7 +89,7 @@ enum FileCardReliabilityChecks {
             result.failures.append("File-card Open target is smaller than 44 points")
         }
         guard probe.open != nil else {
-            host.dismiss(animated: false)
+            presenter.dismiss(animated: false)
             await JobClock.rest(0.1)
             return result
         }
@@ -158,11 +158,17 @@ enum FileCardReliabilityChecks {
         let users = env.chat.conversation(key)?.messages.filter { $0.role == .user } ?? []
         result.metrics["unchangedUserRows"] = users == [question] ? 1 : 0
         if users != [question] { result.failures.append("Opening a file changed or duplicated its user question") }
-        host.dismiss(animated: false)
+        // Dismiss from the owner of the fixture. The host may still be presenting the PDF
+        // preview; dismissing from the host would remove only that child and leave this
+        // full-screen fixture covering the subsequent mounted checks.
+        presenter.dismiss(animated: false)
         let dismissedAt = Date()
         while presenter.presentedViewController != nil && Date().timeIntervalSince(dismissedAt) < 3 {
             await JobClock.rest(0.03)
         }
+        let dismissed = presenter.presentedViewController == nil
+        result.metrics["nativeFixtureDismissed"] = dismissed ? 1 : 0
+        if !dismissed { result.failures.append("File-card fixture did not dismiss its complete native preview hierarchy") }
         return result
     }
 

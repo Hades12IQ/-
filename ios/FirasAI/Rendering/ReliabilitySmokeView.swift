@@ -16,6 +16,7 @@ struct ReliabilitySmokeView: View {
     @State private var liveFinished = false
     @State private var showLegacyScroll = false
     @State private var legacyScrollFailures: [String]?
+    @State private var legacyScrollDiagnostics: [String: Any] = ["stage": "not-started", "mounted": false]
     @State private var nativeGallery: NativeCompatibilityGalleryModel?
 
     var body: some View {
@@ -26,7 +27,9 @@ struct ReliabilitySmokeView: View {
             } else if showLegacyScroll {
                 VStack(spacing: 12) {
                     Text("Native legacy transcript scrolling").font(.headline)
-                    LegacyTranscriptScrollSmokeView { failures in legacyScrollFailures = failures }
+                    LegacyTranscriptScrollSmokeView(onProgress: { legacyScrollDiagnostics = $0 }) {
+                        failures in legacyScrollFailures = failures
+                    }
                 }
             } else { mathSurface }
         }
@@ -346,7 +349,9 @@ MarkdownView(markdown: shown, messageID: "live-math-smoke", streaming: !liveFini
         }
         let scrollFailures = legacyScrollFailures ?? ["Mounted legacy scroll fixture did not finish"]
         errors += scrollFailures
-        report["legacyTranscriptScroll"] = ["mounted": legacyScrollFailures != nil, "errors": scrollFailures]
+        report["legacyTranscriptScroll"] = legacyScrollDiagnostics.merging([
+            "completed": legacyScrollFailures != nil, "errors": scrollFailures
+        ]) { _, new in new }
         report["forcedLegacyUI"] = FirasCompatibility.forceLegacyUI
         saveScreen(directory.appendingPathComponent("legacy-transcript-scroll.png"))
         showLegacyScroll = false

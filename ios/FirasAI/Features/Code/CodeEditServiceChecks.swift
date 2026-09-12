@@ -11,6 +11,7 @@ enum CodeEditServiceChecks {
             CodeFile(path: "ä.txt", content: "النص 😀\t\\"),
             CodeFile(path: "A.swift", content: "line\u{2028}next")
         ])
+        var stage = "sourceHash"
         do {
             let hash = try CodeEditService.sourceHash(source)
             // Computed with the website's real tools/code-edit.mjs codeEditHash, not the Swift implementation.
@@ -18,6 +19,7 @@ enum CodeEditServiceChecks {
                   "canonical Unicode/source hash differs from website")
             let receipt = CodeEditReceipt(owner: "fixture-owner", conversationId: "fixture_project", cid: "fixture_turn", baseHash: hash)
             for model in [ModelTier.mini, .pro, .ultra, .max] {
+                stage = "request/" + model.rawValue
                 let request = try CodeEditService.request(receipt: receipt, task: "Explain my Swift code", attach: "",
                     selection: CodeModelSelection(model: model, depth: "deep"), lang: .english)
                 let object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(request)) as! [String: Any]
@@ -36,7 +38,13 @@ enum CodeEditServiceChecks {
             func fence(_ value: [String: Any]) throws -> String {
                 "```firas-code-edit\n" + String(data: try JSONSerialization.data(withJSONObject: value), encoding: .utf8)! + "\n```"
             }
-            let plan = try CodeEditService.proposal(text: fence(proposal), source: source, expectedBaseHash: hash)
+            stage = "editProposal"
+            let proposalFence = try fence(proposal)
+            check(FirasFence.firstFence(in: proposalFence) == nil,
+                  "private edit protocol unexpectedly entered the ordinary rendering whitelist")
+            check(FirasFence.firstFence(in: proposalFence, including: ["firas-code-edit"])?.name == "firas-code-edit",
+                  "private edit fence was not recognized in the Code service scope")
+            let plan = try CodeEditService.proposal(text: proposalFence, source: source, expectedBaseHash: hash)
             check(plan.writes.map(\.path) == ["z.swift"] && plan.deletes == ["ä.txt"], "valid proposal lost changes")
             proposal["baseHash"] = String(repeating: "0", count: 64)
             check((try? CodeEditService.proposal(text: fence(proposal), source: source, expectedBaseHash: hash)) == nil,
@@ -52,10 +60,19 @@ enum CodeEditServiceChecks {
             proposal["changes"] = [] as [[String: String]]
             proposal["summary"] = ""
             proposal["answer"] = "Read-only explanation"
+            stage = "readOnlyProposal"
             let answer = try CodeEditService.proposal(text: fence(proposal), source: source, expectedBaseHash: hash)
             check(answer.isEmpty && answer.prose == "Read-only explanation", "question produced edits instead of its answer")
             errors += await admissionChecks(receipt)
-        } catch { errors.append("Code service: source/request/proposal fixture failed") }
+        } catch {
+            let code: String
+            if let failure = error as? CodeEditService.Failure { code = String(describing: failure) }
+            else if let failure = error as? CodeOmnixImportError { code = String(describing: failure) }
+            else if error is EncodingError { code = "encoding" }
+            else if error is DecodingError { code = "decoding" }
+            else { code = "unexpected" }
+            errors.append("Code service: fixture failed at " + stage + " (" + code + ")")
+        }
         return errors
     }
 

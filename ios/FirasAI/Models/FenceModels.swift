@@ -461,7 +461,7 @@ enum FirasFence: Sendable, Equatable {
     /// `body` keeps whatever followed the name on the opening line — that is where a
     /// ```` ```firas-code {json} ```` meta object lives. A `firas-code` body is raw code that may
     /// itself contain fences, so its closing marker is the **last** one, not the first.
-    static func firstFence(in markdown: String) -> (name: String, body: String, range: Range<String.Index>)? {
+    static func firstFence(in markdown: String, including additionalNames: [String] = []) -> (name: String, body: String, range: Range<String.Index>)? {
         var lineStart = markdown.startIndex
         while lineStart < markdown.endIndex {
             let lineEnd = markdown[lineStart...].firstIndex(where: \.isNewline) ?? markdown.endIndex
@@ -476,7 +476,7 @@ enum FirasFence: Sendable, Equatable {
                 }
                 let info = String(trimmed.dropFirst(markerCount)).trimmingCharacters(in: .whitespaces)
                 let name = String(info.prefix(while: { !$0.isWhitespace })).lowercased()
-                if recognisedNames.contains(name) {
+                if recognisedNames.contains(name) || additionalNames.contains(name) {
                     let inline = String(info.dropFirst(name.count)).trimmingCharacters(in: .whitespaces)
                     let closes = closingLines(in: markdown, after: lineEnd, marker: marker, minimumCount: markerCount)
                     guard let close = (name == "firas-code" ? closes.last : closes.first) else { return nil }

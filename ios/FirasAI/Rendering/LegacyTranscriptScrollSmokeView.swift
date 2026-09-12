@@ -6,7 +6,14 @@ import Perception
 /// attachment; it exercises the fallback even when CI has only a current iOS Simulator runtime.
 struct LegacyTranscriptScrollSmokeView: View {
     let onComplete: ([String]) -> Void
+    let onProgress: ([String: Any]) -> Void
     @StateObject private var model = LegacyTranscriptScrollSmokeModel()
+
+    init(onProgress: @escaping ([String: Any]) -> Void = { _ in },
+         onComplete: @escaping ([String]) -> Void) {
+        self.onProgress = onProgress
+        self.onComplete = onComplete
+    }
 
     var body: some View {
         return WithPerceptionTracking {
@@ -27,7 +34,7 @@ Text("Scroll fixture \(index)")
             }
         }
         .frame(height: model.viewport)
-        .task { await model.run(onComplete: onComplete) }
+        .task { await model.run(onProgress: onProgress, onComplete: onComplete) }
             }
     }
 }
@@ -41,10 +48,17 @@ private final class LegacyTranscriptScrollSmokeModel: ObservableObject {
     @Published var viewport: CGFloat = 280
     let controller = LegacyTranscriptScrollController(pinnedThreshold: 72, chipThreshold: 72)
     private var started = false
+    private var reportProgress: (([String: Any]) -> Void)?
 
-    func run(onComplete: ([String]) -> Void) async {
+    func run(onProgress: @escaping ([String: Any]) -> Void, onComplete: ([String]) -> Void) async {
         guard !started else { return }
         started = true
+        reportProgress = onProgress
+        progress("started")
+        defer {
+            progress("finished")
+            reportProgress = nil
+        }
         var failures = Self.geometryFailures()
         await check("legacy-scroll-did-not-mount-at-measured-bottom", into: &failures) {
             guard let geometry = self.controller.debugGeometry else { return false }
@@ -109,11 +123,27 @@ private final class LegacyTranscriptScrollSmokeModel: ObservableObject {
 
     private func check(_ failure: String, into failures: inout [String], condition: () -> Bool) async {
         // Readiness/deadlock guard only; the result is geometry and lifecycle, never a speed claim.
+        progress(failure)
         let deadline = ProcessInfo.processInfo.systemUptime + 5
         while !condition(), ProcessInfo.processInfo.systemUptime < deadline, !Task.isCancelled {
             await JobClock.rest(0.02)
         }
         if !condition() { failures.append(failure) }
+        progress(failure, passed: condition())
+    }
+
+    private func progress(_ stage: String, passed: Bool? = nil) {
+        var diagnostic: [String: Any] = ["stage": stage, "viewTaskStarted": started,
+            "mounted": controller.debugGeometry != nil, "cancelled": Task.isCancelled,
+            "refreshCount": controller.debugRefreshCount]
+        if let passed { diagnostic["lastCheckPassed"] = passed }
+        if let geometry = controller.debugGeometry {
+            diagnostic["height"] = Double(geometry.height)
+            diagnostic["viewport"] = Double(geometry.viewport)
+            diagnostic["offsetY"] = Double(geometry.offsetY)
+            diagnostic["bottomDistance"] = Double(geometry.distance)
+        }
+        reportProgress?(diagnostic)
     }
 
     private static func geometryFailures() -> [String] {

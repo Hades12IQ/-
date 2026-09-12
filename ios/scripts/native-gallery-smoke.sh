@@ -16,10 +16,10 @@ for attempt in $(seq 1 60); do
   [ -f "$REPORT" ] && break
   sleep 2
 done
-test -f "$REPORT"
-cp "$REPORT" "$ARTIFACT_ROOT/native-gallery-$MODE-complete.json"
 find "$CONTAINER/Documents" -maxdepth 1 -name 'native-gallery-*.png' -exec cp {} "$ARTIFACT_ROOT/" \;
 find "$CONTAINER/Documents" -maxdepth 1 -name 'native-gallery-ios-*.json' -exec cp {} "$ARTIFACT_ROOT/" \;
+test -f "$REPORT"
+cp "$REPORT" "$ARTIFACT_ROOT/native-gallery-$MODE-complete.json"
 python3 - "$REPORT" "$MODE" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
