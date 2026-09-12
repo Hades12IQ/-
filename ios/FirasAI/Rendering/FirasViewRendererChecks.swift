@@ -46,7 +46,9 @@ enum FirasViewRendererChecks {
         for offset in stride(from: 0, to: pixels.count, by: 4) {
             let red = pixels[offset], green = pixels[offset + 1], blue = pixels[offset + 2]
             let darkInk = red < 160 && green < 160 && blue < 160
-            let endingInk = red < 100 && green < 100 && blue > 160
+            // SwiftUI's semantic blue can contain substantial green (e.g. 0,122,255).
+            // Recognize blue dominance rather than assuming the color is pure RGB blue.
+            let endingInk = blue > 160 && Int(blue) - Int(red) > 100 && Int(blue) - Int(green) > 60
             guard darkInk || endingInk else { continue }
             ink += 1
             let x = (offset / 4) % width, y = (offset / 4) / width
