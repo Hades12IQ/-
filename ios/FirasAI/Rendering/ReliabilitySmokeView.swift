@@ -157,9 +157,11 @@ struct ReliabilitySmokeView: View {
         report["harnessTaskCancelledAfterViewer"] = Task.isCancelled
         if Task.isCancelled { errors.append("Smoke runner was cancelled by its temporary viewer presentation") }
         showMath = true
+        report["mathIslandBeforeLive"] = MathIsland.shared.reliabilityDiagnostics()
         let liveChecks = await checkLiveMath(directory: directory)
         errors += liveChecks.failures
         report["liveMath"] = liveChecks.metrics
+        report["mathIslandAfterLive"] = MathIsland.shared.reliabilityDiagnostics()
 
         let selectable = SelectableTextView()
         selectable.isEditable = false
@@ -289,6 +291,7 @@ struct ReliabilitySmokeView: View {
         errors += cardChecks.failures
         report["fileCardExport"] = cardChecks.metrics
         report["fileCardExportDiagnostics"] = cardChecks.diagnostics
+        report["mathIslandFinal"] = MathIsland.shared.reliabilityDiagnostics()
         report["status"] = errors.isEmpty ? "passed" : "failed"
         report["errors"] = errors
         status = errors.isEmpty ? "Passed · paginated PDF and persisted mathematics" : errors.joined(separator: " · ")

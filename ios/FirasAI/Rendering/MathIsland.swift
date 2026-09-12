@@ -19,6 +19,11 @@ private struct MathIslandFrame {
     let ok: Bool
 }
 
+private enum MathIslandFailure {
+    case assets
+    case page
+}
+
 /// **One `WKWebView` for the whole app, created once and updated in place.**
 ///
 /// The owner's report — «اللاتكس ما تتحول عدل، تتحول شكل غريب و تختفي»: a formula renders while the
@@ -84,7 +89,7 @@ final class MathIsland {
     private static let maximumBytes = 24 * 1024 * 1024
     /// How long the page survives with nothing to do.
     private static let idleTeardown: Double = 30
-    /// How long a CDN failure is believed before the next request may try again.
+    /// Missing assets keep their network cooldown; a local WebKit page uses a shorter retry.
     private static let failureCooldown: Double = 60
     /// How many times one equation may be handed back for another attempt.
     ///
@@ -195,7 +200,12 @@ final class MathIsland {
     @ObservationIgnored private var isRendering = false
     @ObservationIgnored private var isScheduled = false
     @ObservationIgnored private var isUnavailable = false
-    @ObservationIgnored private var unavailableAt: Date?
+    @ObservationIgnored private var unavailableUntil: Date?
+
+#if DEBUG
+    @ObservationIgnored private var diagnosticStart = Date()
+    @ObservationIgnored private var diagnosticEvents: [[String: Any]] = []
+#endif
 
     // MARK: - Page
 
@@ -217,6 +227,18 @@ final class MathIsland {
         store[Self.key(id, style)]
     }
 
+    /// Content-free evidence: no TeX, message ids, titles or account data leave the renderer.
+    func reliabilityDiagnostics() -> [String: Any] {
+        ["elapsedMilliseconds": Date().timeIntervalSince(diagnosticStart) * 1000,
+         "queued": queued.count, "carried": queuedKeys.count, "inFlight": inFlightKeys.count,
+         "glyphs": store.count, "recoveries": recoveries, "stalls": stalls,
+         "rendering": isRendering, "scheduled": isScheduled, "unavailable": isUnavailable,
+         "booted": isBooted, "hasWindow": webView?.window != nil,
+         "foregroundScene": Self.hasForegroundScene(),
+         "retryAfterMilliseconds": unavailableUntil.map { max(0, $0.timeIntervalSinceNow * 1000) } ?? -1,
+         "events": diagnosticEvents]
+    }
+
     /// Exercise the real queue/retry paths without booting a page or changing shared state.
     static func previewReliabilityFailures(style: MathIslandStyle) -> [String] {
         let island = MathIsland()
@@ -225,6 +247,23 @@ final class MathIsland {
         let key = Self.key(item.id, style)
         let pending = Pending(item: item, style: style, previewGroup: "first")
         var failures: [String] = []
+
+        let localDelays = (0...Self.maximumRecoveries).map { Self.recoveryDelay(for: .page, completedRecoveries: $0) }
+        let expectedDelays: [Double?] = [1, 2, 4, 8, 8, 8, nil]
+        if localDelays != expectedDelays
+            || Self.recoveryDelay(for: .assets, completedRecoveries: 0) != 60
+            || Self.recoveryDelay(for: .assets, completedRecoveries: Self.maximumRecoveries) != nil {
+            failures.append("Local math page failures inherited the network cooldown or escaped the recovery cap")
+        }
+        island.isUnavailable = true
+        island.unavailableUntil = Date().addingTimeInterval(-1)
+        island.clearExpiredFailure()
+        if island.isUnavailable { failures.append("A local math retry stayed unavailable after its deadline") }
+        island.isUnavailable = true
+        island.unavailableUntil = nil // Exhausted automatic budget.
+        island.clearExpiredFailure()
+        if !island.isUnavailable { failures.append("A read restarted an exhausted math recovery budget") }
+        island.isUnavailable = false
 
         island.previewGroups["first"] = Self.key(newer.id, style)
         island.queuedKeys.insert(key) // A page had already picked up the older prefix.
@@ -434,13 +473,12 @@ final class MathIsland {
         exhausted = exhausted.compactMapValues { currentPending($0) }
     }
 
-    /// A message that failed while the phone was in a lift is allowed to try again later. The
-    /// retry is driven by a reader asking again, never by a timer of our own.
+    /// A reader and the recovery timer observe the same deadline. No deadline means the bounded
+    /// automatic budget was spent; only an explicit retry or a new identity resets that budget.
     private func clearExpiredFailure() {
-        guard isUnavailable, let at = unavailableAt else { return }
-        guard Date().timeIntervalSince(at) > Self.failureCooldown else { return }
+        guard isUnavailable, let until = unavailableUntil, Date() >= until else { return }
         isUnavailable = false
-        unavailableAt = nil
+        unavailableUntil = nil
     }
 
     private func register(_ item: MathIslandItem) {
@@ -469,7 +507,8 @@ final class MathIsland {
     /// message that failed try again.
     func allowRetry() {
         isUnavailable = false
-        unavailableAt = nil
+        unavailableUntil = nil
+        recoveryToken &+= 1
         /* AND THE LOST RACES ARE FORGIVEN. `retries` caps how many times one key may be handed
            back; the end of a stream, a regenerate or a version switch is the moment to let an
            equation that lost three of them start its count over — counts first, and then the
@@ -514,7 +553,7 @@ final class MathIsland {
         blankRefunds = 0
         known.removeAll()
         isUnavailable = false
-        unavailableAt = nil
+        unavailableUntil = nil
         teardownPage()
     }
 
@@ -565,7 +604,8 @@ final class MathIsland {
         guard !isUnavailable else {
             // Mid-cooldown: a round spent on a queue nothing is going to look at is a round
             // wasted. `scheduleRecovery` owns this window; wait it out and ask again after.
-            scheduleAmnesty()
+            // An exhausted recovery budget has no automatic wake left to wait for.
+            if unavailableUntil != nil { scheduleAmnesty() }
             return
         }
         guard forgiveRetired() else { return }
@@ -700,6 +740,7 @@ final class MathIsland {
         var failures = 0
         var stalled = false
         while !isUnavailable, let batch = nextBatch() {
+            recordDiagnostic("pass-start", value: batch.pending.count)
             inFlightKeys = Set(batch.pending.map { Self.key($0.item.id, $0.style) })
             inFlightPromotions.removeAll()
             defer {
@@ -718,6 +759,7 @@ final class MathIsland {
                Waiting two seconds for the scene instead costs nothing and spends nothing:
                no attempt, no failure, no cooldown. */
             guard Self.hasForegroundScene() else {
+                recordDiagnostic("scene-deferred")
                 requeue(batch.pending)
                 stalled = true
                 break
@@ -730,12 +772,15 @@ final class MathIsland {
                emptied on purpose, and their bitmaps into a store that had just been cleared. A
                pass from a spent era resolves nothing and requeues nothing. */
             let era = epoch
+            recordDiagnostic("assets-start")
             guard await MathIslandAssets.shared.prepare() else {
                 guard era == epoch else { break }
                 requeue(batch.pending)
-                markUnavailable()
+                recordDiagnostic("assets-unavailable")
+                markUnavailable(.assets)
                 break
             }
+            recordDiagnostic("assets-ready")
             let rendered = await renderChunk(batch, era: era)
             guard era == epoch else { break }
             if rendered {
@@ -745,7 +790,8 @@ final class MathIsland {
             requeue(batch.pending)
             teardownPage()
             failures += 1
-            if failures >= 2 { markUnavailable() }
+            recordDiagnostic("page-failed", value: failures)
+            if failures >= 2 { markUnavailable(.page) }
         }
 
         isRendering = false
@@ -807,8 +853,13 @@ final class MathIsland {
         let style = batch.style
         guard let json = Self.payload(items: items, style: style) else { return false }
 
+        recordDiagnostic("render-start", value: items.count)
         view.evaluateJavaScript("window.firasRun(" + json + ");", completionHandler: nil)
-        guard case .done(let firstFrames, let size) = await wait(seconds: 12) else { return false }
+        guard case .done(let firstFrames, let size) = await wait(seconds: 12) else {
+            recordDiagnostic("render-failed")
+            return false
+        }
+        recordDiagnostic("render-measured", value: firstFrames.count)
         guard era == epoch else { return true }
 
         var frames = firstFrames
@@ -917,6 +968,7 @@ final class MathIsland {
         era: Int
     ) async -> Int {
         guard era == epoch else { return 0 }
+        recordDiagnostic("capture-start", value: frames.count)
         let items = pending.map(\.item)
         let bounds = view.bounds
         guard bounds.width > 1, bounds.height > 1 else {
@@ -958,6 +1010,7 @@ final class MathIsland {
             let snapshotImage = await snapshot(view, configuration: configuration)
             guard era == epoch else { return 0 }
             guard let image = snapshotImage else {
+                recordDiagnostic("snapshot-missing")
                 release(pending[frame.index], era: era)
                 continue
             }
@@ -992,6 +1045,7 @@ final class MathIsland {
                 look += 1
             }
             guard ready else {
+                recordDiagnostic("snapshot-blank")
                 release(pending[frame.index], era: era)
                 continue
             }
@@ -1019,6 +1073,7 @@ final class MathIsland {
            frame: one reflow for the message, whatever it contains. */
         guard era == epoch else { return 0 }
         for (key, glyph) in batch { remember(glyph, key: key) }
+        recordDiagnostic("capture-done", value: drawn)
         return drawn
     }
 
@@ -1161,6 +1216,7 @@ final class MathIsland {
     private func bootedWebView() async -> WKWebView? {
         if let view = webView, isBooted { return view }
         teardownPage()
+        recordDiagnostic("boot-start")
 
         let window = Self.hostWindow()
         let width = max(360, min(1200, window?.bounds.width ?? 390))
@@ -1189,8 +1245,10 @@ final class MathIsland {
 
         if case .booted = await wait(seconds: 14) {
             isBooted = true
+            recordDiagnostic("boot-ready")
             return view
         }
+        recordDiagnostic("boot-failed")
         teardownPage()
         return nil
     }
@@ -1300,42 +1358,52 @@ final class MathIsland {
         }
     }
 
-    private func markUnavailable() {
-        isUnavailable = true
-        unavailableAt = Date()
-        teardownPage()
-        scheduleRecovery()
+    /// Six automatic recoveries per explicit request lifetime. A cold local page is worth a
+    /// prompt new attempt; missing bundled/CDN assets must still respect the network cooldown.
+    private static func recoveryDelay(for failure: MathIslandFailure, completedRecoveries: Int) -> Double? {
+        guard completedRecoveries >= 0, completedRecoveries < maximumRecoveries else { return nil }
+        if case .assets = failure { return failureCooldown }
+        return [1.0, 2.0, 4.0, 8.0][min(completedRecoveries, 3)]
     }
 
-    /// The cooldown, cleared by something.
-    ///
-    /* IT NEVER WAS. `clearExpiredFailure` is honest about the sixty seconds, but it only runs
-       when a reader asks — and a reader asks when a row is laid out again, and a row is laid out
-       again when the observed store changes, and an island that has just declared itself
-       unavailable changes nothing in that store. So the flag outlived its own cooldown, the
-       queue it stranded stayed stranded, and the launch spent the rest of its life one guard
-       away from working. A timer of our own is what makes the sixty seconds mean sixty seconds.
-       Bounded, because an island that has failed six pages in six minutes is not going to
-       succeed on the seventh, and the reader still has the Unicode form in front of them. */
-    private func scheduleRecovery() {
+    private func markUnavailable(_ failure: MathIslandFailure) {
+        isUnavailable = true
+        let delay = Self.recoveryDelay(for: failure, completedRecoveries: recoveries)
+        unavailableUntil = delay.map { Date().addingTimeInterval($0) }
+        teardownPage()
+        recordDiagnostic(delay == nil ? "recovery-exhausted" : "recovery-scheduled", value: Int(delay ?? 0))
+        if let delay { scheduleRecovery(after: delay) }
+    }
+
+    /// Wake the stranded queue without waiting for a SwiftUI redraw. The source of failure
+    /// determines the delay; the existing global cap prevents a broken renderer from spinning.
+    private func scheduleRecovery(after delay: Double) {
         guard recoveries < Self.maximumRecoveries else { return }
         recoveries += 1
         recoveryToken &+= 1
         let token = recoveryToken
-        // A second past the cooldown, so `clearExpiredFailure` reads it as expired rather than as
-        // one tick short of it.
-        let after: Double = Self.failureCooldown + 1
-        DispatchQueue.main.asyncAfter(deadline: .now() + after) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             MainActor.assumeIsolated {
                 guard let self, self.recoveryToken == token else { return }
-                self.clearExpiredFailure()
-                guard !self.isUnavailable else { return }
+                // This matching timer has already waited on the monotonic dispatch clock.
+                // A wall-clock adjustment must not strand the queue after its only wake.
+                self.isUnavailable = false
+                self.unavailableUntil = nil
+                self.recordDiagnostic("recovery-ready")
                 // Nothing may be queued: everything could have been retired instead. Both roads
                 // out of a dead island are taken here, and both are bounded.
                 self.forgiveRetired()
                 self.pump()
             }
         }
+    }
+
+    private func recordDiagnostic(_ event: String, value: Int = 0) {
+#if DEBUG
+        diagnosticEvents.append(["stage": event, "milliseconds": Date().timeIntervalSince(diagnosticStart) * 1000,
+            "value": value, "queued": queued.count, "glyphs": store.count])
+        if diagnosticEvents.count > 160 { diagnosticEvents.removeFirst(diagnosticEvents.count - 160) }
+#endif
     }
 
     // MARK: - Bridge
@@ -1357,6 +1425,7 @@ final class MathIsland {
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
                 MainActor.assumeIsolated {
                     guard let self, self.waitToken == token, self.waiter != nil else { return }
+                    self.recordDiagnostic("bridge-timeout", value: Int(seconds))
                     self.resume(.failed)
                 }
             }
@@ -1373,8 +1442,10 @@ final class MathIsland {
     fileprivate func receive(_ payload: [String: Any]) {
         switch (payload["type"] as? String) ?? "" {
         case "boot":
+            recordDiagnostic("bridge-boot")
             resume(.booted)
         case "done":
+            recordDiagnostic("bridge-done")
             let raw = (payload["items"] as? [[String: Any]]) ?? []
             var frames: [MathIslandFrame] = []
             frames.reserveCapacity(raw.count)
@@ -1402,6 +1473,7 @@ final class MathIsland {
             )
             resume(.done(frames, size))
         default:
+            recordDiagnostic("bridge-failure")
             resume(.failed)
         }
     }
