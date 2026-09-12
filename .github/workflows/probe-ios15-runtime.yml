@@ -1,6 +1,6 @@
 name: Probe genuine iOS 15 simulator
 
-# Independent evidence job. It never builds/releases an IPA or changes the main build workflow.
+# Independent runtime and DEBUG app evidence. It never publishes an IPA.
 on:
   workflow_dispatch:
   push:
@@ -8,6 +8,7 @@ on:
       - codex/ios-web-parity-20260912
     paths:
       - ios/scripts/probe-ios15-runtime.py
+      - ios/scripts/verify-ios15-app.py
       - .github/workflows/probe-ios15-runtime.yml
 
 permissions:
@@ -20,7 +21,7 @@ concurrency:
 jobs:
   apple-ios15-runtime:
     runs-on: macos-26
-    timeout-minutes: 25
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -39,6 +40,11 @@ jobs:
         shell: bash
         run: python3 ios/scripts/probe-ios15-runtime.py --output "$PROBE_ROOT"
 
+      - name: Build and verify native app on the proven iOS 15.5 device
+        timeout-minutes: 40
+        shell: bash
+        run: python3 ios/scripts/verify-ios15-app.py --output "$PROBE_ROOT"
+
       - name: Upload runtime evidence without installer image
         if: always()
         uses: actions/upload-artifact@v4
@@ -49,6 +55,7 @@ jobs:
             ${{ runner.temp }}/iOS15-Probe/*.log
             ${{ runner.temp }}/iOS15-Probe/*.png
             ${{ runner.temp }}/iOS15-Probe/*.plist
+            ${{ runner.temp }}/iOS15-Probe/*.pdf
           if-no-files-found: warn
           retention-days: 7
 
@@ -65,7 +72,7 @@ jobs:
             || git -C "$PUBLISH_ROOT" init --quiet -b ios15-probe-results
           RESULT_DIR="$PUBLISH_ROOT/runs/$GITHUB_RUN_ID"
           mkdir -p "$RESULT_DIR"
-          for ITEM in "$PROBE_ROOT"/*.json "$PROBE_ROOT"/*.log "$PROBE_ROOT"/*.png "$PROBE_ROOT"/*.plist; do
+          for ITEM in "$PROBE_ROOT"/*.json "$PROBE_ROOT"/*.log "$PROBE_ROOT"/*.png "$PROBE_ROOT"/*.plist "$PROBE_ROOT"/*.pdf; do
             [ ! -f "$ITEM" ] || cp "$ITEM" "$RESULT_DIR/"
           done
           printf 'Source commit: %s\nWorkflow run: %s\nJob status: %s\n' \

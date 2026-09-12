@@ -17,15 +17,78 @@ from pathlib import Path
 import platform
 import plistlib
 import re
+import shutil
 import signal
+import stat
 import subprocess
 import sys
 import time
 import urllib.parse
 import urllib.request
+import uuid
 
 INDEX = "https://devimages-cdn.apple.com/downloads/xcode/simulators/index2.dvtdownloadableindex"
 VERSION = "15.5"
+
+
+def bundle_manifest(root, deadline):
+    """Hash bytes, relative names, modes and symlink targets without following runtime links."""
+    checksum = hashlib.sha256()
+    counts = {"files": 0, "directories": 0, "symlinks": 0, "bytes": 0}
+
+    def walk(directory):
+        if time.monotonic() >= deadline:
+            raise RuntimeError("runtime-manifest-time-budget-exhausted")
+        for path in sorted(directory.iterdir(), key=lambda item: item.name):
+            info = path.lstat()
+            name = path.relative_to(root).as_posix()
+            mode = stat.S_IMODE(info.st_mode)
+            if stat.S_ISLNK(info.st_mode):
+                row = [name, "symlink", mode, os.readlink(path)]
+                counts["symlinks"] += 1
+            elif stat.S_ISDIR(info.st_mode):
+                row = [name, "directory", mode]
+                counts["directories"] += 1
+            elif stat.S_ISREG(info.st_mode):
+                with path.open("rb") as stream:
+                    sha = hashlib.file_digest(stream, "sha256").hexdigest()
+                row = [name, "file", mode, info.st_size, sha]
+                counts["files"] += 1
+                counts["bytes"] += info.st_size
+            else:
+                raise RuntimeError("unexpected-special-file-in-runtime: " + name)
+            checksum.update(json.dumps(row, ensure_ascii=True, separators=(",", ":")).encode() + b"\n")
+            if stat.S_ISDIR(info.st_mode):
+                walk(path)
+
+    walk(root)
+    return dict(counts, sha256=checksum.hexdigest())
+
+
+def runtime_bundle_metadata(bundle, version, build):
+    """A package payload must identify the exact Apple OS requested by the live catalogue."""
+    if bundle.is_symlink() or not bundle.is_dir() or bundle.suffix != ".simruntime":
+        raise RuntimeError("invalid-runtime-bundle-root")
+    info_path = bundle / "Contents/Info.plist"
+    if info_path.is_symlink() or not info_path.resolve().is_relative_to(bundle.resolve()):
+        raise RuntimeError("runtime-info-plist-escapes-bundle")
+    info = plistlib.loads(info_path.read_bytes())
+    expected_id = "com.apple.CoreSimulator.SimRuntime.iOS-" + version.replace(".", "-")
+    if info.get("CFBundleIdentifier") != expected_id:
+        raise RuntimeError("extracted-runtime-identifier-mismatch")
+    systems = [bundle / path for path in (
+        "Contents/Resources/RuntimeRoot/System/Library/CoreServices/SystemVersion.plist",
+        "Contents/RuntimeRoot/System/Library/CoreServices/SystemVersion.plist")]
+    systems = [path for path in systems if path.is_file() and not path.is_symlink()
+               and path.resolve().is_relative_to(bundle.resolve())]
+    if len(systems) != 1:
+        raise RuntimeError("extracted-runtime-system-version-layout-mismatch")
+    system = plistlib.loads(systems[0].read_bytes())
+    if system.get("ProductVersion") != version or system.get("ProductBuildVersion") != build:
+        raise RuntimeError("extracted-runtime-version-or-build-mismatch")
+    return {"bundleIdentifier": expected_id, "systemVersion": system,
+            "infoPlistSHA256": hashlib.sha256(info_path.read_bytes()).hexdigest(),
+            "systemVersionSHA256": hashlib.sha256(systems[0].read_bytes()).hexdigest()}
 
 
 def main():
@@ -157,7 +220,67 @@ def main():
             _, signature = run("apple-package-signature", ["pkgutil", "--check-signature", str(packages[0])])
             if "Software Update" not in signature and "Apple Inc." not in signature:
                 raise RuntimeError("unexpected-package-signer; refusing installation")
-            run("install-apple-runtime", ["sudo", "-n", "installer", "-pkg", str(packages[0]), "-target", "/"], timeout=240)
+            install_code, installer_log = run("install-apple-runtime",
+                ["sudo", "-n", "installer", "-pkg", str(packages[0]), "-target", "/"], timeout=240, check=False)
+            if install_code != 0:
+                if "The package is attempting to install content to the system volume" not in installer_log:
+                    raise RuntimeError("install-apple-runtime-failed; see install-apple-runtime.log")
+                # A legacy pkg installs at an obsolete system-volume location. Expand its already
+                # verified payload with Apple's tool; register only the intact .simruntime in the
+                # documented CoreSimulator bundle directory, without running or editing scripts.
+                report["legacyInstallerFallback"] = "verified-Apple-runtime-bundle-registration"
+                expanded = output / ("expanded-apple-package-" + uuid.uuid4().hex)
+                run("expand-verified-apple-package", ["pkgutil", "--expand-full", str(packages[0]), str(expanded)], timeout=240)
+                bundles = []
+                for directory, children, _ in os.walk(expanded, followlinks=False):
+                    for name in list(children):
+                        if name.endswith(".simruntime"):
+                            bundles.append(Path(directory) / name)
+                            children.remove(name)
+                if len(bundles) != 1 or not bundles[0].resolve().is_relative_to(expanded.resolve()):
+                    raise RuntimeError("unexpected-expanded-runtime-bundle-layout")
+                bundle = bundles[0]
+                run("extracted-runtime-info", ["plutil", "-p", str(bundle / "Contents/Info.plist")])
+                metadata = runtime_bundle_metadata(bundle, VERSION, entry["simulatorVersion"]["buildUpdate"])
+                metadata["packageRelativePath"] = bundle.relative_to(expanded).as_posix()
+                print("verify-original-runtime-bundle", flush=True)
+                before = bundle_manifest(bundle, deadline)
+                metadata["originalManifest"] = before
+                report["extractedRuntime"] = metadata
+                save()
+                base = Path("/Library/Developer/CoreSimulator/Profiles/Runtimes")
+                if base.resolve() != base or any(path.is_symlink() for path in (base, *base.parents)):
+                    raise RuntimeError("unexpected-CoreSimulator-registration-directory")
+                destination = base / bundle.name
+                if destination.exists() or destination.is_symlink():
+                    raise RuntimeError("runtime-destination-already-exists; no overwrite allowed")
+                run("create-runtime-registration-directory", ["sudo", "-n", "mkdir", "-p", str(base)])
+                available = shutil.disk_usage(base).free
+                report["registrationFreeBytes"] = available
+                if available < before["bytes"] + 1_000_000_000:
+                    raise RuntimeError("insufficient-space-for-intact-runtime-copy")
+                stage = base / (".firas-ios15-stage-" + uuid.uuid4().hex)
+                if stage.exists() or stage.is_symlink():
+                    raise RuntimeError("runtime-stage-already-exists")
+                # Stage without the .simruntime extension so CoreSimulator never sees half a copy.
+                run("copy-intact-apple-runtime", ["sudo", "-n", "ditto", "--rsrc", "--extattr", "--acl",
+                    str(bundle), str(stage)], timeout=240)
+                print("verify-copied-runtime-bundle", flush=True)
+                after = bundle_manifest(stage, deadline)
+                metadata["copiedManifest"] = after
+                if after != before:
+                    raise RuntimeError("runtime-copy-content-or-permission-mismatch")
+                if destination.exists() or destination.is_symlink():
+                    raise RuntimeError("runtime-destination-created-concurrently; no overwrite allowed")
+                run("register-intact-apple-runtime", ["sudo", "-n", "mv", "-n", str(stage), str(destination)])
+                if stage.exists() or not destination.is_dir():
+                    raise RuntimeError("runtime-registration-did-not-complete")
+                metadata["registeredPath"] = str(destination)
+                metadata["registeredMetadata"] = runtime_bundle_metadata(destination, VERSION,
+                    entry["simulatorVersion"]["buildUpdate"])
+                run("runtime-signature-diagnostic", ["codesign", "--verify", "--deep", "--strict", str(destination)],
+                    timeout=120, check=False)
+                save()
             runtime = selected_runtime(runtimes("runtimes-after-package"))
         if runtime is None:
             raise RuntimeError("runtime-not-registered")
