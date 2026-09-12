@@ -93,11 +93,35 @@ def runtime_bundle_metadata(bundle, version, build, *, payload_root=False):
             "systemVersionSHA256": hashlib.sha256(systems[0].read_bytes()).hexdigest()}
 
 
-def discover_runtime_payloads(expanded, version, build):
+def discover_runtime_payloads(expanded, version, build, *, expected_package_identifier=None):
     """Read the signed package's declared destination when its Payload is the bundle root."""
     candidates = []
     diagnostics = {"directories": [], "packageInfos": [], "candidates": []}
     seen = set()
+    expected_package_identifier = expected_package_identifier or (
+        "com.apple.pkg.iPhoneSimulatorSDK" + version.replace(".", "_"))
+
+    def identity_diagnostic(source):
+        result = {}
+        paths = (("extractedInfo", "Contents/Info.plist"),
+            ("extractedVersion", "Contents/Resources/RuntimeRoot/System/Library/CoreServices/SystemVersion.plist"),
+            ("extractedVersionAlternate", "Contents/RuntimeRoot/System/Library/CoreServices/SystemVersion.plist"))
+        for label, relative in paths:
+            path = source / relative
+            if not path.exists():
+                continue
+            try:
+                if path.is_symlink() or not path.resolve().is_relative_to(source.resolve()):
+                    raise RuntimeError("identity-plist-escapes-runtime")
+                if path.stat().st_size > 1_000_000:
+                    raise RuntimeError("identity-plist-exceeds-diagnostic-bound")
+                data = plistlib.loads(path.read_bytes())
+                result[label] = {key: data.get(key) for key in (
+                    "CFBundleIdentifier", "CFBundleVersion", "CFBundleShortVersionString",
+                    "ProductVersion", "ProductBuildVersion") if key in data}
+            except Exception as error:
+                result[label] = {"error": str(error)}
+        return result
 
     def add(source, name, payload_root=False, package=None):
         key = str(source.resolve())
@@ -111,6 +135,7 @@ def discover_runtime_payloads(expanded, version, build):
         try:
             if not source.resolve().is_relative_to(expanded.resolve()):
                 raise RuntimeError("runtime-source-escapes-expanded-package")
+            detail.update(identity_diagnostic(source))
             metadata = runtime_bundle_metadata(source, version, build, payload_root=payload_root)
             detail["metadata"] = metadata
             candidates.append({"source": source, "name": name, "metadata": metadata,
@@ -142,8 +167,13 @@ def discover_runtime_payloads(expanded, version, build):
                 install = PurePosixPath(declared)
                 payload = directory / "Payload"
                 if (payload / "Contents/Info.plist").is_file():
-                    # Derive, never guess, the .simruntime name from Apple's signed destination.
-                    if (not install.is_absolute() or ".." in install.parts or install.suffix != ".simruntime"
+                    if declared == "" and package["identifier"] == expected_package_identifier:
+                        # This Apple package's signed PackageInfo omits install-location. Its
+                        # exact catalogue identifier and verified payload identity supply the
+                        # containing bundle name; no plist, executable or runtime bytes change.
+                        package["destinationNameSource"] = "catalogue-version-and-verified-runtime-identity"
+                        add(payload, "iOS " + version + ".simruntime", payload_root=True, package=package)
+                    elif (not install.is_absolute() or ".." in install.parts or install.suffix != ".simruntime"
                             or install.parent.parts[-3:] != ("CoreSimulator", "Profiles", "Runtimes")):
                         diagnostics["candidates"].append({"path": payload.relative_to(expanded).as_posix(),
                             "rejected": "unexpected-signed-runtime-install-location", "packageInfo": package})
@@ -303,7 +333,7 @@ def main():
                 expanded = output / ("expanded-apple-package-" + uuid.uuid4().hex)
                 run("expand-verified-apple-package", ["pkgutil", "--expand-full", str(packages[0]), str(expanded)], timeout=240)
                 candidates, layout = discover_runtime_payloads(expanded, VERSION,
-                    entry["simulatorVersion"]["buildUpdate"])
+                    entry["simulatorVersion"]["buildUpdate"], expected_package_identifier=entry["identifier"])
                 (output / "expanded-runtime-layout.json").write_text(json.dumps(layout, indent=2), encoding="utf-8")
                 report["expandedRuntimeLayout"] = "expanded-runtime-layout.json"
                 report["matchingRuntimePayloads"] = len(candidates)
