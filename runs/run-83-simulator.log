@@ -1,0 +1,29 @@
+@__swiftmacro_7FirasAI0A30CompatibilityReliabilityChecksO10ProbeState33_FA63AB05294AE51002E7A5034BEFB890LL11PerceptiblefMe_.swift:1:47: error: 'ProbeState' is inaccessible due to 'private' protection level
+/Users/runner/work/-/-/ios/FirasAI/DesignSystem/FirasShapeCompatibility.swift:5:17: warning: stored property 'draw' of 'Sendable'-conforming struct 'FirasAnyShape' has non-Sendable type '(CGRect) -> Path'; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/CodeEditorView.swift:385:17: warning: '@preconcurrency' on conformance to 'UITextViewDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:676:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:676:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:749:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Shell/CompactDrawer.swift:407:17: warning: '@preconcurrency' on conformance to 'UIGestureRecognizerDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:385:25: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:441:25: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:19:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/DesignSystem/FirasShapeCompatibility.swift:5:17: warning: stored property 'draw' of 'Sendable'-conforming struct 'FirasAnyShape' has non-Sendable type '(CGRect) -> Path'; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Agent/AgentScreen.swift:74:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Features/Agent/AgentScreen.swift:85:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Features/Agent/AgentScreen.swift:118:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Features/Agent/AgentScreen.swift:200:9: warning: application of result builder 'ViewBuilder' disabled by explicit 'return' statement
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathBlockView.swift:108:55: warning: no 'async' operations occur within 'await' expression
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:857:14: warning: consider using asynchronous alternative function
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:871:18: warning: consider using asynchronous alternative function
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:19:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:170:37: warning: main actor-isolated static property 'base' cannot be accessed from outside of the actor; this is an error in the Swift 6 language mode
+** BUILD FAILED **
