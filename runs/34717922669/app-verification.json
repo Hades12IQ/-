@@ -1,0 +1,689 @@
+{
+  "sourceCommit": "c7d5c373d74d6f69206ff45b8f96ea13f48e3477",
+  "runID": "34717922669",
+  "runtime": {
+    "isAvailable": true,
+    "version": "15.5",
+    "isInternal": false,
+    "buildversion": "19F70",
+    "supportedArchitectures": [
+      "x86_64",
+      "arm64"
+    ],
+    "supportedDeviceTypes": [
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone SE (3rd generation).simdevicetype",
+        "name": "iPhone SE (3rd generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 13 Pro.simdevicetype",
+        "name": "iPhone 13 Pro",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-13-Pro",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 13 Pro Max.simdevicetype",
+        "name": "iPhone 13 Pro Max",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-13-Pro-Max",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 13.simdevicetype",
+        "name": "iPhone 13",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-13",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 13 mini.simdevicetype",
+        "name": "iPhone 13 mini",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-13-mini",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 12 Pro.simdevicetype",
+        "name": "iPhone 12 Pro",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-12-Pro",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 12 Pro Max.simdevicetype",
+        "name": "iPhone 12 Pro Max",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-12-Pro-Max",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 12.simdevicetype",
+        "name": "iPhone 12",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-12",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 12 mini.simdevicetype",
+        "name": "iPhone 12 mini",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-12-mini",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone SE (2nd generation).simdevicetype",
+        "name": "iPhone SE (2nd generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-SE--2nd-generation-",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 11 Pro.simdevicetype",
+        "name": "iPhone 11 Pro",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-11-Pro",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 11 Pro Max.simdevicetype",
+        "name": "iPhone 11 Pro Max",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-11-Pro-Max",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 11.simdevicetype",
+        "name": "iPhone 11",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-11",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone X\u0280.simdevicetype",
+        "name": "iPhone X\u0280",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-XR",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone Xs.simdevicetype",
+        "name": "iPhone Xs",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-XS",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone Xs Max.simdevicetype",
+        "name": "iPhone Xs Max",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-XS-Max",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone X.simdevicetype",
+        "name": "iPhone X",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-X",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 8.simdevicetype",
+        "name": "iPhone 8",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-8",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 8 Plus.simdevicetype",
+        "name": "iPhone 8 Plus",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-8-Plus",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 7.simdevicetype",
+        "name": "iPhone 7",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-7",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 7 Plus.simdevicetype",
+        "name": "iPhone 7 Plus",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-7-Plus",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone SE (1st generation).simdevicetype",
+        "name": "iPhone SE (1st generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-SE",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 6s.simdevicetype",
+        "name": "iPhone 6s",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-6s",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 6s Plus.simdevicetype",
+        "name": "iPhone 6s Plus",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-6s-Plus",
+        "productFamily": "iPhone"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Air (5th generation).simdevicetype",
+        "name": "iPad Air (5th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Air-5th-generation",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad mini (6th generation).simdevicetype",
+        "name": "iPad mini (6th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-mini-6th-generation",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Pro (11-inch) (3rd generation).simdevicetype",
+        "name": "iPad Pro (11-inch) (3rd generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-11-inch-3rd-generation",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Pro (12.9-inch) (5th generation).simdevicetype",
+        "name": "iPad Pro (12.9-inch) (5th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-12-9-inch-5th-generation",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad (9th generation).simdevicetype",
+        "name": "iPad (9th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-9th-generation",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Air (4th generation).simdevicetype",
+        "name": "iPad Air (4th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Air--4th-generation-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad (8th generation).simdevicetype",
+        "name": "iPad (8th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad--8th-generation-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Air (3rd generation).simdevicetype",
+        "name": "iPad Air (3rd generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Air--3rd-generation-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad mini (5th generation).simdevicetype",
+        "name": "iPad mini (5th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-mini--5th-generation-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Pro (11-inch) (2nd generation).simdevicetype",
+        "name": "iPad Pro (11-inch) (2nd generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro--11-inch---2nd-generation-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Pro (12.9-inch) (4th generation).simdevicetype",
+        "name": "iPad Pro (12.9-inch) (4th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro--12-9-inch---4th-generation-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Pro (11-inch) (1st generation).simdevicetype",
+        "name": "iPad Pro (11-inch) (1st generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro--11-inch-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Pro (12.9-inch) (3rd generation).simdevicetype",
+        "name": "iPad Pro (12.9-inch) (3rd generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro--12-9-inch---3rd-generation-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad (7th generation).simdevicetype",
+        "name": "iPad (7th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad--7th-generation-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Pro (10.5-inch).simdevicetype",
+        "name": "iPad Pro (10.5-inch)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro--10-5-inch-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Pro (12.9-inch) (2nd generation).simdevicetype",
+        "name": "iPad Pro (12.9-inch) (2nd generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro--12-9-inch---2nd-generation-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad (6th generation).simdevicetype",
+        "name": "iPad (6th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad--6th-generation-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Pro (9.7-inch).simdevicetype",
+        "name": "iPad Pro (9.7-inch)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro--9-7-inch-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Pro (12.9-inch) (1st generation).simdevicetype",
+        "name": "iPad Pro (12.9-inch) (1st generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad (5th generation).simdevicetype",
+        "name": "iPad (5th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad--5th-generation-",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad Air 2.simdevicetype",
+        "name": "iPad Air 2",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Air-2",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPad mini 4.simdevicetype",
+        "name": "iPad mini 4",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-mini-4",
+        "productFamily": "iPad"
+      },
+      {
+        "bundlePath": "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPod touch (7th generation).simdevicetype",
+        "name": "iPod touch (7th generation)",
+        "identifier": "com.apple.CoreSimulator.SimDeviceType.iPod-touch--7th-generation-",
+        "productFamily": "iPhone"
+      }
+    ],
+    "identifier": "com.apple.CoreSimulator.SimRuntime.iOS-15-5",
+    "platform": "iOS",
+    "bundlePath": "/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 15.5.simruntime",
+    "runtimeRoot": "/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 15.5.simruntime/Contents/Resources/RuntimeRoot",
+    "lastUsage": {
+      "arm64": "0001-01-01T00:00:00Z",
+      "x86_64": "0001-01-01T00:00:00Z"
+    },
+    "name": "iOS 15.5"
+  },
+  "deviceID": "24B71BC8-307B-4701-ACF9-6D1D97EC01B6",
+  "forcedLegacyUI": false,
+  "steps": [
+    {
+      "name": "app-source",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.22,
+      "log": "app-source.log"
+    },
+    {
+      "name": "app-runtime-before",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.79,
+      "log": "app-runtime-before.log"
+    },
+    {
+      "name": "ios15-app-build",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 202.36,
+      "log": "ios15-app-build.log"
+    },
+    {
+      "name": "ios15-app-architecture",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.02,
+      "log": "ios15-app-architecture.log"
+    },
+    {
+      "name": "ios15-app-install",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 4.01,
+      "log": "ios15-app-install.log"
+    },
+    {
+      "name": "ios15-app-container",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.34,
+      "log": "ios15-app-container.log"
+    },
+    {
+      "name": "ios15-native-gallery",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 7.63,
+      "log": "ios15-native-gallery.log"
+    },
+    {
+      "name": "terminate-gallery",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.23,
+      "log": "terminate-gallery.log"
+    },
+    {
+      "name": "ios15-reliability-launch",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.28,
+      "log": "ios15-reliability-launch.log"
+    },
+    {
+      "name": "ios15-reliability-screen",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.91,
+      "log": "ios15-reliability-screen.log"
+    },
+    {
+      "name": "ios15-render-smoke-pdfs",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 11.53,
+      "log": "ios15-render-smoke-pdfs.log"
+    },
+    {
+      "name": "ios15-pdf-qa-environment",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 2.36,
+      "log": "ios15-pdf-qa-environment.log"
+    },
+    {
+      "name": "ios15-pdf-qa-dependency",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 1.41,
+      "log": "ios15-pdf-qa-dependency.log"
+    },
+    {
+      "name": "ios15-pdf-qa",
+      "exitCode": 0,
+      "timedOut": false,
+      "seconds": 0.3,
+      "log": "ios15-pdf-qa.log"
+    }
+  ],
+  "errors": [
+    "normal-reliability-checks-failed; see original report"
+  ],
+  "appLaunched": true,
+  "status": "failed",
+  "elapsedSeconds": 247.34,
+  "bundleID": "org.firasai.FirasAI",
+  "minimumOSVersion": "15.0",
+  "bundleVersion": "1",
+  "binaries": {
+    "FirasAI": "e81c4ad2e77886cf1317066f6b9b263edcb6e54fca383993e9237e9245a1383f",
+    "FirasAI.debug.dylib": "5fb839489f8a3ca735c050e4b42c43ec6f956f377170a6460044f0c9828a764f"
+  },
+  "actualOSVersion": "15.5",
+  "galleryStatus": "passed",
+  "galleryReport": "native-gallery-native-complete.json",
+  "reliabilityStatus": "failed",
+  "reliabilityReport": "reliability-smoke.json",
+  "artifacts": {
+    "expanded-runtime-layout.json": {
+      "bytes": 1926,
+      "sha256": "5c2fd28a7f09fb1ef8ed0148f32d96e3a65ac5b72980e77b86effd3d47ba0fac"
+    },
+    "final-pdf-qa.json": {
+      "bytes": 4357,
+      "sha256": "7fce5ff9fcaa70a0e20c6ce933376af5ef0b3b0203f6581b36f187e06a9d607e"
+    },
+    "ios15-reliability-screen.png": {
+      "bytes": 286542,
+      "sha256": "442b669aab25e5e23fee859e4745b6fa297d639d437f28a50fc7c56918c6f4ab"
+    },
+    "ios15-system.png": {
+      "bytes": 3662238,
+      "sha256": "d6221fca2ee91b5b81e6d6654e949470c1ac65149d8acbe3eb398f40d7079132"
+    },
+    "legacy-native-export.png": {
+      "bytes": 14757,
+      "sha256": "da0391fa141368188572f40e3397f68cc190c17063217c7d852b37b117935a08"
+    },
+    "legacy-transcript-scroll.png": {
+      "bytes": 87524,
+      "sha256": "88603446acf1bfae1907ca3872fe0f9a8c903885e0775562554882da0afa35fe"
+    },
+    "native-gallery-complete.json": {
+      "bytes": 1842,
+      "sha256": "c70854e73d318804eb47015961059e1cd4e9d58efb214128bd1aba5171a300b3"
+    },
+    "native-gallery-ios-15-5-modern-chat.png": {
+      "bytes": 1538173,
+      "sha256": "ed86d7ae410241fa297c816c490b274d9ce71fabfb8c2c283f5e3d13d27ce015"
+    },
+    "native-gallery-ios-15-5-modern-code-models.png": {
+      "bytes": 121201,
+      "sha256": "20db35a43d4c09d8ee06a55561c96e77fbf9a027963a08555e9f248c3911072d"
+    },
+    "native-gallery-ios-15-5-modern-code.png": {
+      "bytes": 315138,
+      "sha256": "6ae60d8ea1fea973cc5b69ed30320844af7a69952eeccaad6010291b980e10f2"
+    },
+    "native-gallery-ios-15-5-modern-settings.png": {
+      "bytes": 167986,
+      "sha256": "6826fab719e31608f7e55847b3bae05b1bff55061d57fe71090b31554b82971e"
+    },
+    "native-gallery-ios-15-5-modern-telegram.png": {
+      "bytes": 224323,
+      "sha256": "4654b76effa7883365c68585ee22f7e0f7d47cab0222713d831c9ec8f4614d79"
+    },
+    "native-gallery-ios-15-5-modern.json": {
+      "bytes": 1842,
+      "sha256": "c70854e73d318804eb47015961059e1cd4e9d58efb214128bd1aba5171a300b3"
+    },
+    "native-gallery-native-complete.json": {
+      "bytes": 1842,
+      "sha256": "c70854e73d318804eb47015961059e1cd4e9d58efb214128bd1aba5171a300b3"
+    },
+    "reliability-100-integrals-page-1.png": {
+      "bytes": 92942,
+      "sha256": "f862d575e2440ebd9fcc7acf4b8a694ac876762dd3e8910d7e796612bc9e1be4"
+    },
+    "reliability-100-integrals-page-10.png": {
+      "bytes": 89970,
+      "sha256": "006c0ea2e483011dfb7036ce49c301348a787f4b711e0db11e3cbbb6ccbe417d"
+    },
+    "reliability-100-integrals-page-11.png": {
+      "bytes": 99431,
+      "sha256": "6699c267088cb6b0802ac917f50778560f701ad4e57402bfa4a609ac727a373b"
+    },
+    "reliability-100-integrals-page-12.png": {
+      "bytes": 98398,
+      "sha256": "630ba0fddcbbea3ea48cc74f15a1fd65eb8f11d46353c6897a63de08bbe276b6"
+    },
+    "reliability-100-integrals-page-13.png": {
+      "bytes": 90279,
+      "sha256": "295944a767ee5c65e225a40b947577618da461cdf9e5ad41d61546793b6c61c7"
+    },
+    "reliability-100-integrals-page-14.png": {
+      "bytes": 100752,
+      "sha256": "08c79dcec64c376d5eb6a36b3efc4c6e3b12bb64775df128b09e1ae814fe5f25"
+    },
+    "reliability-100-integrals-page-15.png": {
+      "bytes": 100961,
+      "sha256": "644efbf22aa0980f695ca39e1687058e46508ac5d727fc83340ecf548aabbcc1"
+    },
+    "reliability-100-integrals-page-16.png": {
+      "bytes": 38903,
+      "sha256": "e50f0354dd4885f36dcfc9f8a63b7f8b2fd05e78816a7cc3503ed922a6b4e424"
+    },
+    "reliability-100-integrals-page-17.png": {
+      "bytes": 121164,
+      "sha256": "b4fdc2fb9ca0127ec121c3209e8eb0242a47b1765cc0fd8b30c8ab79db1cea7d"
+    },
+    "reliability-100-integrals-page-18.png": {
+      "bytes": 119091,
+      "sha256": "9eb91f62d12caf5abb30f798e89cdb92a9719079ffaff66f280cc5d58399f6bf"
+    },
+    "reliability-100-integrals-page-19.png": {
+      "bytes": 119982,
+      "sha256": "d27ae6062c4a7f157fd32ab2f32456cbf2977e392753abbcf526301737696413"
+    },
+    "reliability-100-integrals-page-2.png": {
+      "bytes": 94637,
+      "sha256": "6cd0a061c3e81e558fbd548a1fff691973826f51632b601e63ddca1da27ab07d"
+    },
+    "reliability-100-integrals-page-20.png": {
+      "bytes": 121488,
+      "sha256": "01c57fcdd83c6e2ea12b0e13fd3122e7581809270deafd3c8eb1094bce342087"
+    },
+    "reliability-100-integrals-page-21.png": {
+      "bytes": 122276,
+      "sha256": "3c96fae32a093130cb0a53cc2dd6a96ef9f766901312ceb56e35fa4d569cde3e"
+    },
+    "reliability-100-integrals-page-22.png": {
+      "bytes": 123815,
+      "sha256": "39f9a0e1229f697fea8687c7caf73d9d1384d6b18ac5f4f26050f02c4aa6a30d"
+    },
+    "reliability-100-integrals-page-23.png": {
+      "bytes": 123921,
+      "sha256": "1e81a749b6b084310c8442d3bc10ec3eb5b651414cbfb8a0781142724239e7ce"
+    },
+    "reliability-100-integrals-page-24.png": {
+      "bytes": 124695,
+      "sha256": "4374d90b1355fb361eddaf5464798cbdfcdccf3bd07ac124c395bf771105a7f6"
+    },
+    "reliability-100-integrals-page-25.png": {
+      "bytes": 121915,
+      "sha256": "4524814c15dd6b3a0789e8d257bade378ae92e85cb110b8e4e3290088003e7ab"
+    },
+    "reliability-100-integrals-page-26.png": {
+      "bytes": 123526,
+      "sha256": "844b3963a4d1d5ed2adb69874dbb92e59ad7c879879d30c29f0ea203966376c8"
+    },
+    "reliability-100-integrals-page-27.png": {
+      "bytes": 123192,
+      "sha256": "c6944ab1efca40296d653ec40c41e4b3e660a49b8eef99063df3fca2784a004a"
+    },
+    "reliability-100-integrals-page-28.png": {
+      "bytes": 124488,
+      "sha256": "a720e76892db697a1abb405681626c240280fc26502f9c7a10d2e8e1d84effb3"
+    },
+    "reliability-100-integrals-page-29.png": {
+      "bytes": 123973,
+      "sha256": "0fd89e8e9dc8ed4ed885b5a137cc47bd9922e4d7973912cd0c6d337a849f8228"
+    },
+    "reliability-100-integrals-page-3.png": {
+      "bytes": 96290,
+      "sha256": "319c8f6425d8795fd4681a1fbf148011a4e4d703ccb650e5924a161eabe3dc3d"
+    },
+    "reliability-100-integrals-page-30.png": {
+      "bytes": 124393,
+      "sha256": "bdf7829f9541d3686a69fcc64bc905ade9d812f275e07169b1ea606a4dce0316"
+    },
+    "reliability-100-integrals-page-31.png": {
+      "bytes": 122014,
+      "sha256": "ad4dec785974587050c9e2a650a91a2f20323eb7fc03fd0d46308b8dfa49a9ca"
+    },
+    "reliability-100-integrals-page-32.png": {
+      "bytes": 123288,
+      "sha256": "eb80b9d00bd8d4b53e8f603ae766606062da0893e3d8af9248268be2f73107e3"
+    },
+    "reliability-100-integrals-page-33.png": {
+      "bytes": 125023,
+      "sha256": "1416c75614eb7e791248ef5c09627953787d869d7ccffd6ace4855ab8e740c00"
+    },
+    "reliability-100-integrals-page-34.png": {
+      "bytes": 125014,
+      "sha256": "1bb57c5b9424dd36563cbf0960151249dea20c9d34fea6d695fb24c6d62adfc2"
+    },
+    "reliability-100-integrals-page-35.png": {
+      "bytes": 124478,
+      "sha256": "7af2f9bc637110a32add4a2a9467abb86c24ecb04418cfc45dc9b3b2912f5b10"
+    },
+    "reliability-100-integrals-page-36.png": {
+      "bytes": 130498,
+      "sha256": "32e6d386db92f960a11da1cc33cd95b6cb16f7b535c6785521aa5714b8c5d575"
+    },
+    "reliability-100-integrals-page-4.png": {
+      "bytes": 88263,
+      "sha256": "79eb95c02db5e2f5d77f67bfd0c463d54f48c71eccdcb0da79c8762d812aabb1"
+    },
+    "reliability-100-integrals-page-5.png": {
+      "bytes": 99560,
+      "sha256": "7265c129aa03c621b70020fe5e3267945c8b96bcb5fb74c158951a12ef307117"
+    },
+    "reliability-100-integrals-page-6.png": {
+      "bytes": 101026,
+      "sha256": "80e4f3587d20089313798e32ee9904c76ffbea5e0fb18542f21ebf5506555312"
+    },
+    "reliability-100-integrals-page-7.png": {
+      "bytes": 87281,
+      "sha256": "d54e2cb50bb6a6ff5e957b0672bf6403a269dca92d3c55cbb796043809268d54"
+    },
+    "reliability-100-integrals-page-8.png": {
+      "bytes": 98729,
+      "sha256": "a91fe0188f86b793ec6e0cb33d6f9abec5f7a7f76fb5064809553c0d86028ecf"
+    },
+    "reliability-100-integrals-page-9.png": {
+      "bytes": 100360,
+      "sha256": "8968615cd7f1be40c4c36d844e6d67ef8487ff812f3e70218fba2be9133f907e"
+    },
+    "reliability-100-integrals.pdf": {
+      "bytes": 85184,
+      "sha256": "a56f2550d312957c92691a00a0667ccbb33a7b06e6597c0cfc1e6f13a50f34c9"
+    },
+    "reliability-document-layout-page-1.png": {
+      "bytes": 88826,
+      "sha256": "9054e51f135181babff47859f58320ecdfd0bae15461c0a10e6b0b1f1ef0000f"
+    },
+    "reliability-document-layout-page-2.png": {
+      "bytes": 78242,
+      "sha256": "071fbf348fce0dbd49e6911693334a543d4ac0f30bae97abbc9bcda5bd670652"
+    },
+    "reliability-document-layout-page-3.png": {
+      "bytes": 64387,
+      "sha256": "68fdbdca1311d10a5a0a159dc35a6cd9defed12e92e93eb9cb451311b8ae6055"
+    },
+    "reliability-document-layout-page-4.png": {
+      "bytes": 46502,
+      "sha256": "f5906252d620b8c53eea1d1ce8cb7054a757ca7220c2b295a06d38c5fb3ef9c5"
+    },
+    "reliability-document-layout.pdf": {
+      "bytes": 53638,
+      "sha256": "47f25e1e15aecbc9b31b03b36ff48ebbce39e3c6babe773e105fb497e90faab4"
+    },
+    "reliability-long-arabic-page-1.png": {
+      "bytes": 159042,
+      "sha256": "e38f7f213c21e15aa7fbf4310f73c404de2649d9a710eba62e6d0da0caa35bec"
+    },
+    "reliability-long-arabic-page-2.png": {
+      "bytes": 200206,
+      "sha256": "376600f2407c1352f525d9287655b5c4bec6012a77b2a59fd7ca7a1031c7c825"
+    },
+    "reliability-long-arabic-page-3.png": {
+      "bytes": 200968,
+      "sha256": "029ddb6af6812faf181776deb762a826f3e5da2363174b575c2c312f8a5a649d"
+    },
+    "reliability-long-arabic-page-4.png": {
+      "bytes": 201921,
+      "sha256": "61e50461edd7ffe6924a92f9a2b2ac2f321ac5e5c87895c75f991c208187930f"
+    },
+    "reliability-long-arabic-page-5.png": {
+      "bytes": 201868,
+      "sha256": "c0f7cb6b4847af49162220eeb37fdfa7d31adb36ae3d065a1d0fde1bdca30c31"
+    },
+    "reliability-long-arabic-page-6.png": {
+      "bytes": 152448,
+      "sha256": "0b5b53eb7e4e153308664aea3ec104d13353a1db8e0e940b65b55110842a8cb6"
+    },
+    "reliability-long-arabic.pdf": {
+      "bytes": 67591,
+      "sha256": "db6d637fd8d01ba1cfb32ffb5a7d44e2d8fd714e63d022d6b653fa8c7f2e55ae"
+    },
+    "reliability-smoke.json": {
+      "bytes": 15334,
+      "sha256": "c04ad84985fae90507602ebb85f8411d5c51628c2475d3f924df9a0df4c19011"
+    },
+    "streaming-math.png": {
+      "bytes": 251441,
+      "sha256": "09ef26550054a91862773d752ac345a42e419e729e9bb6dde397ce7e1dac90e0"
+    }
+  }
+}
