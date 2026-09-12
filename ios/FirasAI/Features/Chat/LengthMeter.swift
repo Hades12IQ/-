@@ -105,7 +105,7 @@ struct LengthMeter: View {
         switch tier {
         case .mini: return 4_000
         case .pro, .ultra: return 16_000
-        case .max: return 24_000
+        case .max, .omnix: return 24_000
         }
     }
 

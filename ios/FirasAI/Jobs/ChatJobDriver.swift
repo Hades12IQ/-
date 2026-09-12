@@ -15,13 +15,22 @@ struct ChatJobDriver: JobKindDriver {
     var spec: JobKindSpec { JobKindSpecs.spec(kind) }
 
     func read(_ pointer: JobPointer, api: APIClient) async throws -> DriverRead {
-        let status = try await api.chatJobStatus(id: pointer.id)
+        try await read(pointer, api: api, previous: nil)
+    }
+
+    func read(_ pointer: JobPointer, api: APIClient, previous: JobSnapshot?) async throws -> DriverRead {
+        let prior = previous?.pointerID == pointer.id ? previous : nil
+        let status = try await api.chatJobStatus(id: pointer.id,
+            previousText: prior?.text ?? "", previousReasoning: prior?.reasoning ?? "")
         switch status.phase.lowercased() {
         case "unknown":
             // The record is gone: expired past the six-hour retention, or never existed. The caller
             // counts these — one blip must not throw an answer away.
             return .unknown
         case "completed", "done":
+            if kind == .officefile, (try? OfficeDocumentService.completed(status.text)) == nil {
+                return .terminal(.failed(code: "invalid_document", partial: nil))
+            }
             return .terminal(.completed(Self.snapshot(pointer, status, phase: .completed)))
         case "failed", "fail":
             return .terminal(Self.terminal(for: status, pointer: pointer, kind: kind))
@@ -54,11 +63,12 @@ struct ChatJobDriver: JobKindDriver {
     // MARK: - Mapping
 
     private static func snapshot(_ pointer: JobPointer, _ status: ChatJobStatus, phase: JobPhase) -> JobSnapshot {
-        JobSnapshot(
+        let hideDraft = pointer.kind == .officefile && phase != .completed
+        return JobSnapshot(
             pointerID: pointer.id,
             phase: phase,
-            text: status.text,
-            reasoning: status.reasoning,
+            text: hideDraft ? "" : status.text,
+            reasoning: hideDraft ? "" : status.reasoning,
             progress: status.progress,
             surface: status.surface,
             agent: nil,
@@ -77,6 +87,16 @@ struct ChatJobDriver: JobKindDriver {
            let meta = FileMeta.document(inContent: status.text), meta.partial == true,
            meta.hasVerifiedPDFReference {
             return .failed(code: "partial_document", partial: snapshot(pointer, status, phase: .failed))
+        }
+
+        // Selected-model dispatch is now at-most-once, like the website. A provider interruption
+        // can carry a useful partial answer; keep it as failed instead of erasing it or routing to
+        // another model. Only known safe codes cross this path, never an upstream error body.
+        let selectedCode = ServerError.parse(jsonString: raw)?.code ?? raw
+        if kind == .chat || kind == .longdoc,
+           status.status != 499, !status.text.isEmpty,
+           ["selected_model_unavailable", "selected_model_incomplete", "selected_outcome_unknown"].contains(selectedCode) {
+            return .failed(code: selectedCode, partial: snapshot(pointer, status, phase: .failed))
         }
 
         // A refusal: quota, rate limit or auth captured inside the worker. `error` is the JSON body

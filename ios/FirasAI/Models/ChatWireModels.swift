@@ -34,6 +34,7 @@ struct PersistedMessage: Codable, Sendable, Equatable {
     var mergedFrom: String?
     var alts: [AnswerVersion]?
     var altAt: Int?
+    var omnix: OmnixReceipt?
 
     init(
         role: String,
@@ -50,7 +51,8 @@ struct PersistedMessage: Codable, Sendable, Equatable {
         retried: Bool? = nil,
         mergedFrom: String? = nil,
         alts: [AnswerVersion]? = nil,
-        altAt: Int? = nil
+        altAt: Int? = nil,
+        omnix: OmnixReceipt? = nil
     ) {
         self.role = role
         self.content = content
@@ -67,6 +69,7 @@ struct PersistedMessage: Codable, Sendable, Equatable {
         self.mergedFrom = mergedFrom
         self.alts = alts
         self.altAt = altAt
+        self.omnix = omnix
     }
 
     init(from decoder: Decoder) throws {
@@ -86,6 +89,8 @@ struct PersistedMessage: Codable, Sendable, Equatable {
         mergedFrom = LenientJSON.string(container, "mergedFrom")
         alts = LenientJSON.array(container, "alts", of: AnswerVersion.self)
         altAt = LenientJSON.int(container, "altAt")
+        omnix = LenientJSON.nested(container, "omnix", as: OmnixReceipt.self)
+        if omnix?.isValid != true { omnix = nil }
     }
 }
 
@@ -157,6 +162,7 @@ struct ChatJobRequest: Encodable, Sendable {
     var revisionOf: String?
     var pdfImages: [DocumentJobImage]?
     var revisionImages: [DocumentJobImage]?
+    var images: [String]?
 
     init(
         messages: [OutgoingMessage],
@@ -179,7 +185,8 @@ struct ChatJobRequest: Encodable, Sendable {
         agent: Bool? = nil,
         expectedItems: Int? = nil, requiresSolutions: Bool? = nil, solutionsAtEnd: Bool? = nil,
         resumeFrom: String? = nil, revisionOf: String? = nil, pdfImages: [DocumentJobImage]? = nil,
-        revisionImages: [DocumentJobImage]? = nil
+        revisionImages: [DocumentJobImage]? = nil,
+        images: [String]? = nil
     ) {
         self.messages = messages
         self.tier = tier
@@ -203,6 +210,7 @@ struct ChatJobRequest: Encodable, Sendable {
         self.revisionOf = revisionOf
         self.pdfImages = pdfImages
         self.revisionImages = revisionImages
+        self.images = images
         self.nomem = nomem
         self.nokb = nokb
         self.agent = agent

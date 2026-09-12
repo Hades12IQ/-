@@ -25,7 +25,9 @@ enum RequestBudget: Sendable {
     var timeout: TimeInterval {
         switch self {
         case .interactive: return 12
-        case .poll: return 30
+        // Matches the website's durable status read deadline. A socket stalled after suspension
+        // must reach the existing reconnect/backoff path instead of freezing its bubble for 30 s.
+        case .poll: return 8
         case .upload: return 300
         case .download: return 60
         case .stream: return 300

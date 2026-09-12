@@ -159,6 +159,9 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
     var alts: [AnswerVersion]?
     var altAt: Int?
 
+    /// The server-owned cloud receipt survives reloads and cross-device history sync.
+    var omnix: OmnixReceipt?
+
     // client-only — never persisted, never sent except `images` on the wire
     var images: [String]?
     var fileText: String?
@@ -182,6 +185,7 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
         mergedFrom: String? = nil,
         alts: [AnswerVersion]? = nil,
         altAt: Int? = nil,
+        omnix: OmnixReceipt? = nil,
         images: [String]? = nil,
         fileText: String? = nil,
         intent: String? = nil,
@@ -203,6 +207,7 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
         self.mergedFrom = mergedFrom
         self.alts = alts
         self.altAt = altAt
+        self.omnix = omnix
         self.images = images
         self.fileText = fileText
         self.intent = intent
@@ -231,6 +236,8 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
         mergedFrom = LenientJSON.string(container, "mergedFrom")
         alts = LenientJSON.array(container, "alts", of: AnswerVersion.self)
         altAt = LenientJSON.int(container, "altAt")
+        omnix = LenientJSON.nested(container, "omnix", as: OmnixReceipt.self)
+        if omnix?.isValid != true { omnix = nil }
         images = nil
         fileText = nil
         intent = nil
@@ -257,6 +264,7 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
         try container.encodeIfPresent(mergedFrom, forKey: AnyCodingKey("mergedFrom"))
         try container.encodeIfPresent(alts, forKey: AnyCodingKey("alts"))
         try container.encodeIfPresent(altAt, forKey: AnyCodingKey("altAt"))
+        try container.encodeIfPresent(omnix?.isValid == true ? omnix : nil, forKey: AnyCodingKey("omnix"))
     }
 
     /// The answer text actually on screen — the selected version when there are alternatives.

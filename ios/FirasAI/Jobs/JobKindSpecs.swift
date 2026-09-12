@@ -14,12 +14,22 @@ protocol JobKindDriver: Sendable {
     /// (401 suspend, 403 forget, transport backoff) in one place instead of nine.
     func read(_ pointer: JobPointer, api: APIClient) async throws -> DriverRead
 
+    /// A viewer-local previous snapshot lets compatible routes send only their new tail. It is
+    /// deliberately absent from the durable pointer; reattachment starts with a full read.
+    func read(_ pointer: JobPointer, api: APIClient, previous: JobSnapshot?) async throws -> DriverRead
+
     /// Asks the **server** to stop. `false` means it will not — either the route refuses (a queued
     /// chat job), or the kind has no real cancel at all (missions, builds, every media render).
     func cancel(_ pointer: JobPointer, api: APIClient) async throws -> Bool
 
     /// `nil` unless `spec.usesSSE`.
     func stream(_ pointer: JobPointer, api: APIClient) -> AsyncThrowingStream<DriverRead, Error>?
+}
+
+extension JobKindDriver {
+    func read(_ pointer: JobPointer, api: APIClient, previous: JobSnapshot?) async throws -> DriverRead {
+        try await read(pointer, api: api)
+    }
 }
 
 /// The per-kind polling contract, exactly as `ARCHITECTURE.md §2.4` tabulates it.
@@ -34,6 +44,13 @@ enum JobKindSpecs {
     /// Server-side retention for a chat-queue record (`JOB_KEEP_MS`, 6 h). Past this the id answers
     /// `{"phase":"unknown"}` and nothing is ever coming again.
     static let chatQueueRetention: TimeInterval = 6 * 60 * 60
+
+    /// Artifact jobs decide completion server-side and may span many durable slices. A local
+    /// elapsed-time limit is not evidence of failure; ownership/terminal/unknown reads still end
+    /// their viewer normally.
+    static func hasServerOwnedLifetime(_ kind: JobKind) -> Bool {
+        kind == .counteddoc || kind == .officefile
+    }
 
     static func spec(_ kind: JobKind) -> JobKindSpec {
         switch kind {
@@ -71,8 +88,8 @@ enum JobKindSpecs {
                 unknownReadsBeforeTerminal: 3,
                 usesSSE: false
             )
-        case .counteddoc:
-            return JobKindSpec(kind: .counteddoc, cadence: [(after: 0, interval: 2)],
+        case .counteddoc, .officefile:
+            return JobKindSpec(kind: kind, cadence: [(after: 0, interval: 2)],
                 backgroundInterval: 10, deadline: 7 * 24 * 60 * 60,
                 cancelable: true, unknownReadsBeforeTerminal: 3, usesSSE: false)
         case .agentrun:

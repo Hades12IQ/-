@@ -142,7 +142,9 @@ enum ChatAttachmentProcessor {
                 imageBase64: full.base64EncodedString(),
                 thumbnailDataURL: thumbnail,
                 byteCount: full.count,
-                truncated: false
+                truncated: false,
+                originalData: full,
+                originalMime: "image/jpeg"
             )
         }
     }
@@ -178,6 +180,9 @@ enum ChatAttachmentProcessor {
 
             let ext = url.pathExtension.lowercased()
             let name = cleanName(url.lastPathComponent)
+            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? Int.max
+            let original = size > 0 && size <= 20 * 1_024 * 1_024
+                ? (try? Data(contentsOf: url, options: [.mappedIfSafe])) : nil
             let kind: String
             let raw: String
 
@@ -218,7 +223,9 @@ enum ChatAttachmentProcessor {
                 imageBase64: nil,
                 thumbnailDataURL: nil,
                 byteCount: body.utf8.count,
-                truncated: truncated
+                truncated: truncated,
+                originalData: original,
+                originalMime: UTType(filenameExtension: ext)?.preferredMIMEType ?? "application/octet-stream"
             )
             return ChatAttachmentImport(attachment: attachment, percentSent: percent)
         }

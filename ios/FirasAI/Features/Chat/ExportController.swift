@@ -333,7 +333,8 @@ final class ExportController {
                 subtitle: meta.subtitle ?? ""
             ),
             title: name,
-            publish: false
+            publish: false,
+            officeMeta: meta
         )
     }
 
@@ -403,7 +404,8 @@ final class ExportController {
         _ format: Format,
         source: Source,
         title: String,
-        publish: Bool
+        publish: Bool,
+        officeMeta: FileMeta? = nil
     ) async -> Export? {
         guard !isWorking else { return nil }
         let exportOwner = env.session.identityID
@@ -474,7 +476,7 @@ final class ExportController {
         case .docx, .xlsx, .pptx, .csv, .html, .markdown, .text:
             let kind = format.rawValue
             wrote = await Task.detached(priority: .userInitiated) {
-                exportBuildDocument(kind: kind, input: input, title: heading, to: url)
+                exportBuildDocument(kind: kind, input: input, title: heading, to: url, officeMeta: officeMeta)
             }.value
         }
 
@@ -1788,7 +1790,8 @@ private func exportBuildDocument(
     kind: String,
     input: ExportBuildInput,
     title: String,
-    to url: URL
+    to url: URL,
+    officeMeta: FileMeta? = nil
 ) -> Bool {
     switch kind {
     case "markdown":
@@ -1816,6 +1819,12 @@ private func exportBuildDocument(
         )
         return ExportSheets.write(title: title, sheets: sheets, to: url)
     case "pptx":
+        if let meta = officeMeta, meta.format.lowercased() == "pptx", case .document(let markdown) = input,
+           meta.slideCount != nil || markdown.range(of: #"(?m)^Layout:\s*"#, options: .regularExpression) != nil {
+            guard let slides = try? ExportSlides.officeSlides(title: title, markdown: markdown,
+                                                              expectedCount: meta.slideCount, accent: meta.accent) else { return false }
+            return ExportSlides.write(title: title, slides: slides, to: url)
+        }
         let slides = ExportSlides.slides(title: title, blocks: input.blocks)
         return ExportSlides.write(title: title, slides: slides, to: url)
     default:

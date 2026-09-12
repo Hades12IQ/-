@@ -137,6 +137,9 @@ struct ReliabilitySmokeView: View {
         errors += MathScannerReliabilityChecks.failures()
         errors += DocumentRevisionChecks.failures()
         errors += DocumentCompletionReliabilityChecks.failures()
+        errors += OfficeDocumentReliabilityChecks.failures()
+        errors += WebParityReliabilityChecks.failures()
+        errors += await OmnixReliabilityChecks.run()
         errors += await DocumentAssetCache.reliabilityFailures()
         let streamChecks = StreamPerformanceChecks.run()
         errors += streamChecks.failures

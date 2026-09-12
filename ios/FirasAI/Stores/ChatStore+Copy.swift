@@ -22,6 +22,9 @@ struct PreparedAttachment: Sendable, Equatable {
     let byteCount: Int
     /// True when the extracted text was cut to fit the request budget.
     let truncated: Bool
+    /// Kept in the draft only, for explicitly attached cloud-worker inputs.
+    let originalData: Data?
+    let originalMime: String?
 
     init(
         name: String,
@@ -30,7 +33,9 @@ struct PreparedAttachment: Sendable, Equatable {
         imageBase64: String? = nil,
         thumbnailDataURL: String? = nil,
         byteCount: Int = 0,
-        truncated: Bool = false
+        truncated: Bool = false,
+        originalData: Data? = nil,
+        originalMime: String? = nil
     ) {
         self.name = name
         self.kind = kind
@@ -39,6 +44,8 @@ struct PreparedAttachment: Sendable, Equatable {
         self.thumbnailDataURL = thumbnailDataURL
         self.byteCount = byteCount
         self.truncated = truncated
+        self.originalData = originalData
+        self.originalMime = originalMime
     }
 
     var isImage: Bool { !(imageBase64?.isEmpty ?? true) }

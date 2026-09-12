@@ -215,7 +215,7 @@ struct AppShell: View {
         case .settings(let section):
             SettingsView(env: env, section: section)
         case .tierPicker:
-            TierPickerSheet(env: env)
+            TierPickerSheet(env: env, product: env.router.product)
         case .addContext:
             AddContextSheet(env: env)
         case .announcements:

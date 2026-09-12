@@ -51,6 +51,9 @@ final class JobWatcher {
     private var transportFailures = 0
     private var unknownReads = 0
     private var lastPublished: JobSnapshot?
+    // Transport truth can be shorter after a server restart even while the UI keeps its longer
+    // visible answer. Using lastPublished as the cursor would join that new tail to an old prefix.
+    private var lastRead: JobSnapshot?
     private var lastPublishAt = Date.distantPast
     private var pollBackoff = Backoff(initial: 1.2, max: 30)
     private var streamBackoff = Backoff(initial: 1, max: 15, factor: 2)
@@ -141,7 +144,7 @@ final class JobWatcher {
         // against that deadline again would expire it before it ever took the one authoritative
         // read that is its entire purpose (`ARCHITECTURE.md §2.4` rule 4).
         let giveUpAt = mode == .continuous
-            ? (pointer.kind == .counteddoc ? Date.distantFuture : pointer.deadline)
+            ? (JobKindSpecs.hasServerOwnedLifetime(pointer.kind) ? Date.distantFuture : pointer.deadline)
             : Date().addingTimeInterval(Self.singleReadGrace)
         while !isStopped, !isFinished, !Task.isCancelled {
             if Date() >= giveUpAt {
@@ -216,12 +219,13 @@ final class JobWatcher {
     @discardableResult
     private func pollOnce() async -> Bool {
         do {
-            let read = try await driver.read(pointer, api: api)
+            let read = try await driver.read(pointer, api: api, previous: lastRead)
             transportFailures = 0
             pollBackoff.reset()
             switch read {
             case .running(let snapshot):
                 unknownReads = 0
+                lastRead = snapshot
                 publish(snapshot)
             case .unknown:
                 // A record the server has no memory of. Chat jobs need three of these in a row

@@ -9,19 +9,26 @@ struct TierPickerSheet: View {
 
     private let prefs: PreferencesStore
     private let toasts: ToastCenter?
+    private let env: AppEnvironment?
+    private let product: ProductKind
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
+    @State private var showOmnixAccess = false
 
-    init(env: AppEnvironment) {
+    init(env: AppEnvironment, product: ProductKind = .ai) {
         self.prefs = env.prefs
         self.toasts = env.toasts
+        self.env = env
+        self.product = product
     }
 
     init(prefs: PreferencesStore) {
         self.prefs = prefs
         self.toasts = nil
+        self.env = nil
+        self.product = .ai
     }
 
     var body: some View {
@@ -54,6 +61,9 @@ struct TierPickerSheet: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .onAppear { reveal(motionOn: motionOn) }
+        .sheet(isPresented: $showOmnixAccess) {
+            if let env { OmnixAccessView(env: env) }
+        }
     }
 
     private func reveal(motionOn: Bool) {
@@ -70,7 +80,7 @@ struct TierPickerSheet: View {
     private func tierCard(palette: FirasPalette, lang: AppLanguage, motionOn: Bool) -> some View {
         SurfaceCard(palette: palette) {
             VStack(spacing: 0) {
-                ForEach(ModelTier.allCases) { tier in
+                ForEach(ModelTier.allCases.filter { product == .ai || $0 != .omnix }) { tier in
                     if tier != ModelTier.mini {
                         Rectangle().fill(palette.border).frame(height: 1).padding(.leading, 46)
                     }
@@ -148,12 +158,16 @@ struct TierPickerSheet: View {
     private func accentInk(for tier: ModelTier, palette: FirasPalette) -> Color {
         switch tier {
         case .max: return palette.maxTierText
-        case .ultra: return palette.accent
+        case .ultra, .omnix: return palette.accent
         case .mini, .pro: return palette.textSecondary
         }
     }
 
     private func pick(_ tier: ModelTier, motionOn: Bool) {
+        if tier == .omnix, env != nil {
+            showOmnixAccess = true
+            return
+        }
         guard prefs.tier != tier else {
             dismiss()
             return

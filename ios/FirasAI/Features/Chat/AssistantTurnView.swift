@@ -103,6 +103,7 @@ struct AssistantTurnView: View, Equatable {
             && lhs.message.altAt == rhs.message.altAt
             && lhs.message.alts?.count == rhs.message.alts?.count
             && lhs.message.askAnswered == rhs.message.askAnswered
+            && lhs.message.omnix == rhs.message.omnix
             && lhs.isStreaming == rhs.isStreaming
             && lhs.liveText == rhs.liveText
             && lhs.liveReasoning == rhs.liveReasoning
@@ -125,7 +126,11 @@ struct AssistantTurnView: View, Equatable {
             retryNote
             thinking
             longFile
-            content
+            if let receipt = message.omnix {
+                OmnixRunView(receipt: receipt, conversationID: conversationID, env: env)
+            } else {
+                content
+            }
             planPill
             quickReplies
             actions

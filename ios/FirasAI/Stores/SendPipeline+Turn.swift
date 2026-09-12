@@ -80,8 +80,7 @@ extension SendPipeline {
 
         switch terminal {
         case .completed(let snapshot):
-            buffer.adopt(text: snapshot.text, reasoning: snapshot.reasoning)
-            let final = buffer.finish()
+            let final = buffer.finish(authoritativeText: snapshot.text, reasoning: snapshot.reasoning)
             if state.isStopping {
                 await settleStopped(key: key, text: final.text, reasoning: final.reasoning, assistantID: assistantID, cid: pointer.cid)
                 return true
@@ -102,6 +101,14 @@ extension SendPipeline {
             return true
 
         case .refused, .failed, .expired:
+            if case .failed(_, let partial) = terminal, let partial,
+               (pointer.kind == .chat || pointer.kind == .longdoc), !partial.text.isEmpty {
+                let kept = buffer.finish(authoritativeText: partial.text, reasoning: partial.reasoning)
+                upsertAssistant(key: key, assistantID: assistantID, cid: pointer.cid,
+                    tier: context?.tier ?? prefs.tier, lang: lang) { row in
+                    row.content = kept.text; row.reasoning = kept.reasoning.isEmpty ? nil : kept.reasoning
+                }
+            }
             if case .expired = terminal, session.isMember {
                 // The record may be gone while the answer is safely in the chat.
                 await refreshPreservingQuestions(key)
@@ -136,6 +143,11 @@ extension SendPipeline {
     /// the caller (and therefore the run loop, and therefore the screen) gets control back now.
     func beginTurn(_ context: ChatTurnContext) {
         guard let store, store.conversation(context.conversationID) != nil else { return }
+        guard context.tier != .omnix else {
+            // Legacy plan/ask/retry entry points may not feed an Omnix turn into /api/chat.
+            toasts.show(OmnixCopy.unavailable(store.lang), isError: true)
+            return
+        }
         let key = context.conversationID
         let state = store.state(for: key)
         let lang = store.lang
@@ -339,7 +351,9 @@ extension SendPipeline {
         }
         if Task.isCancelled || session.identityID != owner { return }
 
-        let jobKind: JobKind = counted == nil ? Self.jobKind(for: kind) : .counteddoc
+        let officeFormat = Self.officeFormat(for: kind, product: context.product,
+            isTemporary: store.conversation(key)?.ephemeral ?? false, planTurn: context.planTurn, isRevision: revision != nil)
+        let jobKind: JobKind = officeFormat != nil ? .officefile : counted == nil ? Self.jobKind(for: kind) : .counteddoc
         let title = store.conversation(key)?.title ?? ""
         let countedImages = counted == nil ? [] : DocumentAssetInventory.promptEntries(assets, retaining: revision?.source).compactMap { entry -> DocumentJobImage? in
             guard case .attached(let encoded) = entry.source else { return nil }
@@ -353,9 +367,22 @@ extension SendPipeline {
             let raw = encoded.hasPrefix("data:") ? String(encoded.split(separator: ",", maxSplits: 1).last ?? "") : encoded
             return DocumentJobImage(id: entry.id, base64: raw)
         }
-        let queueRequest = Self.jobRequest(output: output, context: context, kind: kind,
+        var queueRequest = Self.jobRequest(output: output, context: context, kind: kind,
             jobKind: jobKind, chatID: serverChatID ?? "", title: title, task: user.content, lang: lang,
             counted: counted, pdfImages: countedImages, revisionImages: revisionImages, attachedText: user.fileText)
+        if let officeFormat {
+            do {
+                let task = try OfficeDocumentService.task(request: user.content, attachedText: user.fileText,
+                    previousAnswer: revision?.source ?? history.last(where: { $0.role == .assistant && !$0.content.isEmpty })?.content)
+                queueRequest = try OfficeDocumentService.request(format: officeFormat, task: task,
+                    images: user.images ?? [], tier: output.tier, think: output.think, cid: context.turnCID,
+                    chatID: serverChatID ?? "", lang: lang)
+            } catch {
+                let copy = (error as? OfficeDocumentError)?.message ?? OfficeDocumentError.invalidRequest.message
+                await failTurn(key: key, assistantID: assistantID, action: .toast(copy), context: context)
+                return
+            }
+        }
         // The queue leaves the answer in server storage so it can be recovered later, and
         // recovering it later is exactly what must not be possible in a temporary conversation —
         // for a guest that is the ONLY thing standing between the two, since a guest never has a
@@ -364,6 +391,10 @@ extension SendPipeline {
         let isTemporary = store.conversation(key)?.ephemeral ?? false
         let canQueue = Self.fitsDurableQueue(queueRequest, isTemporary: isTemporary,
             hasStorage: session.isGuest || serverChatID != nil)
+        if officeFormat != nil && !canQueue {
+            await failTurn(key: key, assistantID: assistantID, action: .toast(OfficeDocumentError.sourceTooLarge.message), context: context)
+            return
+        }
         if let counted {
             guard canQueue else {
                 await failTurn(key: key, assistantID: assistantID, action: .toast(CountedDocumentPlan.queueRequired), context: context)
@@ -399,8 +430,8 @@ extension SendPipeline {
 
         // File generation must survive a lost socket even while the reader stays on this screen.
         // It uses the existing chat worker with the complete design prompt; no page count is guessed.
-        let streamFirst = counted == nil && Self.shouldStreamFirst(kind: kind,
-            planTurn: revision != nil ? .auto : context.planTurn, readerIsPresent: readerIsPresent)
+        let streamFirst = counted == nil && officeFormat == nil && Self.shouldStreamFirst(kind: kind,
+            planTurn: revision != nil ? .auto : context.planTurn, readerIsPresent: readerIsPresent, isTemporary: isTemporary)
         var useStream = !canQueue || streamFirst
 
         if let plan, !streamFirst {
@@ -416,7 +447,7 @@ extension SendPipeline {
                 // and the cancellation is not an error to show anyone.
                 if Task.isCancelled || state.isStopping { return }
                 let status = (error as? APIError)?.status
-                if counted == nil && (status == 413 || status == 404 || status == 501) {
+                if counted == nil && officeFormat == nil && (status == 413 || status == 404 || status == 501) {
                     // This backend has no queue, or the body is too big for it: the live stream
                     // still answers, it just cannot be resumed.
                     useStream = true

@@ -120,6 +120,7 @@ final class ChatStore: JobObserver {
     /// never cancelled or deleted here.
     func identityDidChange(to ownerID: String?) {
         guard loadedOwner != ownerID else { return }
+        pipeline.omnixIdentityDidChange(to: ownerID)
         // The first screen can create its local conversation before the first
         // list request. A fresh store has no previous owner's data to discard.
         let keepStartup = loadedOwner == nil && identityGeneration == 0 && ownerID != nil
@@ -190,6 +191,7 @@ final class ChatStore: JobObserver {
         let key = resolve(id)
         if let existing = conversations[key] {
             ensureState(for: key, conversation: existing)
+            pipeline.restoreOmnix(in: key)
             return
         }
         guard !loadingConversations.contains(key) else { return }
@@ -239,6 +241,7 @@ final class ChatStore: JobObserver {
             )
             conversations[key] = conversation
             ensureState(for: key, conversation: conversation)
+            pipeline.restoreOmnix(in: key)
             rebuildSummaries()
         } catch {
             guard acceptsIdentity(owner, generation: generation) else { return }

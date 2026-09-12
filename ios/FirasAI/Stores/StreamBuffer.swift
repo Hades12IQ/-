@@ -171,6 +171,17 @@ final class StreamBuffer {
         return (splitText, thinking)
     }
 
+    /// Running reads stay monotonic, but a terminal record is authoritative even after a worker
+    /// restart or a final correction made the answer shorter. Replace atomically; never publish an
+    /// empty reset between the visible draft and the completed answer.
+    @discardableResult
+    func finish(authoritativeText text: String, reasoning: String) -> (text: String, reasoning: String) {
+        rawText = text
+        rawReasoning = reasoning
+        rebuildSplit(from: text)
+        return finish()
+    }
+
     // MARK: - Publishing
 
     private func schedulePublish() {

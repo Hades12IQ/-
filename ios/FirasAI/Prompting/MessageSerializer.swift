@@ -58,7 +58,8 @@ enum MessageSerializer {
             retried: (m.retried == true) ? true : nil,
             mergedFrom: emptyToNil(m.mergedFrom),
             alts: (m.alts?.count ?? 0) >= 2 ? m.alts : nil,
-            altAt: (m.alts?.count ?? 0) >= 2 ? m.altAt : nil
+            altAt: (m.alts?.count ?? 0) >= 2 ? m.altAt : nil,
+            omnix: m.omnix?.isValid == true ? m.omnix : nil
         )
     }
 
@@ -69,7 +70,7 @@ enum MessageSerializer {
         out.reserveCapacity(c.messages.count)
         for m in c.messages {
             if m.role == .system { continue }
-            if m.role == .assistant && m.content.isEmpty && (m.reasoning?.isEmpty ?? true) { continue }
+            if m.role == .assistant && m.content.isEmpty && (m.reasoning?.isEmpty ?? true) && m.omnix?.isValid != true { continue }
             out.append(persisted(m))
         }
         return out
@@ -117,7 +118,8 @@ enum MessageSerializer {
                local copy of that turn (if there is one) has already been reconciled above. */
             if m.role == .assistant,
                m.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               (m.reasoning ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+               (m.reasoning ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               m.omnix?.isValid != true {
                 continue
             }
             if let key = turnKey(m) {
@@ -149,6 +151,21 @@ enum MessageSerializer {
         if merged.mergedFrom == nil { merged.mergedFrom = server.mergedFrom }
         if merged.files == nil { merged.files = server.files }
         if merged.imageThumbs == nil { merged.imageThumbs = server.imageThumbs }
+        if merged.omnix?.isValid != true { merged.omnix = nil }
+        if let receipt = server.omnix, receipt.isValid {
+            if merged.omnix == nil {
+                merged.omnix = receipt
+            } else if let localReceipt = merged.omnix,
+                      receipt.owner == localReceipt.owner,
+                      receipt.conversationId == localReceipt.conversationId,
+                      receipt.requestKey == localReceipt.requestKey,
+                      (localReceipt.jobId.isEmpty || localReceipt.jobId == receipt.jobId),
+                      (localReceipt.sessionId.isEmpty || localReceipt.sessionId == receipt.sessionId),
+                      !receipt.jobId.isEmpty {
+                // An acknowledged cloud run outranks a pending local submission.
+                merged.omnix = receipt
+            }
+        }
         if (merged.alts?.count ?? 0) < (server.alts?.count ?? 0) {
             merged.alts = server.alts
             merged.altAt = server.altAt

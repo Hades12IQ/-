@@ -384,8 +384,10 @@ extension SendPipeline {
         }
     }
 
-    static func shouldStreamFirst(kind: RequestKind, planTurn: PlanTurnKind, readerIsPresent: Bool) -> Bool {
-        guard readerIsPresent, jobKind(for: kind) == .chat else { return false }
+    static func shouldStreamFirst(kind: RequestKind, planTurn: PlanTurnKind, readerIsPresent: Bool, isTemporary: Bool = false) -> Bool {
+        // Saved conversations enter the cloud queue immediately, as on the current website.
+        // Temporary chats retain the direct stream and never acquire a durable transcript.
+        guard isTemporary, readerIsPresent, jobKind(for: kind) == .chat else { return false }
         if case .file = kind {
             switch planTurn {
             case .auto, .execute: return false
@@ -395,10 +397,25 @@ extension SendPipeline {
         return true
     }
 
+    static func officeFormat(for kind: RequestKind, product: ProductKind, isTemporary: Bool,
+                             planTurn: PlanTurnKind, isRevision: Bool) -> OfficeDocumentFormat? {
+        guard product == .ai, !isTemporary, case .file(let format, _) = kind else { return nil }
+        switch planTurn {
+        case .auto, .execute: return OfficeDocumentFormat.named(format)
+        default: return isRevision ? OfficeDocumentFormat.named(format) : nil
+        }
+    }
+
     /// Ordinary chat jobs retain vision images. Long-document/file workers do not. Measure the
     /// actual encoded envelope, including escaped source and base64, before packing a handoff.
     static func fitsDurableQueue(_ request: ChatJobRequest, isTemporary: Bool, hasStorage: Bool) -> Bool {
         guard !isTemporary, hasStorage else { return false }
+        if request.kind == JobKind.officefile.rawValue {
+            guard (request.task ?? "").utf16.count <= OfficeDocumentService.maximumTaskUTF16,
+                  (try? OfficeDocumentService.normalizedImages(request.images ?? [])) != nil,
+                  let body = try? JSONEncoder().encode(request) else { return false }
+            return body.count <= OfficeDocumentService.maximumPayloadBytes
+        }
         if request.kind == JobKind.counteddoc.rawValue {
             guard (request.task ?? "").utf8.count <= 120_000,
                   let count = request.expectedItems, (1...10_000).contains(count) else { return false }

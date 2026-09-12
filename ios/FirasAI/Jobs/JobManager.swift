@@ -156,6 +156,7 @@ final class JobManager: JobWatcherDelegate {
 
         let response = try await ChatJobSubmission.submit(request,
             ownerIsCurrent: { self.session.identityID == draft.ownerID },
+            lookup: { try await self.api.chatJobReceipt(cid: $0, chatID: request.chatId) },
             operation: { try await self.api.startChatJob($0) })
         let jobID = (response.jobId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !jobID.isEmpty else { throw APIError.decoding("chat job start returned no id") }
@@ -173,6 +174,11 @@ final class JobManager: JobWatcherDelegate {
         // left to watch, and re-polling an id whose result is already in our hands is the "delay on
         // coming back" this design exists to remove.
         if phase == .completed {
+            if draft.kind == .officefile,
+               (try? OfficeDocumentService.completed(response.text ?? "")) == nil {
+                deliverSoon(pointer, .failed(code: "invalid_document", partial: nil))
+                return pointer
+            }
             deliverSoon(
                 pointer,
                 .completed(
@@ -195,10 +201,18 @@ final class JobManager: JobWatcherDelegate {
             // the user's decision, not ours.
             let raw = (response.error ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let spent = response.retryRequiresNewCid ?? true
-            let code = raw.isEmpty ? (spent ? "previous_attempt_failed" : "job_failed") : raw
+            var code = raw.isEmpty ? (spent ? "previous_attempt_failed" : "job_failed") : raw
             var partial: JobSnapshot?
             if draft.kind == .counteddoc, let text = response.text,
                let meta = FileMeta.document(inContent: text), meta.partial == true, meta.hasVerifiedPDFReference {
+                partial = JobSnapshot(pointerID: jobID, phase: .failed, text: text,
+                    reasoning: response.reasoning ?? "", progress: response.progress, surface: response.surface)
+            }
+            let selectedCode = ServerError.parse(jsonString: raw)?.code ?? raw
+            if draft.kind == .chat || draft.kind == .longdoc,
+               let text = response.text, !text.isEmpty,
+               ["selected_model_unavailable", "selected_model_incomplete", "selected_outcome_unknown"].contains(selectedCode) {
+                code = selectedCode
                 partial = JobSnapshot(pointerID: jobID, phase: .failed, text: text,
                     reasoning: response.reasoning ?? "", progress: response.progress, surface: response.surface)
             }
@@ -271,7 +285,7 @@ final class JobManager: JobWatcherDelegate {
         // user the same channels a queued turn gets — the permission ask, the warmed cue, and the
         // background slot that advances the work after they leave.
         prepareCompletionChannels()
-        attachWatcher(for: normalized, mode: normalized.kind != .counteddoc && normalized.lastPhase == .expired ? .singleRead : .continuous)
+        attachWatcher(for: normalized, mode: !JobKindSpecs.hasServerOwnedLifetime(normalized.kind) && normalized.lastPhase == .expired ? .singleRead : .continuous)
     }
 
     // MARK: - Stopping
@@ -347,7 +361,7 @@ final class JobManager: JobWatcherDelegate {
 
         let now = Date()
         for target in pointers where target.ownerID == identity {
-            let expired = target.kind != .counteddoc && (target.lastPhase == .expired || now >= target.deadline)
+            let expired = !JobKindSpecs.hasServerOwnedLifetime(target.kind) && (target.lastPhase == .expired || now >= target.deadline)
             // Durable first: even a pointer past its deadline earns one authoritative read, because
             // the server may have finished it — or, for media, the bytes may now be in the cache.
             attachWatcher(for: target, mode: expired ? .singleRead : .continuous)
@@ -418,7 +432,7 @@ final class JobManager: JobWatcherDelegate {
                 // A pointer that has already spent its "one later check" keeps the mark. A media
                 // id the server has forgotten answers `running` forever, and letting that answer
                 // reset the phase hands it a fresh later check on every single launch.
-                if target.kind == .counteddoc || target.lastPhase != .expired { updated.lastPhase = snap.phase }
+                if JobKindSpecs.hasServerOwnedLifetime(target.kind) || target.lastPhase != .expired { updated.lastPhase = snap.phase }
                 updated.lastTextCount = Swift.max(updated.lastTextCount, snap.text.count)
                 upsert(updated)
                 // The text is worth publishing too: on the way back in, this is the read that puts
@@ -492,7 +506,7 @@ final class JobManager: JobWatcherDelegate {
         // Same rule as `refreshOnce`: `.expired` is the client's own record that this pointer has
         // had its one later check, and a `running` read from the single-read watcher must not
         // erase it.
-        if updated.kind != .counteddoc, storedPhase == .expired { updated.lastPhase = .expired }
+        if !JobKindSpecs.hasServerOwnedLifetime(updated.kind), storedPhase == .expired { updated.lastPhase = .expired }
         let phaseChanged = storedPhase != updated.lastPhase
         upsert(updated)
         // Text growth is memory-only; a phase change is worth a (debounced) write.
@@ -708,7 +722,7 @@ final class JobManager: JobWatcherDelegate {
 
     nonisolated static func driver(for kind: JobKind) -> any JobKindDriver {
         switch kind {
-        case .chat, .longdoc, .longfile, .counteddoc, .codebuild, .brainask:
+        case .chat, .longdoc, .longfile, .counteddoc, .officefile, .codebuild, .brainask:
             return ChatJobDriver(kind: kind)
         case .agentrun:
             return AgentJobDriver()

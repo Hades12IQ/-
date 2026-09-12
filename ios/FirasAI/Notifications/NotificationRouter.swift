@@ -81,7 +81,7 @@ enum NotificationRouter {
             return "code"
         case .brainask:
             return "brain"
-        case .chat, .longdoc, .longfile, .counteddoc, .image, .video, .music:
+        case .chat, .longdoc, .longfile, .counteddoc, .officefile, .image, .video, .music:
             return "ai"
         }
     }

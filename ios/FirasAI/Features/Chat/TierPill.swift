@@ -87,7 +87,7 @@ struct TierPill: View {
     private var textColor: Color {
         switch tier {
         case .max: return palette.maxTierText
-        case .ultra: return palette.accent
+        case .ultra, .omnix: return palette.accent
         case .mini, .pro: return palette.textPrimary
         }
     }
@@ -95,7 +95,7 @@ struct TierPill: View {
     private var iconColor: Color {
         switch tier {
         case .max: return palette.maxTierDot
-        case .ultra: return palette.accent
+        case .ultra, .omnix: return palette.accent
         case .mini, .pro: return palette.textSecondary
         }
     }

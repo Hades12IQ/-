@@ -11,6 +11,7 @@ struct ChatSettingsView: View {
     private let env: AppEnvironment
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showOmnixAccess = false
 
     init(env: AppEnvironment) {
         self.env = env
@@ -23,6 +24,7 @@ struct ChatSettingsView: View {
             behaviourPanel
             imagesPanel
         }
+        .sheet(isPresented: $showOmnixAccess) { OmnixAccessView(env: env) }
     }
 
     // MARK: - Default model
@@ -47,6 +49,10 @@ struct ChatSettingsView: View {
                     palette: palette,
                     lang: lang
                 ) {
+                    if tier == .omnix {
+                        showOmnixAccess = true
+                        return
+                    }
                     guard tier != env.prefs.tier else { return }
                     Haptics.select()
                     withAnimation(FirasMotion.gated(FirasMotion.tierPop, motionOn: motionOn)) {

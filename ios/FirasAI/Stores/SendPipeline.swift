@@ -62,6 +62,12 @@ final class SendPipeline {
     /// exists. Stop has to be able to reach a turn in that window too.
     var turnTasks: [String: Task<Void, Never>] = [:]
 
+    let omnixState = OmnixState()
+    var omnixWatchers: [String: Task<Void, Never>] = [:]
+    var omnixAdmissions: [String: Task<Void, Never>] = [:]
+    var omnixWrites: [String: Task<Void, Error>] = [:]
+    var omnixCancelled: Set<String> = []
+
     /// Everything a streaming turn needs to become a durable job without asking anything again.
     /// Present only while a turn is on the socket **and** the queue would accept it; leaving the
     /// app walks this table and nothing else.
@@ -129,6 +135,11 @@ final class SendPipeline {
         let state = store.state(for: key)
         guard !state.isBusy, state.mediaPreparation == nil else {
             toasts.show(Strings.Chat.busyWait(store.lang))
+            return
+        }
+
+        if prefs.tier == .omnix {
+            deliverOmnix(text: text, attachments: attachments, in: key, product: product)
             return
         }
 
@@ -263,6 +274,11 @@ final class SendPipeline {
 
         state.errorStrip = nil
         let chosen = tier ?? ModelTier(rawValue: target.tier ?? "") ?? prefs.tier
+        if chosen == .omnix {
+            // Omnix keeps the prior run and uses a new explicit request in the same session.
+            deliverOmnix(text: user.content, attachments: [], in: key, product: conversation.product)
+            return
+        }
         var retryOf: RetryReference?
         if let requested = tier, let previousCID = target.cid, requested.rawValue != (target.tier ?? "") {
             retryOf = RetryReference(cid: previousCID, tier: target.tier ?? prefs.tier.rawValue)
@@ -290,6 +306,10 @@ final class SendPipeline {
         guard let store else { return }
         let key = store.resolve(id)
         guard let conversation = store.conversation(key) else { return }
+        if conversation.messages.first(where: { $0.id == messageID })?.omnix != nil {
+            deliverOmnix(text: Strings.ChatStoreCopy.continueInstruction(store.lang), attachments: [], in: key, product: conversation.product)
+            return
+        }
         await deliver(
             text: Strings.ChatStoreCopy.continueInstruction(store.lang),
             attachments: [],
@@ -335,6 +355,7 @@ final class SendPipeline {
     func stop(in id: String) async {
         guard let store else { return }
         let key = store.resolve(id)
+        if await stopOmnix(in: key) { return }
         let state = store.state(for: key)
         guard state.isBusy else { return }
         state.isStopping = true
@@ -382,6 +403,14 @@ final class SendPipeline {
         ) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in self.handOffLiveTurns() }
+        }
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, let store = self.store else { return }
+                for key in store.conversations.keys { self.restoreOmnix(in: key) }
+            }
         }
     }
 

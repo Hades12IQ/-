@@ -22,6 +22,62 @@ private struct JobCancelEnvelope: Decodable, Sendable {
     let stopped: Bool?
 }
 
+/// The server's `jobTail` offsets use JavaScript string lengths (UTF-16 code units), not Swift
+/// Characters or UTF-8 bytes. Keep the envelope separate from the whole-snapshot wire model so
+/// consumers never accidentally display a suffix as a complete answer.
+struct ChatJobTailResponse: Decodable, Sendable {
+    let status: ChatJobStatus
+    let from: Int?
+    let fromR: Int?
+    let textLen: Int?
+    let reasoningLen: Int?
+
+    init(from decoder: Decoder) throws {
+        status = try ChatJobStatus(from: decoder)
+        let container = try decoder.container(keyedBy: AnyCodingKey.self)
+        from = LenientJSON.int(container, "from")
+        fromR = LenientJSON.int(container, "fromR")
+        textLen = LenientJSON.int(container, "textLen")
+        reasoningLen = LenientJSON.int(container, "reasoningLen")
+    }
+
+    /// Missing/zero offsets mean a whole snapshot: an older server, the first read, or a restarted
+    /// worker. A mismatched echoed offset/length cannot be joined safely and asks for a full read.
+    func reconstructed(text: String, reasoning: String) -> ChatJobStatus? {
+        func joined(_ tail: String, previous: String, offset: Int?, length: Int?) -> String? {
+            let offset = offset ?? 0
+            guard offset >= 0 else { return nil }
+            let result: String
+            if offset > 0 {
+                guard offset == previous.utf16.count else { return nil }
+                result = previous + tail
+            } else {
+                result = tail
+            }
+            if let length, length != result.utf16.count { return nil }
+            return result
+        }
+        guard let wholeText = joined(status.text, previous: text, offset: from, length: textLen),
+              let wholeReasoning = joined(status.reasoning, previous: reasoning, offset: fromR, length: reasoningLen)
+        else { return nil }
+        var whole = status
+        whole.text = wholeText
+        whole.reasoning = wholeReasoning
+        return whole
+    }
+}
+
+private struct ChatJobReceipt: Decodable, Sendable {
+    var response: ChatJobStartResponse
+    let chatID: String?
+
+    init(from decoder: Decoder) throws {
+        response = try ChatJobStartResponse(from: decoder)
+        let container = try decoder.container(keyedBy: AnyCodingKey.self)
+        chatID = LenientJSON.string(container, "chatId")
+    }
+}
+
 // MARK: - Endpoints
 
 extension APIClient {
@@ -43,14 +99,40 @@ extension APIClient {
     /// `GET /api/chat/job?id=` — always 200 unless auth or ownership fails. `text` grows while the
     /// job runs; `{"phase":"unknown"}` means the record is gone (three consecutive reads before
     /// treating it as terminal, per the watcher rules).
-    func chatJobStatus(id: String) async throws -> ChatJobStatus {
-        try await json(
+    func chatJobStatus(
+        id: String, previousText: String = "", previousReasoning: String = ""
+    ) async throws -> ChatJobStatus {
+        let response = try await json(
             .get,
             "/api/chat/job",
-            query: ["id": id],
+            query: ["id": id, "from": String(previousText.utf16.count),
+                    "fromR": String(previousReasoning.utf16.count)],
             budget: .poll,
-            as: ChatJobStatus.self
+            as: ChatJobTailResponse.self
         )
+        if let whole = response.reconstructed(text: previousText, reasoning: previousReasoning) {
+            return whole
+        }
+        // A malformed tail must never duplicate or truncate content. One read without cursors
+        // restores the authoritative snapshot; it cannot enqueue, replay or cancel server work.
+        return try await json(.get, "/api/chat/job", query: ["id": id], budget: .poll,
+                              as: ChatJobStatus.self)
+    }
+
+    /// The current website reconciles an uncertain POST through this read-only receipt route.
+    /// A receipt carries identity/phase only. Always attach a watcher for the full terminal body;
+    /// returning `completed` here would otherwise land an empty answer from a finished receipt.
+    func chatJobReceipt(cid: String, chatID: String?) async throws -> ChatJobStartResponse? {
+        var receipt = try await json(.get, "/api/chat/job", query: ["cid": cid], budget: .poll,
+                                     as: ChatJobReceipt.self)
+        guard let id = receipt.response.jobId, !id.isEmpty, id.utf8.count <= 100,
+              id.utf8.allSatisfy({ (48...57).contains($0) || (65...90).contains($0)
+                  || (97...122).contains($0) || $0 == 45 || $0 == 95 }) else { return nil }
+        if let actual = receipt.chatID, !actual.isEmpty, actual != (chatID ?? "") {
+            throw APIError.decoding("job receipt conversation mismatch")
+        }
+        receipt.response.phase = "queued"
+        return receipt.response
     }
 
     /// `POST /api/chat/cancel` → `true` when the server stopped the job. A queued plain chat job

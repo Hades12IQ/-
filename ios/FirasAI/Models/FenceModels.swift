@@ -58,6 +58,15 @@ struct CodeMeta: Codable, Sendable, Equatable {
 /// The body of a ```` ```firas-file ```` fence — the reference to a generated document. A durable
 /// long file also carries `artifactId` and `artifactEndpoint`; the page bodies are never in the
 /// chat and must be fetched part by part.
+struct FileDesign: Codable, Sendable, Equatable {
+    var font: String?
+    var density: String?
+    var cover: String?
+    var columns: Int?
+    var brief: String?
+    var coverAssetId: String?
+}
+
 struct FileMeta: Codable, Sendable, Equatable {
     /// `pdf` | `docx` | `xlsx` | `pptx` | `csv`.
     var format: String
@@ -84,6 +93,10 @@ struct FileMeta: Codable, Sendable, Equatable {
     var completedItems: Int?
     var remainingItems: Int?
     var resumeJobId: String?
+    var slideCount: Int?
+    var accent: String?
+    var author: String?
+    var design: FileDesign?
 
     init(
         format: String,
@@ -107,7 +120,11 @@ struct FileMeta: Codable, Sendable, Equatable {
         partial: Bool? = nil,
         completedItems: Int? = nil,
         remainingItems: Int? = nil,
-        resumeJobId: String? = nil
+        resumeJobId: String? = nil,
+        slideCount: Int? = nil,
+        accent: String? = nil,
+        author: String? = nil,
+        design: FileDesign? = nil
     ) {
         self.format = format
         self.name = name
@@ -131,6 +148,10 @@ struct FileMeta: Codable, Sendable, Equatable {
         self.completedItems = completedItems
         self.remainingItems = remainingItems
         self.resumeJobId = resumeJobId
+        self.slideCount = slideCount
+        self.accent = accent
+        self.author = author
+        self.design = design
     }
 
     init(from decoder: Decoder) throws {
@@ -157,6 +178,10 @@ struct FileMeta: Codable, Sendable, Equatable {
         completedItems = LenientJSON.int(container, "completedItems")
         remainingItems = LenientJSON.int(container, "remainingItems")
         resumeJobId = LenientJSON.string(container, "resumeJobId")
+        slideCount = LenientJSON.int(container, "slideCount")
+        accent = LenientJSON.string(container, "accent")
+        author = LenientJSON.string(container, "author")
+        design = LenientJSON.nested(container, "design", as: FileDesign.self)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -182,6 +207,10 @@ struct FileMeta: Codable, Sendable, Equatable {
         try container.encodeIfPresent(completedItems, forKey: AnyCodingKey("completedItems"))
         try container.encodeIfPresent(remainingItems, forKey: AnyCodingKey("remainingItems"))
         try container.encodeIfPresent(resumeJobId, forKey: AnyCodingKey("resumeJobId"))
+        try container.encodeIfPresent(slideCount, forKey: AnyCodingKey("slideCount"))
+        try container.encodeIfPresent(accent, forKey: AnyCodingKey("accent"))
+        try container.encodeIfPresent(author, forKey: AnyCodingKey("author"))
+        try container.encodeIfPresent(design, forKey: AnyCodingKey("design"))
     }
 
     /// A durable long file the client may preview and export: the fence names an artifact, the

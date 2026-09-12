@@ -39,36 +39,33 @@ enum ModelTier: String, CaseIterable, Codable, Sendable, Identifiable {
     case pro
     case ultra
     case max
+    case omnix
 
     var id: String { rawValue }
 
     /// `mini` never streams reasoning; the web sends `think = toggle && showThinking`.
-    var showThinking: Bool { self != .mini }
+    var showThinking: Bool { self != .mini && self != .omnix }
 
     /// `max_tokens` from the web table.
     var tokenCap: Int {
         switch self {
         case .mini: return 2048
-        case .pro, .ultra, .max: return 16384
+        case .pro, .ultra, .max, .omnix: return 16384
         }
     }
 
     var label: LText {
         switch self {
-        case .mini: return LText(ar: "فِراس ميني", en: "Firas Mini")
-        case .pro: return LText(ar: "فِراس برو", en: "Firas Pro")
-        case .ultra: return LText(ar: "فِراس أولترا", en: "Firas Ultra")
-        case .max: return LText(ar: "فِراس ماكس", en: "Firas Max")
+        case .mini: return LText(ar: "luma 1", en: "luma 1")
+        case .pro: return LText(ar: "nova 1", en: "nova 1")
+        case .ultra: return LText(ar: "titan 1", en: "titan 1")
+        case .max: return LText(ar: "atlas 1", en: "atlas 1")
+        case .omnix: return LText(ar: "omnix 1", en: "omnix 1")
         }
     }
 
     var short: LText {
-        switch self {
-        case .mini: return LText(ar: "ميني", en: "Mini")
-        case .pro: return LText(ar: "برو", en: "Pro")
-        case .ultra: return LText(ar: "أولترا", en: "Ultra")
-        case .max: return LText(ar: "ماكس", en: "Max")
-        }
+        label
     }
 
     var tagline: LText {
@@ -77,6 +74,7 @@ enum ModelTier: String, CaseIterable, Codable, Sendable, Identifiable {
         case .pro: return LText(ar: "متوازن وذكي", en: "Balanced & smart")
         case .ultra: return LText(ar: "قويّ جدًا — الأفضل للأكواد", en: "Very powerful — best for code")
         case .max: return LText(ar: "الأقوى — أعلى ذكاء وتفكير", en: "Strongest — top intelligence")
+        case .omnix: return LText(ar: "ينفّذ المهام بأدواته ويتابعها على الخادم", en: "Works with tools and continues in the cloud")
         }
     }
 
@@ -85,7 +83,7 @@ enum ModelTier: String, CaseIterable, Codable, Sendable, Identifiable {
         switch self {
         case .max: return LText(ar: "الأقوى", en: "Strongest")
         case .ultra: return LText(ar: "للأكواد", en: "For code")
-        case .mini, .pro: return nil
+        case .mini, .pro, .omnix: return nil
         }
     }
 
@@ -96,6 +94,7 @@ enum ModelTier: String, CaseIterable, Codable, Sendable, Identifiable {
         case .pro: return "bolt.horizontal.fill"
         case .ultra: return "star.fill"
         case .max: return "crown.fill"
+        case .omnix: return "sparkles"
         }
     }
 

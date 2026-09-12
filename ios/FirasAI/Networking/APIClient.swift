@@ -102,6 +102,39 @@ actor APIClient {
         }
     }
 
+    /// Authenticated binary PUT for private staged inputs. The feature validates its file limits
+    /// before this call; the transport keeps the normal cookie jar, upload timeout and HTTP policy.
+    /// Header overrides cannot replace authentication or redirect the request to another host.
+    func uploadBytes<T: Decodable & Sendable>(
+        _ path: String, data: Data, headers: [String: String], as type: T.Type
+    ) async throws -> T {
+        try Task.checkCancellation()
+        var request = try makeRequest(.put, path, query: [:], body: nil, budget: .upload)
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        for (name, value) in headers {
+            let normalized = name.lowercased()
+            guard normalized == "content-type" || normalized.hasPrefix("x-omnix-"),
+                  !name.contains("\r"), !name.contains("\n"),
+                  !value.contains("\r"), !value.contains("\n") else {
+                throw APIError.decoding("invalid upload header")
+            }
+            request.setValue(value, forHTTPHeaderField: name)
+        }
+        do {
+            let (responseData, response) = try await uploadSession.upload(for: request, from: data)
+            guard let http = response as? HTTPURLResponse else {
+                throw APIError.decoding("non-HTTP upload response")
+            }
+            if http.statusCode == 401 { unauthorizedContinuation.yield(()) }
+            guard (200..<300).contains(http.statusCode) else {
+                throw APIError.http(status: http.statusCode, server: ServerError.parse(responseData),
+                                    raw: Self.previewText(responseData))
+            }
+            do { return try decoder.decode(type, from: responseData) }
+            catch { throw APIError.decoding("invalid upload response") }
+        } catch { throw Self.mapped(error) }
+    }
+
     /// Server-sent events. Cancelling the consuming task closes the socket — for a live
     /// `/api/chat` stream that *is* the stop button; the server aborts upstream on close.
     func stream(

@@ -211,7 +211,7 @@ extension Strings {
 
         static let regenerate = LText(ar: "إعادة التوليد", en: "Regenerate")
         static let regenSame = LText(ar: "بالنموذج نفسه", en: "Same model")
-        static let regenMax = LText(ar: "أعد بـ فِراس ماكس", en: "Retry with Firas Max")
+        static let regenMax = LText(ar: "أعد بـ atlas 1", en: "Retry with atlas 1")
         static let listen = LText(ar: "اسمع", en: "Listen")
         static let listenStop = LText(ar: "إيقاف", en: "Stop")
         static let more = LText(ar: "المزيد", en: "More")
