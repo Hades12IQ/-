@@ -1,0 +1,41 @@
+{
+  "directories": [
+    {
+      "path": ".",
+      "children": [
+        "Payload"
+      ],
+      "files": [
+        "Bom",
+        "PackageInfo"
+      ]
+    },
+    {
+      "path": "Payload",
+      "children": [
+        "Contents"
+      ],
+      "files": []
+    }
+  ],
+  "packageInfos": [
+    {
+      "path": "PackageInfo",
+      "sha256": "9e9c28116d6b5d8d719bd6563b11ce6034fdb9a13ea83ff966dca1ac4826456d",
+      "identifier": "com.apple.pkg.iPhoneSimulatorSDK15_5",
+      "installLocation": ""
+    }
+  ],
+  "candidates": [
+    {
+      "path": "Payload",
+      "rejected": "unexpected-signed-runtime-install-location",
+      "packageInfo": {
+        "path": "PackageInfo",
+        "sha256": "9e9c28116d6b5d8d719bd6563b11ce6034fdb9a13ea83ff966dca1ac4826456d",
+        "identifier": "com.apple.pkg.iPhoneSimulatorSDK15_5",
+        "installLocation": ""
+      }
+    }
+  ]
+}
