@@ -251,7 +251,11 @@ struct CodeChatThread: Codable, Sendable, Equatable {
             ?? LenientJSON.array(container, "messages", of: CodeChatMessage.self)
             ?? []
         messages = Self.uniquelyIdentified(messages)
-        selection = try CodeModelSelection(from: decoder)
+        if let nested = try? container.decode(CodeModelSelection.self, forKey: AnyCodingKey("selection")) {
+            selection = nested
+        } else {
+            selection = try CodeModelSelection(from: decoder)
+        }
     }
 
     private static func uniquelyIdentified(_ turns: [CodeChatMessage]) -> [CodeChatMessage] {
@@ -270,8 +274,7 @@ struct CodeChatThread: Codable, Sendable, Equatable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: AnyCodingKey.self)
         try container.encode(messages, forKey: AnyCodingKey("turns"))
-        try container.encode(selection.model.rawValue, forKey: AnyCodingKey("model"))
-        try container.encode(selection.depth, forKey: AnyCodingKey("depth"))
+        try container.encode(selection, forKey: AnyCodingKey("selection"))
     }
 
     /// Decodes the fence body (the base64 blob), or a whole ```` ```firas-code-chat ```` message.

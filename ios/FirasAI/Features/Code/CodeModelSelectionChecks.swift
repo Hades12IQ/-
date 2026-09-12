@@ -17,6 +17,17 @@ enum CodeModelSelectionChecks {
             if decoded?.selection != selection || decoded?.messages.first?.model != tier.rawValue || decoded?.messages.first?.omnix != turn.omnix {
                 failures.append("Code selection/Omnix receipt did not survive the website thread fence")
             }
+            let webJSON = #"{"turns":[],"selection":{"model":""# + tier.rawValue + #"","depth":"deep"}}"#
+            let webFence = "```firas-code-chat\n" + Data(webJSON.utf8).base64EncodedString() + "\n```"
+            if CodeChatThread.decode(fromFence: webFence)?.selection != selection {
+                failures.append("Real website nested model/depth did not survive reopening: " + tier.rawValue)
+            }
+            if let bytes = try? JSONEncoder().encode(thread), let object = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any] {
+                let nested = object["selection"] as? [String: String]
+                if nested?["model"] != tier.rawValue || nested?["depth"] != selection.depth || object["model"] != nil {
+                    failures.append("Native Code selection was not written in the website's nested format")
+                }
+            } else { failures.append("Code nested selection could not encode") }
             if selection.think != (tier != .mini && tier != .omnix) { failures.append("Code thinking ignored the selected model's capability") }
             if tier != .omnix {
                 let ticket = CodeBuildTicket(projectID: "fixture-chat", cid: "fixture-cid", ownerID: "fixture-owner", name: "Project",
@@ -35,9 +46,17 @@ enum CodeModelSelectionChecks {
         }
         let unicode = #"{"model":"omnix","depth":"managed","turns":[{"role":"user","text":"اكتب برنامجًا 😀"}]}"#
         let u16 = "```firas-code-chat\nu16:" + (unicode.data(using: .utf16LittleEndian)?.base64EncodedString() ?? "") + "\n```"
-        if CodeChatThread.decode(fromFence: u16)?.messages.first?.content != "اكتب برنامجًا 😀" { failures.append("Code could not reopen the current website's UTF-16 thread encoding") }
-        let old = CodeChatThread.decode(fromFence: "```firas-code-chat\n" + Data(#"{"turns":[]}"#.utf8).base64EncodedString() + "\n```")
-        if old?.selection != CodeModelSelection() { failures.append("Legacy Code projects lost the website's Pro default") }
+        let historical = CodeChatThread.decode(fromFence: u16)
+        if historical?.messages.first?.content != "اكتب برنامجًا 😀" || historical?.selection != CodeModelSelection(model: .omnix) {
+            failures.append("Code could not reopen the historical flat UTF-16 thread and its model")
+        }
+        for payload in [#"{"turns":[]}"#, #"{"turns":[],"selection":null}"#] {
+            let old = CodeChatThread.decode(fromFence: "```firas-code-chat\n" + Data(payload.utf8).base64EncodedString() + "\n```")
+            if old?.selection != CodeModelSelection() { failures.append("Missing or null Code selection lost the Pro default") }
+        }
+        let both = #"{"turns":[],"model":"mini","depth":"standard","selection":{"model":"omnix","depth":"managed"}}"#
+        let preferred = CodeChatThread.decode(fromFence: "```firas-code-chat\n" + Data(both.utf8).base64EncodedString() + "\n```")
+        if preferred?.selection != CodeModelSelection(model: .omnix) { failures.append("The nested website selection did not supersede a historical flat choice") }
         return failures
     }
 }

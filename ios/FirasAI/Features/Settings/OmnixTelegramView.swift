@@ -167,17 +167,17 @@ struct OmnixTelegramView: View {
     }
 
     private var connectedPanel: some View {
-        SettingsNoticeBanner(text: ar ? "الربط جاهز. أرسل طلبك أو صورك أو ملفاتك للبوت في محادثة خاصة. يستمر العمل في السحابة عند إغلاق التطبيق، وتصل النتائج إلى تيليغرام. تبدأ جلسة جديدة فقط عندما تطلبها باستخدام /new." : "Connected. Send requests, images or files to the bot in a private chat. Work continues in the cloud when this app closes, and results arrive in Telegram. A new session starts only when you request one with /new.", kind: .success, palette: palette)
+        SettingsNoticeBanner(text: ar ? "الربط جاهز. أرسل طلبك أو صورك أو ملفاتك للبوت في محادثة خاصة. يستمر العمل في السحابة عند إغلاق التطبيق، وتصل النتائج إلى تيليغرام. تبدأ جلسة جديدة فقط عندما تطلبها باستخدام \u{2066}/new\u{2069}." : "Connected. Send requests, images or files to the bot in a private chat. Work continues in the cloud when this app closes, and results arrive in Telegram. A new session starts only when you request one with /new.", kind: .success, palette: palette)
     }
 
     private var instructionsPanel: some View {
         SettingsPanel(title: ar ? "إعداد بوت خاص" : "Set up a private bot", palette: palette, lang: lang) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(ar ? "1. افتح BotFather وأنشئ بوتًا بالأمر /newbot. احتفظ بالرمز الذي يعطيك إياه." : "1. Open BotFather and create a bot with /newbot. Keep the token it supplies.")
+                Text(ar ? "1. افتح BotFather وأنشئ بوتًا بالأمر \u{2066}/newbot\u{2069}. احتفظ بالرمز الذي يعطيك إياه." : "1. Open BotFather and create a bot with /newbot. Keep the token it supplies.")
                 Link(destination: URL(string: "https://t.me/BotFather")!) {
                     Label(ar ? "فتح BotFather" : "Open BotFather", systemImage: "arrow.up.right").frame(minHeight: 44)
                 }
-                Text(ar ? "2. من /setjoingroups عطّل المجموعات. أوقف inline وguest وbusiness ليبقى البوت خاصًا." : "2. Disable groups with /setjoingroups. Turn off inline, guest and business modes to keep the bot private.")
+                Text(ar ? "2. من \u{2066}/setjoingroups\u{2069} عطّل المجموعات. أوقف inline وguest وbusiness ليبقى البوت خاصًا." : "2. Disable groups with /setjoingroups. Turn off inline, guest and business modes to keep the bot private.")
                 Text(ar ? "3. أدخل الرمز ومعرّف حسابك الشخصي الرقمي هنا، ثم أكمل الربط من الحساب نفسه في محادثة البوت الخاصة. لا تُقبل المجموعات أو الرسائل المحوّلة." : "3. Enter the token and your personal numeric user ID here, then finish pairing from that same account in the bot's private chat. Groups and forwarded messages are not accepted.")
                 Text(ar ? "يلزم حساب مسجّل وموافقة أومنكس ومساحة سحابية جاهزة." : "A signed-in account, Omnix approval and a ready cloud workspace are required.")
                     .foregroundStyle(palette.textMuted)

@@ -112,7 +112,8 @@ final class AppEnvironment {
             prefs: prefs,
             toasts: toasts,
             router: router,
-            cache: codeCache
+            cache: codeCache,
+            defaults: defaults
         )
         let brain = BrainStore(
             api: api,

@@ -100,6 +100,7 @@ final class CodeStore: JobObserver {
     private let router: Router
     let cache: CodeProjectCache
     let codeOmnix = CodeOmnixState()
+    @PerceptionIgnored private let selectionPreferences: CodeSelectionPreferences
     @PerceptionIgnored var codeWrites: [String: Task<Void, Error>] = [:]
 
     // MARK: - Private state
@@ -199,7 +200,8 @@ final class CodeStore: JobObserver {
         prefs: PreferencesStore,
         toasts: ToastCenter,
         router: Router,
-        cache: CodeProjectCache
+        cache: CodeProjectCache,
+        defaults: UserDefaults = .standard
     ) {
         self.api = api
         self.session = session
@@ -209,6 +211,7 @@ final class CodeStore: JobObserver {
         self.toasts = toasts
         self.router = router
         self.cache = cache
+        self.selectionPreferences = CodeSelectionPreferences(defaults: defaults)
         // Job delivery is registered in one place only — `AppEnvironment.registerJobObservers()`,
         // which already registers this store for `.codebuild`. Registering again here would work
         // (JobManager drops a duplicate of the same object) but it splits the contract across two
@@ -232,9 +235,11 @@ final class CodeStore: JobObserver {
     var lang: AppLanguage { prefs.lang }
     var modelSelection: CodeModelSelection { thread.selection }
     func selectModel(_ selection: CodeModelSelection) {
-        guard let id = openProjectID, !isAsking, !isBuilding(projectID: id), !codeOmnix.active.contains(id) else { return }
+        guard let id = openProjectID, let owner = session.identityID, !isAsking,
+              !isBuilding(projectID: id), !codeOmnix.active.contains(id) else { return }
         thread.selection = selection
-        scheduleCommit()
+        selectionPreferences.record(selection, owner: owner, projectID: id)
+        queueModelSelectionSave(id: id, owner: owner)
     }
 
     var isGuest: Bool { session.isGuest }
@@ -388,7 +393,14 @@ final class CodeStore: JobObserver {
         await cache.save(scaffold, id: id, ownerID: ownerID)
         await refreshRecords()
         guard session.identityID == ownerID else { return nil }
-        adopt(id: id, project: scaffold, thread: CodeChatThread())
+        let newThread = CodeChatThread(selection: selectionPreferences.remembered(owner: ownerID))
+        await cache.saveThread(newThread, id: id, ownerID: ownerID)
+        guard session.identityID == ownerID else { return nil }
+        adopt(id: id, project: scaffold, thread: newThread)
+        if newThread.selection != CodeModelSelection() {
+            selectionPreferences.record(newThread.selection, owner: ownerID, projectID: id)
+            queueModelSelectionSave(id: id, owner: ownerID)
+        }
         if !projects.contains(where: { $0.id == id }) {
             projects.insert(summary(for: id, name: projectName), at: 0)
         }
@@ -435,6 +447,8 @@ final class CodeStore: JobObserver {
         guard session.identityID == ownerID, openProjectID == id else { return }
         if liveBuilds[id] == nil, session.isMember, !id.hasPrefix("ios_") {
             do {
+                _ = try? await codeWrites[id]?.value
+                guard session.identityID == ownerID, openProjectID == id else { return }
                 let conversation = try await api.getChat(id: id)
                 guard session.identityID == ownerID, openProjectID == id else { return }
                 if liveBuilds[id] != nil {
@@ -473,6 +487,7 @@ final class CodeStore: JobObserver {
         await resumeLiveBuilds()
         syncBuildState()
         isOpening = false
+        queueModelSelectionSave(id: id, owner: ownerID)
         restoreCodeJobs(in: id)
     }
 
@@ -1650,6 +1665,36 @@ final class CodeStore: JobObserver {
 
     // MARK: - Persistence
 
+    private func queueModelSelectionSave(id: String, owner: String) {
+        guard let pending = selectionPreferences.pending(owner: owner, projectID: id),
+              session.identityID == owner, acceptsProjectWrites(id) else { return }
+        let generation = codeOmnix.generation
+        let previous = codeWrites[id]
+        let write = Task { @MainActor [weak self] in
+            _ = try? await previous?.value
+            guard let self else { throw APIError.cancelled }
+            func current() -> Bool {
+                !Task.isCancelled && self.session.identityID == owner && self.codeOmnix.generation == generation
+                    && self.acceptsProjectWrites(id) && self.selectionPreferences.pending(owner: owner, projectID: id) == pending
+            }
+            guard current() else { throw APIError.cancelled }
+            if self.session.isMember && !id.hasPrefix("ios_") {
+                try await CodeSelectionPersistence.save(selection: pending.selection, projectID: id, lang: self.lang,
+                    isCurrent: current, fetch: { try await self.api.getChat(id: id) },
+                    commit: { try await self.api.updateChat(id: id, $0) })
+            }
+            var latest: CodeChatThread
+            if self.openProjectID == id { latest = self.thread }
+            else { latest = await self.cache.loadThread(id: id, ownerID: owner) ?? CodeChatThread() }
+            guard current() else { throw APIError.cancelled }
+            latest.selection = pending.selection
+            await self.cache.saveThread(latest, id: id, ownerID: owner)
+            guard current() else { throw APIError.cancelled }
+            self.selectionPreferences.acknowledge(pending, owner: owner, projectID: id)
+        }
+        codeWrites[id] = write
+    }
+
     private func acceptsProjectWrites(_ id: String) -> Bool {
         !pendingDeletes.contains(id) && !deletedProjects.contains(id)
     }
@@ -1676,6 +1721,8 @@ final class CodeStore: JobObserver {
         let owner = session.identityID
         let saved = try await api.getChat(id: id)
         guard session.identityID == owner, saved.id == id, acceptsProjectWrites(id), !Task.isCancelled else { throw APIError.cancelled }
+        var thread = thread
+        if let owner, let pending = selectionPreferences.pending(owner: owner, projectID: id) { thread.selection = pending.selection }
         var messages: [PersistedMessage] = [
             PersistedMessage(
                 role: ChatRole.assistant.rawValue,
@@ -1765,6 +1812,7 @@ final class CodeStore: JobObserver {
         }
         pendingDeletes.remove(id)
         deletedProjects.insert(id)
+        selectionPreferences.forget(owner: ownerID, projectID: id)
         // `cache.delete` drops the build ticket with the project; the in-memory mirror goes here.
         await cache.delete(id: id, ownerID: ownerID)
         guard session.identityID == ownerID else { return }
@@ -1856,6 +1904,9 @@ final class CodeStore: JobObserver {
         openProjectID = id
         project = incoming
         thread = incomingThread
+        if let owner = session.identityID, let pending = selectionPreferences.pending(owner: owner, projectID: id) {
+            thread.selection = pending.selection
+        }
         if selectedPath == nil || !incoming.files.contains(where: { $0.path == selectedPath }) {
             selectedPath = Self.entryPath(of: incoming)
         }

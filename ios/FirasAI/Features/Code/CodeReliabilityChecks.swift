@@ -10,6 +10,7 @@ enum CodeReliabilityChecks {
         failures += await CodeOmnixImportChecks.run()
         failures += await CodeEditServiceChecks.run()
         failures += CodeModelSelectionChecks.run()
+        failures += await CodeSelectionPersistenceChecks.run()
         failures += CodeEditorCompatibilityChecks.run()
         failures += CodeSelectedChangesChecks.run()
         failures += await CodeDeletionSafetyChecks.run()

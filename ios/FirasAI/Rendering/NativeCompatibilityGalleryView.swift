@@ -91,8 +91,11 @@ final class NativeCompatibilityGalleryModel: ObservableObject {
             ChatMessage(id: "native-gallery-answer", role: .assistant, content: Self.answer,
                         tier: ModelTier.pro.rawValue, lang: "ar")
         ]
+        // Opening an existing ChatScreen intentionally discards temporary conversations.
+        // This regular record lives only in the isolated, unauthenticated store; marking it
+        // ephemeral would make prepare() delete the very fixture the gallery needs to show.
         env.chat.setConversation(ChatConversation(id: chatID, title: "مثال توضيحي محلي",
-                                                 messages: messages, ephemeral: true), forKey: chatID)
+                                                 messages: messages, ephemeral: false), forKey: chatID)
         _ = env.chat.state(for: chatID)
         CodeCompatibilityGalleryView.prepare(env: env)
     }
@@ -118,6 +121,7 @@ final class NativeCompatibilityGalleryModel: ObservableObject {
     func capture(directory: URL) async -> (report: [String: Any], failures: [String]) {
         var failures: [String] = []
         var rows: [[String: Any]] = []
+        var chatReadiness: [String: Any] = [:]
         let actualVersion = UIDevice.current.systemVersion
         let mode = FirasCompatibility.forceLegacyUI ? "forced-legacy" : "modern"
         let prefix = "native-gallery-ios-" + actualVersion.replacingOccurrences(of: ".", with: "-") + "-" + mode
@@ -146,11 +150,25 @@ final class NativeCompatibilityGalleryModel: ObservableObject {
                                             fontScale: env.prefs.fontScale)
                 let spans = MathScanner.spans(in: Self.answer)
                 let mathDeadline = ProcessInfo.processInfo.systemUptime + 30
-                while spans.contains(where: { MathIsland.shared.peekForReliability($0.id, style: style) == nil }),
-                      ProcessInfo.processInfo.systemUptime < mathDeadline, !Task.isCancelled {
-                    await JobClock.rest(0.05)
+                var evidence = visibleChatEvidence()
+                func ready() -> Bool {
+                    evidence.ready && spans.allSatisfy {
+                        MathIsland.shared.peekForReliability($0.id, style: style) != nil
+                    }
                 }
-                if spans.contains(where: { MathIsland.shared.peekForReliability($0.id, style: style) == nil }) {
+                while !ready(), ProcessInfo.processInfo.systemUptime < mathDeadline, !Task.isCancelled {
+                    await JobClock.rest(0.05)
+                    evidence = visibleChatEvidence()
+                }
+                let cachedMath = spans.filter { MathIsland.shared.peekForReliability($0.id, style: style) != nil }.count
+                chatReadiness = ["ready": ready(), "fixtureRecordPresent": evidence.recordPresent,
+                    "visibleAnswerMarkers": evidence.markers, "requiredAnswerMarkers": 2,
+                    "visibleInlineMathImages": evidence.mathImages,
+                    "cachedMathGlyphs": cachedMath, "requiredMathGlyphs": spans.count]
+                if !evidence.ready {
+                    failures.append("Native gallery chat did not display its actual answer text and inline mathematics")
+                }
+                if cachedMath != spans.count {
                     failures.append("Native gallery chat mathematics did not finish drawing")
                 }
             }
@@ -175,6 +193,7 @@ final class NativeCompatibilityGalleryModel: ObservableObject {
             "deterministicLocalFixture": true,
             "networkBase": "https://native-gallery.invalid",
             "authenticatedSessionRestored": false,
+            "chatReadiness": chatReadiness,
             "evidence": "Actual native app screens. Forced compatibility branches do not emulate an older OS runtime.",
             "screens": rows,
             "errors": failures
@@ -192,6 +211,47 @@ final class NativeCompatibilityGalleryModel: ObservableObject {
         }
         UserDefaults.standard.removePersistentDomain(forName: defaultsSuite)
         return (report, failures)
+    }
+
+    private struct ChatEvidence {
+        var recordPresent = false
+        var markers = 0
+        var mathImages = 0
+        var ready: Bool { recordPresent && markers == 2 && mathImages >= 1 }
+    }
+
+    /// Inspect the production UITextView backing the answer after layout. Cached glyphs alone
+    /// are insufficient: an earlier smoke run can leave them ready while the screen is a skeleton.
+    private func visibleChatEvidence() -> ChatEvidence {
+        var evidence = ChatEvidence()
+        evidence.recordPresent = env.chat.conversation(chatID)?.messages.contains {
+            $0.id == "native-gallery-answer" && $0.content == Self.answer
+        } == true
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive }),
+              let window = scene.windows.first(where: \.isKeyWindow),
+              window.rootViewController?.presentedViewController == nil else { return evidence }
+        window.layoutIfNeeded()
+        let markers = ["المساحة تحت المنحنى", "وفي التكامل بالتجزئة"]
+        var seen: Set<String> = []
+        func visit(_ view: UIView, clippedTo clip: CGRect) {
+            guard !view.isHidden, view.alpha > 0.01 else { return }
+            let frame = view.convert(view.bounds, to: window)
+            let visible = frame.intersection(clip)
+            if let text = view as? UITextView, !text.isEditable,
+               visible.width > 1, visible.height > 1, let attributed = text.attributedText {
+                for marker in markers where attributed.string.contains(marker) { seen.insert(marker) }
+                attributed.enumerateAttribute(.attachment, in: NSRange(location: 0, length: attributed.length)) { value, _, _ in
+                    if let attachment = value as? NSTextAttachment, attachment.image != nil { evidence.mathImages += 1 }
+                }
+            }
+            let childClip = view.clipsToBounds ? visible : clip
+            guard !childClip.isNull, !childClip.isEmpty else { return }
+            for child in view.subviews { visit(child, clippedTo: childClip) }
+        }
+        visit(window, clippedTo: window.bounds)
+        evidence.markers = seen.count
+        return evidence
     }
 
     private func saveScreen(_ url: URL) throws -> CGSize {
