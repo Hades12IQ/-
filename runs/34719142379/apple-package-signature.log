@@ -1,0 +1,22 @@
+Package "iPhoneSimulatorSDK15_5.pkg":
+   Status: signed Apple Software (Development)
+   Signed with a trusted timestamp on: 2022-05-26 01:15:02 +0000
+   Certificate Chain:
+    1. Development Update
+       Expires: 2029-04-14 21:28:23 +0000
+       SHA256 Fingerprint:
+           D8 F1 22 D9 79 88 EB 12 D7 13 7B BD 53 74 E5 5A 9C 4B 38 F5 3D 25 
+           56 62 27 74 E2 3D DD 55 D3 6A
+       ------------------------------------------------------------------------
+    2. Apple Software Update Certification Authority
+       Expires: 2031-10-15 00:00:00 +0000
+       SHA256 Fingerprint:
+           12 99 E9 BF E7 76 A2 9F F4 52 F8 C4 F5 E5 5F 3B 4D FD 29 34 34 9D 
+           D1 85 0B 82 74 F3 5C 71 74 5C
+       ------------------------------------------------------------------------
+    3. Apple Root CA
+       Expires: 2035-02-09 21:40:36 +0000
+       SHA256 Fingerprint:
+           B0 B1 73 0E CB C7 FF 45 05 14 2C 49 F1 29 5E 6E DA 6B CA ED 7E 2C 
+           68 C5 BE 91 B5 A1 10 01 F0 24
+

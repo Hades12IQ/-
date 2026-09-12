@@ -1,0 +1,65 @@
+{
+  "directories": [
+    {
+      "path": ".",
+      "children": [
+        "Payload"
+      ],
+      "files": [
+        "Bom",
+        "PackageInfo"
+      ]
+    },
+    {
+      "path": "Payload",
+      "children": [
+        "Contents"
+      ],
+      "files": []
+    }
+  ],
+  "packageInfos": [
+    {
+      "path": "PackageInfo",
+      "sha256": "9e9c28116d6b5d8d719bd6563b11ce6034fdb9a13ea83ff966dca1ac4826456d",
+      "identifier": "com.apple.pkg.iPhoneSimulatorSDK15_5",
+      "installLocation": "",
+      "destinationNameSource": "catalogue-version-and-verified-runtime-identity"
+    }
+  ],
+  "candidates": [
+    {
+      "path": "Payload",
+      "destinationName": "iOS 15.5.simruntime",
+      "kind": "signed-package-payload",
+      "packageInfo": {
+        "path": "PackageInfo",
+        "sha256": "9e9c28116d6b5d8d719bd6563b11ce6034fdb9a13ea83ff966dca1ac4826456d",
+        "identifier": "com.apple.pkg.iPhoneSimulatorSDK15_5",
+        "installLocation": "",
+        "destinationNameSource": "catalogue-version-and-verified-runtime-identity"
+      },
+      "extractedInfo": {
+        "CFBundleIdentifier": "com.apple.CoreSimulator.SimRuntime.iOS-15-5",
+        "CFBundleVersion": "291",
+        "CFBundleShortVersionString": "291"
+      },
+      "extractedVersion": {
+        "ProductVersion": "15.5",
+        "ProductBuildVersion": "19F70"
+      },
+      "metadata": {
+        "bundleIdentifier": "com.apple.CoreSimulator.SimRuntime.iOS-15-5",
+        "systemVersion": {
+          "BuildID": "3303F634-C707-11EC-B17A-E00D8910FB0E",
+          "ProductBuildVersion": "19F70",
+          "ProductCopyright": "1983-2022 Apple Inc.",
+          "ProductName": "iPhone OS",
+          "ProductVersion": "15.5"
+        },
+        "infoPlistSHA256": "996864a3538d60609ccad690b5a41fe021191c0a02db064eb507cda2cd6345b2",
+        "systemVersionSHA256": "70d9b70fc0bc72652b289d800e39676d03a078342fe6908839136699f6f9bf9d"
+      }
+    }
+  ]
+}

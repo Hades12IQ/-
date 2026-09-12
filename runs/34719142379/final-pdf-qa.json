@@ -1,0 +1,245 @@
+{
+  "status": "passed",
+  "errors": [],
+  "pymupdfVersion": "1.27.2.3",
+  "mupdfVersion": "1.27.2",
+  "marginTolerancePoints": 5.0,
+  "pdfSHA256": "cb9658447b965ec9622e8ad5188d518727b2741c5edf9a397e1b4833736613e0",
+  "printableRect": [
+    51.0236220472441,
+    56.69291338582678,
+    493.228346456693,
+    728.5039370078742
+  ],
+  "visibleLabels": 200,
+  "visibleIntegrals": 200,
+  "checkedCharacters": 10280,
+  "fullyClippedCharacters": 0,
+  "outsideCharacters": 0,
+  "outsidePages": [],
+  "separatedEntryPages": [],
+  "maximumMarginExcessPoints": 4.5538752998892775,
+  "pages": [
+    {
+      "page": 1,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 2,
+      "labels": 7,
+      "integrals": 7,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 3,
+      "labels": 7,
+      "integrals": 7,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 4,
+      "labels": 6,
+      "integrals": 6,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 5,
+      "labels": 7,
+      "integrals": 7,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 6,
+      "labels": 7,
+      "integrals": 7,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 7,
+      "labels": 6,
+      "integrals": 6,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 8,
+      "labels": 7,
+      "integrals": 7,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 9,
+      "labels": 7,
+      "integrals": 7,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 10,
+      "labels": 6,
+      "integrals": 6,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 11,
+      "labels": 7,
+      "integrals": 7,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 12,
+      "labels": 7,
+      "integrals": 7,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 13,
+      "labels": 6,
+      "integrals": 6,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 14,
+      "labels": 7,
+      "integrals": 7,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 15,
+      "labels": 7,
+      "integrals": 7,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 16,
+      "labels": 1,
+      "integrals": 1,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 17,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 18,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 19,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 20,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 21,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 22,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 23,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 24,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 25,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 26,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 27,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 28,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 29,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 30,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 31,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 32,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 33,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 34,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 35,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    },
+    {
+      "page": 36,
+      "labels": 5,
+      "integrals": 5,
+      "outsideCharacters": 0
+    }
+  ],
+  "pageCount": 36,
+  "visibleEntryOrderVerified": true,
+  "lastPageHasText": true,
+  "lastPageInkPixels": 7995,
+  "blankTrailingPage": false
+}
