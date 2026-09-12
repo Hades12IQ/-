@@ -86,9 +86,9 @@ private struct FirasGlassModifier: ViewModifier {
 
     @ViewBuilder
     private func chrome(_ content: Content) -> some View {
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, *), !FirasCompatibility.forceLegacyUI {
             content
-        } else if #available(iOS 16, *) {
+        } else if #available(iOS 16, *), !FirasCompatibility.forceLegacyUI {
             content.toolbarBackground(Material.ultraThin, for: .navigationBar)
         } else {
             content
@@ -111,7 +111,7 @@ private struct FirasGlassModifier: ViewModifier {
 
     @ViewBuilder
     private func translucentFloating(_ content: Content) -> some View {
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, *), !FirasCompatibility.forceLegacyUI {
             content
                 .glassEffect(FirasGlass.clearGlass(tint: palette.glassTint), in: shape)
                 .overlay { wash }
@@ -183,7 +183,7 @@ private struct FirasSheetBackgroundModifier: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if reduceTransparency {
-            if #available(iOS 16.4, *) {
+            if #available(iOS 16.4, *), !FirasCompatibility.forceLegacyUI {
                 content.presentationBackground(palette.background)
             } else {
                 content.background(palette.background.ignoresSafeArea())
@@ -195,9 +195,9 @@ private struct FirasSheetBackgroundModifier: ViewModifier {
 
     @ViewBuilder
     private func translucent(_ content: Content) -> some View {
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, *), !FirasCompatibility.forceLegacyUI {
             content
-        } else if #available(iOS 16.4, *) {
+        } else if #available(iOS 16.4, *), !FirasCompatibility.forceLegacyUI {
             content.presentationBackground {
                 ZStack {
                     Rectangle().fill(Material.ultraThin)

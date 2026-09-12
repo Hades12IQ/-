@@ -16,11 +16,14 @@ struct ReliabilitySmokeView: View {
     @State private var liveFinished = false
     @State private var showLegacyScroll = false
     @State private var legacyScrollFailures: [String]?
+    @State private var nativeGallery: NativeCompatibilityGalleryModel?
 
     var body: some View {
         return WithPerceptionTracking {
         Group {
-            if showLegacyScroll {
+            if let nativeGallery {
+                NativeCompatibilityGalleryView(gallery: nativeGallery)
+            } else if showLegacyScroll {
                 VStack(spacing: 12) {
                     Text("Native legacy transcript scrolling").font(.headline)
                     LegacyTranscriptScrollSmokeView { failures in legacyScrollFailures = failures }
@@ -148,6 +151,14 @@ MarkdownView(markdown: shown, messageID: "live-math-smoke", streaming: !liveFini
     }
 
     @MainActor private func run() async {
+        if ProcessInfo.processInfo.arguments.contains("--native-gallery") {
+            let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let gallery = NativeCompatibilityGalleryModel()
+            nativeGallery = gallery
+            let result = await gallery.capture(directory: directory)
+            status = result.failures.isEmpty ? "Native gallery captured" : result.failures.joined(separator: " · ")
+            return
+        }
         var errors = ChatReliabilityChecks.failures()
         errors += await NetworkReliabilityChecks.run()
         errors += await CodeReliabilityChecks.failures()

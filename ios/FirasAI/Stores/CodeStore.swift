@@ -217,6 +217,18 @@ final class CodeStore: JobObserver {
 
     // MARK: - Reading
 
+#if DEBUG
+    /// Deterministic, unauthenticated state for the native screenshot gallery only.
+    func installCompatibilityGallery(projectID: String, project: CodeProject, thread: CodeChatThread) {
+        guard session.identityID == nil, projectID.hasPrefix("native-gallery-") else { return }
+        adopt(id: projectID, project: project, thread: thread)
+        openError = nil
+        isOpening = false
+        usingCachedCopy = false
+        saveState = .saved
+    }
+#endif
+
     var lang: AppLanguage { prefs.lang }
     var modelSelection: CodeModelSelection { thread.selection }
     func selectModel(_ selection: CodeModelSelection) {

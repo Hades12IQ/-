@@ -56,7 +56,9 @@ done
 xcrun simctl io "$DEVICE_ID" screenshot "$ARTIFACT_ROOT/forced-legacy-simulator.png"
 cat "$ARTIFACT_ROOT/legacy-reliability-smoke.json"
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("status")=="passed", d' "$ARTIFACT_ROOT/legacy-reliability-smoke.json"
+bash ios/scripts/native-gallery-smoke.sh "$DEVICE_ID" "$ARTIFACT_ROOT" native
+bash ios/scripts/native-gallery-smoke.sh "$DEVICE_ID" "$ARTIFACT_ROOT" forced-legacy
 (
   cd "$ARTIFACT_ROOT"
-  zip -q FirasAI-smoke-evidence.zip reliability-smoke.json legacy-reliability-smoke.json final-pdf-qa.json *.png *.pdf
+  zip -q FirasAI-smoke-evidence.zip reliability-smoke.json legacy-reliability-smoke.json final-pdf-qa.json native-gallery-*.json *.png *.pdf
 )

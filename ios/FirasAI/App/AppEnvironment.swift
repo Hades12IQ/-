@@ -55,10 +55,10 @@ final class AppEnvironment {
 
     // MARK: - Construction
 
-    init(config: AppConfiguration) {
+    init(config: AppConfiguration, defaults: UserDefaults = .standard) {
         // 1. Transport, device preferences, and the objects that depend on neither.
         let api = APIClient(configuration: config)
-        let prefs = PreferencesStore(defaults: UserDefaults.standard)
+        let prefs = PreferencesStore(defaults: defaults)
         let network = NetworkMonitor()
         let toasts = ToastCenter()
         let router = Router()

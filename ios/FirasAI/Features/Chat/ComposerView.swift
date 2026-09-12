@@ -101,7 +101,7 @@ struct ComposerView: View {
 
     @ViewBuilder
     private var card: some View {
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, *), !FirasCompatibility.forceLegacyUI {
             GlassEffectContainer(spacing: 12) { cardBody }
         } else {
             cardBody

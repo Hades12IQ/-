@@ -290,7 +290,7 @@ struct AppShell: View {
     /// The two Settings pages that are reached as their own sheets are written as pushed pages:
     /// they carry a `navigationTitle` and nothing else, so the shell supplies the container and the
     /// one way out.
-    private func pushedSheet<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+    private func pushedSheet<C: View>(@ViewBuilder _ content: @escaping () -> C) -> some View {
         FirasNavigationStack {
             WithPerceptionTracking {
             content()

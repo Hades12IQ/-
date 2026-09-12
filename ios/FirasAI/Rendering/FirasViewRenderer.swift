@@ -26,7 +26,7 @@ final class FirasViewRenderer<Content: View> {
             let renderer = ImageRenderer(content: content)
             renderer.proposedSize = ProposedViewSize(width: proposedSize.width, height: proposedSize.height)
             renderer.scale = scale
-            renderer.render { size, draw in action(size, draw) }
+            renderer.render(renderer: action)
         } else {
             renderLegacy(action)
         }

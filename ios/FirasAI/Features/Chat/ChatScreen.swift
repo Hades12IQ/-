@@ -105,7 +105,7 @@ struct ChatScreen: View {
     @ViewBuilder
     private func composerLayout(_ inner: some View) -> some View {
         if let id = activeID {
-            if #available(iOS 26.0, *) {
+            if #available(iOS 26.0, *), !FirasCompatibility.forceLegacyUI {
                 inner.safeAreaBar(edge: .bottom) { composer(id: id) }
             } else {
                 inner.safeAreaInset(edge: .bottom) { composer(id: id) }

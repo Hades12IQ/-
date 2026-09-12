@@ -1,0 +1,82 @@
+name: Probe genuine iOS 15 simulator
+
+# Independent evidence job. It never builds/releases an IPA or changes the main build workflow.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/ios-web-parity-20260912
+    paths:
+      - ios/scripts/probe-ios15-runtime.py
+      - .github/workflows/probe-ios15-runtime.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: firasai-ios15-runtime-probe
+  cancel-in-progress: false
+
+jobs:
+  apple-ios15-runtime:
+    runs-on: macos-26
+    timeout-minutes: 25
+    env:
+      PROBE_ROOT: ${{ runner.temp }}/iOS15-Probe
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.6
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$PROBE_ROOT"
+          test -d /Applications/Xcode_26.6.app
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version | tee "$PROBE_ROOT/selected-xcode.log"
+
+      - name: Install verified Apple runtime and try actual iOS 15.5 boot
+        shell: bash
+        run: python3 ios/scripts/probe-ios15-runtime.py --output "$PROBE_ROOT"
+
+      - name: Upload runtime evidence without installer image
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FirasAI-iOS15-runtime-probe-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/iOS15-Probe/*.json
+            ${{ runner.temp }}/iOS15-Probe/*.log
+            ${{ runner.temp }}/iOS15-Probe/*.png
+            ${{ runner.temp }}/iOS15-Probe/*.plist
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Publish public probe diagnostics separately from app build logs
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          PUBLISH_ROOT="$(mktemp -d "$RUNNER_TEMP/ios15-probe-publish.XXXXXX")"
+          git clone --quiet --depth 1 --branch ios15-probe-results \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$PUBLISH_ROOT" 2>/dev/null \
+            || git -C "$PUBLISH_ROOT" init --quiet -b ios15-probe-results
+          RESULT_DIR="$PUBLISH_ROOT/runs/$GITHUB_RUN_ID"
+          mkdir -p "$RESULT_DIR"
+          for ITEM in "$PROBE_ROOT"/*.json "$PROBE_ROOT"/*.log "$PROBE_ROOT"/*.png "$PROBE_ROOT"/*.plist; do
+            [ ! -f "$ITEM" ] || cp "$ITEM" "$RESULT_DIR/"
+          done
+          printf 'Source commit: %s\nWorkflow run: %s\nJob status: %s\n' \
+            "$GITHUB_SHA" "$GITHUB_RUN_ID" "${{ job.status }}" > "$RESULT_DIR/source.txt"
+          printf 'Latest iOS 15 runtime probe: [result](runs/%s/probe.json).\n\nThis probes the genuine Apple runtime; app verification is reported separately.\n' \
+            "$GITHUB_RUN_ID" > "$PUBLISH_ROOT/README.md"
+          git -C "$PUBLISH_ROOT" config user.name firas-ci
+          git -C "$PUBLISH_ROOT" config user.email ci@firasai.org
+          git -C "$PUBLISH_ROOT" add --all
+          git -C "$PUBLISH_ROOT" commit --quiet -m "iOS15 runtime probe $GITHUB_RUN_ID ($GITHUB_SHA)"
+          git -C "$PUBLISH_ROOT" push --quiet \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/ios15-probe-results
+          printf 'Probe evidence: https://github.com/%s/tree/ios15-probe-results/runs/%s\n' \
+            "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"

@@ -2,6 +2,7 @@
 import Foundation
 import QuartzCore
 import SwiftUI
+import UIKit
 
 /// Real buffer/reveal fixtures used by the simulator smoke route. Timing is reported, not used as
 /// a flaky pass/fail threshold; the work and latency limits below are deterministic.
@@ -20,14 +21,36 @@ enum StreamPerformanceChecks {
         let defaultView = StreamingText(text: receivedBurst, isStreaming: true, motionOn: true) {
             presentationProbe.record($0)
         }
-        _ = defaultView.body
+        // Perception's body builder is lazy. Mount the production view and force its first layout
+        // so the assertion observes text actually passed to the renderer, not wrapper creation.
+        let host = UIHostingController(rootView: defaultView)
+        let parent = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .first(where: { $0.activationState == .foregroundActive })?
+            .windows.first(where: \.isKeyWindow)?.rootViewController
+        if let parent {
+            parent.addChild(host)
+            host.view.frame = CGRect(x: parent.view.bounds.maxX + 100, y: 0, width: 320, height: 180)
+            parent.view.addSubview(host.view)
+            host.didMove(toParent: parent)
+        } else {
+            failures.append("standard-view-presentation-fixture-has-no-foreground-host")
+        }
+        defer {
+            host.willMove(toParent: nil)
+            host.view.removeFromSuperview()
+            host.removeFromParent()
+        }
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
         if StreamingTextPresentation.standard != .receivedChunks || presentationProbe.text != receivedBurst {
             failures.append("standard-view-delays-received-text-behind-a-synthetic-cursor")
         }
         let replacedView = StreamingText(text: "A shorter authoritative correction", isStreaming: false, motionOn: true) {
             presentationProbe.record($0)
         }
-        _ = replacedView.body
+        host.rootView = replacedView
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
         if presentationProbe.text != "A shorter authoritative correction" {
             failures.append("standard-view-holds-a-stale-revealed-prefix")
         }
