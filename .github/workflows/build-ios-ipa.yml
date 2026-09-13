@@ -13,6 +13,10 @@ on:
     branches:
       - "claude/**"
       - "codex/**"
+      - "!codex/android-**"
+    paths:
+      - "ios/**"
+      - ".github/workflows/build-ios-ipa.yml"
 
 permissions:
   contents: write

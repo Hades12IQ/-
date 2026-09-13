@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Firas AI</string>
+    <string name="worker_service_name">Firas Worker</string>
+</resources>

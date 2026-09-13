@@ -1,0 +1,4 @@
+<resources>
+    <string name="worker_accessibility_label">Firas Worker</string>
+    <string name="worker_accessibility_description">Firas reads the app you choose and operates observed controls only during a task you start. Each action requires your approval. Screen content is sent to the authenticated Firas Worker model for that task. Password fields are excluded. Stop is always available. فراس يقرأ التطبيق الذي تختاره ويتحكم بالأزرار المرصودة أثناء المهمة التي تبدأها فقط، مع موافقتك لكل إجراء وإمكانية الإيقاف.</string>
+</resources>
