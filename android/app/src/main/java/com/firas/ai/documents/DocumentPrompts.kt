@@ -26,15 +26,32 @@ object DocumentPrompts {
 data class DocumentItemRequest(val count: Int, val noun: String, val solutions: Boolean) {
     companion object {
         fun parse(request: String): DocumentItemRequest? {
-            val text = request.map { c -> when (c) { in '٠'..'٩' -> '0' + (c - '٠'); in '۰'..'۹' -> '0' + (c - '۰'); else -> c } }.joinToString("").lowercase()
-            val nouns = "integrals?|problems?|questions?|exercises?|equations?|تكامل(?:ات)?|مسائل|مساله|مسألة|اسئله|اسئلة|أسئلة|سؤال|تمارين|تمرين|معادلات|معادلة"
-            val modifiers = "(?:(?:very|extremely|hard|difficult|challenging|advanced|distinct|unique|different|numbered|math|mathematical|definite|indefinite|improper)\\s+){0,6}"
-            val candidates = Regex("(?<![\\p{L}\\p{N}.,])(\\d{1,5})[ \\t-]*$modifiers($nouns)(?![\\p{L}])", RegexOption.IGNORE_CASE).findAll(text)
-                .filter { m -> !Regex("(?:\\b(?:every|each|per|groups?\\s+of|sets?\\s+of)|كل|بكل|لكل)\\s*$").containsMatchIn(text.substring(maxOf(0, m.range.first - 48), m.range.first)) }
-                .filter { it.groupValues[1].toIntOrNull() in 1..10000 }.toList()
+            val text = java.text.Normalizer.normalize(request, java.text.Normalizer.Form.NFKC)
+                .map { c -> when (c) { in '٠'..'٩' -> '0' + (c - '٠'); in '۰'..'۹' -> '0' + (c - '۰'); else -> c } }.joinToString("").lowercase(java.util.Locale.ROOT)
+                .replace(Regex("[أإآٱ]"), "ا").replace('ة', 'ه').replace(Regex("[\\u064B-\\u065F\\u0670ـ]"), "")
+            val nouns = "integrals?|problems?|questions?|exercises?|equations?|تكامل(?:ات)?|مسائل|مساله|اسئله|سؤال|تمارين|تمرين|معادلات|معادله|انتگرال(?:ها)?|مسئله|تمرین(?:ها)?"
+            // Only known descriptors may sit between a quantity and an item noun. Never bridge
+            // arbitrary prose (e.g. '100 pages about integrals') or cross into another line.
+            val descriptor = "very|extremely|really|highly|hard|difficult|challenging|advanced|distinct|unique|different|original|novel|numbered|simple|easy|basic|complex|tricky|tough|math|mathematical|definite|indefinite|improper|solved|unsolved|worked|practice|" +
+                "non[-‐‑– \\t]?(?:repeating|repeated|duplicate)|jee(?:[- \\t]like)?|(?:level|grade)[ \\t]+[a-z](?:\\+)?|" +
+                "جدا|للغايه|صعب(?:ه)?|سهله?|بسيط(?:ه)?|معقد(?:ه)?|متقدم(?:ه)?|مختلف(?:ه)?|مميز(?:ه)?|فريد(?:ه)?|جديد(?:ه)?|رياضي(?:ه)?|" +
+                "غير[ \\t]+(?:مكرر(?:ه)?|متكرر(?:ه)?)|خیلی|بسیار|سخت|ساده|متفاوت|پیشرفته|بدون[ \\t]+تکرار"
+            val modifiers = "(?:(?:$descriptor)[ \\t]+){0,8}"
+            val quantity = "(?:[0-9]{1,3}(?:[,٬][0-9]{3})+|[0-9]{1,5})"
+            fun number(value: String) = value.replace(",", "").replace("٬", "").toIntOrNull()
+            val candidates = Regex("(?<![\\p{L}\\p{N}.,٬])($quantity)[ \\t-]*$modifiers($nouns)(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE).findAll(text)
+                .filter { m ->
+                    val before = text.substring(maxOf(0, m.range.first - 64), m.range.first)
+                    val after = text.substring(m.range.last + 1, minOf(text.length, m.range.last + 81))
+                    val groupedBefore = Regex("(?:\\b(?:every|each|per|groups?[ \\t]+of|sets?[ \\t]+of|year)|كل|بكل|لكل|سنه|عام)[ \\t]*$").containsMatchIn(before)
+                    val groupedAfter = Regex("^[ \\t]*(?:(?:per|on|in)[ \\t]+(?:(?:each|every|one|a)[ \\t]+)?(?:row|line|page|group)|(?:في|بكل|لكل)[ \\t]*(?:كل[ \\t]*)?(?:سطر|صفحه|صف|مجموعه)|بالسطر|بالصفحه)(?![\\p{L}])").containsMatchIn(after)
+                    val range = Regex("[0-9][ \\t]*(?:[-–—/]|to|or|الى|او)[ \\t]*$").containsMatchIn(before)
+                    !groupedBefore && !groupedAfter && !range
+                }
+                .filter { number(it.groupValues[1]) in 1..10000 }.toList()
             val match = candidates.firstOrNull() ?: return null
-            val count = match.groupValues[1].toInt()
-            if (candidates.any { it.groupValues[1].toInt() != count }) return null
+            val count = number(match.groupValues[1])!!
+            if (candidates.any { number(it.groupValues[1]) != count }) return null
             val noSolutions = Regex("\\b(?:without|no|omit|exclude)\\s+(?:(?:the|any|worked|full)\\s+)*(?:solutions?|answers?)\\b|(?:بدون|دون|بلا)\\s*(?:ال)?(?:حلول|حل|اجوب[ةه]|أجوب[ةه])").containsMatchIn(text)
             val solutions = Regex("solutions?|answers?|حلول|حلها|حلولها|اجوب|أجوب|حل(?:\\s|$)", RegexOption.IGNORE_CASE).containsMatchIn(text)
             return DocumentItemRequest(count, match.groupValues[2], solutions && !noSolutions)

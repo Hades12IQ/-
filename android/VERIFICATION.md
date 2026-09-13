@@ -4,12 +4,13 @@
 
 The final local build passed `:app:testDebugUnitTest :app:connectedDebugAndroidTest :app:lintDebug` with JDK 21 and the included Gradle wrapper.
 
-- **59 JVM tests passed**, zero failures: request receipts/recovery, current API/model contracts, counted PDF continuation/revision, document source handling, Code workspace path/size/stale-edit checks, math scanning, speech chunking and worker/companion policy.
+- **64 JVM tests passed**, zero failures: request receipts/recovery, current API/model contracts, counted PDF continuation/revision, document source handling, Code workspace path/size/stale-edit checks, math scanning, speech chunking and worker/companion policy. The final five regressions cover quantity parsing with adjective phrases, Arabic/Persian digits, and rejection of page/row quantities and ambiguous ranges.
 - **5 instrumentation tests passed**, zero failures, on an Android 15/API 35 Pixel 7 emulator. These mount the actual production Compose screens, select a model and submit text, open file/media cards without leaking hidden prompts, render a two-page PDF and close its viewer, and render bundled integral/chemistry glyphs with visible pixels and cache reuse.
 - **Android lint: zero errors**. Dependency-update and deprecated-API warnings remain; these are not a claim of testing every Android version.
 - The final chat screenshot was visually inspected: centered rendered integral, readable Arabic, native message controls and composer, no WebView scrollbar. The PDF screenshot visibly contains both pages.
 - Staged source was checked for credential artifacts. The bundled Firebase configuration is public client configuration; no provider secret or Telegram bot token is included.
 - A real guest session signed in to the existing live server, submitted `Reply only with OK` using nova 1, and displayed the returned `OK` in native Chat. `qa/android-live-guest.png` records this smoke test. It verifies basic live request/reply, not all model tiers or media generation.
+- A real three-integral request produced a two-page PDF with rendered equations and solutions at the end. It opened inside the app, saved through Android's document picker (43,914 bytes), closed correctly and remained available from history after process restart. `qa/android-live-generated-pdf.png` shows that actual file. A separate counted-job request for three integrals also completed and returned a native four-page artifact. Neither smoke test represents a 1,000-item run.
 
 ## Screenshots
 
