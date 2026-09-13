@@ -9,7 +9,8 @@ This is a Kotlin/Jetpack Compose application, not the website inside a WebView. 
 - Set `ANDROID_HOME`, or create an ignored `local.properties` with the SDK location.
 - Run `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`.
 - Install `app/build/outputs/apk/debug/app-debug.apk` for local testing.
-- GitHub workflow `Build native Firas AI Android` publishes a signed **preview** APK and SHA-256 checksum in `android-build-<run>` prereleases. Production Play signing is not configured. Keep preview releases on the same branch/cache signing identity; an APK signed by another key cannot update an existing installation.
+- GitHub workflow `Build native Firas AI Android` publishes a signed **preview** APK and SHA-256 checksum in `android-build-<run>` prereleases. Production Play signing is not configured. Preview signing now requires the encrypted repository secret `FIRAS_ANDROID_PREVIEW_KEYSTORE_B64`; missing or invalid material stops the build. The dedicated private key has an owner-restricted local backup outside this repository. Never regenerate or rotate it for an ordinary update.
+- Previews 2 and 3 used different ephemeral runner keys because the old cache path did not exist. Those private keys were not retained, so they cannot update directly to the new stable signing identity. Preserve/export local files before any reinstall; do not assume local-only data survives uninstall. The stable key's public SHA-256 certificate fingerprint is `BB:F0:AA:40:0A:81:46:28:DF:63:94:39:53:B2:7A:C6:AC:C2:A5:DD:8E:8A:88:92:0B:EA:99:A7:9B:6F:BF:2D`.
 
 ## Implemented paths
 

@@ -28,12 +28,38 @@ jobs:
           java-version: "21"
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
-      - name: Preserve the preview signing identity
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: firas-android-preview-signing-v1
+      - name: Restore the required preview signing identity
+        env:
+          FIRAS_ANDROID_PREVIEW_KEYSTORE_B64: ${{ secrets.FIRAS_ANDROID_PREVIEW_KEYSTORE_B64 }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import binascii
+          import os
+          from pathlib import Path
+
+          encoded = os.environ.get("FIRAS_ANDROID_PREVIEW_KEYSTORE_B64", "").strip()
+          if not encoded:
+              raise SystemExit("Required Android preview signing secret is missing.")
+          try:
+              data = base64.b64decode(encoded, validate=True)
+          except (binascii.Error, ValueError):
+              raise SystemExit("Android preview signing secret is not valid base64.") from None
+          if not data or len(data) > 1024 * 1024:
+              raise SystemExit("Android preview keystore has an invalid size.")
+          path = Path(os.environ["RUNNER_TEMP"]) / "firas-preview.keystore"
+          descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+          with os.fdopen(descriptor, "wb") as output:
+              output.write(data)
+          os.chmod(path, 0o600)
+          PY
+          if ! keytool -list -keystore "$RUNNER_TEMP/firas-preview.keystore" -storepass android -alias AndroidDebugKey >/dev/null 2>&1; then
+            echo "Android preview keystore or required signing alias is invalid."
+            exit 1
+          fi
       - name: Validate and build
+        env:
+          FIRAS_PREVIEW_KEYSTORE: ${{ runner.temp }}/firas-preview.keystore
         run: |
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug -PfirasBuild=${{ github.run_number }} --console=plain
@@ -60,3 +86,6 @@ jobs:
           TAG="android-build-${{ github.run_number }}"
           printf 'Native Kotlin/Compose Android preview. Source: %s\n\nSigned preview APK for testing. Local runtime evidence and limitations are documented in android/README.md.\n' "$GITHUB_SHA" > "$RUNNER_TEMP/android-release.md"
           gh release create "$TAG" FirasAI-preview.apk FirasAI-preview.sha256 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "Firas AI Android preview ${{ github.run_number }}" --notes-file "$RUNNER_TEMP/android-release.md"
+      - name: Remove the runner signing file
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/firas-preview.keystore"

@@ -1,8 +1,30 @@
+import java.security.KeyStore
+import java.security.PrivateKey
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+val previewKeystorePath = providers.environmentVariable("FIRAS_PREVIEW_KEYSTORE").orNull
+check(previewKeystorePath != null || providers.environmentVariable("GITHUB_ACTIONS").orNull != "true") {
+    "GitHub preview builds require FIRAS_PREVIEW_KEYSTORE; refusing an ephemeral signing identity."
+}
+val previewKeystore = previewKeystorePath?.let { path ->
+    require(path.isNotBlank()) { "FIRAS_PREVIEW_KEYSTORE must name a readable signing keystore." }
+    val store = file(path)
+    require(store.isFile && store.canRead()) { "The configured preview signing keystore is missing or unreadable." }
+    val valid = runCatching {
+        val password = "android".toCharArray()
+        val keyStore = KeyStore.getInstance(store, password)
+        keyStore.getKey("AndroidDebugKey", password) is PrivateKey &&
+            keyStore.getCertificate("AndroidDebugKey") != null
+    }.getOrDefault(false)
+    require(valid) { "The configured preview keystore does not contain the required usable signing key." }
+    store
+}
+
 android {
     namespace = "com.firas.ai"
     compileSdk = 36
@@ -18,6 +40,16 @@ android {
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
+    signingConfigs {
+        if (previewKeystore != null) {
+            getByName("debug") {
+                storeFile = previewKeystore
+                storePassword = "android"
+                keyAlias = "AndroidDebugKey"
+                keyPassword = "android"
+            }
+        }
+    }
     buildTypes {
         debug { manifestPlaceholders["cleartextTraffic"] = "true" }
         release {
