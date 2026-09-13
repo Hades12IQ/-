@@ -143,12 +143,13 @@ import com.firas.ai.ui.glass.FirasGlassHeader
             }) { padding -> Box(Modifier.padding(padding).consumeWindowInsets(padding).fillMaxSize()) {
                 when(screen) {
                     "chat" -> ChatScreen(state.activeThread,state.jobs,ChatActions(
-                        send={text,uris,tier -> launch {
+                        send={text,uris,tier,think -> launch {
                             val capturedOwner=repository.state.value.session.ownerId
+                            val capturedEpoch=repository.state.value.session.epoch
                             val capturedThread=repository.state.value.activeThread?.id
-                            val attachments=AttachmentReader.read(context,uris)
-                            if(repository.state.value.session.ownerId==capturedOwner && repository.state.value.activeThread?.id==capturedThread)
-                                repository.send(text,attachments,tier)
+                            val attachments=try { AttachmentReader.read(context,uris) } finally { discardComposerCaptures(context,uris) }
+                            if(repository.state.value.session.ownerId==capturedOwner && repository.state.value.session.epoch==capturedEpoch && repository.state.value.activeThread?.id==capturedThread)
+                                repository.send(text,attachments,tier,think)
                         }},stop={id ->launch {repository.cancelJob(id)}},
                         export={message,request ->launch {
                             val doc=AuthoredDocument.extract(message.visibleContent) ?: return@launch
@@ -172,7 +173,7 @@ import com.firas.ai.ui.glass.FirasGlassHeader
                             val captured=repository.state.value.session.ownerId
                             val saved=repository.downloadMedia(media)
                             if(repository.state.value.session.ownerId==captured) preview=PreviewFile(saved.file,saved.name,saved.mime ?: "application/octet-stream")
-                        }}),media=state.media)
+                        }}),media=state.media,sessionOwnerId=state.session.ownerId,sessionEpoch=state.session.epoch)
                     "worker" -> WorkerScreen(ownerId=owner,api=workerApi,initialPc=workerPc)
                     "code-workspace" -> state.activeThread?.takeIf {it.product==Product.CODE && it.ownerId==owner}?.let {thread ->
                         CodeWorkspaceScreen(thread,repository,onBack={screen="chat"},onExport={file,mime ->

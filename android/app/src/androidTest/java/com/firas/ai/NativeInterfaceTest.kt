@@ -1,8 +1,10 @@
 package com.firas.ai
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.pdf.PdfDocument
+import android.provider.MediaStore
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -36,9 +38,11 @@ class NativeInterfaceTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test fun nativeChatModelPickerAndSend() {
-        var sent = ""
+        val sent = mutableListOf<Triple<String, String, Boolean>>()
+        val owner = "fixture-model-menu-owner"
+        resetMenuPreferences(owner)
         val prefs = UiPreferences(context).apply { selectTheme("dark"); selectArabic(true) }
-        val thread = ChatThread("fixture-chat", "fixture-owner", product=Product.AI, messages=listOf(
+        val thread = ChatThread("fixture-chat", owner, product=Product.AI, messages=listOf(
             ChatMessage("u", "user", "اشرح لي فكرة التكامل بخطوات واضحة", "fixture"),
             ChatMessage("a", "assistant", "## نفهمها خطوة بخطوة\nالتكامل يجمع التغيّرات الصغيرة ليعطينا النتيجة الكاملة.\n\n\\[\\int_0^1 x^2\\,dx = \\frac{1}{3}\\]\n\nنرفع الأسّ درجة واحدة، ثم نقسم على الأسّ الجديد.", "fixture")
         ))
@@ -50,7 +54,10 @@ class NativeInterfaceTest {
                         Box(Modifier.fillMaxSize().background(LocalPalette.current.ground).hazeSource(glass))
                         Column(Modifier.statusBarsPadding()) {
                             FirasGlassHeader("Firas Chat", {}, {}, {})
-                            ChatScreen(thread, emptyList(), ChatActions({ text, _, _ -> sent=text }, {}, { _, _ -> }, {}, {}, {}, {}))
+                            ChatScreen(thread, emptyList(), ChatActions({ text, files, tier, thinking ->
+                                assertTrue(files.isEmpty())
+                                sent += Triple(text, tier, thinking)
+                            }, {}, { _, _ -> }, {}, {}, {}, {}))
                         }
                     }
                 }
@@ -62,14 +69,92 @@ class NativeInterfaceTest {
         Thread.sleep(2200)
         compose.waitForIdle()
         capture("android-chat-dark")
+        val draft = "شكراً، أعطني مثالاً"
+        compose.onNodeWithTag("composer-input").performTextInput(draft)
         compose.onNodeWithTag("model-picker").performClick()
-        compose.onNodeWithText("luma 1", substring=true, ignoreCase=true).assertExists()
-        compose.onNodeWithText("omnix 1", substring=true, ignoreCase=true).assertExists()
+        FirasModelTier.entries.forEach { compose.onNodeWithTag("model-${it.wire}").assertHasClickAction() }
         capture("android-models")
-        compose.onNodeWithText("titan 1", substring=true, ignoreCase=true).performClick()
-        compose.onNodeWithTag("composer-input").performTextInput("شكراً، أعطني مثالاً")
+        dismissComposerSheet()
+        compose.onNodeWithTag("composer-input").assertTextEquals(draft)
+
+        compose.onNodeWithTag("model-picker").performClick()
+        compose.onNodeWithTag("model-ultra").performScrollTo().performClick()
+        waitForComposerSheetToClose()
+        compose.onNodeWithTag("composer-input").assertTextEquals(draft)
+        compose.onNodeWithTag("model-picker").performClick()
+        compose.onNodeWithTag("model-ultra").assertIsSelected()
+        compose.onNodeWithTag("thinking-toggle").performScrollTo().assertIsOff().performClick().assertIsOn()
+        dismissComposerSheet()
         compose.onNodeWithTag("send-message").performClick()
-        compose.runOnIdle { assertEquals("شكراً، أعطني مثالاً", sent) }
+        compose.runOnIdle { assertEquals(listOf(Triple(draft, "ultra", true)), sent) }
+
+        // A previous thinking choice must not leak into a model that does not support it.
+        val quickDraft = "أجب باختصار"
+        compose.onNodeWithTag("composer-input").performTextInput(quickDraft)
+        compose.onNodeWithTag("model-picker").performClick()
+        compose.onNodeWithTag("model-mini").performScrollTo().performClick()
+        waitForComposerSheetToClose()
+        compose.onNodeWithTag("model-picker").performClick()
+        compose.onNodeWithTag("model-mini").assertIsSelected()
+        compose.onNodeWithTag("thinking-toggle").assertDoesNotExist()
+        dismissComposerSheet()
+        compose.onNodeWithTag("composer-input").assertTextEquals(quickDraft)
+        compose.onNodeWithTag("send-message").performClick()
+        compose.runOnIdle {
+            assertEquals(2, sent.size)
+            assertEquals(Triple(quickDraft, "mini", false), sent.last())
+        }
+    }
+
+    @Test fun attachmentMenuPreservesDraftAndSwitchesToModelsInBothThemes() {
+        val owner = "fixture-attachment-menu-owner"
+        resetMenuPreferences(owner)
+        val prefs = UiPreferences(context).apply { selectTheme("dark"); selectArabic(true) }
+        var sends = 0
+        var voiceStarts = 0
+        compose.setContent {
+            FirasTheme(prefs) {
+                val glass = remember { HazeState() }
+                CompositionLocalProvider(LocalGlassState provides glass) {
+                    Box(Modifier.fillMaxSize()) {
+                        Box(Modifier.fillMaxSize().background(LocalPalette.current.ground).hazeSource(glass))
+                        Column(Modifier.statusBarsPadding()) {
+                            FirasGlassHeader("Firas Chat", {}, {}, {})
+                            ChatScreen(ChatThread("fixture-attachment-menu", owner), emptyList(),
+                                ChatActions({ _, _, _, _ -> sends++ }, {}, { _, _ -> }, {}, {}, {}, { voiceStarts++ }))
+                        }
+                    }
+                }
+            }
+        }
+        val draft = "رتّب هذا المستند مع الصور"
+        compose.onNodeWithTag("composer-input").performTextInput(draft)
+        compose.onNodeWithTag("composer-add").performClick()
+        assertAttachmentChoices()
+        capture("android-plus")
+        dismissComposerSheet()
+        compose.onNodeWithTag("composer-input").assertTextEquals(draft)
+
+        compose.onNodeWithTag("composer-add").performClick()
+        compose.onNodeWithTag("add-choose-model").performScrollTo().performClick()
+        compose.onNodeWithTag("add-sheet").assertDoesNotExist()
+        compose.onNodeWithTag("models-sheet").assertIsDisplayed()
+        FirasModelTier.entries.forEach { compose.onNodeWithTag("model-${it.wire}").assertHasClickAction() }
+        compose.runOnIdle { prefs.selectTheme("light") }
+        compose.onNodeWithTag("model-mini").performScrollTo()
+        capture("android-models-light")
+        dismissComposerSheet()
+        compose.onNodeWithTag("composer-input").assertTextEquals(draft)
+
+        compose.onNodeWithTag("composer-add").performClick()
+        assertAttachmentChoices()
+        capture("android-plus-light")
+        dismissComposerSheet()
+        compose.onNodeWithTag("composer-input").assertTextEquals(draft)
+        compose.runOnIdle {
+            assertEquals("Opening or switching sheets must not send a message", 0, sends)
+            assertEquals("Opening the tools menu must not start voice recording", 0, voiceStarts)
+        }
     }
 
     @Test fun themeSelectionAndProductCaptures() {
@@ -83,7 +168,7 @@ class NativeInterfaceTest {
                         Box(Modifier.fillMaxSize().background(LocalPalette.current.ground).hazeSource(glass))
                         Column(Modifier.statusBarsPadding()) {
                             FirasGlassHeader(product.title, {}, {}, {})
-                            ChatScreen(ChatThread("preview-${product.name}","fixture-owner",product=product),emptyList(),ChatActions({_,_,_->},{},{_,_->},{},{},{},{}))
+                            ChatScreen(ChatThread("preview-${product.name}","fixture-owner",product=product),emptyList(),ChatActions({_,_,_,_->},{},{_,_->},{},{},{},{}))
                         }
                     }
                 }
@@ -129,7 +214,7 @@ class NativeInterfaceTest {
         ))
         val prefs=UiPreferences(context).apply {selectTheme("dark");selectArabic(true)}
         compose.setContent { FirasTheme(prefs) { Box(Modifier.fillMaxSize().background(LocalPalette.current.ground)) {
-            ChatScreen(thread,emptyList(),ChatActions({_,_,_->},{},{_,_->},{},{},{},{},
+            ChatScreen(thread,emptyList(),ChatActions({_,_,_,_->},{},{_,_->},{},{},{},{},
                 openDocument={openedPdf=true},openMedia={openedMedia=true}),media=listOf(media))
         } } }
         compose.onNodeWithTag("open-native-document").performScrollTo().performClick()
@@ -162,6 +247,34 @@ class NativeInterfaceTest {
         MathRasterizer.render(screenContext,spans,Color.BLACK,18f,"native-smoke",true) {id,glyph->second[id]=glyph}
         assertEquals(glyphs.keys,second.keys)
         glyphs.forEach { (id,glyph) -> assertSame(glyph.bitmap,second[id]!!.bitmap) }
+    }
+
+    private fun resetMenuPreferences(owner: String) {
+        // These two keys belong only to this local fixture; preserve other accounts and tests.
+        val key = "tier:${owner.length}:$owner:${Product.AI.name}"
+        assertTrue(context.getSharedPreferences("native-model-selection", android.content.Context.MODE_PRIVATE)
+            .edit().remove(key).remove("think:$key").commit())
+    }
+
+    private fun assertAttachmentChoices() {
+        compose.onNodeWithTag("add-sheet").assertIsDisplayed()
+        compose.onNodeWithTag("attach-photos").assertIsDisplayed().assertHasClickAction()
+        compose.onNodeWithTag("attach-files").assertIsDisplayed().assertHasClickAction()
+        val cameraAvailable = Intent(MediaStore.ACTION_IMAGE_CAPTURE).resolveActivity(context.packageManager) != null
+        if (cameraAvailable) compose.onNodeWithTag("attach-camera").assertIsDisplayed().assertHasClickAction()
+        else compose.onNodeWithTag("attach-camera").assertDoesNotExist()
+    }
+
+    private fun dismissComposerSheet() {
+        compose.onNodeWithTag("close-composer-sheet").performClick()
+        waitForComposerSheetToClose()
+    }
+
+    private fun waitForComposerSheetToClose() {
+        compose.waitUntil(5000) {
+            compose.onAllNodesWithTag("models-sheet").fetchSemanticsNodes().isEmpty() &&
+                compose.onAllNodesWithTag("add-sheet").fetchSemanticsNodes().isEmpty()
+        }
     }
 
     private fun capture(name:String) {

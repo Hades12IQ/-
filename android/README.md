@@ -14,6 +14,7 @@ This is a Kotlin/Jetpack Compose application, not the website inside a WebView. 
 ## Implemented paths
 
 - Native authentication, guest mode, account-owned conversation history, Chat/Code/Agent/Brain, five current model choices (luma 1, nova 1, titan 1, atlas 1, omnix 1), temporary conversations and native theme settings.
+- iPhone-style native glass sheets for models and the plus menu: individual model symbols, descriptions and selection marks; real Photos, Files and full-size Camera attachments; supported-tier thinking control. Sheets preserve the draft, dismiss with native gestures, and adapt to the selected theme. Camera capture uses the system app without adding camera/storage permissions; attachment results are scoped to the current account, session and conversation.
 - Durable server jobs with persisted request receipts, account checks, submission recovery without duplicate generation, explicit cancellation and reconnect polling. Closing the app does not cancel accepted cloud jobs.
 - Bundled KaTeX and chemistry rendering, incomplete-formula previews while streaming, per-account glyph caching, native text selection, Ask Firas, translation language selection and floating navigation to the latest message.
 - Authenticated PDF/media downloads, native PDF/image/audio/video viewing, working close controls, Android Share/Open with and Save to Files. Internal media/document prompts are not shown as conversation answers.

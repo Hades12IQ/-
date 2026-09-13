@@ -5,7 +5,8 @@
 The final local build passed `:app:testDebugUnitTest :app:connectedDebugAndroidTest :app:lintDebug` with JDK 21 and the included Gradle wrapper.
 
 - **64 JVM tests passed**, zero failures: request receipts/recovery, current API/model contracts, counted PDF continuation/revision, document source handling, Code workspace path/size/stale-edit checks, math scanning, speech chunking and worker/companion policy. The final five regressions cover quantity parsing with adjective phrases, Arabic/Persian digits, and rejection of page/row quantities and ambiguous ranges.
-- **5 instrumentation tests passed**, zero failures, on an Android 15/API 35 Pixel 7 emulator. These mount the actual production Compose screens, select a model and submit text, open file/media cards without leaking hidden prompts, render a two-page PDF and close its viewer, and render bundled integral/chemistry glyphs with visible pixels and cache reuse.
+- **6 instrumentation tests passed**, zero failures, on an Android 15/API 35 Pixel 7 emulator. These mount the actual production Compose screens, preserve a typed draft through model/plus sheet dismissal, verify Titan with thinking and Luma without thinking reach the send action, switch from Add to Models, open file/media cards without leaking hidden prompts, render a two-page PDF and close its viewer, and render bundled integral/chemistry glyphs with visible pixels and cache reuse.
+- The new model and plus sheets were visually inspected in dark and light themes. A manual guest-session check used the real Android photo picker, document picker and camera; a selected photo, a PDF and a captured full-size image returned as three composer attachments. These were local test files, not uploaded user content.
 - **Android lint: zero errors**. Dependency-update and deprecated-API warnings remain; these are not a claim of testing every Android version.
 - The final chat screenshot was visually inspected: centered rendered integral, readable Arabic, native message controls and composer, no WebView scrollbar. The PDF screenshot visibly contains both pages.
 - Staged source was checked for credential artifacts. The bundled Firebase configuration is public client configuration; no provider secret or Telegram bot token is included.
@@ -19,7 +20,9 @@ The files in `qa/` are actual screenshots from the Android emulator running prod
 | File | Evidence |
 | --- | --- |
 | `android-chat-dark.png` | Arabic chat, local KaTeX integral, native glass composer |
-| `android-models.png` | All five model options |
+| `android-models.png` | Native glass sheet with five model symbols, descriptions and current selection |
+| `android-plus.png` | Camera, Photos, Files and working tool entry points |
+| `android-models-light.png` / `android-plus-light.png` | Both sheets in the light theme |
 | `android-code.png` | Code conversation surface |
 | `android-agent.png` | Agent conversation surface |
 | `android-brain.png` | Brain conversation surface |

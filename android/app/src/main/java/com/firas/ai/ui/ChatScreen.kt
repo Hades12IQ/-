@@ -2,8 +2,6 @@ package com.firas.ai.ui
 
 import android.net.Uri
 import android.content.Context
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -49,7 +47,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-data class ChatActions(val send: (String, List<Uri>, String) -> Unit, val stop: (String) -> Unit,
+data class ChatActions(val send: (String, List<Uri>, String, Boolean) -> Unit, val stop: (String) -> Unit,
     val export: (ChatMessage, String) -> Unit, val translate: (String) -> Unit,
     val speak: (String) -> Unit, val link: (String) -> Unit, val voice: () -> Unit,
     val openArtifact: (Artifact) -> Unit = {},
@@ -57,7 +55,8 @@ data class ChatActions(val send: (String, List<Uri>, String) -> Unit, val stop: 
     val openDocument: (NativeDocument) -> Unit = {},
     val openMedia: (MediaItem) -> Unit = {})
 
-@Composable fun ChatScreen(thread: ChatThread?, jobs: List<JobState>, actions: ChatActions, media: List<MediaItem> = emptyList()) {
+@Composable fun ChatScreen(thread: ChatThread?, jobs: List<JobState>, actions: ChatActions, media: List<MediaItem> = emptyList(),
+    sessionOwnerId: String? = thread?.ownerId, sessionEpoch: Long = 0) {
     val p = LocalPalette.current
     val ar = LocalArabic.current
     val scope = rememberCoroutineScope()
@@ -69,26 +68,38 @@ data class ChatActions(val send: (String, List<Uri>, String) -> Unit, val stop: 
     val density = LocalDensity.current
     val context = LocalContext.current.applicationContext
     val modelPreferences = remember(context) { context.getSharedPreferences("native-model-selection", Context.MODE_PRIVATE) }
-    val modelPreferenceKey = remember(thread?.ownerId, thread?.product) {
-        thread?.let { current -> current.ownerId.takeIf { it.isNotBlank() }
-            ?.let { "tier:${it.length}:$it:${current.product.name}" } }
+    val modelPreferenceKey = remember(sessionOwnerId, thread?.product) {
+        sessionOwnerId?.takeIf { it.isNotBlank() }?.let { "tier:${it.length}:$it:${(thread?.product ?: Product.AI).name}" }
     }
     val inputFocus = remember { FocusRequester() }
     var composerHeight by remember { mutableIntStateOf(160) }
     val composerInset = with(density) { composerHeight.toDp() }
-    var draft by rememberSaveable(thread?.id) { mutableStateOf("") }
-    var quote by remember(thread?.id) { mutableStateOf("") }
-    var attachments by remember(thread?.id) { mutableStateOf(emptyList<Uri>()) }
-    var tier by rememberSaveable(thread?.id, thread?.ownerId, thread?.product) {
+    var draft by rememberSaveable(thread?.id, sessionOwnerId, sessionEpoch) { mutableStateOf("") }
+    var quote by remember(thread?.id, sessionOwnerId, sessionEpoch) { mutableStateOf("") }
+    var attachments by remember(thread?.id, sessionOwnerId, sessionEpoch) { mutableStateOf(emptyList<Uri>()) }
+    var tier by rememberSaveable(thread?.id, sessionOwnerId, sessionEpoch, thread?.product) {
         val lastTier = thread?.messages?.lastOrNull { message -> FirasModelTier.entries.any { it.wire == message.tier } }?.tier
         val savedTier = modelPreferenceKey?.let { modelPreferences.getString(it, null) }
             ?.takeIf { value -> FirasModelTier.entries.any { it.wire == value } }
         mutableStateOf(lastTier ?: savedTier ?: FirasModelTier.NOVA.wire)
     }
-    var tierMenu by remember(thread?.id, thread?.ownerId) { mutableStateOf(false) }
+    var menu by remember(thread?.id, sessionOwnerId, sessionEpoch) { mutableStateOf<ComposerSheet?>(null) }
+    var thinking by rememberSaveable(thread?.id, sessionOwnerId, sessionEpoch) {
+        mutableStateOf(modelPreferenceKey?.let { modelPreferences.getBoolean("think:$it", false) } ?: false)
+    }
+    val selectedTier = FirasModelTier.entries.firstOrNull { it.wire == tier } ?: FirasModelTier.NOVA
+    val snackbar = remember { SnackbarHostState() }
+    val attachmentOwnerKey = sessionOwnerId?.let { "${it.length}:$it:$sessionEpoch:${thread?.id.orEmpty()}" }
+    val picker = rememberComposerAttachmentPicker(attachmentOwnerKey, onPicked = { picked ->
+        val combined = (attachments + picked).distinct()
+        if (combined.size <= 8) attachments = combined
+        else {
+            discardComposerCaptures(context, picked.filterNot { it in attachments })
+            scope.launch { snackbar.showSnackbar(if (ar) "الحد ثمانية مرفقات. أزل مرفقاً قبل إضافة المزيد." else "Eight attachments maximum. Remove an attachment before adding more.") }
+        }
+    }, onError = { message -> scope.launch { snackbar.showSnackbar(message) } })
     var follow by remember(thread?.id) { mutableStateOf(true) }
     var sendRevision by remember { mutableIntStateOf(0) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { attachments = (attachments + it).distinct().take(10) }
     val messages = thread?.messages.orEmpty()
     val jobsByTurn = remember(jobs, thread?.id, thread?.ownerId) {
         jobs.filter { it.threadId == thread?.id && it.ownerId == thread?.ownerId }.groupBy { it.cid }
@@ -237,7 +248,7 @@ data class ChatActions(val send: (String, List<Uri>, String) -> Unit, val stop: 
         }
         if (attachments.isNotEmpty()) Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(if(ar) "مرفقات: ${attachments.size}" else "${attachments.size} attachments", Modifier.weight(1f), color = p.secondary)
-            TextButton(onClick = { attachments = emptyList() }) { Text(if(ar) "إزالة" else "Remove") }
+            TextButton(onClick = { discardComposerCaptures(context, attachments); attachments = emptyList() }) { Text(if(ar) "إزالة" else "Remove") }
         }
         GlassSurface(shape = RoundedCornerShape(24.dp),
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp).then(if(thread?.temporary == true) Modifier.drawWithContent {
@@ -258,23 +269,24 @@ data class ChatActions(val send: (String, List<Uri>, String) -> Unit, val stop: 
                         inner()
                     } })
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { picker.launch(arrayOf("*/*")) }) { Icon(Icons.Outlined.Add, if(ar) "إرفاق ملف" else "Attach a file") }
                     Box {
-                        TextButton(onClick = { tierMenu = true }, modifier = Modifier.testTag("model-picker"),
+                        IconButton(onClick = { focus.clearFocus(); keyboard?.hide(); menu = ComposerSheet.ADD },
+                            modifier = Modifier.size(48.dp).testTag("composer-add")) {
+                            Icon(Icons.Outlined.Add, if(ar) "إضافة مرفقات وأدوات" else "Attachments and tools", tint = p.ink)
+                        }
+                        if (attachments.isNotEmpty()) Badge(Modifier.align(Alignment.TopEnd).padding(3.dp), containerColor = p.accent,
+                            contentColor = if (p.light) Color.White else p.ground) { Text(attachments.size.toString()) }
+                    }
+                    Box {
+                        TextButton(onClick = { focus.clearFocus(); keyboard?.hide(); menu = ComposerSheet.MODELS }, modifier = Modifier.testTag("model-picker"),
                             shape = RoundedCornerShape(50), border = BorderStroke(1.dp, p.border),
                             colors = ButtonDefaults.textButtonColors(contentColor = p.ink),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
-                            Text(FirasModelTier.entries.firstOrNull { it.wire == tier }?.label ?: FirasModelTier.NOVA.label,
+                            ModelSymbol(selectedTier, Modifier.padding(end = 6.dp).size(19.dp))
+                            Text(selectedTier.label,
                                 style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             Icon(Icons.Outlined.KeyboardArrowDown, null, Modifier.padding(start = 4.dp).size(18.dp), tint = p.secondary)
                         }
-                        DropdownMenu(tierMenu, { tierMenu = false }) { FirasModelTier.entries.forEach { option ->
-                            DropdownMenuItem(text = { Text(option.label) }, onClick = {
-                                tier = option.wire; tierMenu = false
-                                modelPreferenceKey?.let { modelPreferences.edit().putString(it, option.wire).apply() }
-                            },
-                                trailingIcon = { if (tier == option.wire) Icon(Icons.Outlined.Check, null, tint = p.accent) })
-                        } }
                     }
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = actions.voice) { Icon(Icons.Outlined.Mic, if(ar) "محادثة صوتية" else "Voice conversation") }
@@ -283,7 +295,7 @@ data class ChatActions(val send: (String, List<Uri>, String) -> Unit, val stop: 
                         val question = if(quote.isNotBlank()) "> ${quote.replace("\n", "\n> ")}\n\n$draft" else draft
                         val files = attachments
                         draft = ""; quote = ""; attachments = emptyList(); follow = true; sendRevision++
-                        focus.clearFocus(); keyboard?.hide(); actions.send(question, files, tier); latest(false)
+                        focus.clearFocus(); keyboard?.hide(); actions.send(question, files, tier, thinking && selectedTier.supportsThinking); latest(false)
                     }) { Icon(Icons.Outlined.ArrowUpward, if(ar) "إرسال" else "Send") }
                 }
             }
@@ -292,6 +304,17 @@ data class ChatActions(val send: (String, List<Uri>, String) -> Unit, val stop: 
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 8.dp),
             textAlign = TextAlign.Center, color = p.secondary, style = MaterialTheme.typography.labelMedium)
         }
+        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(16.dp))
+    }
+    menu?.let { page ->
+        ComposerMenuSheet(page, selectedTier, thinking, onThinking = { value ->
+            thinking = value
+            modelPreferenceKey?.let { modelPreferences.edit().putBoolean("think:$it", value).apply() }
+        }, onModel = { option ->
+            tier = option.wire
+            modelPreferenceKey?.let { modelPreferences.edit().putString(it, option.wire).apply() }
+        }, onDismiss = { menu = null }, onModels = { menu = ComposerSheet.MODELS },
+            onPhotos = picker.photos, onFiles = picker.files, onCamera = picker.camera.takeIf { picker.cameraAvailable }, onVoice = actions.voice)
     }
 }
 
