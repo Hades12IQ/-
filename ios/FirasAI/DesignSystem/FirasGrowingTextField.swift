@@ -15,12 +15,15 @@ struct FirasGrowingTextField: View {
     private let sendOnReturn: Bool
     private let onSubmit: () -> Void
     private let onKey: (ComposerKey) -> Bool
+    private let selection: Binding<NSRange>?
+    private let highlightedRanges: [NSRange]
     @State private var measuredHeight: CGFloat
 
     init(text: Binding<String>, placeholder: String, minLines: Int = 1, maxLines: Int = 6,
          pointSize: CGFloat = 17, palette: FirasPalette, isFocused: FocusState<Bool>.Binding,
          sendOnReturn: Bool = false, onSubmit: @escaping () -> Void = {},
-         onKey: @escaping (ComposerKey) -> Bool = { _ in false }) {
+         onKey: @escaping (ComposerKey) -> Bool = { _ in false },
+         selection: Binding<NSRange>? = nil, highlightedRanges: [NSRange] = []) {
         _text = text
         self.placeholder = placeholder
         self.minLines = max(1, minLines)
@@ -31,12 +34,14 @@ struct FirasGrowingTextField: View {
         self.sendOnReturn = sendOnReturn
         self.onSubmit = onSubmit
         self.onKey = onKey
+        self.selection = selection
+        self.highlightedRanges = highlightedRanges
         _measuredHeight = State(initialValue: UIFont.systemFont(ofSize: pointSize).lineHeight * CGFloat(max(1, minLines)))
     }
 
     var body: some View {
         WithPerceptionTracking {
-            if #available(iOS 17.0, *), !FirasCompatibility.forceLegacyUI {
+            if #available(iOS 17.0, *), !FirasCompatibility.forceLegacyUI, selection == nil {
                 TextField(placeholder, text: $text, axis: .vertical)
                     .textFieldStyle(.plain)
                     .font(.system(size: pointSize))
@@ -56,7 +61,8 @@ struct FirasGrowingTextField: View {
                 FirasLegacyGrowingEditor(text: $text, measuredHeight: $measuredHeight,
                     placeholder: placeholder, minLines: minLines, maxLines: maxLines, pointSize: pointSize,
                     palette: palette, focus: isFocused, focusRequested: isFocused.wrappedValue,
-                    sendOnReturn: sendOnReturn, onSubmit: onSubmit, onKey: onKey)
+                    sendOnReturn: sendOnReturn, onSubmit: onSubmit, onKey: onKey,
+                    selection: selection, highlightedRanges: highlightedRanges)
                     .frame(height: measuredHeight)
             }
         }
@@ -77,6 +83,8 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
     let sendOnReturn: Bool
     let onSubmit: () -> Void
     let onKey: (ComposerKey) -> Bool
+    let selection: Binding<NSRange>?
+    let highlightedRanges: [NSRange]
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.layoutDirection) private var layoutDirection
 
@@ -101,6 +109,8 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
     }
 
     func updateUIView(_ view: FirasGrowingInputView, context: Context) {
+        context.coordinator.updating = true
+        defer { context.coordinator.updating = false }
         context.coordinator.parent = self
         view.font = .systemFont(ofSize: pointSize)
         view.textColor = UIColor(palette.textPrimary)
@@ -125,6 +135,15 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
             let start = min(selection.location, length)
             view.selectedRange = NSRange(location: start, length: min(selection.length, length - start))
         }
+        if let range = selection?.wrappedValue, view.markedTextRange == nil,
+           range.location <= (view.text as NSString).length,
+           range.length <= (view.text as NSString).length - range.location,
+           view.selectedRange != range {
+            view.selectedRange = range
+        }
+        if selection != nil, view.markedTextRange == nil {
+            view.styleSkillNames(highlightedRanges, accent: UIColor(palette.accent), normal: UIColor(palette.textPrimary))
+        }
         view.placeholder.isHidden = !view.text.isEmpty
         view.setNeedsLayout()
         DispatchQueue.main.async { [weak view] in view?.applyFocus() }
@@ -133,11 +152,19 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: FirasLegacyGrowingEditor
+        var updating = false
         init(_ parent: FirasLegacyGrowingEditor) { self.parent = parent }
         func textViewDidChange(_ textView: UITextView) {
+            guard !updating else { return }
             parent.text = textView.text
+            textViewDidChangeSelection(textView)
             (textView as? FirasGrowingInputView)?.placeholder.isHidden = !textView.text.isEmpty
             textView.setNeedsLayout()
+        }
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            guard !updating else { return }
+            let range = textView.markedTextRange == nil ? textView.selectedRange : NSRange(location: NSNotFound, length: 0)
+            if parent.selection?.wrappedValue != range { parent.selection?.wrappedValue = range }
         }
         func textViewDidBeginEditing(_ textView: UITextView) {
             if !parent.focus.wrappedValue { parent.focus.wrappedValue = true }
@@ -146,6 +173,7 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
             if parent.focus.wrappedValue { parent.focus.wrappedValue = false }
         }
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            if text == "\n", textView.markedTextRange == nil, parent.onKey(.accept) { return false }
             if text == "\n", parent.sendOnReturn, textView.markedTextRange == nil {
                 parent.onSubmit()
                 return false
@@ -163,6 +191,24 @@ private final class FirasGrowingInputView: UITextView {
     var onHeight: ((CGFloat) -> Void)?
     var handleKey: ((ComposerKey) -> Bool)?
     private var lastHeight: CGFloat = 0
+    private var styledText = ""
+    private var styledRanges: [NSRange] = []
+    private var styledAccent: UIColor?
+    private var styledNormal: UIColor?
+
+    func styleSkillNames(_ ranges: [NSRange], accent: UIColor, normal: UIColor) {
+        guard text != styledText || ranges != styledRanges || accent != styledAccent || normal != styledNormal else { return }
+        styledText = text; styledRanges = ranges; styledAccent = accent; styledNormal = normal
+        let selection = selectedRange
+        textStorage.beginEditing()
+        textStorage.addAttribute(.foregroundColor, value: normal, range: NSRange(location: 0, length: textStorage.length))
+        for range in ranges where range.location >= 0 && NSMaxRange(range) <= textStorage.length {
+            textStorage.addAttribute(.foregroundColor, value: accent, range: range)
+        }
+        textStorage.endEditing()
+        typingAttributes[.foregroundColor] = normal
+        selectedRange = selection
+    }
 
     init() {
         super.init(frame: .zero, textContainer: nil)
@@ -203,6 +249,8 @@ private final class FirasGrowingInputView: UITextView {
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         var remaining = presses
         for press in presses {
+            guard markedTextRange == nil,
+                  press.key?.modifierFlags.intersection([.command, .control, .alternate, .shift]).isEmpty != false else { continue }
             guard let characters = press.key?.charactersIgnoringModifiers else { continue }
             let key: ComposerKey?
             switch characters {

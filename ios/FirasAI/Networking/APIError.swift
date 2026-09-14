@@ -75,6 +75,7 @@ struct ServerError: Decodable, Sendable, Equatable {
     var maxPages: Int?
     var chars: Int?
     var cap: Int?
+    var skillProblems: [String]?
 
     init(code: String? = nil) {
         self.code = code
@@ -99,6 +100,7 @@ struct ServerError: Decodable, Sendable, Equatable {
         maxPages = LenientJSON.int(c, "maxPages")
         chars = LenientJSON.int(c, "chars")
         cap = LenientJSON.int(c, "cap")
+        skillProblems = LenientJSON.array(c, "problems", of: String.self)
 
         // The guest network bucket reports its scope at the top level; be tolerant of a server
         // that ever moves it inside `quota`.

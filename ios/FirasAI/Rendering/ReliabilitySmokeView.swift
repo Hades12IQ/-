@@ -175,6 +175,7 @@ MarkdownView(markdown: shown, messageID: "live-math-smoke", streaming: !liveFini
         errors += WebParityReliabilityChecks.failures()
         errors += await OmnixReliabilityChecks.run()
         errors += await OmnixTelegramReliabilityChecks.run()
+        errors += await SkillsReliabilityChecks.run()
         errors += await DocumentAssetCache.reliabilityFailures()
         let streamChecks = StreamPerformanceChecks.run()
         errors += streamChecks.failures

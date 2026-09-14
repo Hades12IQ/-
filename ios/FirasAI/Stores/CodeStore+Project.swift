@@ -621,7 +621,8 @@ extension CodeStore {
             cid: IDs.cid(),
             chatId: nil,
             product: ProductKind.code.wireValue,
-            nomem: true
+            nomem: true,
+            skills: true
         )
     }
 

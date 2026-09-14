@@ -19,6 +19,7 @@ struct CodeAIBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var draft: String = ""
+    @State private var skillDraft = SkillDraft()
     @State private var isSending = false
     @State private var sendStartedAt: Date?
     @State private var plan: CodeEditPlan?
@@ -303,8 +304,9 @@ struct CodeAIBar: View {
     private var composer: some View {
         VStack(spacing: 6) {
             HStack(alignment: .bottom, spacing: 10) {
-                FirasGrowingTextField(text: $draft, placeholder: Strings.CodeUI.aiPlaceholder(lang),
-                    maxLines: 5, pointSize: 16, palette: palette, isFocused: $focused)
+                SkillComposerField(env: env, text: $draft, draft: skillDraft,
+                    placeholder: Strings.CodeUI.aiPlaceholder(lang), pointSize: 16, maxLines: 5,
+                    focused: $focused, sendOnReturn: env.prefs.sendOnReturn, onSubmit: send)
                 .disabled(isSending)
                 .bidiIsland(for: draft, fallback: lang)
 
@@ -468,9 +470,12 @@ struct CodeAIBar: View {
         focused = false
         let staged = attachments
 
+        let selectedSkills = skillDraft.snapshot(text: draft, store: env.skills)
         Task {
             let before = env.code.thread.messages.count
-            let result = await env.code.askAI(instruction: instruction, attachments: staged)
+            let result = await SkillRequestContext.$selection.withValue(selectedSkills) {
+                await env.code.askAI(instruction: instruction, attachments: staged)
+            }
             isSending = false
             sendStartedAt = nil
 

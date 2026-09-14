@@ -96,6 +96,7 @@ struct PersistedMessage: Codable, Sendable, Equatable {
 
 /// `POST /api/chat` — the live SSE turn.
 struct ChatStreamRequest: Encodable, Sendable {
+    var skills: Bool?
     var messages: [OutgoingMessage]
     var tier: String
     var think: Bool
@@ -115,9 +116,11 @@ struct ChatStreamRequest: Encodable, Sendable {
         product: String,
         nomem: Bool? = nil,
         nokb: Bool? = nil,
-        agent: Bool? = nil
+        agent: Bool? = nil,
+        skills: Bool? = nil
     ) {
         self.messages = messages
+        self.skills = skills
         self.tier = tier
         self.think = think
         self.cid = cid

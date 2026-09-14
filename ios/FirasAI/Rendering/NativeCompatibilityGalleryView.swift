@@ -30,6 +30,12 @@ struct NativeCompatibilityGalleryView: View {
                     CodeCompatibilityGalleryView(env: gallery.env, surface: .workspace)
                 case .codeModels:
                     CodeCompatibilityGalleryView(env: gallery.env, surface: .models)
+                case .skills:
+                    FirasNavigationStack { SkillsSettingsView(env: gallery.skillsEnv) }
+                case .skillComposer:
+                    SkillsComposerGalleryView(env: gallery.skillsEnv, model: gallery.skillsComposer)
+                case .skillsLibrary:
+                    FirasNavigationStack { SkillsSettingsView(env: gallery.skillsEnv, initialLibrary: true) }
                 }
             }
             .environment(gallery.env.prefs)
@@ -57,6 +63,9 @@ final class NativeCompatibilityGalleryModel: ObservableObject {
     enum Screen: String, CaseIterable {
         case chat, settings, telegram, code
         case codeModels = "code-models"
+        case skills
+        case skillsLibrary = "skills-library"
+        case skillComposer = "skill-composer"
 
         var components: [String] {
             switch self {
@@ -65,12 +74,17 @@ final class NativeCompatibilityGalleryModel: ObservableObject {
             case .telegram: return ["OmnixTelegramView"]
             case .code: return ["CodeWorkspaceView"]
             case .codeModels: return ["CodeModelPicker"]
+            case .skills: return ["SkillsSettingsView"]
+            case .skillsLibrary: return ["SkillsSettingsView", "SkillLibraryResponse"]
+            case .skillComposer: return ["SkillComposerField", "FirasGrowingTextField"]
             }
         }
     }
 
     @Published var screen: Screen = .chat
     let env: AppEnvironment
+    let skillsEnv = SkillsReliabilityChecks.environment()
+    let skillsComposer = SkillsComposerGalleryModel()
     let chatID = "native-gallery-local-chat"
     private var mounted: Screen?
     private var mountedSize: CGSize = .zero
@@ -134,6 +148,7 @@ final class NativeCompatibilityGalleryModel: ObservableObject {
         #endif
 
         for value in Screen.allCases {
+            if value == .skills || value == .skillComposer { await skillsEnv.skills.load() }
             mounted = nil
             screen = value
             // The first screen may already have appeared before this async task was resumed.

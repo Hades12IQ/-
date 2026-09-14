@@ -266,7 +266,8 @@ actor APIClient {
 
         if let body {
             do {
-                request.httpBody = try encoder.encode(APIEncodableBox(body))
+                let encoded = try encoder.encode(APIEncodableBox(body))
+                request.httpBody = try SkillRequestContext.encode(encoded, path: path)
             } catch {
                 throw APIError.decoding("encode \(path): \(String(describing: error))")
             }

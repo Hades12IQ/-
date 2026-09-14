@@ -34,6 +34,7 @@ final class AppEnvironment {
     let media: MediaStore
     let announcements: AnnouncementStore
     let memory: MemoryStore
+    let skills: AccountSkillsStore
     let call: CallEngine
     let tts: TTSPlayer
     let dictation: DictationController
@@ -55,9 +56,9 @@ final class AppEnvironment {
 
     // MARK: - Construction
 
-    init(config: AppConfiguration, defaults: UserDefaults = .standard) {
+    init(config: AppConfiguration, defaults: UserDefaults = .standard, apiOverride: APIClient? = nil) {
         // 1. Transport, device preferences, and the objects that depend on neither.
-        let api = APIClient(configuration: config)
+        let api = apiOverride ?? APIClient(configuration: config)
         let prefs = PreferencesStore(defaults: defaults)
         let network = NetworkMonitor()
         let toasts = ToastCenter()
@@ -138,6 +139,7 @@ final class AppEnvironment {
         // 5. Ambient content.
         let announcements = AnnouncementStore(api: api, prefs: prefs)
         let memory = MemoryStore(api: api)
+        self.skills = AccountSkillsStore(api: api, session: session)
 
         // 6. Voice. The call engine takes the TTS player so a call can silence it.
         let tts = TTSPlayer(api: api, prefs: prefs, toasts: toasts)
@@ -234,6 +236,7 @@ final class AppEnvironment {
     /// foreground costs nothing. A signed-out device suspends its watchers — it never cancels the
     /// server-side work, which keeps running and is picked up again after re-authentication.
     func adoptCurrentIdentity() async {
+        skills.identityDidChange()
         code.identityDidChange(to: session.identityID)
         chat.identityDidChange(to: session.identityID)
         media.identityDidChange(to: session.identityID)

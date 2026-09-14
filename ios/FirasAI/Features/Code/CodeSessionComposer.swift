@@ -39,6 +39,7 @@ struct CodeSessionComposer: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var draft = ""
+    @State private var skillDraft = SkillDraft()
     @State private var attachments: [PreparedAttachment] = []
     @State private var isImporting = false
     @State private var isReadingAttachments = false
@@ -124,8 +125,9 @@ struct CodeSessionComposer: View {
     /// middle of its band instead of on the floor of it: a `frame(minHeight:)` centres its child,
     /// so the caret, the placeholder and the buttons in the row below all share one optical centre.
     private var field: some View {
-        FirasGrowingTextField(text: $draft, placeholder: Strings.CodeUI.composerPlaceholder(lang),
-            maxLines: 6, pointSize: 17 * env.prefs.fontScale.factor, palette: palette, isFocused: $focused)
+        SkillComposerField(env: env, text: $draft, draft: skillDraft,
+            placeholder: Strings.CodeUI.composerPlaceholder(lang), pointSize: 17 * env.prefs.fontScale.factor,
+            focused: $focused, sendOnReturn: env.prefs.sendOnReturn, onSubmit: send)
         .disabled(isSending)
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -329,13 +331,16 @@ struct CodeSessionComposer: View {
         let staged = attachments
         let buildFirst = isBlankScaffold && !instruction.isEmpty && env.code.modelSelection.model != .omnix
 
+        let selectedSkills = skillDraft.snapshot(text: draft, store: env.skills)
         Task {
+            await SkillRequestContext.$selection.withValue(selectedSkills) {
             if buildFirst {
                 await startBuild(instruction: instruction, staged: staged)
             } else {
                 await askForEdits(instruction: instruction, staged: staged)
             }
             isSending = false
+            }
         }
     }
 

@@ -18,6 +18,7 @@ struct AgentComposer: View {
     @Binding private var quotedText: String?
 
     @State private var text = ""
+    @State private var skillDraft = SkillDraft()
     @State private var attachments: [ComposerAttachmentItem] = []
     @State private var showsAddContext = false
     @State private var dictating = false
@@ -61,17 +62,9 @@ struct AgentComposer: View {
                         onTruncatedTap: { _ in toast(Strings.Agent.stillReading) }
                     )
                 }
-                ComposerField(
-                    text: $text,
-                    placeholder: Strings.Agent.composerPlaceholder(lang),
-                    palette: palette,
-                    lang: lang,
-                    fontScale: env.prefs.fontScale,
-                    sendOnReturn: env.prefs.sendOnReturn,
-                    isFocused: $fieldFocused,
-                    onSubmit: send,
-                    onKey: { _ in false }
-                )
+                SkillComposerField(env: env, text: $text, draft: skillDraft,
+                    placeholder: Strings.Agent.composerPlaceholder(lang), pointSize: 17 * env.prefs.fontScale.factor,
+                    focused: $fieldFocused, sendOnReturn: env.prefs.sendOnReturn, onSubmit: send)
                 if dictating {
                     DictationBar(
                         dictation: env.dictation,
@@ -226,6 +219,8 @@ struct AgentComposer: View {
             PromptCatalog.quotePrefix(passages: [($0, lang.rawValue)]) + "\n" + trimmed
         } ?? trimmed
 
+        let selectedSkills = skillDraft.snapshot(text: text, store: env.skills)
+        skillDraft.reset()
         Haptics.send()
         text = ""
         quotedText = nil
@@ -235,7 +230,9 @@ struct AgentComposer: View {
         Keyboard.dismiss()
 
         Task {
-            await env.agent.start(task: task, attachments: prepared, in: conversationID)
+            await SkillRequestContext.$selection.withValue(selectedSkills) {
+                await env.agent.start(task: task, attachments: prepared, in: conversationID)
+            }
         }
     }
 

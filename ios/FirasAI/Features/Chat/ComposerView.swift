@@ -23,6 +23,7 @@ struct ComposerView: View {
     @State var attachments: [ComposerAttachmentItem] = []
     @State private var showAddContext = false
     @State private var slashSelection = 0
+    @State private var skillDraft = SkillDraft()
     @State private var dictating = false
     @State private var sendPulse = false
     @State private var warnedHardCap = false
@@ -63,10 +64,6 @@ struct ComposerView: View {
     var body: some View {
         WithPerceptionTracking {
         VStack(spacing: 6) {
-            if slashOpen {
-                SlashMenu(selection: slashSelection, palette: palette, lang: lang, onPick: pick(_:))
-                    .transition(motionOn ? FirasMotion.revealTransition : .opacity)
-            }
             card
             footer
         }
@@ -162,17 +159,10 @@ struct ComposerView: View {
     }
 
     private var field: some View {
-        ComposerField(
-            text: $text,
-            placeholder: placeholder,
-            palette: palette,
-            lang: lang,
-            fontScale: env.prefs.fontScale,
-            sendOnReturn: env.prefs.sendOnReturn,
-            isFocused: $fieldFocused,
-            onSubmit: send,
-            onKey: handleKey(_:)
-        )
+        SkillComposerField(env: env, text: $text, draft: skillDraft, placeholder: placeholder,
+            pointSize: 17 * env.prefs.fontScale.factor, focused: $fieldFocused,
+            sendOnReturn: env.prefs.sendOnReturn, onSubmit: send)
+            .padding(.horizontal, 8).padding(.vertical, 6)
     }
 
     /// The disclaimer is CENTRED under the composer — «فراس كان ميك مستيك، وسطها، حاليا هي على
@@ -356,13 +346,17 @@ struct ComposerView: View {
         Keyboard.dismiss()
         pulse()
 
+        let selectedSkills = skillDraft.snapshot(text: text, store: env.skills)
+        skillDraft.reset()
         text = ""
         attachments = []
         warnedHardCap = false
         env.drafts.clear(conversationID)
 
         Task {
-            await env.chat.send(text: trimmed, attachments: ready, in: conversationID, product: product)
+            await SkillRequestContext.$selection.withValue(selectedSkills) {
+                await env.chat.send(text: trimmed, attachments: ready, in: conversationID, product: product)
+            }
         }
     }
 
@@ -386,6 +380,7 @@ struct ComposerView: View {
     // MARK: - Drafts, slash menu, keys
 
     private func restoreDraft() {
+        skillDraft.reset()
         let stored = env.drafts.draft(for: conversationID)
         if text != stored {
             text = stored

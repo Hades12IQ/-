@@ -23,6 +23,7 @@ struct SettingsView: View {
     private enum Page: Hashable {
         case section(SettingsSection)
         case telegram
+        case skills
         case privacy
     }
 
@@ -262,6 +263,8 @@ struct SettingsView: View {
             PrivacySettingsView(env: env)
         case .telegram:
             OmnixTelegramView(env: env)
+        case .skills:
+            SkillsSettingsView(env: env)
         }
     }
 
@@ -289,7 +292,7 @@ struct SettingsView: View {
     /// Privacy sits last, after Data: it is the page a reader goes looking for, not one they pass
     /// through, and the five routed sections keep the order every earlier build had.
     private static var pages: [Page] {
-        SettingsSection.allCases.map { Page.section($0) } + [Page.telegram, Page.privacy]
+        SettingsSection.allCases.map { Page.section($0) } + [Page.skills, Page.telegram, Page.privacy]
     }
 
     private static func pageTitle(_ item: Page) -> LText {
@@ -301,6 +304,7 @@ struct SettingsView: View {
         case .section(.data): return Strings.Settings.tabData
         case .privacy: return Strings.Settings.tabPrivacy
         case .telegram: return LText(ar: "أومنكس · تيليغرام", en: "Omnix · Telegram")
+        case .skills: return SkillsCopy.title
         }
     }
 
@@ -313,6 +317,7 @@ struct SettingsView: View {
         case .section(.data): return Strings.Settings.tabDataSub
         case .privacy: return Strings.Settings.tabPrivacySub
         case .telegram: return LText(ar: "ربط بوتك الخاص ومتابعة حالته", en: "Link your private bot and check its status")
+        case .skills: return SkillsCopy.subtitle
         }
     }
 
@@ -325,6 +330,7 @@ struct SettingsView: View {
         case .section(.data): return "externaldrive"
         case .privacy: return "hand.raised"
         case .telegram: return "paperplane"
+        case .skills: return "sparkles.rectangle.stack"
         }
     }
 

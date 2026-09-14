@@ -341,7 +341,8 @@ enum CodeAskAI {
             cid: IDs.cid(),
             chatId: nil,
             product: "code",
-            nomem: true
+            nomem: true,
+            skills: true
         )
         var text = ""
         let stream = await api.chatStream(request)

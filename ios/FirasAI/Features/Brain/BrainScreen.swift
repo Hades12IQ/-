@@ -14,6 +14,7 @@ struct BrainScreen: View {
 
     @State private var conversationID: String?
     @State private var draft = ""
+    @State private var skillDraft = SkillDraft()
     @State private var showLibrary = false
     @State private var citedSource: BrainSource?
     @State private var textSelection = FirasTextSelection()
@@ -107,6 +108,7 @@ struct BrainScreen: View {
             BrainComposer(
                 env: env,
                 draft: $draft,
+                skillDraft: skillDraft,
                 quotedText: $quotedText,
                 onSend: { send(outline: false) },
                 onStop: { store.stopAsk() },
@@ -181,10 +183,13 @@ struct BrainScreen: View {
         }
 
         let conversation = ensureConversation()
-        if !outline { draft = ""; quotedText = nil }
+        let selectedSkills = skillDraft.snapshot(text: draft, store: env.skills)
+        if !outline { draft = ""; quotedText = nil; skillDraft.reset() }
         Keyboard.dismiss()
         Haptics.send()
-        Task { await store.ask(text, outline: outline, in: conversation) }
+        Task { await SkillRequestContext.$selection.withValue(selectedSkills) {
+            await store.ask(text, outline: outline, in: conversation)
+        } }
     }
 
     private func ensureConversation() -> String {
@@ -210,6 +215,7 @@ private struct BrainComposer: View {
 
     let env: AppEnvironment
     @Binding var draft: String
+    let skillDraft: SkillDraft
     @Binding var quotedText: String?
     let onSend: () -> Void
     let onStop: () -> Void
@@ -263,9 +269,9 @@ private struct BrainComposer: View {
     }
 
     private var field: some View {
-        FirasGrowingTextField(text: $draft, placeholder: placeholder,
-            maxLines: 6, pointSize: 16 * prefs.fontScale.factor,
-            palette: palette, isFocused: $focused)
+        SkillComposerField(env: env, text: $draft, draft: skillDraft, placeholder: placeholder,
+            pointSize: 16 * prefs.fontScale.factor, focused: $focused,
+            sendOnReturn: prefs.sendOnReturn, onSubmit: onSend)
             .disabled(!store.hasDocuments)
             .padding(.vertical, 10)
             .bidiIsland(for: draft, fallback: lang)

@@ -338,7 +338,8 @@ final class BrainAsker: Sendable {
             product: ProductKind.brain.wireValue,
             nomem: true,
             nokb: true,
-            agent: nil
+            agent: nil,
+            skills: true
         )
 
         var answer = ""
