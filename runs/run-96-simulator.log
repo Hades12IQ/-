@@ -1,0 +1,37 @@
+/Users/runner/work/-/-/ios/FirasAI/DesignSystem/FirasShapeCompatibility.swift:5:17: warning: stored property 'draw' of 'Sendable'-conforming struct 'FirasAnyShape' has non-Sendable type '(CGRect) -> Path'; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/CodeEditorView.swift:385:17: warning: '@preconcurrency' on conformance to 'UITextViewDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:676:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:676:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Code/PreviewWebView.swift:749:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Shell/CompactDrawer.swift:407:17: warning: '@preconcurrency' on conformance to 'UIGestureRecognizerDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:385:25: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/Documents/DocumentPrinter.swift:441:25: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/DiagramIsland.swift:130:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:19:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/WebIsland.swift:149:17: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Shell/CompactDrawer.swift:407:17: warning: '@preconcurrency' on conformance to 'UIGestureRecognizerDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/AudioSessionArbiter.swift:123:61: warning: 'allowBluetooth' was deprecated in iOS 8.0: renamed to 'AVAudioSession.CategoryOptions.allowBluetoothHFP'
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/AudioSessionArbiter.swift:132:28: warning: 'allowBluetooth' was deprecated in iOS 8.0: renamed to 'AVAudioSession.CategoryOptions.allowBluetoothHFP'
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/AudioSessionArbiter.swift:123:17: warning: variable 'options' was never mutated; consider changing to 'let' constant
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:124:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:126:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:137:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:181:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:183:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:640:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:643:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:720:20: warning: capture of 'input' with non-Sendable type 'AVAudioPCMBuffer' in a '@Sendable' closure
+/Users/runner/work/-/-/ios/FirasAI/Features/Voice/CallAudioGraph.swift:1:1: warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'AVFAudio'
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathBlockView.swift:108:55: warning: no 'async' operations occur within 'await' expression
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKScriptMessageHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:1518:21: warning: '@preconcurrency' on conformance to 'WKNavigationDelegate' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:857:14: warning: consider using asynchronous alternative function
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland.swift:871:18: warning: consider using asynchronous alternative function
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:19:13: warning: '@preconcurrency' on conformance to 'WKURLSchemeHandler' has no effect
+/Users/runner/work/-/-/ios/FirasAI/Rendering/MathIsland+Assets.swift:170:37: warning: main actor-isolated static property 'base' cannot be accessed from outside of the actor; this is an error in the Swift 6 language mode
+/Users/runner/work/-/-/ios/FirasAI/Features/Chat/SkillComposerField.swift:55:72: error: failed to produce diagnostic for expression; please submit a bug report (https://swift.org/contributing/#reporting-bugs)
+** BUILD FAILED **
