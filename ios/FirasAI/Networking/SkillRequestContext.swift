@@ -5,6 +5,17 @@ import Foundation
 enum SkillRequestContext {
     @TaskLocal static var selection: [AccountSkill] = []
 
+    /// The whole-document endpoint caps q at 4,000 UTF-16 units. Check the complete decorated
+    /// question before choosing it; retrieval's final answer request preserves the full question.
+    static func fitsWholeBrain(_ question: String) -> Bool {
+        guard question.utf16.count <= 4_000,
+              let raw = try? JSONSerialization.data(withJSONObject: ["q": question]),
+              let data = try? encode(raw, path: "/api/brain/whole"),
+              let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let value = body["q"] as? String else { return false }
+        return value.utf16.count <= 4_000 && data.count < 90_000
+    }
+
     static func encode(_ data: Data, path: String) throws -> Data {
         let skills = Array(selection.filter(\.enabled).prefix(3))
         guard !skills.isEmpty,

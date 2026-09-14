@@ -38,23 +38,8 @@ struct SkillComposerField: View {
         WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 6) {
                 if let token, enabled { menu(token) }
-                if !draft.pastes.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(draft.pastes) { item in
-                                PastedTextCard(item: item, palette: p, lang: lang, open: { preview = item },
-                                    remove: { draft.pastes.removeAll { $0.id == item.id } })
-                            }
-                        }
-                    }
-                }
-                FirasGrowingTextField(text: textBinding, placeholder: placeholder, maxLines: maxLines,
-                    pointSize: pointSize, palette: p, isFocused: focused,
-                    sendOnReturn: sendOnReturn, onSubmit: onSubmit, onKey: handleKey,
-                    selection: Binding(get: { draft.selection }, set: { draft.selection = $0 }),
-                    highlightedRanges: draft.mentions.map(\.range),
-                    onLargePaste: pasteCharacterBudget != nil ? paste : nil)
-                    .frame(minHeight: 44).bidiIsland(for: text, fallback: lang)
+                if !draft.pastes.isEmpty { pastedCards }
+                editor
             }
             .task(id: token != nil) { if token != nil { await env.skills.load() } }
             .firasOnChange(of: text) { _, value in draft.synchronize(value) }
@@ -62,19 +47,44 @@ struct SkillComposerField: View {
             .firasOnChange(of: env.session.identityID) { _, _ in draft.reset() }
             .onAppear { draft.synchronize(text) }
             .sheet(item: $preview) { item in PastedTextPreview(item: item, palette: p, lang: lang) }
-            .sheet(isPresented: $showsLibrary) {
-                FirasNavigationStack {
-                    SkillsSettingsView(env: env) { skill in
-                        showsLibrary = false
-                        guard let saved = libraryToken else { return }
-                        pick(skill, token: saved)
-                    }
-                    .toolbar { ToolbarItem(placement: .cancellationAction) {
-                        Button(Strings.Common.close(lang)) { showsLibrary = false }
-                    } }
-                }.tint(p.accent).preferredColorScheme(env.prefs.theme.isLight ? .light : .dark)
-                    .firasSheetBackground(p)
+            .sheet(isPresented: $showsLibrary) { librarySheet }
+        }
+    }
+    private var editor: some View {
+        let selection = Binding<NSRange>(get: { draft.selection }, set: { draft.selection = $0 })
+        let handler: ((String) -> Bool)? = pasteCharacterBudget == nil ? nil : paste
+        return FirasGrowingTextField(text: textBinding, placeholder: placeholder, maxLines: maxLines,
+            pointSize: pointSize, palette: p, isFocused: focused,
+            sendOnReturn: sendOnReturn, onSubmit: onSubmit, onKey: handleKey,
+            selection: selection, highlightedRanges: draft.mentions.map(\.range), onLargePaste: handler)
+            .frame(minHeight: 44).bidiIsland(for: text, fallback: lang)
+    }
+    private var pastedCards: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(draft.pastes) { item in
+                    WithPerceptionTracking { pastedCard(item) }
+                }
             }
+        }.frame(height: 144)
+    }
+    private func pastedCard(_ item: PastedTextItem) -> some View {
+        PastedTextCard(item: item, palette: p, lang: lang, open: { preview = item },
+            remove: { draft.pastes.removeAll { $0.id == item.id } })
+    }
+    private var librarySheet: some View {
+        WithPerceptionTracking {
+            FirasNavigationStack {
+                SkillsSettingsView(env: env) { skill in
+                    showsLibrary = false
+                    guard let saved = libraryToken else { return }
+                    pick(skill, token: saved)
+                }
+                .toolbar { ToolbarItem(placement: .cancellationAction) {
+                    Button(Strings.Common.close(lang)) { showsLibrary = false }
+                } }
+            }.tint(p.accent).preferredColorScheme(env.prefs.theme.isLight ? .light : .dark)
+                .firasSheetBackground(p)
         }
     }
     private func paste(_ text: String) -> Bool {

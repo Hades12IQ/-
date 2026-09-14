@@ -49,6 +49,10 @@ enum SkillsReliabilityChecks {
         check(SendPipeline.omnixPollInterval(readerIsPresent: true) == 1 && SendPipeline.omnixPollInterval(readerIsPresent: false) == 10, "Omnix visible/background cadence changed")
         let pastedSource = String(repeating: "معادلة 😀 \\int_0^1 x dx\n", count: 300)
         let pasted = PastedTextItem(text: pastedSource, number: 1)
+        check(SkillRequestContext.fitsWholeBrain("Summarize my document") && !SkillRequestContext.fitsWholeBrain(pastedSource), "long Brain question entered a truncating whole-read request")
+        SkillRequestContext.$selection.withValue(samples) {
+            check(!SkillRequestContext.fitsWholeBrain(String(repeating: "q", count: 3_900)), "selected Brain skill rules would be cut off by the whole-read endpoint")
+        }
         check(PastedTextItem.shouldCollapse(pastedSource) && !PastedTextItem.shouldCollapse("short text"), "long paste threshold")
         check(pasted.attachment.text == pastedSource && pasted.attachment.originalData == Data(pastedSource.utf8) && !pasted.attachment.truncated, "pasted document lost original content")
         let draft = SkillDraft()

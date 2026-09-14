@@ -121,7 +121,7 @@ final class BrainAsker: Sendable {
         turn: Turn,
         continuation: AsyncStream<Event>.Continuation
     ) async throws -> String? {
-        guard let docID = turn.docIDs.first else { return nil }
+        guard let docID = turn.docIDs.first, SkillRequestContext.fitsWholeBrain(question) else { return nil }
         continuation.yield(.pending(Strings.Brain.wholeReading))
 
         do {
