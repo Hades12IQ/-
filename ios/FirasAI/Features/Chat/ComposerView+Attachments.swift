@@ -67,12 +67,12 @@ extension ComposerView {
     }
 
     func addDocument(_ url: URL) {
-        let documents = attachments.filter { !$0.isImage }.count
+        let documents = attachments.filter { !$0.isImage }.count + skillDraft.pastes.count
         guard documents < ChatAttachmentProcessor.maxFiles else {
             toast(Strings.Composer.maxFiles, error: true)
             return
         }
-        let spent = attachments.reduce(0) { $0 + $1.textCost }
+        let spent = attachments.reduce(0) { $0 + $1.textCost } + skillDraft.pastes.reduce(0) { $0 + $1.text.utf16.count }
         let remaining = ChatAttachmentProcessor.maxTotalFileCharacters - spent
         guard remaining > 0 else {
             toast(Strings.Composer.filesTooLarge, error: true)

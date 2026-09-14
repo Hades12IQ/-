@@ -22,8 +22,7 @@ struct ComposerView: View {
     @State private var text = ""
     @State var attachments: [ComposerAttachmentItem] = []
     @State private var showAddContext = false
-    @State private var slashSelection = 0
-    @State private var skillDraft = SkillDraft()
+    @State var skillDraft = SkillDraft()
     @State private var dictating = false
     @State private var sendPulse = false
     @State private var warnedHardCap = false
@@ -57,7 +56,7 @@ struct ComposerView: View {
     private var canSend: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !readyAttachments.isEmpty
     }
-    private var slashOpen: Bool { SlashMenu.token(in: text) }
+    private var slashOpen: Bool { skillDraft.token(text) != nil }
 
     // MARK: - Body
 
@@ -387,7 +386,6 @@ struct ComposerView: View {
         if text != stored {
             text = stored
         }
-        slashSelection = 0
     }
 
     /// A quick-reply chip (`AssistantTurnView`) writes its sentence straight into `DraftStore`,
@@ -404,7 +402,6 @@ struct ComposerView: View {
 
     private func draftChanged(_ newValue: String) {
         env.drafts.set(newValue, for: conversationID)
-        if slashSelection >= SlashMenu.commands.count { slashSelection = 0 }
         if newValue.count > ChatAttachmentProcessor.hardComposerCharacters {
             if !warnedHardCap {
                 warnedHardCap = true
@@ -413,30 +410,6 @@ struct ComposerView: View {
         } else {
             warnedHardCap = false
         }
-    }
-
-    private func pick(_ command: SlashCommand) {
-        text = command.promptBody(lang)
-        slashSelection = 0
-        fieldFocused = true
-        Haptics.select()
-    }
-
-    private func handleKey(_ key: ComposerKey) -> Bool {
-        guard slashOpen else { return false }
-        let commands = SlashMenu.commands
-        switch key {
-        case .up:
-            slashSelection = max(0, slashSelection - 1)
-        case .down:
-            slashSelection = min(commands.count - 1, slashSelection + 1)
-        case .accept:
-            guard slashSelection >= 0, slashSelection < commands.count else { return false }
-            pick(commands[slashSelection])
-        case .escape:
-            text = ""
-        }
-        return true
     }
 
     // MARK: - Dictation

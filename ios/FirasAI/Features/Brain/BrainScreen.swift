@@ -177,6 +177,9 @@ struct BrainScreen: View {
         var text: String = outline
             ? Strings.Brain.summarizeAsk(store.activeDocIDs.count, lang)
             : draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !outline, !skillDraft.pastes.isEmpty {
+            text = ([text] + skillDraft.pastes.map(\.text)).filter { !$0.isEmpty }.joined(separator: "\n\n")
+        }
         guard !text.isEmpty else { return }
         if !outline, let quote = quotedText, !quote.isEmpty {
             text = PromptCatalog.quotePrefix(passages: [(quote, lang.rawValue)]) + "\n" + text
@@ -261,7 +264,7 @@ private struct BrainComposer: View {
     private var palette: FirasPalette { prefs.palette }
     private var lang: AppLanguage { prefs.lang }
     private var isEmptyDraft: Bool {
-        draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && skillDraft.pastes.isEmpty
     }
 
     private var placeholder: String {
@@ -271,7 +274,8 @@ private struct BrainComposer: View {
     private var field: some View {
         SkillComposerField(env: env, text: $draft, draft: skillDraft, placeholder: placeholder,
             pointSize: 16 * prefs.fontScale.factor, focused: $focused,
-            sendOnReturn: prefs.sendOnReturn, onSubmit: onSend)
+            sendOnReturn: prefs.sendOnReturn, onSubmit: onSend,
+            pasteCharacterBudget: max(0, 120_000 - draft.utf16.count))
             .disabled(!store.hasDocuments)
             .padding(.vertical, 10)
             .bidiIsland(for: draft, fallback: lang)

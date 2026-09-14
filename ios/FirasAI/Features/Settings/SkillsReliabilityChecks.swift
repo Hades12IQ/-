@@ -178,6 +178,21 @@ enum SkillsReliabilityChecks {
                 failures.append("Skills: name became an attachment instead of editable text")
             }
         }
+        let clipboardItems = UIPasteboard.general.items
+        defer { UIPasteboard.general.items = clipboardItems }
+        let originalDraft = field.text
+        let source = String(repeating: "Study notes ملاحظات 😀 \\int_0^1 x dx\n", count: 150)
+        let pasteCount = model.draft.pastes.count
+        UIPasteboard.general.string = source
+        field.paste(nil)
+        await JobClock.rest(0.15)
+        if field.text != originalDraft || model.draft.pastes.count != pasteCount + 1 || model.draft.pastes.last?.text != source {
+            failures.append("Skills: native paste did not collapse into a lossless document card")
+        }
+        let folded = SendPipeline.fold(model.draft.pastes.map(\.attachment))
+        if !folded.fileText.contains(source) || folded.chips.count != model.draft.pastes.count {
+            failures.append("Skills: collapsed paste was lost before chat delivery")
+        }
         return failures
     }
 }
