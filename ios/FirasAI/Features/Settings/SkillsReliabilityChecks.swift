@@ -197,8 +197,66 @@ enum SkillsReliabilityChecks {
         if !folded.fileText.contains(source) || folded.chips.count != model.draft.pastes.count {
             failures.append("Skills: collapsed paste was lost before chat delivery")
         }
+
+        // Exercise the real, mounted UITextView as first responder. The gallery/color checks
+        // above deliberately never opened a keyboard and missed the build-97 focus regression.
+        model.draft.reset()
+        model.text = ""
+        await JobClock.rest(0.2)
+        let probe = SkillsKeyboardProbe()
+        NotificationCenter.default.addObserver(probe, selector: #selector(SkillsKeyboardProbe.didEndEditing(_:)),
+            name: UITextView.textDidEndEditingNotification, object: field)
+        defer {
+            NotificationCenter.default.removeObserver(probe)
+            field.resignFirstResponder()
+        }
+        func verifyFocus(_ stage: String) {
+            if textViews(host.view).first !== field { failures.append("Skills: editor replaced during \(stage)") }
+            if !field.isFirstResponder || !model.focused { failures.append("Skills: keyboard lost during \(stage)") }
+            if probe.ends != 0 { failures.append("Skills: keyboard flickered during \(stage)") }
+        }
+        guard field.becomeFirstResponder() else { return failures + ["Skills: keyboard fixture could not start editing"] }
+        await JobClock.rest(0.3)
+        verifyFocus("initial tap")
+        for count in 1...3 {
+            field.insertText("/")
+            await JobClock.rest(0.2)
+            verifyFocus("slash \(count)")
+            if model.draft.token(model.text) == nil { failures.append("Skills: slash did not open choices while editing") }
+            // Return uses the same pick action as a tap on the highlighted skill row.
+            let insertsNewline = field.delegate?.textView?(field, shouldChangeTextIn: field.selectedRange, replacementText: "\n")
+            await JobClock.rest(0.2)
+            verifyFocus("skill choice \(count)")
+            if insertsNewline != false || model.draft.mentions.count != count {
+                failures.append("Skills: keyboard choice did not insert skill \(count)")
+            }
+            for character in ["a", "ب", "😀", " "] {
+                field.insertText(character)
+                await JobClock.rest(0.08)
+                verifyFocus("typing after skill \(count)")
+            }
+        }
+        UIPasteboard.general.string = source
+        field.paste(nil)
+        await JobClock.rest(0.2)
+        verifyFocus("paste card insertion")
+        if model.draft.pastes.last?.text != source { failures.append("Skills: focused paste lost text") }
+        model.focused = false
+        await JobClock.rest(0.3)
+        if field.isFirstResponder { failures.append("Skills: explicit composer dismissal ignored") }
+        _ = field.becomeFirstResponder()
+        await JobClock.rest(0.2)
+        if !field.isFirstResponder || !model.focused { failures.append("Skills: could not resume editing") }
+        Keyboard.dismiss()
+        await JobClock.rest(0.3)
+        if field.isFirstResponder || model.focused { failures.append("Skills: outside dismissal reopened the keyboard") }
         return failures
     }
+}
+
+@MainActor private final class SkillsKeyboardProbe: NSObject {
+    var ends = 0
+    @objc func didEndEditing(_ notification: Notification) { ends += 1 }
 }
 
 final class SkillsFixtureProtocol: URLProtocol, @unchecked Sendable {
@@ -260,6 +318,7 @@ final class SkillsFixtureProtocol: URLProtocol, @unchecked Sendable {
 
 @MainActor final class SkillsComposerGalleryModel: ObservableObject {
     @Published var text = ""
+    @Published var focused = false
     let draft = SkillDraft()
     init() {
         for skill in SkillsReliabilityChecks.samples.prefix(2) {
@@ -273,14 +332,13 @@ final class SkillsFixtureProtocol: URLProtocol, @unchecked Sendable {
 @MainActor struct SkillsComposerGalleryView: View {
     let env: AppEnvironment
     @ObservedObject var model: SkillsComposerGalleryModel
-    @FocusState private var focused: Bool
     var body: some View {
         WithPerceptionTracking {
         VStack(spacing: 20) {
             Text("فراس · المهارات").font(.title2.weight(.semibold)).foregroundStyle(env.prefs.palette.textPrimary)
             Spacer()
             SkillComposerField(env: env, text: $model.text, draft: model.draft,
-                placeholder: "اسأل فراس…", focused: $focused, pasteCharacterBudget: 300_000)
+                placeholder: "اسأل فراس…", focused: $model.focused, pasteCharacterBudget: 300_000)
                 .padding(16).firasGlass(.floating, palette: env.prefs.palette, in: FirasAnyShape(RoundedRectangle(cornerRadius: 24)))
             Spacer().frame(height: 24)
         }.padding(16).background(env.prefs.palette.background)

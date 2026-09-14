@@ -11,7 +11,8 @@ struct FirasGrowingTextField: View {
     private let maxLines: Int
     private let pointSize: CGFloat
     private let palette: FirasPalette
-    private let isFocused: FocusState<Bool>.Binding
+    private let isFocused: FocusState<Bool>.Binding?
+    private let isEditing: Binding<Bool>?
     private let sendOnReturn: Bool
     private let onSubmit: () -> Void
     private let onKey: (ComposerKey) -> Bool
@@ -21,7 +22,8 @@ struct FirasGrowingTextField: View {
     @State private var measuredHeight: CGFloat
 
     init(text: Binding<String>, placeholder: String, minLines: Int = 1, maxLines: Int = 6,
-         pointSize: CGFloat = 17, palette: FirasPalette, isFocused: FocusState<Bool>.Binding,
+         pointSize: CGFloat = 17, palette: FirasPalette, isFocused: FocusState<Bool>.Binding? = nil,
+         isEditing: Binding<Bool>? = nil,
          sendOnReturn: Bool = false, onSubmit: @escaping () -> Void = {},
          onKey: @escaping (ComposerKey) -> Bool = { _ in false },
          selection: Binding<NSRange>? = nil, highlightedRanges: [NSRange] = [],
@@ -33,6 +35,7 @@ struct FirasGrowingTextField: View {
         self.pointSize = pointSize
         self.palette = palette
         self.isFocused = isFocused
+        self.isEditing = isEditing
         self.sendOnReturn = sendOnReturn
         self.onSubmit = onSubmit
         self.onKey = onKey
@@ -44,7 +47,8 @@ struct FirasGrowingTextField: View {
 
     var body: some View {
         WithPerceptionTracking {
-            if #available(iOS 17.0, *), !FirasCompatibility.forceLegacyUI, selection == nil {
+            if #available(iOS 17.0, *), !FirasCompatibility.forceLegacyUI, selection == nil,
+               isEditing == nil, let isFocused {
                 TextField(placeholder, text: $text, axis: .vertical)
                     .textFieldStyle(.plain)
                     .font(.system(size: pointSize))
@@ -63,13 +67,21 @@ struct FirasGrowingTextField: View {
             } else {
                 FirasLegacyGrowingEditor(text: $text, measuredHeight: $measuredHeight,
                     placeholder: placeholder, minLines: minLines, maxLines: maxLines, pointSize: pointSize,
-                    palette: palette, focus: isFocused, focusRequested: isFocused.wrappedValue,
+                    palette: palette, focus: editorFocus,
                     sendOnReturn: sendOnReturn, onSubmit: onSubmit, onKey: onKey,
                     selection: selection, highlightedRanges: highlightedRanges, onLargePaste: onLargePaste)
                     .frame(height: measuredHeight)
             }
         }
         .accessibilityLabel(Text(placeholder))
+    }
+
+    // UIKit owns first responder for the attributed skill editor. A FocusState without a
+    // .focused SwiftUI field can reset when the slash menu updates; it is not UIKit state.
+    private var editorFocus: Binding<Bool> {
+        if let isEditing { return isEditing }
+        return Binding(get: { isFocused?.wrappedValue ?? false },
+                       set: { isFocused?.wrappedValue = $0 })
     }
 }
 
@@ -81,8 +93,7 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
     let maxLines: Int
     let pointSize: CGFloat
     let palette: FirasPalette
-    let focus: FocusState<Bool>.Binding
-    let focusRequested: Bool
+    @Binding var focus: Bool
     let sendOnReturn: Bool
     let onSubmit: () -> Void
     let onKey: (ComposerKey) -> Bool
@@ -109,6 +120,10 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
             guard let coordinator, abs(coordinator.parent.measuredHeight - height) > 0.5 else { return }
             coordinator.parent.measuredHeight = height
         }
+        view.resolveFocus = { [weak coordinator = context.coordinator] in
+            guard let coordinator else { return nil }
+            return coordinator.parent.focus && coordinator.parent.isEnabled
+        }
         return view
     }
 
@@ -128,7 +143,6 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
         view.isEditable = isEnabled
         view.isSelectable = isEnabled
         view.isUserInteractionEnabled = isEnabled
-        view.wantsFocus = focusRequested && isEnabled
         view.returnKeyType = sendOnReturn ? .send : .default
         view.handleKey = onKey
         view.handleLargePaste = onLargePaste
@@ -151,7 +165,13 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
         }
         view.placeholder.isHidden = !view.text.isEmpty
         view.setNeedsLayout()
-        DispatchQueue.main.async { [weak view] in view?.applyFocus() }
+        view.scheduleFocus()
+    }
+
+    static func dismantleUIView(_ view: FirasGrowingInputView, coordinator: Coordinator) {
+        view.resolveFocus = nil
+        view.onHeight = nil
+        view.delegate = nil
     }
 
     @MainActor
@@ -172,10 +192,10 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
             if parent.selection?.wrappedValue != range { parent.selection?.wrappedValue = range }
         }
         func textViewDidBeginEditing(_ textView: UITextView) {
-            if !parent.focus.wrappedValue { parent.focus.wrappedValue = true }
+            if !parent.focus { parent.focus = true }
         }
         func textViewDidEndEditing(_ textView: UITextView) {
-            if parent.focus.wrappedValue { parent.focus.wrappedValue = false }
+            if parent.focus { parent.focus = false }
         }
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
             if text == "\n", textView.markedTextRange == nil, parent.onKey(.accept) { return false }
@@ -192,7 +212,8 @@ private final class FirasGrowingInputView: UITextView {
     let placeholder = UILabel()
     var minLines = 1
     var maxLines = 6
-    var wantsFocus = false
+    var resolveFocus: (() -> Bool?)?
+    private var focusScheduled = false
     var onHeight: ((CGFloat) -> Void)?
     var handleKey: ((ComposerKey) -> Bool)?
     var handleLargePaste: ((String) -> Bool)?
@@ -234,11 +255,23 @@ private final class FirasGrowingInputView: UITextView {
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        DispatchQueue.main.async { [weak self] in self?.applyFocus() }
+        scheduleFocus()
+    }
+
+    func scheduleFocus() {
+        guard !focusScheduled else { return }
+        focusScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.focusScheduled = false
+            self.applyFocus()
+        }
     }
 
     func applyFocus() {
-        guard window != nil else { return }
+        // Read the live binding after layout, never a focus snapshot from before the user's
+        // tap/keystroke. A pending update must not undo a newer begin/end editing event.
+        guard window != nil, let wantsFocus = resolveFocus?() else { return }
         if wantsFocus && !isFirstResponder { becomeFirstResponder() }
         else if !wantsFocus && isFirstResponder { resignFirstResponder() }
     }

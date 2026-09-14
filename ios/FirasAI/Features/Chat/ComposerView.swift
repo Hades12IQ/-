@@ -26,7 +26,7 @@ struct ComposerView: View {
     @State private var dictating = false
     @State private var sendPulse = false
     @State private var warnedHardCap = false
-    @FocusState private var fieldFocused: Bool
+    @State private var fieldFocused = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

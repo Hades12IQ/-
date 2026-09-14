@@ -46,7 +46,7 @@ struct CodeSessionComposer: View {
     @State private var isSending = false
     @State private var showsModels = false
     @State private var dictating = false
-    @FocusState private var focused: Bool
+    @State private var focused = false
 
     init(
         env: AppEnvironment,

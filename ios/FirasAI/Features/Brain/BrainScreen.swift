@@ -226,7 +226,7 @@ private struct BrainComposer: View {
     let onOpenLibrary: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @FocusState private var focused: Bool
+    @State private var focused = false
 
     var body: some View {
         WithPerceptionTracking {

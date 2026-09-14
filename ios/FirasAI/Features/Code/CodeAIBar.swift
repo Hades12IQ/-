@@ -25,7 +25,7 @@ struct CodeAIBar: View {
     @State private var plan: CodeEditPlan?
     @State private var showsDiff = false
     @State private var dictating = false
-    @FocusState private var focused: Bool
+    @State private var focused = false
 
     /// Both bindings are optional at the call site: `CodeAIBar(env: env)` is a complete pane. The
     /// workspace passes `prefill` so the console's "fix it with AI" can hand over its error buffer,

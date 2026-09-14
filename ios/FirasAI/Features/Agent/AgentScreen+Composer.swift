@@ -22,7 +22,7 @@ struct AgentComposer: View {
     @State private var attachments: [ComposerAttachmentItem] = []
     @State private var showsAddContext = false
     @State private var dictating = false
-    @FocusState private var fieldFocused: Bool
+    @State private var fieldFocused = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

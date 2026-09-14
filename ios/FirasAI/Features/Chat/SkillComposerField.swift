@@ -9,7 +9,7 @@ struct SkillComposerField: View {
     let placeholder: String
     var pointSize: CGFloat = 17
     var maxLines: Int = 6
-    var focused: FocusState<Bool>.Binding
+    var focused: Binding<Bool>
     var sendOnReturn = false
     var onSubmit: () -> Void = {}
     var pasteCharacterBudget: Int? = nil
@@ -59,7 +59,7 @@ struct SkillComposerField: View {
             handler = nil
         }
         return FirasGrowingTextField(text: textBinding, placeholder: placeholder, maxLines: maxLines,
-            pointSize: pointSize, palette: p, isFocused: focused,
+            pointSize: pointSize, palette: p, isEditing: focused,
             sendOnReturn: sendOnReturn, onSubmit: onSubmit, onKey: handleKey,
             selection: selection, highlightedRanges: draft.mentions.map(\.range), onLargePaste: handler)
             .frame(minHeight: 44).bidiIsland(for: text, fallback: lang)
