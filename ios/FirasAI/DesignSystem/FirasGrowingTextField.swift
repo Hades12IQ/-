@@ -67,7 +67,7 @@ struct FirasGrowingTextField: View {
             } else {
                 FirasLegacyGrowingEditor(text: $text, measuredHeight: $measuredHeight,
                     placeholder: placeholder, minLines: minLines, maxLines: maxLines, pointSize: pointSize,
-                    palette: palette, focus: editorFocus,
+                    palette: palette, focus: editorFocus, focusRequested: editorFocus.wrappedValue,
                     sendOnReturn: sendOnReturn, onSubmit: onSubmit, onKey: onKey,
                     selection: selection, highlightedRanges: highlightedRanges, onLargePaste: onLargePaste)
                     .frame(height: measuredHeight)
@@ -94,6 +94,9 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
     let pointSize: CGFloat
     let palette: FirasPalette
     @Binding var focus: Bool
+    // Make command changes a SwiftUI dependency; the queued operation still resolves the
+    // latest binding, because a tap can change it after this view value was constructed.
+    let focusRequested: Bool
     let sendOnReturn: Bool
     let onSubmit: () -> Void
     let onKey: (ComposerKey) -> Bool

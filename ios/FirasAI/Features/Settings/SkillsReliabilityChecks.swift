@@ -332,16 +332,19 @@ final class SkillsFixtureProtocol: URLProtocol, @unchecked Sendable {
 @MainActor struct SkillsComposerGalleryView: View {
     let env: AppEnvironment
     @ObservedObject var model: SkillsComposerGalleryModel
+    @State private var focused = false
     var body: some View {
         WithPerceptionTracking {
         VStack(spacing: 20) {
             Text("فراس · المهارات").font(.title2.weight(.semibold)).foregroundStyle(env.prefs.palette.textPrimary)
             Spacer()
             SkillComposerField(env: env, text: $model.text, draft: model.draft,
-                placeholder: "اسأل فراس…", focused: $model.focused, pasteCharacterBudget: 300_000)
+                placeholder: "اسأل فراس…", focused: $focused, pasteCharacterBudget: 300_000)
                 .padding(16).firasGlass(.floating, palette: env.prefs.palette, in: FirasAnyShape(RoundedRectangle(cornerRadius: 24)))
             Spacer().frame(height: 24)
         }.padding(16).background(env.prefs.palette.background)
+            .firasOnChange(of: focused) { _, value in model.focused = value }
+            .firasOnChange(of: model.focused) { _, value in focused = value }
         }
     }
 }
