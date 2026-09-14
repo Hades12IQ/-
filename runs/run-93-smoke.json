@@ -1,0 +1,843 @@
+{
+  "cachePerformance": {
+    "clearWriteRacePassed": 1,
+    "diskDecodesFor201Reads": 1,
+    "diskReadAttemptsFor201Reads": 1,
+    "diskRestoreMilliseconds": 0.18716666670570703,
+    "memoryHitsFor201Reads": 200,
+    "warm200ReadsMilliseconds": 0.06883333333007613
+  },
+  "documentLayout": {
+    "diagnostics": {
+      "formatterFirstRect": [
+        51.0236220472441,
+        56.69291338582678,
+        493.228346456693,
+        728.5039370078742
+      ],
+      "formatterNextRect": [
+        51.0236220472441,
+        56.69291338582678,
+        493.228346456693,
+        728.5039370078742
+      ],
+      "hasWindow": true,
+      "layout": {
+        "bodyOverflow": 0,
+        "brokenImages": 0,
+        "mathOverflow": 0,
+        "paginatedMathLayouts": 0,
+        "reflowedContainers": 0,
+        "reflowedMathGrids": 0,
+        "reflowedMathTables": 1,
+        "wrappedMath": 0
+      },
+      "load": {
+        "status": "finished"
+      },
+      "mathAssetsReady": true,
+      "mathReady": true,
+      "page": {
+        "bodyHeight": 2876,
+        "bodyWidth": 658,
+        "fontsStatus": "loaded",
+        "katexLoaded": true,
+        "mathCount": 10,
+        "mathErrors": 0,
+        "readyState": "complete",
+        "stylesheetCount": 5
+      },
+      "pageCounts": [
+        4
+      ],
+      "paperRect": [
+        0,
+        0,
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "pdfBytes": 54085,
+      "printableRect": [
+        51.0236220472441,
+        56.69291338582678,
+        493.228346456693,
+        728.5039370078742
+      ],
+      "stage": "completed"
+    },
+    "missingImageDiagnostics": {
+      "hasWindow": true,
+      "layout": {
+        "bodyOverflow": 0,
+        "brokenImages": 1,
+        "mathOverflow": 0,
+        "paginatedMathLayouts": 0,
+        "reflowedContainers": 0,
+        "reflowedMathGrids": 0,
+        "reflowedMathTables": 1,
+        "wrappedMath": 0
+      },
+      "load": {
+        "status": "finished"
+      },
+      "mathAssetsReady": true,
+      "mathReady": true,
+      "paperRect": [
+        0,
+        0,
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "printableRect": [
+        51.0236220472441,
+        56.69291338582678,
+        493.228346456693,
+        728.5039370078742
+      ],
+      "stage": "missing-document-image"
+    },
+    "pageCount": 4,
+    "pdfBytes": 54085,
+    "pdfPath": "/Users/runner/Library/Developer/CoreSimulator/Devices/4E3A6BB3-F417-4829-8DF5-0EA652541F40/data/Containers/Data/Application/EE85DA1D-938C-4766-9801-7FC7B5CBE934/Documents/reliability-document-layout.pdf"
+  },
+  "errors": [
+    "Skills: native composer text view missing"
+  ],
+  "fileCardExport": {
+    "bodyOverflow": 0,
+    "brokenImages": 0,
+    "bytes": 84928,
+    "failedCardActionsBlocked": 1,
+    "fullSelectedSourcePassed": 1,
+    "lastPageHasText": 1,
+    "lastPageInkPixels": 21206,
+    "matchedMarkers": 201,
+    "mathCount": 200,
+    "mathErrors": 0,
+    "mathOverflow": 0,
+    "modelAssertions": 19,
+    "nativeFixtureDismissed": 1,
+    "nativePreviewPresented": 1,
+    "openHeight": 44,
+    "openToExportMilliseconds": 3058.333992958069,
+    "openWidth": 75.33333333333333,
+    "pageCount": 32,
+    "unchangedUserRows": 1
+  },
+  "fileCardExportDiagnostics": {
+    "formatterFirstRect": [
+      51.0236220472441,
+      56.69291338582678,
+      493.228346456693,
+      728.5039370078742
+    ],
+    "formatterNextRect": [
+      51.0236220472441,
+      56.69291338582678,
+      493.228346456693,
+      728.5039370078742
+    ],
+    "hasWindow": true,
+    "layout": {
+      "bodyOverflow": 0,
+      "brokenImages": 0,
+      "mathOverflow": 0,
+      "paginatedMathLayouts": 1,
+      "reflowedContainers": 1,
+      "reflowedMathGrids": 0,
+      "reflowedMathTables": 0,
+      "wrappedMath": 0
+    },
+    "load": {
+      "status": "finished"
+    },
+    "mathAssetsReady": true,
+    "mathReady": true,
+    "page": {
+      "bodyHeight": 31500,
+      "bodyWidth": 658,
+      "fontsStatus": "loaded",
+      "katexLoaded": true,
+      "mathCount": 200,
+      "mathErrors": 0,
+      "readyState": "complete",
+      "stylesheetCount": 5
+    },
+    "pageCounts": [
+      32
+    ],
+    "paperRect": [
+      0,
+      0,
+      595.2755905511812,
+      841.8897637795277
+    ],
+    "pdfBytes": 84928,
+    "printableRect": [
+      51.0236220472441,
+      56.69291338582678,
+      493.228346456693,
+      728.5039370078742
+    ],
+    "stage": "completed"
+  },
+  "forcedLegacyUI": false,
+  "harnessTaskCancelledAfterViewer": false,
+  "legacyTranscriptScroll": {
+    "bottomDistance": 0,
+    "cancelled": false,
+    "completed": true,
+    "errors": [],
+    "height": 280,
+    "mounted": true,
+    "offsetY": 0,
+    "refreshCount": 95,
+    "stage": "finished",
+    "viewport": 280,
+    "viewTaskStarted": true
+  },
+  "liveMath": {
+    "completedFormulaStayedStable": 1,
+    "initialMathMilliseconds": 2432.6539039611816,
+    "renderedBeforeDelimiter": 1,
+    "updatedPreviewMilliseconds": 305.9389591217041
+  },
+  "mathExpectedCount": 8,
+  "mathGlyphCount": 8,
+  "mathIslandAfterLive": {
+    "booted": true,
+    "carried": 0,
+    "elapsedMilliseconds": 3035.7139110565186,
+    "events": [
+      {
+        "glyphs": 0,
+        "milliseconds": 273.2110023498535,
+        "queued": 0,
+        "stage": "pass-start",
+        "value": 10
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 273.284912109375,
+        "queued": 0,
+        "stage": "assets-start",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 275.5889892578125,
+        "queued": 0,
+        "stage": "assets-ready",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 275.7279872894287,
+        "queued": 0,
+        "stage": "boot-start",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1258.4339380264282,
+        "queued": 0,
+        "stage": "bridge-boot",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1259.023904800415,
+        "queued": 0,
+        "stage": "boot-ready",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1259.3098878860474,
+        "queued": 0,
+        "stage": "render-start",
+        "value": 10
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1416.4929389953613,
+        "queued": 0,
+        "stage": "bridge-done",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1416.7979955673218,
+        "queued": 0,
+        "stage": "render-measured",
+        "value": 10
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1417.0509576797485,
+        "queued": 0,
+        "stage": "capture-start",
+        "value": 10
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2377.840995788574,
+        "queued": 0,
+        "stage": "capture-done",
+        "value": 10
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2756.5349340438843,
+        "queued": 0,
+        "stage": "pass-start",
+        "value": 1
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2756.6299438476562,
+        "queued": 0,
+        "stage": "assets-start",
+        "value": 0
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2756.646990776062,
+        "queued": 0,
+        "stage": "assets-ready",
+        "value": 0
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2756.745934486389,
+        "queued": 0,
+        "stage": "render-start",
+        "value": 1
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2788.719892501831,
+        "queued": 0,
+        "stage": "bridge-done",
+        "value": 0
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2788.8529300689697,
+        "queued": 0,
+        "stage": "render-measured",
+        "value": 1
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2788.8898849487305,
+        "queued": 0,
+        "stage": "capture-start",
+        "value": 1
+      },
+      {
+        "glyphs": 11,
+        "milliseconds": 2848.652958869934,
+        "queued": 0,
+        "stage": "capture-done",
+        "value": 1
+      }
+    ],
+    "foregroundScene": true,
+    "glyphs": 11,
+    "hasWindow": true,
+    "inFlight": 0,
+    "queued": 0,
+    "recoveries": 0,
+    "rendering": false,
+    "retryAfterMilliseconds": -1,
+    "scheduled": false,
+    "stalls": 0,
+    "unavailable": false
+  },
+  "mathIslandBeforeLive": {
+    "booted": false,
+    "carried": 0,
+    "elapsedMilliseconds": 0.04494190216064453,
+    "events": [],
+    "foregroundScene": true,
+    "glyphs": 0,
+    "hasWindow": false,
+    "inFlight": 0,
+    "queued": 0,
+    "recoveries": 0,
+    "rendering": false,
+    "retryAfterMilliseconds": -1,
+    "scheduled": false,
+    "stalls": 0,
+    "unavailable": false
+  },
+  "mathIslandFinal": {
+    "booted": true,
+    "carried": 0,
+    "elapsedMilliseconds": 14414.687991142273,
+    "events": [
+      {
+        "glyphs": 0,
+        "milliseconds": 273.2110023498535,
+        "queued": 0,
+        "stage": "pass-start",
+        "value": 10
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 273.284912109375,
+        "queued": 0,
+        "stage": "assets-start",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 275.5889892578125,
+        "queued": 0,
+        "stage": "assets-ready",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 275.7279872894287,
+        "queued": 0,
+        "stage": "boot-start",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1258.4339380264282,
+        "queued": 0,
+        "stage": "bridge-boot",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1259.023904800415,
+        "queued": 0,
+        "stage": "boot-ready",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1259.3098878860474,
+        "queued": 0,
+        "stage": "render-start",
+        "value": 10
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1416.4929389953613,
+        "queued": 0,
+        "stage": "bridge-done",
+        "value": 0
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1416.7979955673218,
+        "queued": 0,
+        "stage": "render-measured",
+        "value": 10
+      },
+      {
+        "glyphs": 0,
+        "milliseconds": 1417.0509576797485,
+        "queued": 0,
+        "stage": "capture-start",
+        "value": 10
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2377.840995788574,
+        "queued": 0,
+        "stage": "capture-done",
+        "value": 10
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2756.5349340438843,
+        "queued": 0,
+        "stage": "pass-start",
+        "value": 1
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2756.6299438476562,
+        "queued": 0,
+        "stage": "assets-start",
+        "value": 0
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2756.646990776062,
+        "queued": 0,
+        "stage": "assets-ready",
+        "value": 0
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2756.745934486389,
+        "queued": 0,
+        "stage": "render-start",
+        "value": 1
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2788.719892501831,
+        "queued": 0,
+        "stage": "bridge-done",
+        "value": 0
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2788.8529300689697,
+        "queued": 0,
+        "stage": "render-measured",
+        "value": 1
+      },
+      {
+        "glyphs": 10,
+        "milliseconds": 2788.8898849487305,
+        "queued": 0,
+        "stage": "capture-start",
+        "value": 1
+      },
+      {
+        "glyphs": 11,
+        "milliseconds": 2848.652958869934,
+        "queued": 0,
+        "stage": "capture-done",
+        "value": 1
+      }
+    ],
+    "foregroundScene": true,
+    "glyphs": 11,
+    "hasWindow": true,
+    "inFlight": 0,
+    "queued": 0,
+    "recoveries": 0,
+    "rendering": false,
+    "retryAfterMilliseconds": -1,
+    "scheduled": false,
+    "stalls": 0,
+    "unavailable": false
+  },
+  "mediaViewer": {
+    "attachedBindingCallback": 1,
+    "attachedCloseHeight": 44,
+    "attachedCloseWidth": 44,
+    "attachedDismissMilliseconds": 523.6060619354248,
+    "attachedMounted": 1,
+    "attachedNativeDismissed": 1,
+    "generatedCloseHeight": 44,
+    "generatedCloseWidth": 44,
+    "generatedDismissMilliseconds": 517.4859762191772,
+    "generatedMounted": 1,
+    "generatedNativeDismissed": 1,
+    "generatedRouterCleared": 1
+  },
+  "nativeAskMenu": true,
+  "nativeWordSelection": true,
+  "pdfBytes": 69578,
+  "pdfDiagnostics": {
+    "formatterFirstRect": [
+      51.0236220472441,
+      56.69291338582678,
+      493.228346456693,
+      728.5039370078742
+    ],
+    "formatterNextRect": [
+      51.0236220472441,
+      56.69291338582678,
+      493.228346456693,
+      728.5039370078742
+    ],
+    "hasWindow": true,
+    "layout": {
+      "bodyOverflow": 0,
+      "brokenImages": 0,
+      "mathOverflow": 0,
+      "paginatedMathLayouts": 0,
+      "reflowedContainers": 0,
+      "reflowedMathGrids": 0,
+      "reflowedMathTables": 0,
+      "wrappedMath": 0
+    },
+    "load": {
+      "status": "finished"
+    },
+    "mathAssetsReady": true,
+    "mathReady": true,
+    "page": {
+      "bodyHeight": 5607,
+      "bodyWidth": 658,
+      "fontsStatus": "loaded",
+      "katexLoaded": true,
+      "mathCount": 102,
+      "mathErrors": 0,
+      "readyState": "complete",
+      "stylesheetCount": 5
+    },
+    "pageCounts": [
+      6
+    ],
+    "paperRect": [
+      0,
+      0,
+      595.2755905511812,
+      841.8897637795277
+    ],
+    "pdfBytes": 69578,
+    "printableRect": [
+      51.0236220472441,
+      56.69291338582678,
+      493.228346456693,
+      728.5039370078742
+    ],
+    "stage": "completed"
+  },
+  "pdfPageCount": 6,
+  "pdfPath": "/Users/runner/Library/Developer/CoreSimulator/Devices/4E3A6BB3-F417-4829-8DF5-0EA652541F40/data/Containers/Data/Application/EE85DA1D-938C-4766-9801-7FC7B5CBE934/Documents/reliability-long-arabic.pdf",
+  "persistedMathGlyphCount": 8,
+  "renderingPerformance": {
+    "attachmentsAt280pt": 8,
+    "attachmentsAt390pt": 8,
+    "attachmentsAt600pt": 8,
+    "cachedParse1000Milliseconds": 0.65566666671657,
+    "glyphsWiderThanOldCutoff": 3
+  },
+  "status": "failed",
+  "streamPerformance": {
+    "burstVisibleMilliseconds": 216.66666666666856,
+    "fullSnapshotSplitChecksum": 5438670,
+    "fullSnapshotSplitMilliseconds": 133.2449583333073,
+    "idleControlWordVisibleMilliseconds": 120.99999999999511,
+    "incrementalSnapshotMilliseconds": 197.91233333330638,
+    "incrementalSnapshotScannedBytes": 49285,
+    "receivedChunkPresentation": 1,
+    "snapshotBytesWithoutIncremental": 5441970,
+    "snapshotCount": 219
+  },
+  "finalPDF": {
+    "status": "passed",
+    "errors": [],
+    "pymupdfVersion": "1.27.2.3",
+    "mupdfVersion": "1.27.2",
+    "marginTolerancePoints": 5.0,
+    "pdfSHA256": "d624f3d7a108262e2fb6dfbd132ea3bb4921f2aa2006c65806488467e975a766",
+    "printableRect": [
+      51.0236220472441,
+      56.69291338582678,
+      493.228346456693,
+      728.5039370078742
+    ],
+    "visibleLabels": 200,
+    "visibleIntegrals": 200,
+    "checkedCharacters": 10280,
+    "fullyClippedCharacters": 0,
+    "outsideCharacters": 0,
+    "outsidePages": [],
+    "separatedEntryPages": [],
+    "maximumMarginExcessPoints": 4.186367365318965,
+    "pages": [
+      {
+        "page": 1,
+        "labels": 5,
+        "integrals": 5,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 2,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 3,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 4,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 5,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 6,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 7,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 8,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 9,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 10,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 11,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 12,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 13,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 14,
+        "labels": 7,
+        "integrals": 7,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 15,
+        "labels": 4,
+        "integrals": 4,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 16,
+        "labels": 5,
+        "integrals": 5,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 17,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 18,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 19,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 20,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 21,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 22,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 23,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 24,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 25,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 26,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 27,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 28,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 29,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 30,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 31,
+        "labels": 6,
+        "integrals": 6,
+        "outsideCharacters": 0
+      },
+      {
+        "page": 32,
+        "labels": 5,
+        "integrals": 5,
+        "outsideCharacters": 0
+      }
+    ],
+    "pageCount": 32,
+    "visibleEntryOrderVerified": true,
+    "lastPageHasText": true,
+    "lastPageInkPixels": 7886,
+    "blankTrailingPage": false
+  }
+}
