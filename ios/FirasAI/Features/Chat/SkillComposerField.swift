@@ -52,7 +52,12 @@ struct SkillComposerField: View {
     }
     private var editor: some View {
         let selection = Binding<NSRange>(get: { draft.selection }, set: { draft.selection = $0 })
-        let handler: ((String) -> Bool)? = pasteCharacterBudget == nil ? nil : paste
+        let handler: ((String) -> Bool)?
+        if pasteCharacterBudget != nil {
+            handler = { (value: String) -> Bool in self.stageLongPaste(value) }
+        } else {
+            handler = nil
+        }
         return FirasGrowingTextField(text: textBinding, placeholder: placeholder, maxLines: maxLines,
             pointSize: pointSize, palette: p, isFocused: focused,
             sendOnReturn: sendOnReturn, onSubmit: onSubmit, onKey: handleKey,
@@ -87,7 +92,7 @@ struct SkillComposerField: View {
                 .firasSheetBackground(p)
         }
     }
-    private func paste(_ text: String) -> Bool {
+    private func stageLongPaste(_ text: String) -> Bool {
         let used = draft.pastes.reduce(0) { $0 + $1.text.utf16.count }
         guard draft.pastes.count < pasteSlots, text.utf16.count <= min(120_000, (pasteCharacterBudget ?? 0) - used) else {
             env.toasts.show(LText(ar: "النص أكبر من المساحة المتبقية للمرفقات. قلّله أو أرفقه كملف؛ النص الأصلي يبقى بالحافظة.", en: "This paste exceeds the remaining attachment space. Shorten it or attach a file; the original stays on your clipboard.")(lang), isError: true)
