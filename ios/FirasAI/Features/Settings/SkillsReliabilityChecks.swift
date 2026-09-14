@@ -2,6 +2,7 @@
 import Foundation
 import SwiftUI
 import UIKit
+import Perception
 
 @MainActor
 enum SkillsReliabilityChecks {
@@ -45,6 +46,11 @@ enum SkillsReliabilityChecks {
         var failures: [String] = []
         func check(_ valid: Bool, _ message: String) { if !valid { failures.append("Skills: " + message) } }
         for sample in samples { check(SkillValidation.problems(sample).isEmpty, "valid skill rejected") }
+        check(SendPipeline.omnixPollInterval(readerIsPresent: true) == 1 && SendPipeline.omnixPollInterval(readerIsPresent: false) == 10, "Omnix visible/background cadence changed")
+        let pastedSource = String(repeating: "معادلة 😀 \\int_0^1 x dx\n", count: 300)
+        let pasted = PastedTextItem(text: pastedSource, number: 1)
+        check(PastedTextItem.shouldCollapse(pastedSource) && !PastedTextItem.shouldCollapse("short text"), "long paste threshold")
+        check(pasted.attachment.text == pastedSource && pasted.attachment.originalData == Data(pastedSource.utf8) && !pasted.attachment.truncated, "pasted document lost original content")
         let draft = SkillDraft()
         var text = "اشرح 😀 /"
         draft.synchronize(text); draft.selection = NSRange(location: text.utf16.count, length: 0)
@@ -64,6 +70,16 @@ enum SkillsReliabilityChecks {
         check(draft.mentions.count == 1 && draft.mentions[0].id == samples[1].id, "editing one name kept stale skill or erased sibling")
         draft.synchronize("")
         check(draft.mentions.isEmpty, "clearing composer retained skills")
+        var multiple = ""
+        for skill in samples {
+            multiple += "/"; draft.synchronize(multiple); draft.selection = NSRange(location: multiple.utf16.count, length: 0)
+            if let token = draft.token(multiple), let value = draft.insert(skill, token: token, into: multiple) { multiple = value }
+        }
+        check(draft.mentions.count == 3, "third skill was not selectable")
+        multiple += "/"; draft.synchronize(multiple); draft.selection = NSRange(location: multiple.utf16.count, length: 0)
+        if let token = draft.token(multiple) { check(draft.insert(samples[0], token: token, into: multiple) == nil, "selection exceeded three or duplicated a skill") }
+        draft.retainValid(skills: [samples[0]], text: multiple)
+        check(draft.mentions.count == 1, "deleted/disabled skills stayed active")
         for invalid in ["https://example.com/x", "a/b", "`/math", "```swift\n/math", "~~~\n/math", "hello /a/b"] {
             check(SkillSlashToken.scan(invalid, selection: NSRange(location: invalid.utf16.count, length: 0)) == nil, "slash inside URL/path/code")
         }
@@ -130,13 +146,31 @@ enum SkillsReliabilityChecks {
         await env.skills.load()
         let model = SkillsComposerGalleryModel()
         let host = UIHostingController(rootView: SkillsComposerGalleryView(env: env, model: model))
-        host.view.frame = CGRect(x: 0, y: 0, width: 390, height: 650)
+        guard let parent = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive })?
+            .windows.first(where: \.isKeyWindow)?.rootViewController else {
+            return ["Skills: native composer fixture has no foreground host"]
+        }
+        // SwiftUI's lazy Perception body is evaluated only once the controller is mounted.
+        parent.addChild(host)
+        host.view.frame = CGRect(x: parent.view.bounds.maxX + 100, y: 0, width: 390, height: 850)
+        parent.view.addSubview(host.view)
+        host.didMove(toParent: parent)
+        defer {
+            host.willMove(toParent: nil)
+            host.view.removeFromSuperview()
+            host.removeFromParent()
+        }
+        host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
-        await JobClock.rest(0.15)
+        await JobClock.rest(0.3)
         func textViews(_ view: UIView) -> [UITextView] { (view as? UITextView).map { [$0] } ?? view.subviews.flatMap(textViews) }
         guard let field = textViews(host.view).first else { return ["Skills: native composer text view missing"] }
         var failures: [String] = []
         if field.text != model.text { failures.append("Skills: native editor lost visible skill names") }
+        field.selectedRange = NSRange(location: 1, length: 0)
+        field.delegate?.textViewDidChangeSelection?(field)
+        await JobClock.rest(0.15)
         for mention in model.draft.mentions {
             let color = field.attributedText.attribute(.foregroundColor, at: mention.range.location, effectiveRange: nil) as? UIColor
             if color != UIColor(env.prefs.palette.accent) { failures.append("Skills: selected name is not green text") }
@@ -214,6 +248,7 @@ final class SkillsFixtureProtocol: URLProtocol, @unchecked Sendable {
             if let token = draft.token(text), let value = draft.insert(skill, token: token, into: text) { text = value }
         }
         text += "اصنع لي ملفاً مرتباً /"; draft.synchronize(text); draft.selection = NSRange(location: text.utf16.count, length: 0)
+        draft.pastes = [PastedTextItem(text: String(repeating: "ملاحظات الدراسة\nقواعد التكامل والتحقق من الحلول\n", count: 50), number: 1)]
     }
 }
 @MainActor struct SkillsComposerGalleryView: View {
@@ -221,14 +256,16 @@ final class SkillsFixtureProtocol: URLProtocol, @unchecked Sendable {
     @ObservedObject var model: SkillsComposerGalleryModel
     @FocusState private var focused: Bool
     var body: some View {
+        WithPerceptionTracking {
         VStack(spacing: 20) {
             Text("فراس · المهارات").font(.title2.weight(.semibold)).foregroundStyle(env.prefs.palette.textPrimary)
             Spacer()
             SkillComposerField(env: env, text: $model.text, draft: model.draft,
-                placeholder: "اسأل فراس…", focused: $focused)
+                placeholder: "اسأل فراس…", focused: $focused, pasteCharacterBudget: 300_000)
                 .padding(16).firasGlass(.floating, palette: env.prefs.palette, in: FirasAnyShape(RoundedRectangle(cornerRadius: 24)))
             Spacer().frame(height: 24)
         }.padding(16).background(env.prefs.palette.background)
+        }
     }
 }
 #endif

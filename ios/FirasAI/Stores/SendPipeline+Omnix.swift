@@ -1,6 +1,8 @@
 import Foundation
 
 extension SendPipeline {
+    // Matches the website's active-run cadence; hidden readers retain their lower traffic rate.
+    nonisolated static func omnixPollInterval(readerIsPresent: Bool) -> TimeInterval { readerIsPresent ? 1 : 10 }
     func omnixIdentityDidChange(to owner: String?) {
         for task in omnixWatchers.values { task.cancel() }
         for task in omnixAdmissions.values { task.cancel() }
@@ -14,11 +16,13 @@ extension SendPipeline {
         guard session.isMember, let owner = session.identityID else { throw APIError.cancelled }
         if omnixState.owner != owner { omnixIdentityDidChange(to: owner) }
         let generation = omnixState.generation
+        // Independent read-only checks avoid a second network round trip before admission.
+        async let cloudRead = OmnixService.cloud(api: api)
         let access = try await OmnixService.access(api: api)
         guard omnixCurrent(owner, generation) else { throw APIError.cancelled }
         omnixState.access = access; omnixState.ready = false
         guard access.status == "approved" else { return }
-        let cloud = try await OmnixService.cloud(api: api)
+        let cloud = try await cloudRead
         guard omnixCurrent(owner, generation) else { throw APIError.cancelled }
         omnixState.ready = cloud.ready && cloud.state == "ready"
     }
@@ -192,7 +196,7 @@ extension SendPipeline {
                 }
                 if !pending { return }
                 iteration += 1
-                await JobClock.rest(readerIsPresent ? 2 : 10)
+                await JobClock.rest(Self.omnixPollInterval(readerIsPresent: readerIsPresent))
             } catch {
                 guard omnixCurrent(owner, generation) else { return }
                 if let status = (error as? APIError)?.status, status == 401 || status == 403 {

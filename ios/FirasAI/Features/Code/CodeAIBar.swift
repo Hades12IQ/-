@@ -306,7 +306,9 @@ struct CodeAIBar: View {
             HStack(alignment: .bottom, spacing: 10) {
                 SkillComposerField(env: env, text: $draft, draft: skillDraft,
                     placeholder: Strings.CodeUI.aiPlaceholder(lang), pointSize: 16, maxLines: 5,
-                    focused: $focused, sendOnReturn: env.prefs.sendOnReturn, onSubmit: send)
+                    focused: $focused, sendOnReturn: env.prefs.sendOnReturn, onSubmit: send,
+                    pasteCharacterBudget: max(0, CodeStore.attachmentCharacterCap - attachments.reduce(0) { $0 + ($1.text?.count ?? 0) }),
+                    pasteSlots: max(0, ChatAttachmentProcessor.maxFiles - attachments.count))
                 .disabled(isSending)
                 .bidiIsland(for: draft, fallback: lang)
 
@@ -397,7 +399,7 @@ struct CodeAIBar: View {
 
     private var canSend: Bool {
         guard !isSending, env.code.project != nil else { return false }
-        return !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !attachments.isEmpty
+        return !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !attachments.isEmpty || !skillDraft.pastes.isEmpty
     }
 
     // MARK: - Sending
@@ -462,13 +464,13 @@ struct CodeAIBar: View {
             env.toasts.show(Strings.CodeUI.needProject(lang), isError: true)
             return
         }
-        guard !instruction.isEmpty || !attachments.isEmpty else { return }
+        guard !instruction.isEmpty || !attachments.isEmpty || !skillDraft.pastes.isEmpty else { return }
 
         Haptics.send()
         isSending = true
         sendStartedAt = Date()
         focused = false
-        let staged = attachments
+        let staged = attachments + skillDraft.pastes.map(\.attachment)
 
         let selectedSkills = skillDraft.snapshot(text: draft, store: env.skills)
         Task {
@@ -494,6 +496,7 @@ struct CodeAIBar: View {
             let grew = env.code.thread.messages.count > before
             if result != nil || grew {
                 draft = ""
+                skillDraft.reset()
                 attachments = []
             }
         }

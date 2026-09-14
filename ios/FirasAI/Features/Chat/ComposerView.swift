@@ -53,7 +53,7 @@ struct ComposerView: View {
     private var isBusy: Bool { state?.isBusy ?? false }
     private var isTemporary: Bool { env.chat.conversation(conversationID)?.ephemeral ?? false }
     private var isReading: Bool { attachments.contains { $0.isReading } }
-    private var readyAttachments: [PreparedAttachment] { attachments.compactMap { $0.prepared } }
+    private var readyAttachments: [PreparedAttachment] { attachments.compactMap { $0.prepared } + skillDraft.pastes.map(\.attachment) }
     private var canSend: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !readyAttachments.isEmpty
     }
@@ -161,7 +161,9 @@ struct ComposerView: View {
     private var field: some View {
         SkillComposerField(env: env, text: $text, draft: skillDraft, placeholder: placeholder,
             pointSize: 17 * env.prefs.fontScale.factor, focused: $fieldFocused,
-            sendOnReturn: env.prefs.sendOnReturn, onSubmit: send)
+            sendOnReturn: env.prefs.sendOnReturn, onSubmit: send,
+                    pasteCharacterBudget: max(0, ChatAttachmentProcessor.maxTotalFileCharacters - attachments.reduce(0) { $0 + $1.textCost }),
+                    pasteSlots: max(0, ChatAttachmentProcessor.maxFiles - attachments.filter { !$0.isImage }.count))
             .padding(.horizontal, 8).padding(.vertical, 6)
     }
 

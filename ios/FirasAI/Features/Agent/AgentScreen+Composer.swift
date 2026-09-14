@@ -38,7 +38,7 @@ struct AgentComposer: View {
     private var draftKey: String { DraftStore.key(conversationID: conversationID) }
 
     private var isReading: Bool { attachments.contains { $0.isReading } }
-    private var ready: [PreparedAttachment] { attachments.compactMap { $0.prepared } }
+    private var ready: [PreparedAttachment] { attachments.compactMap { $0.prepared } + skillDraft.pastes.map(\.attachment) }
     private var isBusy: Bool {
         env.agent.liveConversationID != nil || env.agent.starting.contains(conversationID)
     }
@@ -64,7 +64,9 @@ struct AgentComposer: View {
                 }
                 SkillComposerField(env: env, text: $text, draft: skillDraft,
                     placeholder: Strings.Agent.composerPlaceholder(lang), pointSize: 17 * env.prefs.fontScale.factor,
-                    focused: $fieldFocused, sendOnReturn: env.prefs.sendOnReturn, onSubmit: send)
+                    focused: $fieldFocused, sendOnReturn: env.prefs.sendOnReturn, onSubmit: send,
+                    pasteCharacterBudget: max(0, ChatAttachmentProcessor.maxTotalFileCharacters - attachments.reduce(0) { $0 + $1.textCost }),
+                    pasteSlots: max(0, ChatAttachmentProcessor.maxFiles - attachments.filter { !$0.isImage }.count))
                 if dictating {
                     DictationBar(
                         dictation: env.dictation,

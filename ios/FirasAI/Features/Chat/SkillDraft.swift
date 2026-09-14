@@ -38,12 +38,18 @@ struct SkillSlashToken: Equatable {
 final class SkillDraft {
     private(set) var mentions: [SkillMention] = []
     private(set) var previous = ""
+    var pastes: [PastedTextItem] = []
     var selection = NSRange(location: 0, length: 0)
     var dismissedStart: Int?
     var highlighted = 0
 
     func synchronize(_ text: String) {
         guard text != previous else { return }
+        if mentions.isEmpty {
+            previous = text; highlighted = 0
+            if SkillSlashToken.scan(text, selection: selection) == nil { dismissedStart = nil }
+            return
+        }
         let old = Array(previous.utf16), new = Array(text.utf16)
         var prefix = 0, suffix = 0
         while prefix < min(old.count, new.count), old[prefix] == new[prefix] { prefix += 1 }
@@ -81,5 +87,13 @@ final class SkillDraft {
         synchronize(text)
         return store.selected(mentions.map(\.id))
     }
-    func reset() { mentions = []; previous = ""; selection = NSRange(location: 0, length: 0); dismissedStart = nil; highlighted = 0 }
+    func retainValid(skills: [AccountSkill], text: String) {
+        let source = text as NSString
+        mentions.removeAll { mention in
+            guard mention.range.location >= 0, NSMaxRange(mention.range) <= source.length,
+                  let skill = skills.first(where: { $0.id == mention.id && $0.enabled }) else { return true }
+            return source.substring(with: mention.range) != "/" + skill.name
+        }
+    }
+    func reset() { mentions = []; pastes = []; previous = ""; selection = NSRange(location: 0, length: 0); dismissedStart = nil; highlighted = 0 }
 }

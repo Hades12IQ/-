@@ -17,13 +17,15 @@ struct FirasGrowingTextField: View {
     private let onKey: (ComposerKey) -> Bool
     private let selection: Binding<NSRange>?
     private let highlightedRanges: [NSRange]
+    private let onLargePaste: ((String) -> Bool)?
     @State private var measuredHeight: CGFloat
 
     init(text: Binding<String>, placeholder: String, minLines: Int = 1, maxLines: Int = 6,
          pointSize: CGFloat = 17, palette: FirasPalette, isFocused: FocusState<Bool>.Binding,
          sendOnReturn: Bool = false, onSubmit: @escaping () -> Void = {},
          onKey: @escaping (ComposerKey) -> Bool = { _ in false },
-         selection: Binding<NSRange>? = nil, highlightedRanges: [NSRange] = []) {
+         selection: Binding<NSRange>? = nil, highlightedRanges: [NSRange] = [],
+         onLargePaste: ((String) -> Bool)? = nil) {
         _text = text
         self.placeholder = placeholder
         self.minLines = max(1, minLines)
@@ -36,6 +38,7 @@ struct FirasGrowingTextField: View {
         self.onKey = onKey
         self.selection = selection
         self.highlightedRanges = highlightedRanges
+        self.onLargePaste = onLargePaste
         _measuredHeight = State(initialValue: UIFont.systemFont(ofSize: pointSize).lineHeight * CGFloat(max(1, minLines)))
     }
 
@@ -62,7 +65,7 @@ struct FirasGrowingTextField: View {
                     placeholder: placeholder, minLines: minLines, maxLines: maxLines, pointSize: pointSize,
                     palette: palette, focus: isFocused, focusRequested: isFocused.wrappedValue,
                     sendOnReturn: sendOnReturn, onSubmit: onSubmit, onKey: onKey,
-                    selection: selection, highlightedRanges: highlightedRanges)
+                    selection: selection, highlightedRanges: highlightedRanges, onLargePaste: onLargePaste)
                     .frame(height: measuredHeight)
             }
         }
@@ -85,6 +88,7 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
     let onKey: (ComposerKey) -> Bool
     let selection: Binding<NSRange>?
     let highlightedRanges: [NSRange]
+    let onLargePaste: ((String) -> Bool)?
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.layoutDirection) private var layoutDirection
 
@@ -113,7 +117,7 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
         defer { context.coordinator.updating = false }
         context.coordinator.parent = self
         view.font = .systemFont(ofSize: pointSize)
-        view.textColor = UIColor(palette.textPrimary)
+        if selection == nil { view.textColor = UIColor(palette.textPrimary) }
         view.tintColor = UIColor(palette.accent)
         view.placeholder.text = placeholder
         view.placeholder.font = view.font
@@ -127,6 +131,7 @@ private struct FirasLegacyGrowingEditor: UIViewRepresentable {
         view.wantsFocus = focusRequested && isEnabled
         view.returnKeyType = sendOnReturn ? .send : .default
         view.handleKey = onKey
+        view.handleLargePaste = onLargePaste
         view.accessibilityLabel = placeholder
         if view.text != text, view.markedTextRange == nil {
             let selection = view.selectedRange
@@ -190,11 +195,19 @@ private final class FirasGrowingInputView: UITextView {
     var wantsFocus = false
     var onHeight: ((CGFloat) -> Void)?
     var handleKey: ((ComposerKey) -> Bool)?
+    var handleLargePaste: ((String) -> Bool)?
     private var lastHeight: CGFloat = 0
     private var styledText = ""
     private var styledRanges: [NSRange] = []
     private var styledAccent: UIColor?
     private var styledNormal: UIColor?
+
+    override func paste(_ sender: Any?) {
+        // Read the clipboard only in the user's paste action, never on appearance or focus.
+        if let handleLargePaste, let text = UIPasteboard.general.string,
+           PastedTextItem.shouldCollapse(text), handleLargePaste(text) { return }
+        super.paste(sender)
+    }
 
     func styleSkillNames(_ ranges: [NSRange], accent: UIColor, normal: UIColor) {
         guard text != styledText || ranges != styledRanges || accent != styledAccent || normal != styledNormal else { return }

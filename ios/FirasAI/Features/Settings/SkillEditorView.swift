@@ -76,6 +76,7 @@ struct SkillEditorView: View {
     }
     private func editor(_ binding: Binding<String>, height: CGFloat, label: String) -> some View {
         TextEditor(text: binding).font(.body).frame(minHeight: height)
+            .firasScrollContentBackground(.hidden)
             .padding(8).background(p.surface, in: RoundedRectangle(cornerRadius: 14))
             .bidiIsland(for: binding.wrappedValue, fallback: lang).accessibilityLabel(label)
     }

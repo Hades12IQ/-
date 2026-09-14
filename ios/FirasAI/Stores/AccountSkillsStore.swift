@@ -3,7 +3,11 @@ import Perception
 
 @MainActor @Perceptible
 final class AccountSkillsStore {
-    private(set) var skills: [AccountSkill] = []
+    private var entries: [AccountSkill] = []
+    private(set) var skills: [AccountSkill] {
+        get { session.isMember && owner == session.identityID ? entries : [] }
+        set { entries = newValue }
+    }
     private(set) var loading = false
     private(set) var mutating = false
     private(set) var loaded = false

@@ -12,8 +12,11 @@ struct SkillComposerField: View {
     var focused: FocusState<Bool>.Binding
     var sendOnReturn = false
     var onSubmit: () -> Void = {}
+    var pasteCharacterBudget: Int? = nil
+    var pasteSlots: Int = 5
     @State private var showsLibrary = false
     @State private var libraryToken: SkillSlashToken?
+    @State private var preview: PastedTextItem?
     @Environment(\.isEnabled) private var enabled
     @Environment(\.dismiss) private var dismiss
     private var lang: AppLanguage { env.prefs.lang }
@@ -35,17 +38,30 @@ struct SkillComposerField: View {
         WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 6) {
                 if let token, enabled { menu(token) }
+                if !draft.pastes.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(draft.pastes) { item in
+                                PastedTextCard(item: item, palette: p, lang: lang, open: { preview = item },
+                                    remove: { draft.pastes.removeAll { $0.id == item.id } })
+                            }
+                        }
+                    }
+                }
                 FirasGrowingTextField(text: textBinding, placeholder: placeholder, maxLines: maxLines,
                     pointSize: pointSize, palette: p, isFocused: focused,
                     sendOnReturn: sendOnReturn, onSubmit: onSubmit, onKey: handleKey,
                     selection: Binding(get: { draft.selection }, set: { draft.selection = $0 }),
-                    highlightedRanges: draft.mentions.map(\.range))
+                    highlightedRanges: draft.mentions.map(\.range),
+                    onLargePaste: pasteCharacterBudget != nil ? paste : nil)
                     .frame(minHeight: 44).bidiIsland(for: text, fallback: lang)
             }
             .task(id: token != nil) { if token != nil { await env.skills.load() } }
             .firasOnChange(of: text) { _, value in draft.synchronize(value) }
+            .firasOnChange(of: env.skills.skills) { _, skills in draft.retainValid(skills: skills, text: text) }
             .firasOnChange(of: env.session.identityID) { _, _ in draft.reset() }
             .onAppear { draft.synchronize(text) }
+            .sheet(item: $preview) { item in PastedTextPreview(item: item, palette: p, lang: lang) }
             .sheet(isPresented: $showsLibrary) {
                 FirasNavigationStack {
                     SkillsSettingsView(env: env) { skill in
@@ -60,6 +76,16 @@ struct SkillComposerField: View {
                     .firasSheetBackground(p)
             }
         }
+    }
+    private func paste(_ text: String) -> Bool {
+        let used = draft.pastes.reduce(0) { $0 + $1.text.utf16.count }
+        guard draft.pastes.count < pasteSlots, text.utf16.count <= min(120_000, (pasteCharacterBudget ?? 0) - used) else {
+            env.toasts.show(LText(ar: "النص أكبر من المساحة المتبقية للمرفقات. قلّله أو أرفقه كملف؛ النص الأصلي يبقى بالحافظة.", en: "This paste exceeds the remaining attachment space. Shorten it or attach a file; the original stays on your clipboard.")(lang), isError: true)
+            return true
+        }
+        draft.pastes.append(PastedTextItem(text: text, number: draft.pastes.count + 1))
+        Haptics.attach()
+        return true
     }
     private func menu(_ token: SkillSlashToken) -> some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -89,7 +115,7 @@ struct SkillComposerField: View {
                     }
                     if available.isEmpty && commands.isEmpty { Text(SkillsCopy.noResults(lang)).font(.subheadline).foregroundStyle(p.textMuted).padding(12) }
                 }.padding(.horizontal, 6)
-            }.frame(maxHeight: 230)
+            }.frame(maxHeight: draft.pastes.isEmpty ? 230 : 150)
             Divider().overlay(p.border)
             Button {
                 libraryToken = token; showsLibrary = true
