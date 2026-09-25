@@ -228,11 +228,17 @@ extension SendPipeline {
         let hasImages = !ownImages.isEmpty || !reattach.isEmpty
         let previousDocument = DocumentRevisionContext.latestMessage(in: history, request: user.content)
         let revisionFormat = DocumentRevisionContext.format(for: user.content, candidate: previousDocument, history: history)
-        let classified = revisionFormat.map { RequestKind.file(format: $0, explicitPages: nil) }
+        var classified = revisionFormat.map { RequestKind.file(format: $0, explicitPages: nil) }
             ?? RequestClassifier.classify(user.content, hasImages: hasImages, lang: lang)
+        let owner = session.identityID
+        if context.generation == .current, revisionFormat == nil {
+            if let decision = await GenerationIntentRouter.classify(user.content, history: history, api: api, hasImages: hasImages) {
+                classified = decision.requestKind(fallback: classified, text: user.content, hasImages: hasImages)
+            }
+            guard !Task.isCancelled, session.identityID == owner else { return }
+        }
         let counted = CountedDocumentPlan.resolve(request: user.content, kind: classified,
             history: history, previous: previousDocument, isRevision: revisionFormat != nil)
-        let owner = session.identityID
         var revision = revisionFormat == nil || counted != nil ? nil : DocumentRevisionContext.completeSource(from: previousDocument)
         var restoredAssets: [DocumentAssetInventory.Entry] = []
         if revisionFormat != nil, counted == nil, revision == nil,

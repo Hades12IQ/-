@@ -137,7 +137,9 @@ extension CodeStore {
         let saved = try await api.getChat(id: receipt.conversationId)
         guard session.identityID == receipt.owner, saved.id == receipt.conversationId else { throw APIError.cancelled }
         if let result = saved.messages.last(where: { $0.role == .assistant && $0.cid == receipt.cid && $0.content.hasPrefix("```firas-code-edit\n") }) {
-            return ChatJobStatus(phase: "completed", text: result.content)
+            var restored = ChatJobStatus(phase: "completed", text: result.content)
+            restored.steps = result.steps
+            return restored
         }
         return status
     }
@@ -151,7 +153,7 @@ extension CodeStore {
                 text = proposal.prose
             }
             if ["cancelled", "canceled"].contains(status.phase) { text = OmnixCopy.stopped(lang) }
-            try await updateCodeEdit(receipt, phase: status.phase, content: text, generation: generation)
+            try await updateCodeEdit(receipt, phase: status.phase, content: text, generation: generation, steps: status.steps)
             guard codeOmnixCurrent(receipt.owner, generation) else { throw APIError.cancelled }
             codeOmnix.active.remove(receipt.conversationId)
             if codeOmnix.eligible.contains(receipt.cid), !codeOmnix.notified.contains(receipt.cid), !codeOmnix.cancelled.contains(receipt.cid), ["completed", "failed"].contains(status.phase) {
@@ -186,13 +188,14 @@ extension CodeStore {
         } catch { if codeOmnixCurrent(receipt.owner, generation) { codeOmnix.notices[receipt.cid] = OmnixCopy.reconnect(lang) } }
     }
 
-    private func updateCodeEdit(_ receipt: CodeEditReceipt, phase: String, content: String?, generation: Int) async throws {
+    private func updateCodeEdit(_ receipt: CodeEditReceipt, phase: String, content: String?, generation: Int, steps: [ExecutionStep]? = nil) async throws {
         guard receipt.isValid, codeOmnixCurrent(receipt.owner, generation), var current = await codeThread(receipt.conversationId, owner: receipt.owner),
               codeOmnixCurrent(receipt.owner, generation), let index = current.messages.firstIndex(where: { $0.role == "ai" && $0.edit?.cid == receipt.cid && $0.edit?.owner == receipt.owner }),
               let previous = current.messages[index].edit, previous.baseHash == receipt.baseHash,
               previous.jobId.isEmpty || previous.jobId == receipt.jobId else { throw APIError.cancelled }
         current.messages[index].edit = receipt; current.messages[index].editPhase = phase
         if let content { current.messages[index].content = content }
+        current.messages[index].steps = ExecutionStep.merge(current.messages[index].steps, steps ?? [])
         codeOmnix.pendingSaves.insert(receipt.cid)
         if openProjectID == receipt.conversationId { thread = current }
         await cache.saveThread(current, id: receipt.conversationId, ownerID: receipt.owner)

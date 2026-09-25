@@ -26,6 +26,10 @@ enum GenerationReliabilityChecks {
         let version = AnswerVersion(content: "answer", mgen: "1.1", steps: merged)
         let restored = (try? JSONEncoder().encode(version)).flatMap { try? JSONDecoder().decode(AnswerVersion.self, from: $0) }
         check(restored == version, "answer alternative lost generation or activity")
+        var codeTurn = CodeChatMessage(role: "ai", content: "Reviewed")
+        codeTurn.mgen = "1.1"; codeTurn.steps = merged
+        let codeRestored = (try? JSONEncoder().encode(codeTurn)).flatMap { try? JSONDecoder().decode(CodeChatMessage.self, from: $0) }
+        check(codeRestored == codeTurn, "Code thread lost generation or tool activity")
         let progressJSON = #"{"timelineVersion":1,"events":[{"id":"speech","kind":"speech","text":"😀 نص","at":1},{"id":"tool-1","kind":"tool","at":2}],"plan":[{"id":"tool-1","title":"delegate_task","s":"done","observed":true,"error":false,"delegationOutcome":"dispatched"}]}"#
         let progress = try? JSONDecoder().decode(OmnixProgress.self, from: Data(progressJSON.utf8))
         check(progress != nil, "actual gateway boolean error breaks progress decoding")
@@ -48,6 +52,10 @@ enum GenerationReliabilityChecks {
         let prompt = String(repeating: "A cinematic photorealistic portrait with rim lighting and an 85mm lens. ", count: 5)
         check(GenerationIntentRouter.isFinishedImagePrompt(prompt), "pasted image prompt takes conversational fast path")
         check(!GenerationIntentRouter.isFinishedImagePrompt("Explain this: " + prompt), "question classified as image")
+        let docDecision = GenerationIntentRouter.Decision(kind: "pdf", requirements: "", codeTarget: "unknown", codeLanguage: "unknown")
+        check(docDecision.requestKind(fallback: .chat, text: "Write a LaTeX source document", hasImages: false) == .chat, "source requested as a rendered document")
+        let advice = GenerationIntentRouter.Decision(kind: "chat", requirements: "", codeTarget: "unknown", codeLanguage: "unknown")
+        check(advice.requestKind(fallback: .code, text: "Explain how to make a website", hasImages: false) == .chat, "semantic advice verdict ignored")
         failures += await previewChecks()
         return failures
     }

@@ -16,9 +16,13 @@ struct CodeEditRunView: View {
                 if owns {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text(ModelTier.lenient(turn.model).label(lang)).font(.caption.weight(.semibold)).foregroundStyle(env.prefs.palette.accent)
+                            Text(ModelGeneration.history(turn.mgen).label(ModelTier.lenient(turn.model), lang)).font(.caption.weight(.semibold)).foregroundStyle(env.prefs.palette.accent)
                             Spacer()
                             if !CodeStore.editIsTerminal(status?.phase ?? turn.editPhase) { ProgressView().controlSize(.small) }
+                        }
+                        ForEach(ExecutionStep.merge(turn.steps, status?.steps ?? []) ?? []) { step in
+                            ExecutionStepRow(step: step, lang: lang, palette: env.prefs.palette,
+                                streaming: !CodeStore.editIsTerminal(status?.phase ?? turn.editPhase))
                         }
                         if !turn.content.isEmpty {
                             MarkdownView(markdown: turn.content, messageID: "code-edit-" + turn.id, streaming: false, lang: lang,
