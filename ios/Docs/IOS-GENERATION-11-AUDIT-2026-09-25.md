@@ -31,3 +31,35 @@ Target: the current website working tree, verified against the public model pick
 ## Delivery gates
 
 Keep iOS 15 compatibility and native theme; prove old history is not relabelled; prove generation follows each request and alternative; exercise start/update/fail/unknown step states; verify private multi-file preview and account change cleanup; test keyboard focus during slash selection and prompt editing; run native smoke checks and archive only after those pass. No release is considered complete before the produced IPA and build evidence are checked.
+
+## Implementation delivered for verification
+
+Native source commit: `45832b25c444e883d127259f48406adb30f29e92` on `codex/ios-generation-11-20260925`.
+
+- Generation 1.1 is carried on Chat, Code, Brain and Omnix requests and saved with answers, alternatives and retries. New preferences choose 1.1; historical messages retain their original generation. Agent retains its existing server-managed Manus contract.
+- Native model pickers and default-model settings expose current and previous generations without replacing the app's visual theme.
+- Chat and Code retain real tool steps through streaming, background-job recovery and history. Omnix interleaves speech and tool events, uses the website's action vocabulary, and distinguishes dispatched sub-tasks from confirmed completion.
+- HTML workspace projects use a private multi-file preview with local CSS, JavaScript, images and fonts. The preview has no authenticated cookies or native bridge. Publishing remains server-owned and uses existing confirmed receipts and links. Existing GitHub account/repository linking is retained.
+- Account skills can be imported by URL. Multiple green inline skill tokens and the existing library remain available. `/prompteng` provides Arabic/English output, streaming, Stop, a deadline and restoration of the original request when no output arrived. Draft epochs and account identity prevent a response from writing into a different conversation.
+- The native semantic router uses the website's pinned `router:true, nomem:true` helper contract and shipping instruction, with a bounded timeout and the established native fallback. It does not call `/api/intent`. Current-generation Omnix receives a confirmed `kind` for its conversational fast path; work retains durable receipt reconciliation.
+- Server-owned long-answer continuation is retained. No duplicate client continuation or replay of a publishing submission was added.
+
+## Verification boundaries
+
+Build 102 passed the native simulator stage and produced passing modern and forced-legacy gallery reports; its model-picker screenshot was inspected. It was superseded before publishing. Final build 104 also passed the complete simulator stage with the later semantic Chat routing, Code step persistence and prompt-draft lifecycle changes included. Both normal and compatibility smoke reports have `status: passed` and no errors; both native galleries passed. Its actual model-picker screenshot was inspected.
+
+The complete build-104 evidence archive was downloaded and locally CRC-verified. The independent final-PDF inspection found all 200 problem/solution labels and integral symbols across 32 pages, no fully clipped characters, no characters outside the printable margin tolerance, no missing/out-of-order entries and no blank trailing page. The generated-image viewer close action and native word selection also passed their existing regressions. These are deterministic simulator fixtures, not claims about a model's mathematical correctness or real-server response latency.
+
+The Windows host cannot run Xcode. CI uses an iOS 26.4.1 Simulator; the forced-legacy gallery exercises compatibility branches on that runtime, **not an actual iOS 15 device**. The deployment target remains iOS 15. Authenticated live account imports, model calls and real publishing were not exercised from the guest browser. No measured production-latency improvement is claimed.
+
+Private previews support built/static HTML projects with up to 64 eligible files and 20 MB. External network resources are blocked in that private preview; projects requiring a build or a live backend still require their published preview or downloadable sources.
+
+## Verified release
+
+- GitHub Actions [run 104](https://github.com/Hades12IQ/-/actions/runs/36096185265) completed successfully, including the Release device build and publication.
+- [Download the unsigned IPA](https://github.com/Hades12IQ/-/releases/download/ios-build-104/FirasAI-unsigned.ipa). Release source is exactly `45832b25c444e883d127259f48406adb30f29e92`.
+- The complete 12,615,654-byte IPA was downloaded locally. Every ZIP entry passed CRC verification; its local SHA-256 matches both the published checksum and GitHub's asset digest: `a5b24d9bdc25237bb3f7c7d3ff9c3e8d0e75cca8ac84b4348e38c42857ba7d58`.
+- Package metadata confirms bundle `org.firasai.FirasAI`, build `104`, minimum iOS `15.0`, a native ARM64 executable, bundled document fonts and no signature/provisioning profile. The owner must sign it before installation.
+- Published normal/compatibility smoke reports, final-PDF inspection and both native galleries all passed with no reported errors. Local verification record: `D:/tmp/firas-ios-qa/run104/verified.json`.
+
+The live-account and runtime limitations above remain applicable; successful fixture tests are not represented as a real authenticated publishing run.
