@@ -44,6 +44,7 @@ final class SkillDraft {
     var highlighted = 0
     var promptRequest = 0
     var engineering = false
+    private(set) var epoch = 0
 
     /// Shared by every send button, including hardware Return. A helper never becomes a chat turn.
     func interceptPrompt(_ text: String) -> Bool {
@@ -105,5 +106,5 @@ final class SkillDraft {
             return source.substring(with: mention.range) != "/" + skill.name
         }
     }
-    func reset() { mentions = []; pastes = []; previous = ""; selection = NSRange(location: 0, length: 0); dismissedStart = nil; highlighted = 0 }
+    func reset() { epoch += 1; engineering = false; mentions = []; pastes = []; previous = ""; selection = NSRange(location: 0, length: 0); dismissedStart = nil; highlighted = 0 }
 }

@@ -51,7 +51,8 @@ struct SkillComposerField: View {
             .firasOnChange(of: env.skills.skills) { _, skills in draft.retainValid(skills: skills, text: text) }
             .firasOnChange(of: env.session.identityID) { _, _ in engineerTask?.cancel(); engineeringID = nil; draft.engineering = false; draft.reset() }
             .firasOnChange(of: draft.promptRequest) { _, _ in choosesPromptLanguage = true }
-            .onDisappear { mounted = false; engineerTask?.cancel() }
+            .firasOnChange(of: draft.epoch) { _, _ in cancelEngineering() }
+            .onDisappear { mounted = false; cancelEngineering() }
             .onAppear { mounted = true; draft.synchronize(text) }
             .sheet(item: $preview) { item in PastedTextPreview(item: item, palette: p, lang: lang) }
             .sheet(isPresented: $showsLibrary) { librarySheet }
@@ -99,6 +100,7 @@ struct SkillComposerField: View {
             return
         }
         let original = text, owner = env.session.identityID, id = UUID()
+        let draftEpoch = draft.epoch
         engineeringID = id; draft.engineering = true; choosesPromptLanguage = false
         engineerTask = Task { @MainActor in
             let deadline = Task { @MainActor in
@@ -114,22 +116,26 @@ struct SkillComposerField: View {
                 let frames = await PromptEngineering.stream(request: request, language: language, api: env.api)
                 for try await frame in frames {
                     try Task.checkCancellation()
-                    guard owner == env.session.identityID, engineeringID == id else { return }
+                    guard owner == env.session.identityID, engineeringID == id, draft.epoch == draftEpoch else { return }
                     if frame.isDone { break }
                     guard let delta = StreamBuffer.delta(fromData: frame.data), !delta.content.isEmpty else { continue }
                     output += delta.content
                     text = output; draft.synchronize(output)
                 }
             } catch {
-                if owner == env.session.identityID, !Task.isCancelled {
+                if owner == env.session.identityID, draft.epoch == draftEpoch, !Task.isCancelled {
                     env.toasts.show(lang == .arabic ? "تعذّرت هندسة الأمر. يمكنك المحاولة مجددًا." : "Prompt engineering failed. You can retry.", isError: true)
                 }
             }
-            guard owner == env.session.identityID, engineeringID == id else { return }
+            guard owner == env.session.identityID, engineeringID == id, draft.epoch == draftEpoch else { return }
             if output.isEmpty { text = original; draft.synchronize(original) }
             draft.selection = NSRange(location: text.utf16.count, length: 0)
             if mounted { focused.wrappedValue = true }
         }
+    }
+    private func cancelEngineering() {
+        engineerTask?.cancel(); engineerTask = nil; engineeringID = nil
+        draft.engineering = false; choosesPromptLanguage = false
     }
     private var pastedCards: some View {
         ScrollView(.horizontal, showsIndicators: false) {
