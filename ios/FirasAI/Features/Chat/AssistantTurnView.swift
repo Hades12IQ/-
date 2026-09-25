@@ -131,6 +131,11 @@ struct AssistantTurnView: View, Equatable {
                 if let receipt = message.omnix {
                     OmnixRunView(receipt: receipt, conversationID: conversationID, env: env)
                 } else {
+                    if !message.visibleSteps.isEmpty && (displayText.contains("firas-") || displayText.isEmpty) {
+                        ForEach(message.visibleSteps) { step in
+                            ExecutionStepRow(step: step, lang: lang, palette: palette, streaming: isStreaming)
+                        }
+                    }
                     content
                 }
                 planPill
@@ -393,6 +398,9 @@ struct AssistantTurnView: View, Equatable {
                 lang: lang, palette: palette, prefs: env.prefs,
                 onFence: { fence in fenceView(fence) }
             )
+        } else if !message.visibleSteps.isEmpty {
+            ExecutionTimelineView(text: displayText, steps: message.visibleSteps, identity: message.id,
+                streaming: isStreaming, lang: lang, prefs: env.prefs)
         } else {
             // «كانما جاي يكتب بس بنفس الوقت سريع مو بطيء» — the reveal is paced here, not by the
             // network. ONLY the markdown branch is wrapped: the ask panel, the `firas-ask` activity

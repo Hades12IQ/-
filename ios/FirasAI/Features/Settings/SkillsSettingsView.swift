@@ -14,6 +14,8 @@ struct SkillsSettingsView: View {
     @State private var editor: AccountSkill?
     @State private var deleting: AccountSkill?
     @State private var retry = 0
+    @State private var importURL = ""
+    @State private var importFailure: String?
     private var p: FirasPalette { env.prefs.palette }
     private var lang: AppLanguage { env.prefs.lang }
     private var store: AccountSkillsStore { env.skills }
@@ -34,7 +36,7 @@ struct SkillsSettingsView: View {
                             Text(SkillsCopy.library(lang)).tag(1)
                         }.pickerStyle(.segmented)
                         search
-                        if tab == 0 { mySkills } else { library }
+                        if tab == 0 { importPanel; mySkills } else { library }
                     } else {
                         Text(SkillsCopy.signIn(lang)).foregroundStyle(p.textSecondary)
                     }
@@ -62,6 +64,39 @@ struct SkillsSettingsView: View {
                     Task { await store.delete(skill) }
                 }
             } message: { Text(LText(ar: "تنحذف من حسابك بالتطبيق والموقع.", en: "This removes the skill from your account in the app and on the website.")(lang)) }
+        }
+    }
+
+    private var importPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(lang == .arabic ? "استيراد مهارة من رابط" : "Import a skill from a link")
+                .font(.subheadline.weight(.semibold)).foregroundStyle(p.textPrimary)
+            TextField("https://…/SKILL.md", text: $importURL)
+                .keyboardType(.URL).textInputAutocapitalization(.never).disableAutocorrection(true)
+                .textFieldStyle(.plain).padding(12).background(p.surface, in: RoundedRectangle(cornerRadius: 12))
+                .environment(\.layoutDirection, .leftToRight)
+            Button {
+                let submitted = importURL
+                Task {
+                    do {
+                        _ = try await store.importSkill(url: submitted)
+                        if importURL == submitted { importURL = "" }
+                        importFailure = nil
+                    } catch {
+                        let code = AccountSkillsStore.code(error)
+                        switch code {
+                        case "unsupported_url", "url_required": importFailure = lang == .arabic ? "أدخل رابط HTTPS لملف المهارة أو مستودع GitHub." : "Enter an HTTPS skill file or GitHub repository link."
+                        case "not_reachable": importFailure = lang == .arabic ? "تعذّر قراءة الرابط. جرّب رابط SKILL.md المباشر." : "The link could not be read. Try the direct SKILL.md link."
+                        case "not_a_skill": importFailure = lang == .arabic ? "الملف لا يحتوي اسم مهارة وتعليماتها." : "This file has no skill name and instructions."
+                        default: importFailure = lang == .arabic ? "تعذّر الاستيراد. راجع الرابط وحدود المهارات ثم حاول مجددًا." : "Import failed. Check the link and skill limits, then retry."
+                        }
+                    }
+                }
+            } label: {
+                HStack { if store.mutating { ProgressView() }; Text(lang == .arabic ? "استيراد" : "Import") }
+                    .frame(minHeight: 44)
+            }.disabled(store.mutating || importURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            if let importFailure { Text(importFailure).font(.footnote).foregroundStyle(p.error) }
         }
     }
 

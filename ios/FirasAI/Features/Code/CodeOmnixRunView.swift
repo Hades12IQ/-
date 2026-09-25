@@ -21,27 +21,11 @@ struct CodeOmnixRunView: View {
                     HStack(spacing: 8) {
                         Image(systemName: job?.state == "completed" ? "checkmark.circle" : job?.state == "failed" ? "exclamationmark.circle" : "sparkles")
                             .foregroundStyle(env.prefs.palette.accent)
-                        Text("omnix 1").font(.subheadline.weight(.semibold))
+                        Text(ModelGeneration.history(turn.mgen).label(.omnix, env.prefs.lang)).font(.subheadline.weight(.semibold))
                         Spacer()
                         Text(statusText).font(.caption).foregroundStyle(env.prefs.palette.textMuted)
                     }
                     if let notice = state.notices[receipt.requestKey] { Text(notice).font(.footnote).foregroundStyle(env.prefs.palette.textSecondary) }
-                    if let progress = job?.progress, !(progress.plan ?? []).isEmpty || !(progress.says ?? []).isEmpty {
-                        DisclosureGroup(isExpanded: $expanded) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach(progress.plan ?? []) { step in
-                                    WithPerceptionTracking {
-                                        HStack(alignment: .top, spacing: 8) {
-                                            Image(systemName: step.s == "done" ? "checkmark.circle" : step.s == "run" ? "circle.dotted" : "circle")
-                                            Text(step.title)
-                                        }
-
-                                        }
-                                }
-                                if let last = progress.says?.last { Text(last).foregroundStyle(env.prefs.palette.textSecondary) }
-                            }.font(.footnote).padding(.top, 8)
-                        } label: { Text(ar ? "خطوات المهمة" : "Task steps").font(.subheadline) }
-                    }
                     if let approval = job?.result?.approval {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(approval.reason).font(.subheadline)
@@ -56,10 +40,8 @@ struct CodeOmnixRunView: View {
                         }.padding(12).background(env.prefs.palette.surface, in: RoundedRectangle(cornerRadius: 12))
                     }
                     let text = job?.visibleText.isEmpty == false ? job!.visibleText : turn.content
-                    if !text.isEmpty {
-                        MarkdownView(markdown: text, messageID: "code-omnix-" + turn.id, streaming: false, lang: env.prefs.lang,
-                                     palette: env.prefs.palette, prefs: env.prefs, onFence: { _ in nil })
-                    }
+                    OmnixActivityView(progress: job?.progress, output: text, identity: "code-omnix-" + turn.id,
+                        streaming: job.map { !$0.isTerminal } ?? false, prefs: env.prefs)
                     if job?.state == "completed", job?.result?.filesStatus == "ready", let files = job?.result?.files, !files.isEmpty {
                         ForEach(files.filter { $0.downloadPath != nil }) { file in
                             WithPerceptionTracking {
@@ -87,7 +69,7 @@ struct CodeOmnixRunView: View {
                 .padding(.vertical, 10).foregroundStyle(env.prefs.palette.textPrimary).tint(env.prefs.palette.accent)
                 .task(id: receipt.requestKey) { await env.code.refreshCodeOmnix(receipt) }
                 .sheet(item: $preview) { file in WithPerceptionTracking {
-                    CodeOmnixPreview(file: file, owner: receipt.owner, env: env)
+                    OmnixFileView(file: file, owner: receipt.owner, env: env)
                     } }
                 .sheet(isPresented: Binding(get: { plan != nil }, set: { if !$0 { plan = nil } })) {
                     WithPerceptionTracking {

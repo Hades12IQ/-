@@ -64,8 +64,9 @@ extension SendPipeline {
         let cid = IDs.cid()
         var user = ChatMessage.user(full.isEmpty ? inputs.map(\.name).joined(separator: ", ") : full, cid: cid, lang: store.lang)
         user.tier = ModelTier.omnix.rawValue; user.status = .delivered
+        user.mgen = prefs.modelGeneration.wireValue
         user.files = attachments.isEmpty ? nil : attachments.map { FileChip(name: $0.name, kind: $0.kind) }
-        var assistant = ChatMessage.assistant(cid: cid, tier: .omnix, lang: store.lang, mode: .auto)
+        var assistant = ChatMessage.assistant(cid: cid, tier: .omnix, generation: prefs.modelGeneration, lang: store.lang, mode: .auto)
         assistant.omnix = OmnixReceipt(owner: owner, conversationId: conversation.serverID ?? "", requestKey: requestKey,
             sessionId: previous?.sessionId ?? "")
         store.mutate(key) { chat in
@@ -120,8 +121,15 @@ extension SendPipeline {
                 guard omnixCurrent(owner, generation), !omnixCancelled.contains(bound.requestKey) else { return }
                 uploads.append(uploaded.id)
             }
+            let modelGeneration = store.conversation(key)?.messages.first(where: { $0.id == assistantID })?.mgen
+            var kind: String?
+            if modelGeneration == "1.1", uploads.isEmpty {
+                let history = (store.conversation(key)?.messages ?? []).filter { $0.id != assistantID && $0.id != userID }
+                kind = await GenerationIntentRouter.classify(text, history: history, api: api)?.kind
+            }
+            guard omnixCurrent(owner, generation), !omnixCancelled.contains(bound.requestKey), !Task.isCancelled else { return }
             dispatched = true
-            let job = try await OmnixService.submit(OmnixSubmission(requestKey: bound.requestKey, text: text, product: "ai",
+            let job = try await OmnixService.submit(OmnixSubmission(mgen: modelGeneration, kind: kind, requestKey: bound.requestKey, text: text, product: "ai",
                 conversationId: serverID, sessionId: bound.sessionId.isEmpty ? nil : bound.sessionId,
                 attachments: uploads.isEmpty ? nil : uploads), api: api)
             guard omnixCurrent(owner, generation) else { return }

@@ -344,6 +344,7 @@ final class JobWatcher {
         publish(
             JobSnapshot(
                 pointerID: pointerID,
+                steps: carried?.steps,
                 phase: .reconnecting,
                 text: carried?.text ?? "",
                 reasoning: carried?.reasoning ?? "",

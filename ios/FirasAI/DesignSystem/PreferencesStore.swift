@@ -65,6 +65,14 @@ final class PreferencesStore {
         }
     }
 
+    var modelGeneration: ModelGeneration {
+        get { access(keyPath: \.modelGeneration); return storedModelGeneration }
+        set {
+            withMutation(keyPath: \.modelGeneration) { storedModelGeneration = newValue }
+            persist(newValue.rawValue, forKey: Keys.modelGeneration)
+        }
+    }
+
     var responseMode: ResponseMode {
         get { access(keyPath: \.responseMode); return storedResponseMode }
         set {
@@ -195,6 +203,7 @@ final class PreferencesStore {
     @PerceptionIgnored private var storedFontScale: FontScale
     @PerceptionIgnored private var storedContentWidth: ContentWidth
     @PerceptionIgnored private var storedMotionPreference: MotionPreference
+    @PerceptionIgnored private var storedModelGeneration: ModelGeneration
     @PerceptionIgnored private var storedTier: ModelTier
     @PerceptionIgnored private var storedResponseMode: ResponseMode
     @PerceptionIgnored private var storedWebSearchEnabled: Bool
@@ -230,6 +239,7 @@ final class PreferencesStore {
             storedMotionPreference = .full
         }
 
+        storedModelGeneration = .preference(defaults.string(forKey: Keys.modelGeneration))
         storedTier = ModelTier(rawValue: defaults.string(forKey: Keys.tier) ?? "") ?? .pro
         storedResponseMode = ResponseMode(rawValue: defaults.string(forKey: Keys.responseMode) ?? "") ?? .auto
         storedWebSearchEnabled = defaults.object(forKey: Keys.webSearch) as? Bool ?? false
@@ -265,6 +275,7 @@ final class PreferencesStore {
         motionPreference = .full
 
         tier = .pro
+        modelGeneration = .current
         responseMode = .auto
         webSearchEnabled = false
         thinkingEnabled = false
@@ -302,6 +313,7 @@ final class PreferencesStore {
     private enum Keys {
         static let theme = "theme"
         static let language = "lang"
+        static let modelGeneration = "modelGeneration"
         static let tier = "tier"
         static let responseMode = "responseMode"
         static let fontScale = "fontSize"
@@ -321,7 +333,7 @@ final class PreferencesStore {
         static let lastSeenAnnouncementAt = "lastSeenAnnouncementAt"
 
         static let resettable: [String] = [
-            theme, language, tier, responseMode, fontScale, width, webSearch, thinking,
+            theme, language, tier, modelGeneration, responseMode, fontScale, width, webSearch, thinking,
             motion, sendOnReturn, sharpenImages, callVoice, bargeIn, dictationDialect, uiSounds,
         ]
     }

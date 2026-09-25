@@ -22,6 +22,8 @@ struct PersistedMessage: Codable, Sendable, Equatable {
     var role: String
     var content: String
     var tier: String?
+    var mgen: String?
+    var steps: [ExecutionStep]?
     var lang: String?
     var reasoning: String?
     var cid: String?
@@ -40,6 +42,8 @@ struct PersistedMessage: Codable, Sendable, Equatable {
         role: String,
         content: String,
         tier: String? = nil,
+        mgen: String? = nil,
+        steps: [ExecutionStep]? = nil,
         lang: String? = nil,
         reasoning: String? = nil,
         cid: String? = nil,
@@ -57,6 +61,8 @@ struct PersistedMessage: Codable, Sendable, Equatable {
         self.role = role
         self.content = content
         self.tier = tier
+        self.mgen = ModelGeneration.history(mgen).wireValue
+        self.steps = steps
         self.lang = lang
         self.reasoning = reasoning
         self.cid = cid
@@ -77,6 +83,8 @@ struct PersistedMessage: Codable, Sendable, Equatable {
         role = LenientJSON.string(container, "role") ?? "user"
         content = LenientJSON.string(container, "content") ?? ""
         tier = LenientJSON.string(container, "tier")
+        mgen = ModelGeneration.history(LenientJSON.string(container, "mgen")).wireValue
+        steps = ExecutionStep.merge(nil, LenientJSON.array(container, "steps", of: ExecutionStep.self) ?? [])
         lang = LenientJSON.string(container, "lang")
         reasoning = LenientJSON.string(container, "reasoning")
         cid = LenientJSON.string(container, "cid")
@@ -96,9 +104,12 @@ struct PersistedMessage: Codable, Sendable, Equatable {
 
 /// `POST /api/chat` — the live SSE turn.
 struct ChatStreamRequest: Encodable, Sendable {
+    var router: Bool?
+    var promptEng: Bool?
     var skills: Bool?
     var messages: [OutgoingMessage]
     var tier: String
+    var mgen: String?
     var think: Bool
     var cid: String
     var chatId: String?
@@ -110,6 +121,7 @@ struct ChatStreamRequest: Encodable, Sendable {
     init(
         messages: [OutgoingMessage],
         tier: String,
+        mgen: String? = nil,
         think: Bool,
         cid: String,
         chatId: String? = nil,
@@ -122,6 +134,7 @@ struct ChatStreamRequest: Encodable, Sendable {
         self.messages = messages
         self.skills = skills
         self.tier = tier
+        self.mgen = ModelGeneration.history(mgen).wireValue
         self.think = think
         self.cid = cid
         self.chatId = chatId
@@ -137,6 +150,7 @@ struct ChatStreamRequest: Encodable, Sendable {
 struct ChatJobRequest: Encodable, Sendable {
     var messages: [OutgoingMessage]
     var tier: String
+    var mgen: String?
     var think: Bool
     var cid: String
     /// `""` for guests and for `codebuild`; a server chat id otherwise.
@@ -170,6 +184,7 @@ struct ChatJobRequest: Encodable, Sendable {
     init(
         messages: [OutgoingMessage],
         tier: String,
+        mgen: String? = nil,
         think: Bool,
         cid: String,
         chatId: String,
@@ -193,6 +208,7 @@ struct ChatJobRequest: Encodable, Sendable {
     ) {
         self.messages = messages
         self.tier = tier
+        self.mgen = ModelGeneration.history(mgen).wireValue
         self.think = think
         self.cid = cid
         self.chatId = chatId
@@ -223,6 +239,7 @@ struct ChatJobRequest: Encodable, Sendable {
 /// The answer to a job start. A replayed start with the same cid answers `completed` (with the
 /// whole text) or `failed` + `retryRequiresNewCid`.
 struct ChatJobStartResponse: Decodable, Sendable {
+    var steps: [ExecutionStep]?
     var ok: Bool?
     var jobId: String?
     var phase: String?
@@ -242,6 +259,7 @@ struct ChatJobStartResponse: Decodable, Sendable {
         reasoning = LenientJSON.string(container, "reasoning")
         surface = LenientJSON.nested(container, "surface", as: AppAPIValue.self)
         progress = LenientJSON.nested(container, "progress", as: LongFileProgress.self)
+        steps = ExecutionStep.merge(nil, LenientJSON.array(container, "steps", of: ExecutionStep.self) ?? [])
         error = LenientJSON.string(container, "error")
         retryRequiresNewCid = LenientJSON.bool(container, "retryRequiresNewCid")
     }
@@ -250,6 +268,7 @@ struct ChatJobStartResponse: Decodable, Sendable {
 /// `GET /api/chat/job?id=` — always 200 unless auth or ownership fails. A vanished id answers
 /// `{"phase":"unknown"}` and nothing else, which must decode.
 struct ChatJobStatus: Decodable, Sendable, Equatable {
+    var steps: [ExecutionStep]?
     var phase: String
     var text: String
     var reasoning: String
@@ -287,6 +306,7 @@ struct ChatJobStatus: Decodable, Sendable, Equatable {
         status = LenientJSON.int(container, "status") ?? 0
         surface = LenientJSON.nested(container, "surface", as: AppAPIValue.self)
         progress = LenientJSON.nested(container, "progress", as: LongFileProgress.self)
+        steps = ExecutionStep.merge(nil, LenientJSON.array(container, "steps", of: ExecutionStep.self) ?? [])
     }
 
     /// The refusal body parsed back out of `error`, when it is JSON.

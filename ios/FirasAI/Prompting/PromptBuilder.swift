@@ -41,6 +41,7 @@ struct PromptInput: Sendable {
     /// True when the search that produced `searchContext` was EXPLICIT (the toggle, or search
     /// intent in the message). Only an explicit search downgrades the tier; a silent one never
     /// does (app.js:42489). Defaulted so the frozen initialiser keeps compiling.
+    var generation: ModelGeneration = .legacy
     var explicitSearch: Bool = false
     var documentRevision: DocumentRevisionContext? = nil
     var documentAssets: [DocumentAssetInventory.Entry] = []
@@ -120,6 +121,10 @@ enum PromptBuilder {
            it claims to override, and the model went on building the thing. No questions were
            ever asked, so no options were ever drawn: the panel, the parser and the state
            machine were all correct and all waiting on a block that never came. */
+        if input.generation == .current {
+            let old = PromptCatalog.persona(tier: tier.rawValue)
+            system = system.replacingOccurrences(of: old, with: GenerationPrompts.persona(tier))
+        }
         let planMessage = planSystemText(input)
         /* A DOCUMENT BRIEF, AS ITS OWN MESSAGE. The old guidance asked for content in a format;
            a reader asking for a file of ten equations is not asking for ten equations in a

@@ -17,6 +17,7 @@ struct TierPickerSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
     @State private var showOmnixAccess = false
+    @State private var showPreviousModels = false
 
     init(env: AppEnvironment, product: ProductKind = .ai) {
         self.prefs = env.prefs
@@ -43,6 +44,14 @@ struct TierPickerSheet: View {
                     ScrollView {
                         VStack(spacing: 18) {
                             tierCard(palette: palette, lang: lang, motionOn: motionOn)
+                            DisclosureGroup(isExpanded: $showPreviousModels) {
+                                ForEach(ModelTier.allCases.filter { product == .ai || $0 != .omnix }) { tier in
+                                    tierRow(tier, generation: .legacy, palette: palette, lang: lang, motionOn: motionOn)
+                                }
+                            } label: {
+                                Text(lang == .arabic ? "نماذج أخرى · الجيل السابق" : "Other models · Previous generation")
+                                    .font(.subheadline).foregroundStyle(palette.textSecondary)
+                            }.tint(palette.accent)
                             thinkCard(palette: palette, lang: lang)
                             styleCard(palette: palette, lang: lang)
                         }
@@ -89,12 +98,12 @@ struct TierPickerSheet: View {
     private func tierCard(palette: FirasPalette, lang: AppLanguage, motionOn: Bool) -> some View {
         SurfaceCard(palette: palette) {
             VStack(spacing: 0) {
-                ForEach(ModelTier.allCases.filter { product == .ai || $0 != .omnix }) { tier in
+                ForEach(ModelTier.allCases.reversed().filter { product == .ai || $0 != .omnix }) { tier in
                     WithPerceptionTracking {
-                        if tier != ModelTier.mini {
+                        if tier != (product == .ai ? .omnix : .max) {
                             Rectangle().fill(palette.border).frame(height: 1).padding(.leading, 46)
                         }
-                        tierRow(tier, palette: palette, lang: lang, motionOn: motionOn)
+                        tierRow(tier, generation: .current, palette: palette, lang: lang, motionOn: motionOn)
                     }
                 }
             }
@@ -103,13 +112,14 @@ struct TierPickerSheet: View {
 
     private func tierRow(
         _ tier: ModelTier,
+        generation: ModelGeneration,
         palette: FirasPalette,
         lang: AppLanguage,
         motionOn: Bool
     ) -> some View {
-        let selected = prefs.tier == tier
+        let selected = prefs.tier == tier && prefs.modelGeneration == generation
         return Button {
-            pick(tier, motionOn: motionOn)
+            pick(tier, generation: generation, motionOn: motionOn)
         } label: {
             HStack(alignment: .center, spacing: 12) {
                 Image(systemName: tier.symbol)
@@ -119,7 +129,7 @@ struct TierPickerSheet: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(tier.label(lang))
+                        Text(generation.label(tier, lang))
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(palette.textPrimary)
                         if let badge = tier.badge {
@@ -145,7 +155,7 @@ struct TierPickerSheet: View {
         .buttonStyle(.plain)
         .accessibilityAddTraits(.isButton)
         .accessibilityAddTraits(selected ? .isSelected : [])
-        .accessibilityLabel(Text(tier.label(lang)))
+        .accessibilityLabel(Text(generation.label(tier, lang)))
         .accessibilityHint(Text(tier.tagline(lang)))
     }
 
@@ -174,18 +184,20 @@ struct TierPickerSheet: View {
         }
     }
 
-    private func pick(_ tier: ModelTier, motionOn: Bool) {
+    private func pick(_ tier: ModelTier, generation: ModelGeneration, motionOn: Bool) {
         if tier == .omnix, env != nil {
+            prefs.modelGeneration = generation
             showOmnixAccess = true
             return
         }
-        guard prefs.tier != tier else {
+        guard prefs.tier != tier || prefs.modelGeneration != generation else {
             dismiss()
             return
         }
         Haptics.select()
         withAnimation(FirasMotion.gated(FirasMotion.standard, motionOn: motionOn)) {
             prefs.tier = tier
+            prefs.modelGeneration = generation
         }
         dismiss()
     }

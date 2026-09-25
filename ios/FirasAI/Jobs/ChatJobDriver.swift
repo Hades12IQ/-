@@ -66,6 +66,7 @@ struct ChatJobDriver: JobKindDriver {
         let hideDraft = pointer.kind == .officefile && phase != .completed
         return JobSnapshot(
             pointerID: pointer.id,
+            steps: status.steps,
             phase: phase,
             text: hideDraft ? "" : status.text,
             reasoning: hideDraft ? "" : status.reasoning,

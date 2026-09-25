@@ -20,7 +20,8 @@ extension BrainStore {
             chatId: serverChatID,
             lang: lang.rawValue,
             docIds: docIDs,
-            messages: [OutgoingMessage(role: ChatRole.user.rawValue, content: question)]
+            messages: [OutgoingMessage(role: ChatRole.user.rawValue, content: question)],
+            mgen: askGeneration.wireValue
         )
 
         do {

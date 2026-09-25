@@ -47,6 +47,8 @@ enum MessageSerializer {
             role: wireRole(m.role),
             content: m.content,
             tier: m.tier,
+            mgen: m.mgen,
+            steps: m.steps,
             lang: m.lang,
             reasoning: emptyToNil(m.reasoning),
             cid: emptyToNil(m.cid),
@@ -143,6 +145,8 @@ enum MessageSerializer {
         if server.content.count > local.content.count { merged.content = server.content }
         if (server.reasoning?.count ?? 0) > (merged.reasoning?.count ?? 0) { merged.reasoning = server.reasoning }
         if merged.tier == nil { merged.tier = server.tier }
+        if merged.mgen == nil { merged.mgen = server.mgen }
+        merged.steps = ExecutionStep.merge(merged.steps, server.steps ?? [])
         if merged.lang == nil { merged.lang = server.lang }
         if merged.mode == nil { merged.mode = server.mode }
         if merged.askAnswered == nil { merged.askAnswered = server.askAnswered }

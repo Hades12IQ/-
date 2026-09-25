@@ -86,6 +86,7 @@ final class BrainStore: JobObserver {
     @PerceptionIgnored private var lastFlush = Date.distantPast
     @PerceptionIgnored var selectionLoadedFor: String?
     @PerceptionIgnored private var askLanguage: AppLanguage = .arabic
+    @PerceptionIgnored var askGeneration: ModelGeneration = .legacy
     @PerceptionIgnored private var askFinalText: String?
     @PerceptionIgnored private var askFailure: Error?
 
@@ -166,6 +167,7 @@ final class BrainStore: JobObserver {
 
         threadID = conversationID
         askLanguage = lang
+        askGeneration = prefs.modelGeneration
         isAsking = true
         isDurableAsk = false
         stopRequested = false
@@ -175,7 +177,9 @@ final class BrainStore: JobObserver {
         pendingDelta = ""
         lastFlush = .distantPast
 
-        await chat.appendUserTurn(ChatMessage.user(trimmed, cid: cid, lang: lang), in: conversationID)
+        var userMessage = ChatMessage.user(trimmed, cid: cid, lang: lang)
+        userMessage.mgen = askGeneration.wireValue
+        await chat.appendUserTurn(userMessage, in: conversationID)
         let serverChatID = await chat.ensureServerChat(conversationID)
         let history = chat.conversations[conversationID]?.messages ?? []
 
@@ -200,7 +204,8 @@ final class BrainStore: JobObserver {
             isMember: session.isMember,
             lang: lang,
             cid: cid,
-            history: history
+            history: history,
+            generation: askGeneration
         )
 
         askFinalText = nil
@@ -319,7 +324,8 @@ final class BrainStore: JobObserver {
     }
 
     func land(answer: String, cid: String, lang: AppLanguage, in conversationID: String) async {
-        var message = ChatMessage.assistant(cid: cid, tier: .pro, lang: lang, mode: .auto)
+        let generation = ModelGeneration.history(chat.conversations[conversationID]?.messages.first { $0.role == .user && $0.cid == cid }?.mgen)
+        var message = ChatMessage.assistant(cid: cid, tier: .pro, generation: generation, lang: lang, mode: .auto)
         message.content = answer
         message.status = .delivered
         await chat.appendAssistantTurn(message, in: conversationID)

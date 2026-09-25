@@ -180,6 +180,7 @@ struct CodeChatMessage: Codable, Sendable, Equatable, Identifiable {
     var n: Int?
     var applied: Bool?
     var model: String?
+    var mgen: String?
     var omnix: OmnixReceipt?
     var edit: CodeEditReceipt?
     var editPhase: String?
@@ -201,6 +202,7 @@ struct CodeChatMessage: Codable, Sendable, Equatable, Identifiable {
         n = LenientJSON.int(container, "n")
         applied = LenientJSON.bool(container, "applied")
         model = LenientJSON.string(container, "model")
+        mgen = ModelGeneration.history(LenientJSON.string(container, "mgen")).wireValue
         omnix = try? container.decodeIfPresent(OmnixReceipt.self, forKey: AnyCodingKey("omnix"))
         if omnix?.isValid != true { omnix = nil }
         edit = try? container.decodeIfPresent(CodeEditReceipt.self, forKey: AnyCodingKey("iosCodeEdit"))
@@ -222,6 +224,7 @@ struct CodeChatMessage: Codable, Sendable, Equatable, Identifiable {
         try container.encodeIfPresent(applied, forKey: AnyCodingKey("applied"))
         try container.encodeIfPresent(at, forKey: AnyCodingKey("ts"))
         try container.encodeIfPresent(model, forKey: AnyCodingKey("model"))
+        try container.encodeIfPresent(mgen, forKey: AnyCodingKey("mgen"))
         try container.encodeIfPresent(omnix, forKey: AnyCodingKey("omnix"))
         try container.encodeIfPresent(edit, forKey: AnyCodingKey("iosCodeEdit"))
         try container.encodeIfPresent(editPhase, forKey: AnyCodingKey("iosCodeEditPhase"))

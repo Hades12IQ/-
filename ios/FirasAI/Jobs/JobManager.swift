@@ -217,6 +217,7 @@ final class JobManager: JobWatcherDelegate {
                 .completed(
                     JobSnapshot(
                         pointerID: jobID,
+                        steps: response.steps,
                         phase: .completed,
                         text: response.text ?? "",
                         reasoning: response.reasoning ?? "",

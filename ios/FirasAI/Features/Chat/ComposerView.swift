@@ -319,6 +319,7 @@ struct ComposerView: View {
     // MARK: - Sending
 
     private func send() {
+        guard !skillDraft.interceptPrompt(text) else { return }
         guard !isBusy else { return }
         guard state?.mediaPreparation == nil else {
             toast(Strings.Chat.busyWait)

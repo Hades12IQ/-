@@ -613,10 +613,11 @@ extension CodeStore {
     /// Every live-build call is the same shape as an in-IDE one: `nomem`, no thinking, `product`
     /// `code` (`web-code-ux.md §6.6`). The `cid` is per call and deliberately not the build's own —
     /// the build's `cid` belongs to the durable turn and must stay unspent until the handover.
-    nonisolated static func streamRequest(messages: [OutgoingMessage], tier: ModelTier, think: Bool = false) -> ChatStreamRequest {
+    nonisolated static func streamRequest(messages: [OutgoingMessage], tier: ModelTier, think: Bool = false, generation: ModelGeneration = .legacy) -> ChatStreamRequest {
         ChatStreamRequest(
             messages: messages,
             tier: tier.rawValue,
+            mgen: generation.wireValue,
             think: tier == .mini ? false : think,
             cid: IDs.cid(),
             chatId: nil,

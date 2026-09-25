@@ -286,6 +286,7 @@ struct ChatScreen: View {
         if product == .ai {
             TierPill(
                 tier: env.prefs.tier,
+                generation: env.prefs.modelGeneration,
                 palette: env.prefs.palette,
                 lang: env.prefs.lang,
                 motionOn: FirasMotion.isOn(prefs: env.prefs, reduceMotion: reduceMotion)

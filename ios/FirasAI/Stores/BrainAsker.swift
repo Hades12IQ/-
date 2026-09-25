@@ -29,6 +29,7 @@ final class BrainAsker: Sendable {
         let lang: AppLanguage
         let cid: String
         let history: [ChatMessage]
+        let generation: ModelGeneration
 
         init(
             question: String,
@@ -39,7 +40,8 @@ final class BrainAsker: Sendable {
             isMember: Bool,
             lang: AppLanguage,
             cid: String,
-            history: [ChatMessage]
+            history: [ChatMessage],
+            generation: ModelGeneration = .legacy
         ) {
             self.question = question
             self.outline = outline
@@ -50,6 +52,7 @@ final class BrainAsker: Sendable {
             self.lang = lang
             self.cid = cid
             self.history = history
+            self.generation = generation
         }
     }
 
@@ -332,6 +335,7 @@ final class BrainAsker: Sendable {
         let request = ChatStreamRequest(
             messages: messages,
             tier: ModelTier.pro.rawValue,
+            mgen: turn.generation.wireValue,
             think: false,
             cid: turn.cid,
             chatId: nil,

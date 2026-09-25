@@ -218,6 +218,7 @@ struct JobPointer: Codable, Sendable, Equatable, Identifiable {
 
 /// One read of a live job, normalised across the queues.
 struct JobSnapshot: Sendable, Equatable {
+    let steps: [ExecutionStep]?
     let pointerID: String
     let phase: JobPhase
     let text: String
@@ -230,6 +231,7 @@ struct JobSnapshot: Sendable, Equatable {
 
     init(
         pointerID: String,
+        steps: [ExecutionStep]? = nil,
         phase: JobPhase,
         text: String = "",
         reasoning: String = "",
@@ -238,6 +240,7 @@ struct JobSnapshot: Sendable, Equatable {
         agent: AgentJob? = nil,
         mediaKey: String? = nil
     ) {
+        self.steps = steps
         self.pointerID = pointerID
         self.phase = phase
         self.text = text

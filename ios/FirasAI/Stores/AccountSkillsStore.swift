@@ -65,6 +65,21 @@ final class AccountSkillsStore {
         upsert(response.skill)
         return response.skill
     }
+    func importSkill(url: String) async throws -> AccountSkill {
+        identityDidChange()
+        guard session.isMember, !mutating else { throw APIError.cancelled }
+        let version = epoch
+        struct Request: Encodable { let url: String }
+        mutating = true
+        defer { if isCurrent(version) { mutating = false } }
+        let response = try await api.json(.post, "/api/skills/import",
+            body: Request(url: url.trimmingCharacters(in: .whitespacesAndNewlines)),
+            budget: .upload, as: AccountSkillResponse.self)
+        guard isCurrent(version) else { throw APIError.cancelled }
+        upsert(response.skill)
+        return response.skill
+    }
+
     func toggle(_ skill: AccountSkill) async {
         identityDidChange()
         guard session.isMember, !mutating else { return }

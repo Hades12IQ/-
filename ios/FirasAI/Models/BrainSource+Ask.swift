@@ -118,6 +118,7 @@ struct BrainSource: Codable, Sendable, Equatable, Identifiable {
 /// `POST /api/chat/job` with `kind:"brainask"` — the answer that survives leaving the app.
 /// `error` comes back as a free-form string matched by prefix (`brain_search_429`, `brainask_…`).
 struct BrainAskJobRequest: Encodable, Sendable {
+    var mgen: String?
     var kind: String
     var task: String
     var cid: String
@@ -137,7 +138,8 @@ struct BrainAskJobRequest: Encodable, Sendable {
         lang: String,
         tier: String = ModelTier.pro.rawValue,
         docIds: [String]? = nil,
-        messages: [OutgoingMessage]
+        messages: [OutgoingMessage],
+        mgen: String? = nil
     ) {
         self.kind = kind
         self.task = String(task.prefix(8_000))
@@ -148,5 +150,6 @@ struct BrainAskJobRequest: Encodable, Sendable {
         self.tier = tier
         self.docIds = docIds.map { Array($0.prefix(20)) }
         self.messages = messages
+        self.mgen = ModelGeneration.history(mgen).wireValue
     }
 }

@@ -1135,7 +1135,7 @@ final class CodeStore: JobObserver {
 
         while true {
             let lengthAtStart = body.count
-            let stream = await api.chatStream(Self.streamRequest(messages: messages, tier: ticket.selection?.model ?? .ultra, think: ticket.selection?.think ?? false))
+            let stream = await api.chatStream(Self.streamRequest(messages: messages, tier: ticket.selection?.model ?? .ultra, think: ticket.selection?.think ?? false, generation: ticket.selection?.generation ?? .legacy))
             for try await frame in stream {
                 try Task.checkCancellation()
                 if frame.isDone { break }

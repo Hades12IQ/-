@@ -34,42 +34,13 @@ struct OmnixRunView: View {
                         }
                         .foregroundStyle(env.prefs.palette.textSecondary)
                         if let notice = state.notices[receipt.requestKey] { Text(notice).font(.footnote).foregroundStyle(env.prefs.palette.textMuted) }
-                        if !steps.isEmpty {
-                            DisclosureGroup(isExpanded: $expanded) {
-                                ForEach(steps) { step in
-                                    WithPerceptionTracking {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            HStack(alignment: .top) {
-                                                Image(systemName: stepIcon(step.s))
-                                                Text(step.title).font(.system(.subheadline, design: .monospaced)).textSelection(.enabled)
-                                                Spacer(minLength: 0)
-                                                Text(stepLabel(step.s)).font(.caption)
-                                            }
-                                            if let input = step.inputPreview, !input.isEmpty {
-                                                Text(input).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
-                                            }
-                                            if let result = step.resultPreview, !result.isEmpty {
-                                                Text(result).font(.caption).foregroundStyle(env.prefs.palette.textMuted).textSelection(.enabled)
-                                            }
-                                        }.padding(.vertical, 7)
-                                    }
-                                }
-                            } label: {
-                                Text((ar ? "سجل التنفيذ" : "Execution activity") + " · " + String(steps.count))
-                                    .font(.subheadline)
-                            }
-                            .tint(env.prefs.palette.accent)
-                        }
                         if job?.state == "waiting_for_approval", let approval = job?.result?.approval {
                             approvalView(approval)
                         }
                     }
                     let output = job?.visibleText.isEmpty == false ? job!.visibleText : savedText
-                    if !output.isEmpty {
-                        MarkdownView(markdown: output, messageID: "omnix-" + receipt.requestKey,
-                            streaming: job.map { !$0.isTerminal } ?? false, lang: lang, palette: env.prefs.palette,
-                            prefs: env.prefs, onFence: { _ in nil })
-                    }
+                    OmnixActivityView(progress: job?.progress, output: output, identity: "omnix-" + receipt.requestKey,
+                        streaming: job.map { !$0.isTerminal } ?? false, prefs: env.prefs)
                     ForEach((job?.result?.files ?? []).filter { $0.downloadPath != nil }) { file in
                         WithPerceptionTracking {
                             Button { previewFile = file } label: {
@@ -160,7 +131,7 @@ struct OmnixRunView: View {
     }
 }
 
-private struct OmnixFileView: View {
+struct OmnixFileView: View {
     let file: OmnixFile
     let owner: String
     let env: AppEnvironment
@@ -168,6 +139,7 @@ private struct OmnixFileView: View {
     @State private var url: URL?
     @State private var failed = false
     @State private var save = false
+    @State private var project: OmnixPreviewPacket?
     var body: some View {
         WithPerceptionTracking {
             FirasNavigationStack {
@@ -195,9 +167,14 @@ private struct OmnixFileView: View {
                         try? FileManager.default.removeItem(at: downloaded); return
                     }
                     url = downloaded
+                    if ["html", "htm"].contains(URL(fileURLWithPath: file.name).pathExtension.lowercased()) {
+                        let packet = try await OmnixPreviewPacket.load(file: file, owner: owner, env: env)
+                        guard env.session.identityID == owner, !Task.isCancelled else { return }
+                        project = packet
+                    }
                 } catch { failed = true }
             }
-            .firasOnChange(of: env.session.identityID) { _, value in if value != owner { if let url { try? FileManager.default.removeItem(at: url) }; url = nil; dismiss() } }
+            .firasOnChange(of: env.session.identityID) { _, value in if value != owner { if let url { try? FileManager.default.removeItem(at: url) }; url = nil; project = nil; dismiss() } }
             .sheet(isPresented: $save) { WithPerceptionTracking {
                 if let url { FirasFileSaver(url: url) { _ in save = false } }
             } }
@@ -206,7 +183,12 @@ private struct OmnixFileView: View {
 
     @ViewBuilder
     private var previewContent: some View {
-        if let url { OmnixQuickLook(url: url) }
+        if let project { OmnixProjectPreview(packet: project) }
+        else if ["html", "htm"].contains(URL(fileURLWithPath: file.name).pathExtension.lowercased()), url != nil {
+            if failed { Text(env.prefs.lang == .arabic ? "تعذّرت معاينة المشروع كاملًا. يمكنك حفظ الملف، أو اطلب من أومنكس بناء نسخة قابلة للمعاينة." : "The full project could not be previewed. Save the file, or ask Omnix for a previewable build.") }
+            else { ProgressView() }
+        }
+        else if let url { OmnixQuickLook(url: url) }
         else if failed { Text(env.prefs.lang == .arabic ? "تعذّر فتح الملف. حاول مجددًا." : "The file could not open. Try again.") }
         else { ProgressView() }
     }

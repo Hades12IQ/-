@@ -10,6 +10,7 @@ enum SlashCommand: String, CaseIterable, Identifiable, Sendable {
     case translate
     case explain
     case review
+    case prompteng
 
     var id: String { rawValue }
 
@@ -19,6 +20,7 @@ enum SlashCommand: String, CaseIterable, Identifiable, Sendable {
         case .translate: return Strings.Composer.slashTranslateLabel
         case .explain: return Strings.Composer.slashExplainLabel
         case .review: return Strings.Composer.slashReviewLabel
+        case .prompteng: return LText(ar: "هندسة الأوامر", en: "Prompt engineering")
         }
     }
 
@@ -28,6 +30,7 @@ enum SlashCommand: String, CaseIterable, Identifiable, Sendable {
         case .translate: return Strings.Composer.slashTranslateHint
         case .explain: return Strings.Composer.slashExplainHint
         case .review: return Strings.Composer.slashReviewHint
+        case .prompteng: return LText(ar: "حوّل طلبك إلى أمر مفصّل", en: "Turn your request into a detailed prompt")
         }
     }
 
@@ -38,6 +41,7 @@ enum SlashCommand: String, CaseIterable, Identifiable, Sendable {
         case .translate: return Strings.Composer.slashTranslateBody
         case .explain: return Strings.Composer.slashExplainBody
         case .review: return Strings.Composer.slashReviewBody
+        case .prompteng: return LText(ar: "/prompteng ", en: "/prompteng ")
         }
     }
 
@@ -47,6 +51,7 @@ enum SlashCommand: String, CaseIterable, Identifiable, Sendable {
         case .translate: return "character.book.closed"
         case .explain: return "lightbulb"
         case .review: return "checkmark.seal"
+        case .prompteng: return "wand.and.stars"
         }
     }
 }

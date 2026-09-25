@@ -12,25 +12,31 @@ struct CodeModelPicker: View {
         WithPerceptionTracking {
             FirasNavigationStack {
                 List {
-                    ForEach(ModelTier.allCases) { tier in
+                    ForEach(ModelGeneration.allCases.reversed()) { generation in
+                      Section(header: Text(generation == .current
+                        ? (lang == .arabic ? "النماذج الأساسية" : "Primary models")
+                        : (lang == .arabic ? "نماذج أخرى" : "Other models"))) {
+                      ForEach(ModelTier.allCases.reversed()) { tier in
                         WithPerceptionTracking {
                             Button {
-                                Task { await select(tier) }
+                                Task { await select(tier, generation: generation) }
                             } label: {
                                 HStack(spacing: 12) {
                                     Image(systemName: tier.symbol).frame(width: 24).foregroundStyle(env.prefs.palette.accent)
-                                    Text(tier.label(lang)).foregroundStyle(env.prefs.palette.textPrimary)
+                                    Text(generation.label(tier, lang)).foregroundStyle(env.prefs.palette.textPrimary)
                                     Spacer()
-                                    if env.code.modelSelection.model == tier { Image(systemName: "checkmark").foregroundStyle(env.prefs.palette.accent) }
+                                    if env.code.modelSelection.model == tier && env.code.modelSelection.generation == generation { Image(systemName: "checkmark").foregroundStyle(env.prefs.palette.accent) }
                                 }.frame(minHeight: 44)
                             }.disabled(checking || env.code.codeOmnix.active.contains(env.code.openProjectID ?? ""))
 
                             }
                     }
+                      }
+                    }
                     if env.code.modelSelection.model.showThinking {
                         Toggle(lang == .arabic ? "تفكير أعمق" : "Deeper thinking", isOn: Binding(
                             get: { env.code.modelSelection.think },
-                            set: { env.code.selectModel(CodeModelSelection(model: env.code.modelSelection.model, depth: $0 ? "deep" : "standard")) }
+                            set: { env.code.selectModel(CodeModelSelection(model: env.code.modelSelection.model, depth: $0 ? "deep" : "standard", generation: env.code.modelSelection.generation)) }
                         ))
                     }
                     if checking { ProgressView().frame(maxWidth: .infinity) }
@@ -51,7 +57,7 @@ struct CodeModelPicker: View {
 
             }
     }
-    private func select(_ tier: ModelTier) async {
+    private func select(_ tier: ModelTier, generation: ModelGeneration) async {
         guard !checking, let projectID = env.code.openProjectID else { return }
         let owner = env.session.identityID
         if tier == .omnix {
@@ -66,7 +72,7 @@ struct CodeModelPicker: View {
             } catch { self.error = OmnixCopy.unavailable(lang); return }
         }
         guard env.session.identityID == owner, env.code.openProjectID == projectID else { return }
-        env.code.selectModel(CodeModelSelection(model: tier))
+        env.code.selectModel(CodeModelSelection(model: tier, generation: generation))
         dismiss()
     }
 }

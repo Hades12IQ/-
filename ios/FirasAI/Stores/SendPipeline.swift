@@ -214,6 +214,7 @@ final class SendPipeline {
             turnCID: cid,
             planTurn: planTurn,
             tier: prefs.tier,
+            generation: prefs.modelGeneration,
             regenerateTargetID: nil,
             retryOf: nil,
             mergedFrom: mergedFrom,
@@ -290,6 +291,7 @@ final class SendPipeline {
             turnCID: IDs.cid(),
             planTurn: .auto,
             tier: chosen,
+            generation: .history(target.mgen),
             regenerateTargetID: target.id,
             retryOf: retryOf,
             mergedFrom: nil,
@@ -306,7 +308,7 @@ final class SendPipeline {
               target.omnix == nil,
               ModelTier.lenient(target.tier ?? fallbackTier.rawValue) != .omnix,
               requestedTier.rawValue != (target.tier ?? "") else { return nil }
-        return RetryReference(cid: previousCID, tier: target.tier ?? fallbackTier.rawValue)
+        return RetryReference(cid: previousCID, tier: target.tier ?? fallbackTier.rawValue, mgen: target.mgen)
     }
 
     /// "Continue" is a new turn that says so, seamed to the answer it follows. The seam is recorded
@@ -535,6 +537,7 @@ struct ChatTurnContext: Sendable {
     var turnCID: String
     let planTurn: PlanTurnKind
     let tier: ModelTier
+    var generation: ModelGeneration = .legacy
     var regenerateTargetID: String?
     var retryOf: RetryReference?
     var mergedFrom: String?

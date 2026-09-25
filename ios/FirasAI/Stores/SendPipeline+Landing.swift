@@ -47,7 +47,7 @@ extension SendPipeline {
         let tier = context?.tier ?? prefs.tier
         upsertAssistant(key: key, assistantID: assistantID, cid: cid, tier: tier, lang: lang) { row in
             if var alts = row.alts, !alts.isEmpty {
-                alts.append(AnswerVersion(content: text, reasoning: reasoning.isEmpty ? nil : reasoning, tier: tier.rawValue, lang: lang.rawValue))
+                alts.append(AnswerVersion(content: text, reasoning: reasoning.isEmpty ? nil : reasoning, tier: tier.rawValue, lang: lang.rawValue, mgen: context?.generation.wireValue ?? row.mgen, steps: row.steps))
                 if alts.count > 5 { alts.removeFirst(alts.count - 5) }
                 row.alts = alts
                 row.altAt = alts.count - 1
@@ -237,15 +237,19 @@ extension SendPipeline {
                             content: row.content,
                             reasoning: row.reasoning,
                             tier: row.tier,
-                            lang: row.lang
+                            lang: row.lang,
+                            mgen: row.mgen,
+                            steps: row.steps
                         )
                     )
                 }
                 row.alts = alts.isEmpty ? nil : alts
                 row.content = ""
+                row.steps = nil
                 row.reasoning = nil
                 row.cid = context.turnCID
                 row.tier = tier.rawValue
+                row.mgen = context.generation.wireValue
                 row.retryOf = context.retryOf
                 row.status = .streaming
                 conversation.messages[index] = row
@@ -264,6 +268,7 @@ extension SendPipeline {
         var assistant = ChatMessage.assistant(
             cid: context.turnCID,
             tier: tier,
+            generation: context.generation,
             lang: lang,
             mode: planning ? .plan : .auto
         )
@@ -347,7 +352,7 @@ extension SendPipeline {
         if let counted {
             let task = [counted.task, attachedText ?? ""].filter { !$0.isEmpty }.joined(separator: "\n\n")
             return ChatJobRequest(messages: [OutgoingMessage(role: "user", content: task)],
-                tier: output.tier.rawValue, think: output.think, cid: context.turnCID, chatId: chatID,
+                tier: output.tier.rawValue, mgen: context.generation.wireValue, think: output.think, cid: context.turnCID, chatId: chatID,
                 product: context.product.wireValue, kind: JobKind.counteddoc.rawValue, lang: lang.rawValue,
                 title: String(title.prefix(160)), task: task, format: "pdf",
                 expectedItems: counted.items.count, requiresSolutions: counted.items.requiresSolutions,
@@ -358,6 +363,7 @@ extension SendPipeline {
         return ChatJobRequest(
             messages: output.messages,
             tier: output.tier.rawValue,
+            mgen: context.generation.wireValue,
             think: output.think,
             cid: context.turnCID,
             chatId: chatID,

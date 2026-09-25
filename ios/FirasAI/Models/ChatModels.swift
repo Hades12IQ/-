@@ -72,22 +72,26 @@ struct FileChip: Codable, Sendable, Equatable {
 struct RetryReference: Codable, Sendable, Equatable {
     let cid: String
     let tier: String
+    let mgen: String?
 
-    init(cid: String, tier: String) {
+    init(cid: String, tier: String, mgen: String? = nil) {
         self.cid = cid
         self.tier = tier
+        self.mgen = ModelGeneration.history(mgen).wireValue
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: AnyCodingKey.self)
         cid = LenientJSON.string(container, "cid") ?? ""
         tier = LenientJSON.string(container, "tier") ?? ""
+        mgen = ModelGeneration.history(LenientJSON.string(container, "mgen")).wireValue
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: AnyCodingKey.self)
         try container.encode(cid, forKey: AnyCodingKey("cid"))
         try container.encode(tier, forKey: AnyCodingKey("tier"))
+        try container.encodeIfPresent(mgen, forKey: AnyCodingKey("mgen"))
     }
 }
 
@@ -96,12 +100,16 @@ struct AnswerVersion: Codable, Sendable, Equatable {
     var content: String
     var reasoning: String?
     var tier: String?
+    var mgen: String?
+    var steps: [ExecutionStep]?
     var lang: String?
 
-    init(content: String, reasoning: String? = nil, tier: String? = nil, lang: String? = nil) {
+    init(content: String, reasoning: String? = nil, tier: String? = nil, lang: String? = nil, mgen: String? = nil, steps: [ExecutionStep]? = nil) {
         self.content = content
         self.reasoning = reasoning
+        self.steps = steps
         self.tier = tier
+        self.mgen = ModelGeneration.history(mgen).wireValue
         self.lang = lang
     }
 
@@ -110,6 +118,8 @@ struct AnswerVersion: Codable, Sendable, Equatable {
         content = LenientJSON.string(container, "content") ?? ""
         reasoning = LenientJSON.string(container, "reasoning")
         tier = LenientJSON.string(container, "tier")
+        mgen = ModelGeneration.history(LenientJSON.string(container, "mgen")).wireValue
+        steps = ExecutionStep.merge(nil, LenientJSON.array(container, "steps", of: ExecutionStep.self) ?? [])
         lang = LenientJSON.string(container, "lang")
     }
 
@@ -118,6 +128,8 @@ struct AnswerVersion: Codable, Sendable, Equatable {
         try container.encode(content, forKey: AnyCodingKey("content"))
         try container.encodeIfPresent(reasoning, forKey: AnyCodingKey("reasoning"))
         try container.encodeIfPresent(tier, forKey: AnyCodingKey("tier"))
+        try container.encodeIfPresent(ModelGeneration.history(mgen).wireValue, forKey: AnyCodingKey("mgen"))
+        try container.encodeIfPresent(steps, forKey: AnyCodingKey("steps"))
         try container.encodeIfPresent(lang, forKey: AnyCodingKey("lang"))
     }
 }
@@ -146,6 +158,8 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
     var role: ChatRole
     var content: String
     var tier: String?
+    var mgen: String?
+    var steps: [ExecutionStep]?
     var lang: String?
     var reasoning: String?
     var cid: String?
@@ -173,6 +187,7 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
         role: ChatRole,
         content: String,
         tier: String? = nil,
+        mgen: String? = nil,
         lang: String? = nil,
         reasoning: String? = nil,
         cid: String? = nil,
@@ -195,6 +210,7 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
         self.role = role
         self.content = content
         self.tier = tier
+        self.mgen = ModelGeneration.history(mgen).wireValue
         self.lang = lang
         self.reasoning = reasoning
         self.cid = cid
@@ -223,6 +239,8 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
         }
         content = LenientJSON.string(container, "content") ?? ""
         tier = LenientJSON.string(container, "tier")
+        mgen = ModelGeneration.history(LenientJSON.string(container, "mgen")).wireValue
+        steps = ExecutionStep.merge(nil, LenientJSON.array(container, "steps", of: ExecutionStep.self) ?? [])
         lang = LenientJSON.string(container, "lang")
         reasoning = LenientJSON.string(container, "reasoning")
         let decodedCID = LenientJSON.string(container, "cid")
@@ -252,6 +270,8 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
         try container.encode(role.rawValue, forKey: AnyCodingKey("role"))
         try container.encode(content, forKey: AnyCodingKey("content"))
         try container.encodeIfPresent(tier, forKey: AnyCodingKey("tier"))
+        try container.encodeIfPresent(ModelGeneration.history(mgen).wireValue, forKey: AnyCodingKey("mgen"))
+        try container.encodeIfPresent(steps, forKey: AnyCodingKey("steps"))
         try container.encodeIfPresent(lang, forKey: AnyCodingKey("lang"))
         try container.encodeIfPresent(reasoning, forKey: AnyCodingKey("reasoning"))
         try container.encodeIfPresent(cid, forKey: AnyCodingKey("cid"))
@@ -268,6 +288,12 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
     }
 
     /// The answer text actually on screen — the selected version when there are alternatives.
+    var visibleSteps: [ExecutionStep] {
+        guard let alts, alts.count > 1, status != .streaming else { return steps ?? [] }
+        let index = min(max(altAt ?? alts.count - 1, 0), alts.count - 1)
+        return alts[index].steps ?? []
+    }
+
     var visibleContent: String {
         guard let alts, alts.count > 1 else { return content }
         let index = min(max(altAt ?? alts.count - 1, 0), alts.count - 1)
@@ -284,11 +310,12 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
         )
     }
 
-    static func assistant(cid: String, tier: ModelTier, lang: AppLanguage, mode: ResponseMode) -> ChatMessage {
+    static func assistant(cid: String, tier: ModelTier, generation: ModelGeneration = .legacy, lang: AppLanguage, mode: ResponseMode) -> ChatMessage {
         ChatMessage(
             role: .assistant,
             content: "",
             tier: tier.rawValue,
+            mgen: generation.wireValue,
             lang: lang.rawValue,
             cid: cid,
             mode: mode == .plan ? "plan" : "auto",

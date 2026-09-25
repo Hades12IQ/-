@@ -8,6 +8,7 @@ import Perception
 /// is the only thing that distinguishes it (`design-brief.md §7.4`, `web-chat-ux.md §3.3`).
 struct TierPill: View {
 
+    private let generation: ModelGeneration
     private let tier: ModelTier
     private let palette: FirasPalette
     private let lang: AppLanguage
@@ -19,11 +20,13 @@ struct TierPill: View {
 
     init(
         tier: ModelTier,
+        generation: ModelGeneration = .legacy,
         palette: FirasPalette,
         lang: AppLanguage,
         motionOn: Bool,
         action: @escaping () -> Void
     ) {
+        self.generation = generation
         self.tier = tier
         self.palette = palette
         self.lang = lang
@@ -40,7 +43,7 @@ struct TierPill: View {
             .scaleEffect(pop)
             .firasOnChange(of: tier) { _, _ in bounce() }
             .accessibilityLabel(Text(Strings.Chat.modelPickerHint(lang)))
-            .accessibilityValue(Text(tier.label(lang)))
+            .accessibilityValue(Text(generation.label(tier, lang)))
             .accessibilityHint(Text(tier.tagline(lang)))
         }
     }
@@ -54,7 +57,7 @@ struct TierPill: View {
                 .foregroundStyle(iconColor)
                 .accessibilityHidden(true)
 
-            Text(tier.short(lang))
+            Text(generation.label(tier, lang))
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(textColor)
                 .lineLimit(1)

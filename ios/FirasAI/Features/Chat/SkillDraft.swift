@@ -42,6 +42,16 @@ final class SkillDraft {
     var selection = NSRange(location: 0, length: 0)
     var dismissedStart: Int?
     var highlighted = 0
+    var promptRequest = 0
+    var engineering = false
+
+    /// Shared by every send button, including hardware Return. A helper never becomes a chat turn.
+    func interceptPrompt(_ text: String) -> Bool {
+        if engineering { return true }
+        guard PromptEngineering.range(in: text) != nil else { return false }
+        promptRequest += 1
+        return true
+    }
 
     func synchronize(_ text: String) {
         guard text != previous else { return }

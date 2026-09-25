@@ -176,7 +176,7 @@ struct CodeSessionComposer: View {
     /// Selection belongs to this Code project and is snapshotted by each request.
     private var tierPill: some View {
         FirasPill(
-            text: env.code.modelSelection.model.label(lang),
+            text: env.code.modelSelection.generation.label(env.code.modelSelection.model, lang),
             symbol: env.code.modelSelection.model.symbol,
             selected: false,
             palette: palette
@@ -186,7 +186,7 @@ struct CodeSessionComposer: View {
         }
         .layoutPriority(1)
         .accessibilityLabel(Text(verbatim: Strings.CodeUI.contextModel(lang)))
-        .accessibilityValue(Text(verbatim: env.code.modelSelection.model.label(lang)))
+        .accessibilityValue(Text(verbatim: env.code.modelSelection.generation.label(env.code.modelSelection.model, lang)))
         .disabled(isSending || env.code.isAsking || env.code.isBuilding(projectID: projectID) || env.code.codeOmnix.active.contains(projectID))
     }
 
@@ -318,6 +318,7 @@ struct CodeSessionComposer: View {
     }
 
     private func send() {
+        guard !skillDraft.interceptPrompt(draft) else { return }
         let instruction = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !isSending else { return }
         guard env.code.project != nil else {

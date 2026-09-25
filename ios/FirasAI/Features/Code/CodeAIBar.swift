@@ -458,6 +458,7 @@ struct CodeAIBar: View {
     }
 
     private func send() {
+        guard !skillDraft.interceptPrompt(draft) else { return }
         let instruction = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !isSending else { return }
         guard env.code.project != nil else {

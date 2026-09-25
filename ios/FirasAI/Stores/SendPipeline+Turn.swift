@@ -20,6 +20,12 @@ extension SendPipeline {
         }
         let buffer = store.buffer(for: key)
         buffer.adopt(text: snapshot.text, reasoning: snapshot.reasoning)
+        if let steps = snapshot.steps {
+            store.mutate(key) { chat in
+                guard let index = chat.messages.firstIndex(where: { $0.id == state.streamingMessageID }) else { return }
+                chat.messages[index].steps = ExecutionStep.merge(chat.messages[index].steps, steps)
+            }
+        }
         // The long-file worker reports stage and page counts; keep the last non-nil reading so the
         // card does not blink back to "starting" on a poll that happened to omit it.
         if let progress = snapshot.progress { state.longFileProgress = progress }
@@ -80,6 +86,12 @@ extension SendPipeline {
 
         switch terminal {
         case .completed(let snapshot):
+            if let steps = snapshot.steps {
+                store.mutate(key) { chat in
+                    guard let index = chat.messages.firstIndex(where: { $0.id == assistantID }) else { return }
+                    chat.messages[index].steps = ExecutionStep.merge(chat.messages[index].steps, steps)
+                }
+            }
             let final = buffer.finish(authoritativeText: snapshot.text, reasoning: snapshot.reasoning)
             if state.isStopping {
                 await settleStopped(key: key, text: final.text, reasoning: final.reasoning, assistantID: assistantID, cid: pointer.cid)
@@ -322,6 +334,7 @@ extension SendPipeline {
             history: history,
             lastUser: user,
             reattachImages: reattach.isEmpty ? nil : reattach,
+            generation: context.generation,
             explicitSearch: trigger == .explicit,
             documentRevision: revision,
             documentAssets: assets
@@ -383,6 +396,7 @@ extension SendPipeline {
                 return
             }
         }
+        queueRequest.mgen = context.generation.wireValue
         // The queue leaves the answer in server storage so it can be recovered later, and
         // recovering it later is exactly what must not be possible in a temporary conversation —
         // for a guest that is the ONLY thing standing between the two, since a guest never has a
@@ -468,6 +482,7 @@ extension SendPipeline {
         let request = ChatStreamRequest(
             messages: output.messages,
             tier: output.tier.rawValue,
+            mgen: context.generation.wireValue,
             think: output.think,
             cid: context.turnCID,
             chatId: serverChatID,
@@ -508,6 +523,13 @@ extension SendPipeline {
                 if Task.isCancelled { break }
                 if Date() >= ceiling { break }
                 if frame.isDone { break }
+                if let step = ExecutionStep.decodeFrame(frame.data, offset: buffer.text.utf16.count) {
+                    store.mutate(key) { chat in
+                        guard let index = chat.messages.firstIndex(where: { $0.id == assistantID }) else { return }
+                        chat.messages[index].steps = ExecutionStep.merge(chat.messages[index].steps, [step])
+                    }
+                    continue
+                }
                 guard let delta = StreamBuffer.delta(fromData: frame.data) else { continue }
                 buffer.append(content: delta.content, reasoning: delta.reasoning)
                 state.phase = buffer.hasText ? .streaming : .thinking

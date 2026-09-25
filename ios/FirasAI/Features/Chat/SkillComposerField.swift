@@ -17,6 +17,10 @@ struct SkillComposerField: View {
     @State private var showsLibrary = false
     @State private var libraryToken: SkillSlashToken?
     @State private var preview: PastedTextItem?
+    @State private var engineerTask: Task<Void, Never>?
+    @State private var engineeringID: UUID?
+    @State private var choosesPromptLanguage = false
+    @State private var mounted = false
     @Environment(\.isEnabled) private var enabled
     @Environment(\.dismiss) private var dismiss
     private var lang: AppLanguage { env.prefs.lang }
@@ -40,12 +44,15 @@ struct SkillComposerField: View {
                 if let token, enabled { menu(token) }
                 if !draft.pastes.isEmpty { pastedCards }
                 editor
+                if PromptEngineering.range(in: text) != nil || draft.engineering { promptControls }
             }
             .task(id: token != nil) { if token != nil { await env.skills.load() } }
             .firasOnChange(of: text) { _, value in draft.synchronize(value) }
             .firasOnChange(of: env.skills.skills) { _, skills in draft.retainValid(skills: skills, text: text) }
-            .firasOnChange(of: env.session.identityID) { _, _ in draft.reset() }
-            .onAppear { draft.synchronize(text) }
+            .firasOnChange(of: env.session.identityID) { _, _ in engineerTask?.cancel(); engineeringID = nil; draft.engineering = false; draft.reset() }
+            .firasOnChange(of: draft.promptRequest) { _, _ in choosesPromptLanguage = true }
+            .onDisappear { mounted = false; engineerTask?.cancel() }
+            .onAppear { mounted = true; draft.synchronize(text) }
             .sheet(item: $preview) { item in PastedTextPreview(item: item, palette: p, lang: lang) }
             .sheet(isPresented: $showsLibrary) { librarySheet }
         }
@@ -60,9 +67,64 @@ struct SkillComposerField: View {
         }
         return FirasGrowingTextField(text: textBinding, placeholder: placeholder, maxLines: maxLines,
             pointSize: pointSize, palette: p, isEditing: focused,
-            sendOnReturn: sendOnReturn, onSubmit: onSubmit, onKey: handleKey,
+            sendOnReturn: sendOnReturn, onSubmit: { if !draft.interceptPrompt(text) { onSubmit() } }, onKey: handleKey,
             selection: selection, highlightedRanges: draft.mentions.map(\.range), onLargePaste: handler)
-            .frame(minHeight: 44).bidiIsland(for: text, fallback: lang)
+            .frame(minHeight: 44).bidiIsland(for: text, fallback: lang).disabled(draft.engineering)
+    }
+
+    private var promptControls: some View {
+        HStack(spacing: 12) {
+            if draft.engineering {
+                ProgressView()
+                Text(lang == .arabic ? "يكتب الأمر…" : "Writing the prompt…").font(.caption)
+                Spacer()
+                Button(lang == .arabic ? "إيقاف" : "Stop") { engineerTask?.cancel() }
+            } else if choosesPromptLanguage {
+                Text(lang == .arabic ? "لغة الأمر" : "Prompt language").font(.caption)
+                Button("العربية") { engineer(.arabic) }
+                Button("English") { engineer(.english) }
+            } else {
+                Button { choosesPromptLanguage = true } label: {
+                    Label(lang == .arabic ? "تطبيق هندسة الأوامر" : "Apply prompt engineering", systemImage: "wand.and.stars")
+                }
+            }
+        }.font(.subheadline).tint(p.accent).frame(minHeight: 44)
+    }
+
+    private func engineer(_ language: AppLanguage) {
+        guard !draft.engineering, let request = PromptEngineering.request(in: text), !request.isEmpty else { return }
+        let original = text, owner = env.session.identityID, id = UUID()
+        engineeringID = id; draft.engineering = true; choosesPromptLanguage = false
+        engineerTask = Task { @MainActor in
+            let deadline = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                if !Task.isCancelled, engineeringID == id { engineerTask?.cancel() }
+            }
+            defer {
+                deadline.cancel()
+                if engineeringID == id { draft.engineering = false; engineerTask = nil; engineeringID = nil }
+            }
+            var output = ""
+            do {
+                let frames = await PromptEngineering.stream(request: request, language: language, api: env.api)
+                for try await frame in frames {
+                    try Task.checkCancellation()
+                    guard owner == env.session.identityID, engineeringID == id else { return }
+                    if frame.isDone { break }
+                    guard let delta = StreamBuffer.delta(fromData: frame.data), !delta.content.isEmpty else { continue }
+                    output += delta.content
+                    text = output; draft.synchronize(output)
+                }
+            } catch {
+                if owner == env.session.identityID, !Task.isCancelled {
+                    env.toasts.show(lang == .arabic ? "تعذّرت هندسة الأمر. يمكنك المحاولة مجددًا." : "Prompt engineering failed. You can retry.", isError: true)
+                }
+            }
+            guard owner == env.session.identityID, engineeringID == id else { return }
+            if output.isEmpty { text = original; draft.synchronize(original) }
+            draft.selection = NSRange(location: text.utf16.count, length: 0)
+            if mounted { focused.wrappedValue = true }
+        }
     }
     private var pastedCards: some View {
         ScrollView(.horizontal, showsIndicators: false) {

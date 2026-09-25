@@ -32,6 +32,7 @@ extension CodeStore {
         }
         if codeOmnix.owner != owner { codeOmnix.reset(owner: owner) }
         let generation = codeOmnix.generation
+        let modelGeneration = modelSelection.generation
         let text = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
         guard text.utf16.count <= 60_000, !text.isEmpty || !attachments.isEmpty else {
             toasts.show(OmnixCopy.tooLarge(lang), isError: true); return
@@ -66,8 +67,9 @@ extension CodeStore {
             let ref = OmnixReceipt(owner: owner, conversationId: id, requestKey: requestKey, sessionId: previous?.sessionId ?? "")
             receipt = ref
             var user = CodeChatMessage(role: "user", content: text.isEmpty ? attachments.map(\.name).joined(separator: ", ") : text, at: Date().timeIntervalSince1970 * 1000)
-            user.model = "omnix"
+            user.model = "omnix"; user.mgen = modelGeneration.wireValue
             var assistant = CodeChatMessage(role: "ai", content: "", at: Date().timeIntervalSince1970 * 1000)
+            assistant.mgen = modelGeneration.wireValue
             assistant.model = "omnix"; assistant.omnix = ref
             thread.messages.append(user); thread.messages.append(assistant)
             codeOmnix.eligible.insert(requestKey)
@@ -86,7 +88,7 @@ extension CodeStore {
             }
             guard codeOmnixCurrent(owner, generation), !codeOmnix.cancelled.contains(requestKey) else { throw APIError.cancelled }
             admission = .submitting
-            let job = try await OmnixService.submit(OmnixSubmission(requestKey: requestKey, text: text, product: "code", conversationId: id,
+            let job = try await OmnixService.submit(OmnixSubmission(mgen: modelGeneration.wireValue, requestKey: requestKey, text: text, product: "code", conversationId: id,
                 sessionId: ref.sessionId.isEmpty ? nil : ref.sessionId, attachments: uploads.isEmpty ? nil : uploads), api: api)
             admission = .accepted
             guard codeOmnixCurrent(owner, generation) else { return }

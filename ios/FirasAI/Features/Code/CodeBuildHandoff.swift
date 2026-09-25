@@ -34,6 +34,7 @@ enum CodeBuildHandoff {
             messages: generic ? messages(ticket: ticket, checkpoint: checkpoint)
                 : [OutgoingMessage(role: "user", content: task, images: nil)],
             tier: ticket.selection?.model.rawValue ?? (generic ? ModelTier.ultra.rawValue : ModelTier.pro.rawValue),
+            mgen: ticket.selection?.generation.wireValue,
             think: ticket.selection?.think ?? false,
             cid: ticket.cid,
             // The store writes the project fence to its chat after validation.

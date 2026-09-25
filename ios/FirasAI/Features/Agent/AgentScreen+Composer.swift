@@ -206,6 +206,7 @@ struct AgentComposer: View {
     }
 
     private func send() {
+        guard !skillDraft.interceptPrompt(text) else { return }
         guard !isBusy else {
             toast(Strings.Agent.cannotStop, error: true)
             return

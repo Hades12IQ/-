@@ -291,7 +291,7 @@ enum CodeAskAI {
                     instruction: instruction,
                     attachmentText: attachmentText
                 ),
-                tier: selection.model, think: selection.think
+                tier: selection.model, think: selection.think, generation: selection.generation
             )
             return .answer(strippingFileBlocks(answer))
 
@@ -305,7 +305,7 @@ enum CodeAskAI {
                     attachmentText: attachmentText,
                     focusPaths: focus
                 ),
-                tier: selection.model, think: selection.think
+                tier: selection.model, think: selection.think, generation: selection.generation
             )
             var rounds = 0
             while rounds < continuationRounds, let open = openBlock(in: answer) {
@@ -314,7 +314,7 @@ enum CodeAskAI {
                 let more = try await complete(
                     api: api,
                     messages: continuationMessages(path: open.path, tail: tail),
-                    tier: selection.model, think: selection.think
+                    tier: selection.model, think: selection.think, generation: selection.generation
                 )
                 if more.isEmpty { break }
                 answer += more
@@ -331,12 +331,14 @@ enum CodeAskAI {
         api: APIClient,
         messages: [OutgoingMessage],
         tier: ModelTier,
-        think: Bool = false
+        think: Bool = false,
+        generation: ModelGeneration = .legacy
     ) async throws -> String {
         guard tier != .omnix else { throw APIError.decoding("omnix_cloud_route_required") }
         let request = ChatStreamRequest(
             messages: messages,
             tier: tier.rawValue,
+            mgen: generation.wireValue,
             think: tier == .mini ? false : think,
             cid: IDs.cid(),
             chatId: nil,

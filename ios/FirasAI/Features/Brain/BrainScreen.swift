@@ -173,6 +173,7 @@ struct BrainScreen: View {
     // MARK: - Sending
 
     private func send(outline: Bool) {
+        if !outline && skillDraft.interceptPrompt(draft) { return }
         guard !store.isAsking else { return }
         var text: String = outline
             ? Strings.Brain.summarizeAsk(store.activeDocIDs.count, lang)

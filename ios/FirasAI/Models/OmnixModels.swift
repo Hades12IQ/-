@@ -93,6 +93,8 @@ struct OmnixProgress: Codable, Sendable, Equatable {
     var plan: [OmnixStep]?
     var says: [String]?
     var events: [OmnixEvent]?
+    var timelineVersion: Int?
+    var droppedSpeech: Bool?
 }
 struct OmnixStep: Codable, Sendable, Equatable, Identifiable {
     let id: String
@@ -102,11 +104,19 @@ struct OmnixStep: Codable, Sendable, Equatable, Identifiable {
     var inputPreview: String?
     var resultPreview: String?
     var durationMs: Double?
+    var kind: String?
+    var subagentId: String?
+    var delegationOutcome: String?
+    var startedAt: Double?
+    var endedAt: Double?
+    var resultPreviewTruncated: Bool?
+    var error: Bool?
 }
 struct OmnixEvent: Codable, Sendable, Equatable, Identifiable {
     let id: String
     let kind: String
     var text: String?
+    var at: Double?
 }
 struct OmnixFile: Codable, Sendable, Equatable, Identifiable {
     let id: String
@@ -123,6 +133,8 @@ struct OmnixFile: Codable, Sendable, Equatable, Identifiable {
     }
 }
 struct OmnixSubmission: Encodable, Sendable {
+    var mgen: String? = nil
+    var kind: String? = nil
     let requestKey: String
     let text: String
     let product: String
