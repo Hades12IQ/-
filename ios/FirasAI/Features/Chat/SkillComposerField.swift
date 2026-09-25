@@ -92,7 +92,12 @@ struct SkillComposerField: View {
     }
 
     private func engineer(_ language: AppLanguage) {
-        guard !draft.engineering, let request = PromptEngineering.request(in: text), !request.isEmpty else { return }
+        guard !draft.engineering, let request = PromptEngineering.request(in: text) else { return }
+        guard !request.isEmpty else {
+            env.toasts.show(lang == .arabic ? "اكتب طلبك بعد /prompteng أولًا." : "Write your request after /prompteng first.")
+            focused.wrappedValue = true
+            return
+        }
         let original = text, owner = env.session.identityID, id = UUID()
         engineeringID = id; draft.engineering = true; choosesPromptLanguage = false
         engineerTask = Task { @MainActor in

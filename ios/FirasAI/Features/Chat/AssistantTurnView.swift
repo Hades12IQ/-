@@ -100,6 +100,8 @@ struct AssistantTurnView: View, Equatable {
         lhs.message.id == rhs.message.id
             && lhs.message.content == rhs.message.content
             && lhs.message.reasoning == rhs.message.reasoning
+            && lhs.message.steps == rhs.message.steps
+            && lhs.message.mgen == rhs.message.mgen
             && lhs.message.status == rhs.message.status
             && lhs.message.altAt == rhs.message.altAt
             && lhs.message.alts?.count == rhs.message.alts?.count
@@ -133,6 +135,9 @@ struct AssistantTurnView: View, Equatable {
                 } else {
                     if !message.visibleSteps.isEmpty && (displayText.contains("firas-") || displayText.isEmpty) {
                         ForEach(message.visibleSteps) { step in
+                            if let say = step.say, !say.isEmpty, !displayText.contains(say) {
+                                Text(say).font(.subheadline).foregroundStyle(palette.textSecondary).textSelection(.enabled)
+                            }
                             ExecutionStepRow(step: step, lang: lang, palette: palette, streaming: isStreaming)
                         }
                     }

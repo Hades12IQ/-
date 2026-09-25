@@ -239,7 +239,7 @@ final class JobManager: JobWatcherDelegate {
             var partial: JobSnapshot?
             if draft.kind == .counteddoc, let text = response.text,
                let meta = FileMeta.document(inContent: text), meta.partial == true, meta.hasVerifiedPDFReference {
-                partial = JobSnapshot(pointerID: jobID, phase: .failed, text: text,
+                partial = JobSnapshot(pointerID: jobID, steps: response.steps, phase: .failed, text: text,
                     reasoning: response.reasoning ?? "", progress: response.progress, surface: response.surface)
             }
             let selectedCode = ServerError.parse(jsonString: raw)?.code ?? raw
@@ -247,7 +247,7 @@ final class JobManager: JobWatcherDelegate {
                let text = response.text, !text.isEmpty,
                ["selected_model_unavailable", "selected_model_incomplete", "selected_outcome_unknown"].contains(selectedCode) {
                 code = selectedCode
-                partial = JobSnapshot(pointerID: jobID, phase: .failed, text: text,
+                partial = JobSnapshot(pointerID: jobID, steps: response.steps, phase: .failed, text: text,
                     reasoning: response.reasoning ?? "", progress: response.progress, surface: response.surface)
             }
             deliverSoon(pointer, .failed(code: code, partial: partial))

@@ -7,6 +7,36 @@ struct OmnixActivity {
     var steps: [ExecutionStep] = []
     var body: String
 
+    static func action(_ item: OmnixStep, state: String, lang: AppLanguage) -> (String, String) {
+        let input = item.inputPreview ?? ""
+        func matches(_ text: String, _ pattern: String) -> Bool {
+            text.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
+        }
+        func fileName(includeInputs: Bool) -> String {
+            guard let regex = try? NSRegularExpression(pattern: #""([^"]*)"|'([^']*)'|(\S+)"#) else { return "" }
+            let ns = input as NSString
+            var result = ""
+            for match in regex.matches(in: input, range: NSRange(location: 0, length: ns.length)) {
+                let range = (1...3).map { match.range(at: $0) }.first { $0.location != NSNotFound }!
+                let token = ns.substring(with: range).trimmingCharacters(in: CharacterSet(charactersIn: "),;:"))
+                guard matches(token, #"\.(pdf|docx|xlsx|pptx|png|svg)$"#),
+                      includeInputs || !matches(token, #"(^|[\\/])inputs[\\/]"#) else { continue }
+                result = token.replacingOccurrences(of: "\\", with: "/").split(separator: "/").last.map(String.init) ?? token
+            }
+            return result
+        }
+        for rule in OmnixActionVocabulary.rules where matches(item.title, rule.match) {
+            if let pattern = rule.input, !matches(input, pattern) { continue }
+            let file = rule.file.map { fileName(includeInputs: $0 == "any") } ?? ""
+            if rule.file != nil && file.isEmpty { continue }
+            let target = file.isEmpty ? String(input.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ").prefix(46)) : file
+            let slot = state == "done" ? 1 : state == "fail" ? 2 : 0
+            let format = (lang == .arabic ? rule.ar : rule.en)[slot]
+            return (rule.kind, format.replacingOccurrences(of: "{}", with: target).trimmingCharacters(in: .whitespaces))
+        }
+        return ("run", item.title)
+    }
+
     init(progress: OmnixProgress?, output: String, lang: AppLanguage) {
         body = output
         guard let progress else { return }
@@ -27,7 +57,8 @@ struct OmnixActivity {
             else { outcome = item.s == "done" ? "completed" : "unknown" }
             let state = outcome == "running" ? "live" : outcome == "failed" ? "fail" : outcome == "completed" || outcome == "dispatched" ? "done" : "unknown"
             let ar = lang == .arabic
-            var title = item.title
+            let action = Self.action(item, state: state, lang: lang)
+            var title = action.1
             if delegate {
                 switch outcome {
                 case "dispatched": title = ar ? "أطلق المهمة الفرعية" : "Launched the sub-task"
@@ -43,7 +74,7 @@ struct OmnixActivity {
                 fact = String(format: "%.1f", ms / 1000) + (ar ? " ثانية" : " seconds")
             }
             if item.resultPreviewTruncated == true { fact = (fact.map { $0 + " · " } ?? "") + (ar ? "مقتطف من النتيجة" : "Result excerpt") }
-            steps.append(ExecutionStep(id: item.id, kind: delegate ? "skill" : "run", state: state,
+            steps.append(ExecutionStep(id: item.id, kind: delegate ? "skill" : action.0, state: state,
                 text: title, fact: fact, detail: details, at: offsets[item.id] ?? 0))
         }
         // Strip only an exact prefix. A separate final summary must remain intact.

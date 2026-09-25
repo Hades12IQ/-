@@ -261,6 +261,7 @@ extension SendPipeline {
                 guard let index = conversation.messages.firstIndex(where: { $0.id == existing && $0.role == .assistant }) else { return }
                 conversation.messages[index].cid = context.turnCID
                 conversation.messages[index].content = ""
+                conversation.messages[index].steps = nil
                 conversation.messages[index].status = .streaming
             }
             return existing

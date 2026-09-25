@@ -202,7 +202,9 @@ struct FirasChatBackupEntry: Codable, Sendable, Equatable {
                     content: String(version.content.prefix(maximumContentCharacters)),
                     reasoning: version.reasoning.map { String($0.prefix(maximumContentCharacters)) },
                     tier: version.tier.map { String($0.prefix(20)) },
-                    lang: version.lang.map { String($0.prefix(5)) }
+                    lang: version.lang.map { String($0.prefix(5)) },
+                    mgen: version.mgen,
+                    steps: ExecutionStep.merge(nil, version.steps ?? [])
                 )
             }
         let keptVersions = versions.count > 1 ? Array(versions) : nil
@@ -211,6 +213,8 @@ struct FirasChatBackupEntry: Codable, Sendable, Equatable {
             role: message.role,
             content: String(message.content.prefix(maximumContentCharacters)),
             tier: message.tier.map { String($0.prefix(20)) },
+            mgen: message.mgen,
+            steps: ExecutionStep.merge(nil, message.steps ?? []),
             lang: message.lang.map { String($0.prefix(5)) },
             reasoning: message.reasoning.map { String($0.prefix(maximumContentCharacters)) },
             cid: message.cid.map { String($0.prefix(64)) },
@@ -223,7 +227,7 @@ struct FirasChatBackupEntry: Codable, Sendable, Equatable {
             mode: message.mode.map { String($0.prefix(20)) },
             askAnswered: message.askAnswered == true ? true : nil,
             retryOf: message.retryOf.map {
-                RetryReference(cid: String($0.cid.prefix(64)), tier: String($0.tier.prefix(20)))
+                RetryReference(cid: String($0.cid.prefix(64)), tier: String($0.tier.prefix(20)), mgen: $0.mgen)
             },
             retried: message.retried == true ? true : nil,
             mergedFrom: message.mergedFrom.map { String($0.prefix(120)) },

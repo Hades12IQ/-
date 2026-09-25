@@ -114,6 +114,11 @@ enum SkillsReliabilityChecks {
             check(env.skills.selected([saved.id]).isEmpty, "disabled skill selectable")
             await env.skills.delete(edited)
             check(env.skills.skills.count == 3, "delete contract")
+            let imported = try await env.skills.importSkill(url: "  https://example.com/SKILL.md  ")
+            check(imported.id == "usk-5555555555555555" && env.skills.selected([imported.id]).count == 1, "imported skill not available to slash selection")
+            let importCall = SkillsFixtureProtocol.calls(env.config.apiBaseURL.host!).last
+            check(importCall?.path == "/api/skills/import" && importCall?.body["url"] as? String == "https://example.com/SKILL.md", "skill import wire contract")
+            await env.skills.delete(imported)
 
             let payload: [String: Any] = ["messages": [["role": "user", "content": "Explain it"]], "task": "Explain it", "text": "Explain it"]
             let bytes = try JSONSerialization.data(withJSONObject: payload)
@@ -288,7 +293,10 @@ final class SkillsFixtureProtocol: URLProtocol, @unchecked Sendable {
         var rows = Self.state.rows[host] ?? []
         Self.state.calls[host, default: []].append(Call(path: url.path, method: request.httpMethod ?? "", body: body))
         var result: [String: Any] = ["ok": true]
-        if url.path == "/api/skills" {
+        if url.path == "/api/skills/import", request.httpMethod == "POST", var imported = rows.first {
+            imported.id = "usk-5555555555555555"; imported.name = "Imported skill"
+            rows.append(imported); result["skill"] = object(imported)
+        } else if url.path == "/api/skills" {
             if request.httpMethod == "POST", var skill = try? JSONDecoder().decode(AccountSkill.self, from: JSONSerialization.data(withJSONObject: body.merging(["id": body["id"] ?? ""]) { first, _ in first })) {
                 if skill.id.isEmpty { skill.id = "usk-4444444444444444" }
                 rows.removeAll { $0.id == skill.id }; rows.append(skill); result["skill"] = object(skill)

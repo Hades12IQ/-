@@ -32,6 +32,10 @@ enum GenerationReliabilityChecks {
         let activity = OmnixActivity(progress: progress, output: "😀 نص\nFinal", lang: .english)
         check(activity.narration == "😀 نص" && activity.body == "\nFinal" && activity.steps.first?.at == "😀 نص".utf16.count, "speech duplicated or UTF-16 offset changed")
         check(activity.steps.first?.text == "Launched the sub-task", "dispatch misreported as child completion")
+        let audit = OmnixStep(id: "audit", title: "terminal", s: "done", observed: true, inputPreview: "python documents.py verify report.pdf")
+        check(OmnixActivity.action(audit, state: "done", lang: .english).1 == "Checked report.pdf", "deliverable verification action lost")
+        let install = OmnixStep(id: "install", title: "terminal", s: "done", observed: true, inputPreview: "pip install pdftotext")
+        check(OmnixActivity.action(install, state: "done", lang: .english).1.hasPrefix("Ran "), "install falsely described as checking a deliverable")
         var incomplete = progress; incomplete?.droppedSpeech = true
         let fallback = OmnixActivity(progress: incomplete, output: "whole answer", lang: .english)
         check(fallback.narration.isEmpty && fallback.body == "whole answer", "truncated timeline duplicated narration")
