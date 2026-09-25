@@ -38,6 +38,7 @@ enum CodeEditService {
         let cid: String
         let chatId: String
         let tier: String
+        let mgen: String?
         let think: Bool
         let lang: String
         let messages: [OutgoingMessage]
@@ -59,7 +60,7 @@ enum CodeEditService {
               !task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               task.utf16.count <= 60_000, attach.utf16.count <= 24_000 else { throw Failure.invalidRequest }
         return Request(task: task, attach: attach, baseHash: receipt.baseHash, cid: receipt.cid,
-            chatId: receipt.conversationId, tier: selection.model.rawValue, think: selection.think,
+            chatId: receipt.conversationId, tier: selection.model.rawValue, mgen: selection.generation.wireValue, think: selection.think,
             lang: lang.rawValue, messages: [OutgoingMessage(role: "user", content: task)])
     }
 

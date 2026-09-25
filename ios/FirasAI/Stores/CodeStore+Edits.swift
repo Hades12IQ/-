@@ -43,8 +43,10 @@ extension CodeStore {
             receipt = ref
             var user = CodeChatMessage(role: "user", content: task, at: Date().timeIntervalSince1970 * 1000)
             user.model = selection.model.rawValue
+            user.mgen = selection.generation.wireValue
             var answer = CodeChatMessage(role: "ai", content: "", at: Date().timeIntervalSince1970 * 1000)
             answer.model = selection.model.rawValue; answer.edit = ref; answer.editPhase = "queued"
+            answer.mgen = selection.generation.wireValue
             thread.messages.append(user); thread.messages.append(answer)
             codeOmnix.eligible.insert(ref.cid); jobs.prepareExternalCompletion(ownerID: owner)
             try await persistCodeOmnix(id: id, owner: owner, generation: generation)

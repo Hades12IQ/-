@@ -19,7 +19,8 @@ enum CodeModelSelectionChecks {
             }
             let webJSON = #"{"turns":[],"selection":{"model":""# + tier.rawValue + #"","depth":"deep"}}"#
             let webFence = "```firas-code-chat\n" + Data(webJSON.utf8).base64EncodedString() + "\n```"
-            if CodeChatThread.decode(fromFence: webFence)?.selection != selection {
+            let migrated = CodeModelSelection(model: tier, depth: "deep", generation: tier == .omnix ? .legacy : .current)
+            if CodeChatThread.decode(fromFence: webFence)?.selection != migrated {
                 failures.append("Real website nested model/depth did not survive reopening: " + tier.rawValue)
             }
             if let bytes = try? JSONEncoder().encode(thread), let object = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any] {
@@ -35,7 +36,7 @@ enum CodeModelSelectionChecks {
                 for brief in ["Build a simple website", "Build a Python CLI"] {
                     var requestTicket = ticket; requestTicket.brief = brief
                     let request = CodeBuildHandoff.request(ticket: requestTicket, checkpoint: nil)
-                    if request.tier != tier.rawValue || request.think != selection.think || request.nomem == true {
+                    if request.tier != tier.rawValue || request.think != selection.think || request.nomem == true || request.mgen != "1.1" {
                         failures.append("Code durable build silently changed the selected model or work depth")
                     }
                 }
@@ -47,7 +48,7 @@ enum CodeModelSelectionChecks {
         let unicode = #"{"model":"omnix","depth":"managed","turns":[{"role":"user","text":"اكتب برنامجًا 😀"}]}"#
         let u16 = "```firas-code-chat\nu16:" + (unicode.data(using: .utf16LittleEndian)?.base64EncodedString() ?? "") + "\n```"
         let historical = CodeChatThread.decode(fromFence: u16)
-        if historical?.messages.first?.content != "اكتب برنامجًا 😀" || historical?.selection != CodeModelSelection(model: .omnix) {
+        if historical?.messages.first?.content != "اكتب برنامجًا 😀" || historical?.selection != CodeModelSelection(model: .omnix, generation: .legacy) {
             failures.append("Code could not reopen the historical flat UTF-16 thread and its model")
         }
         for payload in [#"{"turns":[]}"#, #"{"turns":[],"selection":null}"#] {
@@ -56,7 +57,7 @@ enum CodeModelSelectionChecks {
         }
         let both = #"{"turns":[],"model":"mini","depth":"standard","selection":{"model":"omnix","depth":"managed"}}"#
         let preferred = CodeChatThread.decode(fromFence: "```firas-code-chat\n" + Data(both.utf8).base64EncodedString() + "\n```")
-        if preferred?.selection != CodeModelSelection(model: .omnix) { failures.append("The nested website selection did not supersede a historical flat choice") }
+        if preferred?.selection != CodeModelSelection(model: .omnix, generation: .legacy) { failures.append("The nested website selection did not supersede a historical flat choice") }
         return failures
     }
 }

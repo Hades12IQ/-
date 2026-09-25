@@ -18,6 +18,7 @@ struct TierPickerSheet: View {
     @State private var appeared = false
     @State private var showOmnixAccess = false
     @State private var showPreviousModels = false
+    @State private var omnixGeneration: ModelGeneration = .current
 
     init(env: AppEnvironment, product: ProductKind = .ai) {
         self.prefs = env.prefs
@@ -78,7 +79,7 @@ struct TierPickerSheet: View {
             .onAppear { reveal(motionOn: motionOn) }
             .sheet(isPresented: $showOmnixAccess) {
                 WithPerceptionTracking {
-                    if let env { OmnixAccessView(env: env) }
+                    if let env { OmnixAccessView(env: env, generation: omnixGeneration) }
                 }
             }
         }())
@@ -186,7 +187,7 @@ struct TierPickerSheet: View {
 
     private func pick(_ tier: ModelTier, generation: ModelGeneration, motionOn: Bool) {
         if tier == .omnix, env != nil {
-            prefs.modelGeneration = generation
+            omnixGeneration = generation
             showOmnixAccess = true
             return
         }

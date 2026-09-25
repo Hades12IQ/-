@@ -25,6 +25,7 @@ enum CodeEditServiceChecks {
                 let object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(request)) as! [String: Any]
                 check(object["tier"] as? String == model.rawValue && object["kind"] as? String == "codeedit",
                       "selected model lost in durable edit request")
+                check(object["mgen"] as? String == "1.1", "selected generation lost in durable edit request")
                 check(object["nomem"] == nil && object["baseHash"] as? String == hash,
                       "user answer sent to helper route or source binding omitted")
                 check(object["think"] as? Bool == (model != .mini), "selected reasoning depth lost")

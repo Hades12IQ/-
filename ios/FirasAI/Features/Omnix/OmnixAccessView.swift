@@ -3,6 +3,7 @@ import Perception
 
 struct OmnixAccessView: View {
     let env: AppEnvironment
+    var generation: ModelGeneration? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var reason = ""
     @State private var loading = false
@@ -15,13 +16,16 @@ struct OmnixAccessView: View {
                 WithPerceptionTracking {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
-                            Text("omnix 1").font(.title.weight(.semibold))
+                            Text((generation ?? env.prefs.modelGeneration).label(.omnix, env.prefs.lang)).font(.title.weight(.semibold))
                             Text(ar ? "المهام والأدوات والملفات على مساحة حسابك السحابية، بنفس إمكانات الموقع." : "Tasks, tools and files in your account’s cloud workspace, with the website’s capabilities.")
                             if !env.session.isMember {
                                 Text(ar ? "سجّل الدخول لاستخدام أومنكس." : "Sign in to use Omnix.")
                             } else if state.access?.status == "approved" {
                                 Text(state.ready ? (ar ? "جاهز للاستخدام" : "Ready to use") : (ar ? "يجري تجهيز مساحة حسابك." : "Your account workspace is being prepared."))
-                                Button(ar ? "استخدام أومنكس" : "Use Omnix") { env.prefs.tier = .omnix; dismiss() }
+                                Button(ar ? "استخدام أومنكس" : "Use Omnix") {
+                                    if let generation { env.prefs.modelGeneration = generation }
+                                    env.prefs.tier = .omnix; dismiss()
+                                }
                                     .buttonStyle(.borderedProminent).disabled(!state.ready || loading)
                             } else if state.access?.status == "pending" {
                                 Text(ar ? "طلب الوصول قيد المراجعة." : "Your access request is awaiting review.")

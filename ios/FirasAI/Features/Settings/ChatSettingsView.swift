@@ -41,13 +41,19 @@ struct ChatSettingsView: View {
             palette: palette,
             lang: lang
         ) {
+            Picker(lang == .arabic ? "جيل النماذج" : "Model generation", selection: Binding(
+                get: { env.prefs.modelGeneration }, set: { env.prefs.modelGeneration = $0 }
+            )) {
+                Text("1.1").tag(ModelGeneration.current)
+                Text(lang == .arabic ? "الجيل السابق" : "Previous generation").tag(ModelGeneration.legacy)
+            }.pickerStyle(.segmented).padding(.bottom, 12)
             ForEach(ModelTier.allCases) { tier in
                 WithPerceptionTracking {
                     if tier != .mini {
                         SettingsDivider(palette: palette)
                     }
                     SettingsChoiceRow(
-                        title: tier.label(lang),
+                        title: env.prefs.modelGeneration.label(tier, lang),
                         hint: tier.tagline(lang),
                         badge: tier.badge.map { $0(lang) },
                         symbol: tier.symbol,
